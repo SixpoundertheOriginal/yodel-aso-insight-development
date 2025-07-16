@@ -1,0 +1,11 @@
+
+project_id = "bkbcqocpjahewqjmlgvf"
+
+[functions.aso-chat]
+verify_jwt = false
+
+[functions.app-store-scraper]
+verify_jwt = false
+
+[functions.bigquery-aso-data]
+verify_jwt = false
