@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users } from 'lucide-react';
+import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette } from 'lucide-react';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
 import { MetadataWorkspace } from '../AsoAiHub/MetadataCopilot/MetadataWorkspace';
 import { KeywordClustersPanel } from '../KeywordIntelligence/KeywordClustersPanel';
 import { RankDistributionChart } from '../KeywordIntelligence/RankDistributionChart';
 import { KeywordTrendsTable } from '../KeywordIntelligence/KeywordTrendsTable';
 import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
+import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
@@ -98,7 +99,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-zinc-900/30 border-zinc-800">
             <CardContent className="p-6 text-center">
               <Target className="h-12 w-12 text-blue-400 mx-auto mb-4" />
@@ -114,6 +115,15 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
               <h3 className="text-lg font-semibold text-white mb-2">Metadata Optimization</h3>
               <p className="text-zinc-400 text-sm">
                 Optimize your app title, subtitle, and keywords with AI-powered suggestions and competitor insights.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-zinc-900/30 border-zinc-800">
+            <CardContent className="p-6 text-center">
+              <Palette className="h-12 w-12 text-pink-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">Creative Analysis</h3>
+              <p className="text-zinc-400 text-sm">
+                AI-powered visual analysis of app icons, screenshots, and in-app events for optimization insights.
               </p>
             </CardContent>
           </Card>
@@ -179,7 +189,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
 
       {/* Enhanced Audit Score Overview */}
       {auditData && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
@@ -227,6 +237,20 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4 text-pink-400" />
+                <span className="text-sm text-zinc-400">Creative</span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                75/100
+              </div>
+              <div className="text-xs text-zinc-500 mt-1">
+                Visual Assets
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-purple-400" />
                 <span className="text-sm text-zinc-400">Competitive</span>
               </div>
@@ -257,10 +281,11 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-6 bg-zinc-900 border-zinc-800">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
+          <TabsTrigger value="creative">Creative</TabsTrigger>
           <TabsTrigger value="competitors">Competitors</TabsTrigger>
           <TabsTrigger value="recommendations">Actions</TabsTrigger>
         </TabsList>
@@ -326,6 +351,14 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
             isLoading={isLoading}
             onTimeframeChange={() => {}}
             selectedTimeframe={30}
+          />
+        </TabsContent>
+
+        <TabsContent value="creative" className="space-y-6">
+          <CreativeAnalysisPanel
+            metadata={importedMetadata}
+            competitorData={auditData?.competitorAnalysis}
+            isLoading={isLoading}
           />
         </TabsContent>
 
