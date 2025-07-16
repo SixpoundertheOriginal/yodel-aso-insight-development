@@ -45,6 +45,7 @@ interface AppData {
   reviews: number
   developer: string
   applicationCategory: string
+  screenshotUrls?: string[]
   locale: string
 }
 
@@ -746,6 +747,7 @@ async function performRealAppStoreSearch(searchTerm: string, country: string, li
       reviews: app.userRatingCount || 0,
       developer: app.artistName || app.sellerName || '',
       applicationCategory: app.primaryGenreName || app.genres?.[0] || '',
+      screenshotUrls: app.screenshotUrls || [],
       locale: 'en-US'
     }))
 
