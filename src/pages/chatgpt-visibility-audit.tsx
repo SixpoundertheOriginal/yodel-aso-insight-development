@@ -511,25 +511,25 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                               {audit.status}
                             </Badge>
                             
-                            {/* Edit/Delete buttons for pending audits */}
+                            {/* Edit button for pending audits only */}
                             {audit.status === 'pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleEditAudit(audit)}
-                                >
-                                  <Edit3 className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteAudit(audit.id)}
-                                >
-                                  <Trash2 className="h-3 w-3 text-red-400" />
-                                </Button>
-                              </>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditAudit(audit)}
+                              >
+                                <Edit3 className="h-3 w-3" />
+                              </Button>
                             )}
+                            
+                            {/* Delete button available for all audits */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteAudit(audit.id)}
+                            >
+                              <Trash2 className="h-3 w-3 text-red-400" />
+                            </Button>
                             
                             {(audit.status === 'pending' || audit.status === 'running') && (
                               <Button
