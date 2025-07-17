@@ -100,22 +100,62 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   const logs = processingState.logs;
   const processingStats = { ...localProcessingStats, ...processingState.processingStats };
 
-  // Initialize processing if we can resume
+  // Initialize processing if we can resume - only on mount
   useEffect(() => {
-    if (canResume(auditRun.id)) {
-      addLog(`Processing state restored for audit: ${auditRun.name}`);
-    } else {
-      // Try loading from database on mount
-      loadFromDatabase(auditRun.id, organizationId);
-    }
-  }, [auditRun.id, canResume, organizationId]);
+    let mounted = true;
+    
+    const initializeProcessing = async () => {
+      if (!mounted) return;
+      
+      if (canResume(auditRun.id)) {
+        // Don't call addLog here as it triggers re-renders
+        console.log(`Processing state restored for audit: ${auditRun.name}`);
+      } else {
+        // Try loading from database on mount
+        try {
+          await loadFromDatabase(auditRun.id, organizationId);
+        } catch (error) {
+          console.error('Failed to load processing state:', error);
+        }
+      }
+    };
+    
+    initializeProcessing();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [auditRun.id, organizationId, canResume, loadFromDatabase]);
 
-  // Auto-save to database when processing state changes
+  // Auto-save to database when processing state changes meaningfully
   useEffect(() => {
+    let mounted = true;
+    
+    const saveState = async () => {
+      if (!mounted || !processingState.isProcessing || processingState.auditRunId !== auditRun.id) {
+        return;
+      }
+      
+      try {
+        await saveToDatabase(auditRun.id, organizationId);
+      } catch (error) {
+        console.error('Failed to save processing state:', error);
+      }
+    };
+    
+    // Only save when actually processing and when meaningful state changes occur
     if (processingState.isProcessing && processingState.auditRunId === auditRun.id) {
-      saveToDatabase(auditRun.id, organizationId);
+      const timeoutId = setTimeout(saveState, 1000); // Debounce saves
+      return () => {
+        mounted = false;
+        clearTimeout(timeoutId);
+      };
     }
-  }, [processingState, auditRun.id, organizationId]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, [processingState.isProcessing, processingState.currentQueryIndex, processingState.auditRunId, auditRun.id, organizationId, saveToDatabase]);
 
   const generateQueriesFromTemplates = async () => {
     try {
