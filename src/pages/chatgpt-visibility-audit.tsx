@@ -11,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QueryTemplateLibrary, QueryTemplate, QUERY_TEMPLATE_LIBRARY } from '@/components/ChatGPTAudit/QueryTemplateLibrary';
+import { BulkAuditProcessor } from '@/components/ChatGPTAudit/BulkAuditProcessor';
+import { VisibilityResults } from '@/components/ChatGPTAudit/VisibilityResults';
 import { 
   Brain, 
   Play, 
@@ -22,7 +25,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Settings
 } from 'lucide-react';
 
 // Types for ChatGPT Visibility Audit
@@ -37,12 +42,7 @@ interface AuditRun {
   created_at: string;
 }
 
-interface QueryTemplate {
-  id: string;
-  query_text: string;
-  query_category: string;
-  variables: Record<string, any>;
-}
+// Interface for audit runs - now enhanced for Phase 2
 
 const ChatGPTVisibilityAuditPage: React.FC = () => {
   const { toast } = useToast();
@@ -51,6 +51,8 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   const [newAuditName, setNewAuditName] = useState('');
   const [newAuditApp, setNewAuditApp] = useState('');
   const [customQuery, setCustomQuery] = useState('');
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+  const [selectedAuditForProcessing, setSelectedAuditForProcessing] = useState<string | null>(null);
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -89,27 +91,9 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
     enabled: !!userContext?.organizationId,
   });
 
-  // Query templates
-  const queryTemplates: QueryTemplate[] = [
-    {
-      id: '1',
-      query_text: 'What are the best {category} apps for {demographic}?',
-      query_category: 'recommendation',
-      variables: { category: 'fitness', demographic: 'beginners' }
-    },
-    {
-      id: '2', 
-      query_text: 'I need a reliable {category} app. What do you recommend?',
-      query_category: 'recommendation',
-      variables: { category: 'finance' }
-    },
-    {
-      id: '3',
-      query_text: 'Compare the top {category} apps available.',
-      query_category: 'comparison',
-      variables: { category: 'productivity' }
-    }
-  ];
+  const getSelectedTemplateObjects = (): QueryTemplate[] => {
+    return QUERY_TEMPLATE_LIBRARY.filter(template => selectedTemplates.includes(template.id));
+  };
 
   // Create new audit run
   const createAuditMutation = useMutation({
@@ -224,7 +208,7 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-zinc-900 border-zinc-800 h-12">
+          <TabsList className="grid w-full grid-cols-6 bg-zinc-900 border-zinc-800 h-12">
             <TabsTrigger value="overview" className="text-sm font-medium">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -235,10 +219,18 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="templates" className="text-sm font-medium">
               <Lightbulb className="h-4 w-4 mr-2" />
-              Query Templates
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="processor" className="text-sm font-medium">
+              <Zap className="h-4 w-4 mr-2" />
+              Processor
+            </TabsTrigger>
+            <TabsTrigger value="results" className="text-sm font-medium">
+              <Target className="h-4 w-4 mr-2" />
+              Results
             </TabsTrigger>
             <TabsTrigger value="insights" className="text-sm font-medium">
-              <Target className="h-4 w-4 mr-2" />
+              <Settings className="h-4 w-4 mr-2" />
               Insights
             </TabsTrigger>
           </TabsList>
@@ -318,17 +310,45 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                           {audit.status === 'running' && (
                             <div className="w-32">
                               <Progress 
-                                value={(audit.completed_queries / audit.total_queries) * 100} 
+                                value={audit.total_queries > 0 ? (audit.completed_queries / audit.total_queries) * 100 : 0} 
                                 className="h-2"
                               />
                             </div>
                           )}
-                          <Badge 
-                            variant="outline" 
-                            className={`${getStatusColor(audit.status)} text-white border-transparent`}
-                          >
-                            {audit.status}
-                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            <Badge 
+                              variant="outline" 
+                              className={`${getStatusColor(audit.status)} text-white border-transparent`}
+                            >
+                              {audit.status}
+                            </Badge>
+                            {(audit.status === 'pending' || audit.status === 'running') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedAuditForProcessing(audit.id);
+                                  setSelectedTab('processor');
+                                }}
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Process
+                              </Button>
+                            )}
+                            {audit.status === 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedAuditForProcessing(audit.id);
+                                  setSelectedTab('results');
+                                }}
+                              >
+                                <Target className="h-3 w-3 mr-1" />
+                                Results
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -396,38 +416,97 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
           <TabsContent value="templates" className="space-y-6">
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white">Query Templates</CardTitle>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <Lightbulb className="h-5 w-5" />
+                  <span>Query Template Library</span>
+                </CardTitle>
                 <CardDescription className="text-zinc-400">
-                  Pre-built query templates for comprehensive visibility testing
+                  Choose from our comprehensive library of pre-built query templates designed to test different visibility scenarios
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-4">
-                  {queryTemplates.map((template) => (
-                    <div key={template.id} className="p-4 rounded-lg border border-zinc-800 bg-zinc-900/30">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Badge variant="outline" className="text-xs">
-                              {template.query_category}
-                            </Badge>
-                          </div>
-                          <p className="text-white font-medium mb-2">{template.query_text}</p>
-                          <div className="text-sm text-zinc-400">
-                            Variables: {Object.entries(template.variables).map(([key, value]) => 
-                              `${key}: ${value}`
-                            ).join(', ')}
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Use Template
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <QueryTemplateLibrary
+                  onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
+                  selectedTemplates={selectedTemplates}
+                  appContext={{ 
+                    name: newAuditApp || 'YourApp',
+                    category: 'fitness',
+                    targetAudience: 'general users'
+                  }}
+                />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="processor" className="space-y-6">
+            {selectedAuditForProcessing ? (
+              (() => {
+                const selectedAudit = auditRuns?.find(audit => audit.id === selectedAuditForProcessing);
+                if (!selectedAudit) {
+                  return (
+                    <Card className="bg-zinc-900/50 border-zinc-800">
+                      <CardContent className="text-center py-12">
+                        <AlertCircle className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-white mb-2">Audit Not Found</h3>
+                        <p className="text-zinc-400">The selected audit could not be found.</p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
+                return (
+                  <BulkAuditProcessor
+                    auditRun={selectedAudit}
+                    selectedTemplates={getSelectedTemplateObjects()}
+                    organizationId={userContext.organizationId}
+                    onStatusChange={() => {
+                      queryClient.invalidateQueries({ queryKey: ['chatgpt-audit-runs'] });
+                    }}
+                  />
+                );
+              })()
+            ) : (
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardContent className="text-center py-12">
+                  <Zap className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">Select an Audit to Process</h3>
+                  <p className="text-zinc-400 mb-4">
+                    Choose an audit from the overview tab to start bulk processing queries
+                  </p>
+                  <Button 
+                    onClick={() => setSelectedTab('overview')}
+                    variant="outline"
+                  >
+                    Go to Overview
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="results" className="space-y-6">
+            {selectedAuditForProcessing && userContext?.organizationId ? (
+              <VisibilityResults
+                auditRunId={selectedAuditForProcessing}
+                organizationId={userContext.organizationId}
+              />
+            ) : (
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardContent className="text-center py-12">
+                  <Target className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">Select an Audit to View Results</h3>
+                  <p className="text-zinc-400 mb-4">
+                    Choose a completed audit from the overview tab to view detailed results
+                  </p>
+                  <Button 
+                    onClick={() => setSelectedTab('overview')}
+                    variant="outline"
+                  >
+                    Go to Overview
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
