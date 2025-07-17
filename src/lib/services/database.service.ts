@@ -118,4 +118,56 @@ export class DatabaseService {
       };
     }
   }
+
+  /**
+   * Store processing state in the database for recovery
+   */
+  static async saveProcessingState(
+    auditRunId: string,
+    processingState: {
+      currentQueryIndex: number;
+      logs: string[];
+      processingStats: any;
+    },
+    options: DatabaseQueryOptions = {}
+  ) {
+    const { organizationId } = options;
+    
+    let query = supabase
+      .from('chatgpt_audit_runs')
+      .update({
+        processing_metadata: {
+          ...processingState,
+          lastUpdated: new Date().toISOString()
+        }
+      })
+      .eq('id', auditRunId);
+    
+    // Add explicit organization filter if provided
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+    
+    return query;
+  }
+
+  /**
+   * Retrieve processing state from the database
+   */
+  static async getProcessingState(auditRunId: string, options: DatabaseQueryOptions = {}) {
+    const { organizationId } = options;
+    
+    let query = supabase
+      .from('chatgpt_audit_runs')
+      .select('processing_metadata')
+      .eq('id', auditRunId);
+    
+    // Add explicit organization filter if provided
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+    
+    const { data, error } = await query.single();
+    return { data: data?.processing_metadata || null, error };
+  }
 }

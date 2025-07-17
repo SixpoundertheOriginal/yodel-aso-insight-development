@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/layouts';
+import { AuditProcessingProvider } from '@/context/AuditProcessingContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,7 +87,11 @@ interface GeneratedQuery {
 const ChatGPTVisibilityAuditPage: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState('overview');
+  
+  // Persist tab selection in localStorage
+  const [selectedTab, setSelectedTab] = useState(() => {
+    return localStorage.getItem('audit_selected_tab') || 'overview';
+  });
   const [newAuditName, setNewAuditName] = useState('');
   const [newAuditApp, setNewAuditApp] = useState('');
   const [customQuery, setCustomQuery] = useState('');
@@ -98,6 +103,11 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   const [validatedApp, setValidatedApp] = useState<ValidatedApp | null>(null);
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedQuery[]>([]);
   const [useAppValidation, setUseAppValidation] = useState(true);
+
+  // Save tab selection to localStorage
+  useEffect(() => {
+    localStorage.setItem('audit_selected_tab', selectedTab);
+  }, [selectedTab]);
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -366,8 +376,9 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-8">
+    <AuditProcessingProvider>
+      <MainLayout>
+        <div className="space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center space-x-3 mb-4">
@@ -830,8 +841,9 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
             )}
           </TabsContent>
         </Tabs>
-      </div>
-    </MainLayout>
+        </div>
+      </MainLayout>
+    </AuditProcessingProvider>
   );
 };
 

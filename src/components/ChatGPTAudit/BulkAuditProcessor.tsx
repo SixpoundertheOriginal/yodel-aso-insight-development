@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DatabaseService } from '@/lib/services/database.service';
+import { useAuditProcessing } from '@/context/AuditProcessingContext';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { 
   Play, 
   Pause, 
@@ -67,9 +69,21 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   onStatusChange
 }) => {
   const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [currentQueryIndex, setCurrentQueryIndex] = useState(0);
-  const [processingStats, setProcessingStats] = useState<ProcessingStats>({
+  const { 
+    state: processingState, 
+    startProcessing, 
+    stopProcessing, 
+    updateProgress, 
+    addLog, 
+    updateStats,
+    canResume 
+  } = useAuditProcessing();
+  
+  // Navigation guard to prevent accidental tab closure during processing
+  useNavigationGuard();
+  
+  // Local state for compatibility - gradually migrate to context
+  const [localProcessingStats, setLocalProcessingStats] = useState<ProcessingStats>({
     totalQueries: 0,
     completedQueries: 0,
     failedQueries: 0,
@@ -77,12 +91,19 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     totalCost: 0,
     estimatedTimeRemaining: 0
   });
-  const [logs, setLogs] = useState<string[]>([]);
 
-  const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setLogs(prev => [`[${timestamp}] ${message}`, ...prev.slice(0, 19)]); // Keep last 20 logs
-  };
+  // Use context state when available, fallback to local state
+  const isProcessing = processingState.isProcessing;
+  const currentQueryIndex = processingState.currentQueryIndex;
+  const logs = processingState.logs;
+  const processingStats = { ...localProcessingStats, ...processingState.processingStats };
+
+  // Initialize processing if we can resume
+  useEffect(() => {
+    if (canResume(auditRun.id)) {
+      addLog(`Processing state restored for audit: ${auditRun.name}`);
+    }
+  }, [auditRun.id, canResume]);
 
   const generateQueriesFromTemplates = async () => {
     try {
@@ -158,7 +179,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
   const processQueriesBatch = async () => {
     try {
-      setIsProcessing(true);
+      startProcessing(auditRun.id);
       addLog('Starting batch processing...');
 
       // Test auth context first
@@ -197,10 +218,10 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
       // Process queries with rate limiting (1 every 2 seconds to avoid hitting OpenAI limits)
       for (let i = 0; i < queries.length; i++) {
-        if (!isProcessing) break; // Check if stopped
+        if (!processingState.isProcessing) break; // Check if stopped
 
         const query = queries[i];
-        setCurrentQueryIndex(i + 1);
+        updateProgress(i + 1);
         
         addLog(`Processing query ${i + 1}/${queries.length}: ${query.query_text.substring(0, 50)}...`);
 
@@ -224,22 +245,23 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
           const responseTime = Date.now() - startTime;
           
-          setProcessingStats(prev => ({
-            ...prev,
-            completedQueries: prev.completedQueries + 1,
-            avgResponseTime: (prev.avgResponseTime * prev.completedQueries + responseTime) / (prev.completedQueries + 1),
+          const newStats = {
+            completedQueries: processingStats.completedQueries + 1,
+            avgResponseTime: (processingStats.avgResponseTime * processingStats.completedQueries + responseTime) / (processingStats.completedQueries + 1),
             estimatedTimeRemaining: (queries.length - (i + 1)) * 2000 // 2 seconds per query
-          }));
+          };
+          
+          setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
+          updateStats(newStats);
 
           addLog(`✓ Query ${i + 1} completed (${responseTime}ms)`);
 
         } catch (error) {
           addLog(`✗ Query ${i + 1} failed: ${error.message}`);
           
-          setProcessingStats(prev => ({
-            ...prev,
-            failedQueries: prev.failedQueries + 1
-          }));
+          const newStats = { failedQueries: processingStats.failedQueries + 1 };
+          setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
+          updateStats(newStats);
 
           // Mark query as failed with explicit organization filter
           await DatabaseService.updateChatGPTQuery(
@@ -266,7 +288,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
         variant: 'destructive'
       });
     } finally {
-      setIsProcessing(false);
+      stopProcessing();
     }
   };
 
@@ -286,7 +308,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   };
 
   const handleStopProcessing = () => {
-    setIsProcessing(false);
+    stopProcessing();
     addLog('Processing stopped by user');
   };
 
@@ -352,8 +374,20 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
                 className="flex items-center space-x-2"
               >
                 <Play className="h-4 w-4" />
-                <span>{auditRun.total_queries === 0 ? 'Generate & Start' : 'Resume Processing'}</span>
+                <span>
+                  {auditRun.total_queries === 0 ? 'Generate & Start' : 
+                   canResume(auditRun.id) ? 'Resume Processing' : 'Start Processing'}
+                </span>
               </Button>
+            )}
+
+            {canResume(auditRun.id) && !isProcessing && (
+              <Alert className="bg-blue-900/20 border-blue-700/50 text-blue-300 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Processing can be resumed from where you left off
+                </AlertDescription>
+              </Alert>
             )}
 
             {isProcessing && (
