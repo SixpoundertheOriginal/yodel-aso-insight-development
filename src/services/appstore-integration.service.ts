@@ -50,28 +50,79 @@ export class AppStoreIntegrationService {
         return { success: false, error: data?.error || 'No results found' };
       }
 
-      console.log('✅ [APPSTORE-INTEGRATION] Search successful:', data.data);
-      
-      // Ensure we return an array of results
-      const results = Array.isArray(data.data) ? data.data : [data.data];
-      
-      // Transform the response to match our interface
-      const transformedResults: AppStoreSearchResult[] = results.map((appData: any) => ({
-        name: appData.name || searchTerm,
-        appId: appData.appId || '',
-        title: appData.title || appData.name || searchTerm,
-        subtitle: appData.subtitle || '',
-        description: appData.description || '',
-        url: appData.url || '',
-        icon: appData.icon || '',
-        rating: appData.rating || 0,
-        reviews: appData.reviews || 0,
-        developer: appData.developer || '',
-        applicationCategory: appData.applicationCategory || '',
-        locale: appData.locale || 'en-US'
-      }));
+      console.log('✅ [APPSTORE-INTEGRATION] Raw scraper response:', data);
 
-      return { success: true, data: transformedResults };
+      // Handle different response formats from the edge function
+      let resultsToTransform: any[] = [];
+
+      if (data.isAmbiguous && data.data?.results) {
+        // Ambiguous search: multiple results in nested structure
+        console.log('📋 [APPSTORE-INTEGRATION] Processing ambiguous search results');
+        resultsToTransform = Array.isArray(data.data.results) ? data.data.results : [data.data.results];
+      } else if (data.data && !data.isAmbiguous) {
+        // Non-ambiguous search: single result or direct array
+        console.log('🎯 [APPSTORE-INTEGRATION] Processing non-ambiguous search result');
+        resultsToTransform = Array.isArray(data.data) ? data.data : [data.data];
+      } else {
+        // Fallback: try to extract any available data
+        console.warn('⚠️ [APPSTORE-INTEGRATION] Unexpected response format, attempting fallback');
+        if (data.data) {
+          resultsToTransform = Array.isArray(data.data) ? data.data : [data.data];
+        } else {
+          return { success: false, error: 'No app data found in response' };
+        }
+      }
+
+      console.log('📊 [APPSTORE-INTEGRATION] Transforming results:', {
+        resultsCount: resultsToTransform.length,
+        isAmbiguous: data.isAmbiguous,
+        sampleResult: resultsToTransform[0]
+      });
+
+      // Transform the response to match our interface
+      const transformedResults: AppStoreSearchResult[] = resultsToTransform.map((appData: any, index: number) => {
+        const result = {
+          name: appData.name || appData.trackName || appData.title || searchTerm,
+          appId: appData.appId || appData.trackId?.toString() || appData.bundleId || `unknown-${index}`,
+          title: appData.title || appData.trackName || appData.name || searchTerm,
+          subtitle: appData.subtitle || appData.sellerName || '',
+          description: appData.description || '',
+          url: appData.url || appData.trackViewUrl || '',
+          icon: appData.icon || appData.artworkUrl512 || appData.artworkUrl100 || appData.artworkUrl60 || '',
+          rating: appData.rating || appData.averageUserRating || 0,
+          reviews: appData.reviews || appData.userRatingCount || 0,
+          developer: appData.developer || appData.artistName || appData.sellerName || '',
+          applicationCategory: appData.applicationCategory || appData.primaryGenreName || appData.genres?.[0] || '',
+          locale: appData.locale || 'en-US'
+        };
+
+        console.log(`🔄 [APPSTORE-INTEGRATION] Transformed result ${index + 1}:`, {
+          name: result.name,
+          developer: result.developer,
+          appId: result.appId,
+          hasIcon: !!result.icon,
+          rating: result.rating
+        });
+
+        return result;
+      });
+
+      // Filter out any results that don't have a proper name
+      const validResults = transformedResults.filter(result => 
+        result.name && result.name !== searchTerm && result.name.trim().length > 0
+      );
+
+      console.log('✅ [APPSTORE-INTEGRATION] Final results:', {
+        originalCount: transformedResults.length,
+        validCount: validResults.length,
+        results: validResults.map(r => ({ name: r.name, developer: r.developer }))
+      });
+
+      if (validResults.length === 0) {
+        return { success: false, error: `No valid apps found for "${searchTerm.trim()}"` };
+      }
+
+      return { success: true, data: validResults };
     } catch (error: any) {
       console.error('💥 [APPSTORE-INTEGRATION] Exception:', error);
       return { 
