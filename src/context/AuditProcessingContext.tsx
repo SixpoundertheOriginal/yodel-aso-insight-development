@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { DatabaseService } from '@/lib/services/database.service';
 
 interface ProcessingState {
   isProcessing: boolean;
@@ -98,6 +99,8 @@ interface AuditProcessingContextType {
   updateStats: (stats: Partial<ProcessingState['processingStats']>) => void;
   clearState: () => void;
   canResume: (auditRunId: string) => boolean;
+  saveToDatabase: (auditRunId: string, organizationId: string) => Promise<void>;
+  loadFromDatabase: (auditRunId: string, organizationId: string) => Promise<void>;
 }
 
 const AuditProcessingContext = createContext<AuditProcessingContextType | undefined>(undefined);
@@ -155,6 +158,35 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
     return state.auditRunId === auditRunId && state.logs.length > 0;
   };
 
+  const saveToDatabase = async (auditRunId: string, organizationId: string) => {
+    try {
+      await DatabaseService.saveProcessingState(auditRunId, {
+        currentQueryIndex: state.currentQueryIndex,
+        logs: state.logs,
+        processingStats: state.processingStats
+      }, { organizationId });
+    } catch (error) {
+      console.error('Failed to save processing state to database:', error);
+    }
+  };
+
+  const loadFromDatabase = async (auditRunId: string, organizationId: string) => {
+    try {
+      const { data, error } = await DatabaseService.getProcessingState(auditRunId, { organizationId });
+      if (!error && data && typeof data === 'object' && !Array.isArray(data)) {
+        const dbState = data as any; // Type assertion since we know the structure
+        dispatch({ type: 'RESTORE_STATE', payload: {
+          auditRunId,
+          currentQueryIndex: dbState.currentQueryIndex || 0,
+          logs: dbState.logs || [],
+          processingStats: dbState.processingStats || initialState.processingStats
+        }});
+      }
+    } catch (error) {
+      console.error('Failed to load processing state from database:', error);
+    }
+  };
+
   return (
     <AuditProcessingContext.Provider value={{
       state,
@@ -164,7 +196,9 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
       addLog,
       updateStats,
       clearState,
-      canResume
+      canResume,
+      saveToDatabase,
+      loadFromDatabase
     }}>
       {children}
     </AuditProcessingContext.Provider>

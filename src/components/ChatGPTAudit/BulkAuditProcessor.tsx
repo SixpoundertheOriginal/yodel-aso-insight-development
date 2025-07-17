@@ -76,7 +76,9 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     updateProgress, 
     addLog, 
     updateStats,
-    canResume 
+    canResume,
+    saveToDatabase,
+    loadFromDatabase
   } = useAuditProcessing();
   
   // Navigation guard to prevent accidental tab closure during processing
@@ -102,8 +104,18 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   useEffect(() => {
     if (canResume(auditRun.id)) {
       addLog(`Processing state restored for audit: ${auditRun.name}`);
+    } else {
+      // Try loading from database on mount
+      loadFromDatabase(auditRun.id, organizationId);
     }
-  }, [auditRun.id, canResume]);
+  }, [auditRun.id, canResume, organizationId]);
+
+  // Auto-save to database when processing state changes
+  useEffect(() => {
+    if (processingState.isProcessing && processingState.auditRunId === auditRun.id) {
+      saveToDatabase(auditRun.id, organizationId);
+    }
+  }, [processingState, auditRun.id, organizationId]);
 
   const generateQueriesFromTemplates = async () => {
     try {

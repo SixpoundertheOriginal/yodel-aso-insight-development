@@ -261,6 +261,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          processing_metadata: Json | null
           started_at: string | null
           status: string
           total_queries: number | null
@@ -276,6 +277,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          processing_metadata?: Json | null
           started_at?: string | null
           status?: string
           total_queries?: number | null
@@ -291,6 +293,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          processing_metadata?: Json | null
           started_at?: string | null
           status?: string
           total_queries?: number | null

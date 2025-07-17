@@ -36,7 +36,7 @@ export class DatabaseService {
   /**
    * Updates chatgpt_audit_runs with explicit organization filtering
    */
-  static updateAuditRun(
+  static async updateAuditRun(
     auditRunId: string,
     updates: any,
     options: DatabaseQueryOptions = {}
@@ -53,13 +53,14 @@ export class DatabaseService {
       query = query.eq('organization_id', organizationId);
     }
     
-    return query;
+    const { data, error } = await query.select();
+    return { data, error };
   }
 
   /**
    * Updates chatgpt_queries with explicit organization filtering
    */
-  static updateChatGPTQuery(
+  static async updateChatGPTQuery(
     queryId: string,
     updates: any,
     options: DatabaseQueryOptions = {}
@@ -76,7 +77,8 @@ export class DatabaseService {
       query = query.eq('organization_id', organizationId);
     }
     
-    return query;
+    const { data, error } = await query.select();
+    return { data, error };
   }
 
   /**
@@ -148,7 +150,8 @@ export class DatabaseService {
       query = query.eq('organization_id', organizationId);
     }
     
-    return query;
+    const { data, error } = await query.select();
+    return { data, error };
   }
 
   /**
