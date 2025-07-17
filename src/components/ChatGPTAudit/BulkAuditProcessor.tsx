@@ -30,9 +30,21 @@ interface AuditRun {
   completed_at?: string;
 }
 
+interface GeneratedQuery {
+  id: string;
+  query_text: string;
+  category: string;
+  subcategory: string;
+  generated_from: string;
+  priority: number;
+  variables_used: Record<string, string>;
+  icon: React.ReactNode;
+}
+
 interface BulkAuditProcessorProps {
   auditRun: AuditRun;
-  selectedTemplates: QueryTemplate[];
+  selectedTemplates?: QueryTemplate[];
+  generatedQueries?: GeneratedQuery[];
   organizationId: string;
   onStatusChange: () => void;
 }
@@ -48,7 +60,8 @@ interface ProcessingStats {
 
 export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   auditRun,
-  selectedTemplates,
+  selectedTemplates = [],
+  generatedQueries = [],
   organizationId,
   onStatusChange
 }) => {
@@ -72,26 +85,46 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
   const generateQueriesFromTemplates = async () => {
     try {
-      addLog('Generating queries from selected templates...');
-      
-      const queries = selectedTemplates.map(template => {
-        // Replace variables in query text
-        let queryText = template.query_text;
-        Object.entries(template.variables).forEach(([key, value]) => {
-          queryText = queryText.replace(`{${key}}`, value);
-        });
+      let queries: any[] = [];
 
-        return {
+      // Prioritize generated queries over static templates
+      if (generatedQueries.length > 0) {
+        addLog(`Using ${generatedQueries.length} AI-generated queries...`);
+        
+        queries = generatedQueries.map(query => ({
           organization_id: organizationId,
           audit_run_id: auditRun.id,
-          query_text: queryText,
-          query_category: template.category,
-          query_type: 'template',
-          variables: template.variables,
-          priority: template.priority,
+          query_text: query.query_text,
+          query_category: query.category,
+          query_type: 'generated',
+          variables: query.variables_used,
+          priority: query.priority,
           status: 'pending'
-        };
-      });
+        }));
+      } else if (selectedTemplates.length > 0) {
+        addLog('Generating queries from selected templates...');
+        
+        queries = selectedTemplates.map(template => {
+          // Replace variables in query text
+          let queryText = template.query_text;
+          Object.entries(template.variables).forEach(([key, value]) => {
+            queryText = queryText.replace(`{${key}}`, value);
+          });
+
+          return {
+            organization_id: organizationId,
+            audit_run_id: auditRun.id,
+            query_text: queryText,
+            query_category: template.category,
+            query_type: 'template',
+            variables: template.variables,
+            priority: template.priority,
+            status: 'pending'
+          };
+        });
+      } else {
+        throw new Error('No queries available - please generate queries or select templates first');
+      }
 
       // Insert queries into database
       const { error } = await supabase
@@ -369,8 +402,35 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
         </CardContent>
       </Card>
 
-      {/* Selected Templates Preview */}
-      {selectedTemplates.length > 0 && (
+      {/* Query Preview */}
+      {generatedQueries.length > 0 ? (
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-white">Generated Queries ({generatedQueries.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {generatedQueries.slice(0, 6).map(query => (
+                <div key={query.id} className="p-3 bg-zinc-800/50 rounded-md border border-zinc-700">
+                  <div className="flex items-center space-x-2 mb-2">
+                    {query.icon}
+                    <span className="text-sm font-medium text-white">{query.generated_from}</span>
+                  </div>
+                  <p className="text-xs text-zinc-400">{query.query_text.substring(0, 100)}...</p>
+                  <Badge variant="outline" className="text-xs mt-2">
+                    {query.category}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            {generatedQueries.length > 6 && (
+              <p className="text-xs text-zinc-500 mt-3">
+                ...and {generatedQueries.length - 6} more queries
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : selectedTemplates.length > 0 && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
             <CardTitle className="text-white">Selected Templates ({selectedTemplates.length})</CardTitle>

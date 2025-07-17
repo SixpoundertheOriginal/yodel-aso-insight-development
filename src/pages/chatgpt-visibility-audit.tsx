@@ -766,6 +766,7 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                   <BulkAuditProcessor
                     auditRun={selectedAudit}
                     selectedTemplates={getSelectedTemplateObjects()}
+                    generatedQueries={generatedQueries}
                     organizationId={userContext.organizationId}
                     onStatusChange={() => {
                       queryClient.invalidateQueries({ queryKey: ['chatgpt-audit-runs'] });
