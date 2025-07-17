@@ -13,7 +13,8 @@ import {
   Settings as SettingsIcon,
   Smartphone,
   Database,
-  PieChart
+  PieChart,
+  Brain
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,11 @@ const aiToolsItems = [
     title: "ASO AI Hub",
     url: "/aso-ai-hub",
     icon: Bot,
+  },
+  {
+    title: "ChatGPT Visibility",
+    url: "/chatgpt-visibility-audit",
+    icon: Brain,
   },
   {
     title: "Keyword Intelligence",

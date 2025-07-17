@@ -250,6 +250,229 @@ export type Database = {
           },
         ]
       }
+      chatgpt_audit_runs: {
+        Row: {
+          app_id: string
+          completed_at: string | null
+          completed_queries: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          started_at: string | null
+          status: string
+          total_queries: number | null
+          updated_at: string
+        }
+        Insert: {
+          app_id: string
+          completed_at?: string | null
+          completed_queries?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          started_at?: string | null
+          status?: string
+          total_queries?: number | null
+          updated_at?: string
+        }
+        Update: {
+          app_id?: string
+          completed_at?: string | null
+          completed_queries?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          started_at?: string | null
+          status?: string
+          total_queries?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chatgpt_queries: {
+        Row: {
+          audit_run_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          priority: number | null
+          query_category: string | null
+          query_text: string
+          query_type: string | null
+          status: string
+          variables: Json | null
+        }
+        Insert: {
+          audit_run_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          priority?: number | null
+          query_category?: string | null
+          query_text: string
+          query_type?: string | null
+          status?: string
+          variables?: Json | null
+        }
+        Update: {
+          audit_run_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          priority?: number | null
+          query_category?: string | null
+          query_text?: string
+          query_type?: string | null
+          status?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatgpt_queries_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatgpt_query_results: {
+        Row: {
+          app_mentioned: boolean | null
+          audit_run_id: string
+          competitors_mentioned: string[] | null
+          cost_cents: number | null
+          created_at: string
+          id: string
+          mention_context: string | null
+          mention_position: number | null
+          organization_id: string
+          processing_metadata: Json | null
+          query_id: string
+          raw_response: Json | null
+          response_text: string | null
+          sentiment_score: number | null
+          tokens_used: number | null
+          visibility_score: number | null
+        }
+        Insert: {
+          app_mentioned?: boolean | null
+          audit_run_id: string
+          competitors_mentioned?: string[] | null
+          cost_cents?: number | null
+          created_at?: string
+          id?: string
+          mention_context?: string | null
+          mention_position?: number | null
+          organization_id: string
+          processing_metadata?: Json | null
+          query_id: string
+          raw_response?: Json | null
+          response_text?: string | null
+          sentiment_score?: number | null
+          tokens_used?: number | null
+          visibility_score?: number | null
+        }
+        Update: {
+          app_mentioned?: boolean | null
+          audit_run_id?: string
+          competitors_mentioned?: string[] | null
+          cost_cents?: number | null
+          created_at?: string
+          id?: string
+          mention_context?: string | null
+          mention_position?: number | null
+          organization_id?: string
+          processing_metadata?: Json | null
+          query_id?: string
+          raw_response?: Json | null
+          response_text?: string | null
+          sentiment_score?: number | null
+          tokens_used?: number | null
+          visibility_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatgpt_query_results_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_audit_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatgpt_query_results_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatgpt_visibility_scores: {
+        Row: {
+          app_id: string
+          audit_run_id: string
+          avg_position: number | null
+          calculated_at: string
+          category_scores: Json | null
+          id: string
+          mention_rate: number | null
+          negative_mentions: number | null
+          neutral_mentions: number | null
+          organization_id: string
+          overall_score: number | null
+          positive_mentions: number | null
+          top_competitors: Json | null
+        }
+        Insert: {
+          app_id: string
+          audit_run_id: string
+          avg_position?: number | null
+          calculated_at?: string
+          category_scores?: Json | null
+          id?: string
+          mention_rate?: number | null
+          negative_mentions?: number | null
+          neutral_mentions?: number | null
+          organization_id: string
+          overall_score?: number | null
+          positive_mentions?: number | null
+          top_competitors?: Json | null
+        }
+        Update: {
+          app_id?: string
+          audit_run_id?: string
+          avg_position?: number | null
+          calculated_at?: string
+          category_scores?: Json | null
+          id?: string
+          mention_rate?: number | null
+          negative_mentions?: number | null
+          neutral_mentions?: number | null
+          organization_id?: string
+          overall_score?: number | null
+          positive_mentions?: number | null
+          top_competitors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatgpt_visibility_scores_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_keywords: {
         Row: {
           analyzed_at: string
