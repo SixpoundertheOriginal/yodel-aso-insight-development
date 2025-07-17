@@ -15,6 +15,8 @@ import { QueryTemplateLibrary, QueryTemplate, QUERY_TEMPLATE_LIBRARY } from '@/c
 import { BulkAuditProcessor } from '@/components/ChatGPTAudit/BulkAuditProcessor';
 import { VisibilityResults } from '@/components/ChatGPTAudit/VisibilityResults';
 import { CompetitiveAnalytics } from '@/components/ChatGPTAudit/CompetitiveAnalytics';
+import { AppValidationForm } from '@/components/ChatGPTAudit/AppValidationForm';
+import { MetadataQueryGenerator } from '@/components/ChatGPTAudit/MetadataQueryGenerator';
 import { 
   Brain, 
   Play, 
@@ -49,6 +51,36 @@ interface AuditRun {
   created_at: string;
 }
 
+interface ValidatedApp {
+  appId: string;
+  metadata: {
+    name: string;
+    appId: string;
+    title: string;
+    subtitle?: string;
+    description?: string;
+    url: string;
+    icon?: string;
+    rating?: number;
+    reviews?: number;
+    developer?: string;
+    applicationCategory?: string;
+    locale: string;
+  };
+  isValid: boolean;
+}
+
+interface GeneratedQuery {
+  id: string;
+  query_text: string;
+  category: string;
+  subcategory: string;
+  generated_from: string;
+  priority: number;
+  variables_used: Record<string, string>;
+  icon: React.ReactNode;
+}
+
 // Interface for audit runs - now enhanced for Phase 2
 
 const ChatGPTVisibilityAuditPage: React.FC = () => {
@@ -63,6 +95,9 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   const [editingAudit, setEditingAudit] = useState<string | null>(null);
   const [editAuditName, setEditAuditName] = useState('');
   const [editAuditApp, setEditAuditApp] = useState('');
+  const [validatedApp, setValidatedApp] = useState<ValidatedApp | null>(null);
+  const [generatedQueries, setGeneratedQueries] = useState<GeneratedQuery[]>([]);
+  const [useAppValidation, setUseAppValidation] = useState(true);
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -212,10 +247,29 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   });
 
   const handleCreateAudit = () => {
-    if (!newAuditName.trim() || !newAuditApp.trim()) {
+    if (useAppValidation && !validatedApp) {
+      toast({
+        title: 'App Validation Required',
+        description: 'Please validate your app first using the App Store search.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!newAuditName.trim()) {
       toast({
         title: 'Missing Information',
-        description: 'Please provide both audit name and app ID.',
+        description: 'Please provide an audit name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const appId = validatedApp ? validatedApp.appId : newAuditApp.trim();
+    if (!appId) {
+      toast({
+        title: 'Missing App Information',
+        description: 'Please provide an app ID or validate an app.',
         variant: 'destructive',
       });
       return;
@@ -223,8 +277,25 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
 
     createAuditMutation.mutate({ 
       name: newAuditName.trim(), 
-      appId: newAuditApp.trim() 
+      appId: appId
     });
+  };
+
+  const handleAppValidated = (app: ValidatedApp) => {
+    setValidatedApp(app);
+    setNewAuditApp(app.appId);
+    console.log('✅ App validated for audit:', app);
+  };
+
+  const handleQueriesGenerated = (queries: GeneratedQuery[]) => {
+    setGeneratedQueries(queries);
+    // Auto-select high priority queries
+    const highPriorityQueries = queries
+      .filter(q => q.priority <= 2)
+      .slice(0, 8)
+      .map(q => q.id);
+    setSelectedTemplates(highPriorityQueries);
+    console.log('✅ Queries generated:', queries.length, 'Auto-selected:', highPriorityQueries.length);
   };
 
   const handleEditAudit = (audit: AuditRun) => {
@@ -486,16 +557,66 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="create" className="space-y-6">
+            {/* App Validation Section */}
+            {!editingAudit && useAppValidation && !validatedApp && (
+              <AppValidationForm
+                onAppValidated={handleAppValidated}
+                organizationId={userContext?.organizationId || ''}
+              />
+            )}
+
+            {/* Metadata-Driven Query Generation */}
+            {!editingAudit && validatedApp && (
+              <MetadataQueryGenerator
+                validatedApp={validatedApp}
+                onQueriesGenerated={handleQueriesGenerated}
+                selectedQueries={selectedTemplates}
+              />
+            )}
+
+            {/* Traditional Audit Creation Form */}
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardHeader>
                 <CardTitle className="text-white">
                   {editingAudit ? 'Edit Audit' : 'Create New Audit'}
                 </CardTitle>
                 <CardDescription className="text-zinc-400">
-                  {editingAudit ? 'Update your ChatGPT visibility audit' : 'Set up a new ChatGPT visibility audit for your app'}
+                  {editingAudit ? 'Update your ChatGPT visibility audit' : (
+                    validatedApp ? 
+                      `Creating audit for ${validatedApp.metadata.name}` :
+                      'Set up a new ChatGPT visibility audit for your app'
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* App Validation Toggle - Only for new audits */}
+                {!editingAudit && (
+                  <div className="flex items-center justify-between p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-blue-200">Enhanced App Validation</p>
+                      <p className="text-xs text-blue-300">
+                        Use App Store scraper to validate apps and generate intelligent queries
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="useAppValidation"
+                        checked={useAppValidation}
+                        onChange={(e) => {
+                          setUseAppValidation(e.target.checked);
+                          if (!e.target.checked) {
+                            setValidatedApp(null);
+                            setGeneratedQueries([]);
+                          }
+                        }}
+                        className="h-4 w-4 text-yodel-orange"
+                      />
+                      <Label htmlFor="useAppValidation" className="text-blue-200">Enable</Label>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="auditName" className="text-white">Audit Name</Label>
@@ -508,18 +629,26 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="appId" className="text-white">App ID/Name</Label>
+                    <Label htmlFor="appId" className="text-white">
+                      {useAppValidation && validatedApp ? 'Validated App' : 'App ID/Name'}
+                    </Label>
                     <Input
                       id="appId"
-                      placeholder="e.g., MyFitnessApp or com.company.app"
+                      placeholder={useAppValidation ? "App will be auto-filled after validation" : "e.g., MyFitnessApp or com.company.app"}
                       value={editingAudit ? editAuditApp : newAuditApp}
                       onChange={(e) => editingAudit ? setEditAuditApp(e.target.value) : setNewAuditApp(e.target.value)}
                       className="bg-zinc-800 border-zinc-700 text-white"
+                      disabled={useAppValidation && !!validatedApp}
                     />
+                    {validatedApp && (
+                      <p className="text-xs text-green-400">
+                        ✓ Validated: {validatedApp.metadata.name}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {!editingAudit && (
+                {!editingAudit && !useAppValidation && (
                   <div className="space-y-2">
                     <Label htmlFor="customQuery" className="text-white">Custom Query (Optional)</Label>
                     <Textarea
@@ -529,6 +658,28 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                       onChange={(e) => setCustomQuery(e.target.value)}
                       className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
                     />
+                  </div>
+                )}
+
+                {/* Query Summary for validated apps */}
+                {!editingAudit && generatedQueries.length > 0 && (
+                  <div className="p-4 bg-green-900/20 border border-green-700/50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-200">Smart Queries Generated</p>
+                        <p className="text-xs text-green-300">
+                          {generatedQueries.length} total • {selectedTemplates.length} selected for audit
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedTab('templates')}
+                        className="border-green-600 text-green-300"
+                      >
+                        Review Queries
+                      </Button>
+                    </div>
                   </div>
                 )}
 
