@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DatabaseService } from '@/lib/services/database.service';
 import { 
   Play, 
   Pause, 
@@ -133,14 +134,15 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
       if (error) throw error;
 
-      // Update audit run with query count
-      const { error: updateError } = await supabase
-        .from('chatgpt_audit_runs')
-        .update({ 
+      // Update audit run with query count using explicit organization filter
+      const { error: updateError } = await DatabaseService.updateAuditRun(
+        auditRun.id,
+        { 
           total_queries: queries.length,
           status: 'pending'
-        })
-        .eq('id', auditRun.id);
+        },
+        { organizationId }
+      );
 
       if (updateError) throw updateError;
 
@@ -159,11 +161,17 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       setIsProcessing(true);
       addLog('Starting batch processing...');
 
-      // Get pending queries
-      const { data: queries, error } = await supabase
-        .from('chatgpt_queries')
-        .select('*')
-        .eq('audit_run_id', auditRun.id)
+      // Test auth context first
+      const authTest = await DatabaseService.testAuthContext();
+      addLog(`Auth status: ${authTest.hasAuth ? 'Connected' : 'Failed'} - User: ${authTest.userId || 'None'}`);
+      
+      if (authTest.error && !authTest.hasAuth) {
+        addLog(`Auth warning: ${authTest.error}`);
+      }
+
+      // Get pending queries with explicit organization filtering
+      const { data: queries, error } = await DatabaseService
+        .getChatGPTQueries(auditRun.id, { organizationId })
         .eq('status', 'pending')
         .order('priority', { ascending: false })
         .order('created_at', { ascending: true });
@@ -175,14 +183,15 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
         return;
       }
 
-      // Update audit run to running
-      await supabase
-        .from('chatgpt_audit_runs')
-        .update({ 
+      // Update audit run to running with explicit organization filter
+      await DatabaseService.updateAuditRun(
+        auditRun.id,
+        { 
           status: 'running',
           started_at: new Date().toISOString()
-        })
-        .eq('id', auditRun.id);
+        },
+        { organizationId }
+      );
 
       onStatusChange();
 
@@ -232,11 +241,12 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
             failedQueries: prev.failedQueries + 1
           }));
 
-          // Mark query as failed
-          await supabase
-            .from('chatgpt_queries')
-            .update({ status: 'error' })
-            .eq('id', query.id);
+          // Mark query as failed with explicit organization filter
+          await DatabaseService.updateChatGPTQuery(
+            query.id,
+            { status: 'error' },
+            { organizationId }
+          );
         }
 
         // Rate limiting delay
