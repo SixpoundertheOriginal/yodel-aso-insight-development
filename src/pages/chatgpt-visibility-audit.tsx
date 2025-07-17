@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { QueryTemplateLibrary, QueryTemplate, QUERY_TEMPLATE_LIBRARY } from '@/components/ChatGPTAudit/QueryTemplateLibrary';
 import { BulkAuditProcessor } from '@/components/ChatGPTAudit/BulkAuditProcessor';
 import { VisibilityResults } from '@/components/ChatGPTAudit/VisibilityResults';
+import { CompetitiveAnalytics } from '@/components/ChatGPTAudit/CompetitiveAnalytics';
 import { 
   Brain, 
   Play, 
@@ -27,7 +28,13 @@ import {
   XCircle,
   AlertCircle,
   Zap,
-  Settings
+  Settings,
+  Edit3,
+  Trash2,
+  Download,
+  TrendingUp,
+  Users2,
+  Trophy
 } from 'lucide-react';
 
 // Types for ChatGPT Visibility Audit
@@ -53,6 +60,9 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
   const [customQuery, setCustomQuery] = useState('');
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedAuditForProcessing, setSelectedAuditForProcessing] = useState<string | null>(null);
+  const [editingAudit, setEditingAudit] = useState<string | null>(null);
+  const [editAuditName, setEditAuditName] = useState('');
+  const [editAuditApp, setEditAuditApp] = useState('');
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -134,6 +144,73 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
     },
   });
 
+  // Update audit mutation
+  const updateAuditMutation = useMutation({
+    mutationFn: async ({ id, name, appId }: { id: string; name: string; appId: string }) => {
+      if (!userContext?.organizationId) throw new Error('No organization ID');
+
+      const { data, error } = await supabase
+        .from('chatgpt_audit_runs')
+        .update({
+          name,
+          app_id: appId,
+        })
+        .eq('id', id)
+        .eq('organization_id', userContext.organizationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chatgpt-audit-runs'] });
+      setEditingAudit(null);
+      setEditAuditName('');
+      setEditAuditApp('');
+      toast({
+        title: 'Audit Updated',
+        description: 'Your audit has been updated successfully.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update audit. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete audit mutation
+  const deleteAuditMutation = useMutation({
+    mutationFn: async (auditId: string) => {
+      if (!userContext?.organizationId) throw new Error('No organization ID');
+
+      const { error } = await supabase
+        .from('chatgpt_audit_runs')
+        .delete()
+        .eq('id', auditId)
+        .eq('organization_id', userContext.organizationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chatgpt-audit-runs'] });
+      toast({
+        title: 'Audit Deleted',
+        description: 'The audit has been deleted successfully.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete audit. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleCreateAudit = () => {
     if (!newAuditName.trim() || !newAuditApp.trim()) {
       toast({
@@ -148,6 +225,35 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
       name: newAuditName.trim(), 
       appId: newAuditApp.trim() 
     });
+  };
+
+  const handleEditAudit = (audit: AuditRun) => {
+    setEditingAudit(audit.id);
+    setEditAuditName(audit.name);
+    setEditAuditApp(audit.app_id);
+  };
+
+  const handleUpdateAudit = () => {
+    if (!editingAudit || !editAuditName.trim() || !editAuditApp.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide both audit name and app ID.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    updateAuditMutation.mutate({
+      id: editingAudit,
+      name: editAuditName.trim(),
+      appId: editAuditApp.trim()
+    });
+  };
+
+  const handleDeleteAudit = (auditId: string) => {
+    if (confirm('Are you sure you want to delete this audit? This action cannot be undone.')) {
+      deleteAuditMutation.mutate(auditId);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -230,8 +336,8 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
               Results
             </TabsTrigger>
             <TabsTrigger value="insights" className="text-sm font-medium">
-              <Settings className="h-4 w-4 mr-2" />
-              Insights
+              <Trophy className="h-4 w-4 mr-2" />
+              Analytics
             </TabsTrigger>
           </TabsList>
 
@@ -322,6 +428,27 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                             >
                               {audit.status}
                             </Badge>
+                            
+                            {/* Edit/Delete buttons for pending audits */}
+                            {audit.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditAudit(audit)}
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteAudit(audit.id)}
+                                >
+                                  <Trash2 className="h-3 w-3 text-red-400" />
+                                </Button>
+                              </>
+                            )}
+                            
                             {(audit.status === 'pending' || audit.status === 'running') && (
                               <Button
                                 size="sm"
@@ -361,9 +488,11 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
           <TabsContent value="create" className="space-y-6">
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white">Create New Audit</CardTitle>
+                <CardTitle className="text-white">
+                  {editingAudit ? 'Edit Audit' : 'Create New Audit'}
+                </CardTitle>
                 <CardDescription className="text-zinc-400">
-                  Set up a new ChatGPT visibility audit for your app
+                  {editingAudit ? 'Update your ChatGPT visibility audit' : 'Set up a new ChatGPT visibility audit for your app'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -373,8 +502,8 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                     <Input
                       id="auditName"
                       placeholder="e.g., Q1 2024 Visibility Check"
-                      value={newAuditName}
-                      onChange={(e) => setNewAuditName(e.target.value)}
+                      value={editingAudit ? editAuditName : newAuditName}
+                      onChange={(e) => editingAudit ? setEditAuditName(e.target.value) : setNewAuditName(e.target.value)}
                       className="bg-zinc-800 border-zinc-700 text-white"
                     />
                   </div>
@@ -383,32 +512,60 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
                     <Input
                       id="appId"
                       placeholder="e.g., MyFitnessApp or com.company.app"
-                      value={newAuditApp}
-                      onChange={(e) => setNewAuditApp(e.target.value)}
+                      value={editingAudit ? editAuditApp : newAuditApp}
+                      onChange={(e) => editingAudit ? setEditAuditApp(e.target.value) : setNewAuditApp(e.target.value)}
                       className="bg-zinc-800 border-zinc-700 text-white"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customQuery" className="text-white">Custom Query (Optional)</Label>
-                  <Textarea
-                    id="customQuery"
-                    placeholder="Enter a custom query to test, or leave blank to use templates"
-                    value={customQuery}
-                    onChange={(e) => setCustomQuery(e.target.value)}
-                    className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
-                  />
-                </div>
+                {!editingAudit && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customQuery" className="text-white">Custom Query (Optional)</Label>
+                    <Textarea
+                      id="customQuery"
+                      placeholder="Enter a custom query to test, or leave blank to use templates"
+                      value={customQuery}
+                      onChange={(e) => setCustomQuery(e.target.value)}
+                      className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
+                    />
+                  </div>
+                )}
 
-                <Button 
-                  onClick={handleCreateAudit}
-                  disabled={createAuditMutation.isPending}
-                  className="w-full"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  {createAuditMutation.isPending ? 'Creating...' : 'Create Audit'}
-                </Button>
+                <div className="flex gap-4">
+                  {editingAudit ? (
+                    <>
+                      <Button 
+                        onClick={handleUpdateAudit}
+                        disabled={updateAuditMutation.isPending}
+                        className="flex-1"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        {updateAuditMutation.isPending ? 'Updating...' : 'Update Audit'}
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setEditingAudit(null);
+                          setEditAuditName('');
+                          setEditAuditApp('');
+                        }}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={handleCreateAudit}
+                      disabled={createAuditMutation.isPending}
+                      className="w-full"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      {createAuditMutation.isPending ? 'Creating...' : 'Create Audit'}
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -510,26 +667,15 @@ const ChatGPTVisibilityAuditPage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white">Visibility Insights</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Coming soon: Advanced analytics and competitive intelligence
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Target className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Insights Dashboard</h3>
-                  <p className="text-zinc-400 mb-4">
-                    Advanced visibility scoring, competitive analysis, and trend tracking will be available here.
-                  </p>
-                  <Badge variant="outline" className="text-yodel-orange border-yodel-orange">
-                    Coming in Phase 3
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+            {userContext?.organizationId ? (
+              <CompetitiveAnalytics organizationId={userContext.organizationId} />
+            ) : (
+              <div className="text-center py-12">
+                <Trophy className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">Analytics Dashboard</h3>
+                <p className="text-zinc-400">Authentication required to view analytics</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
