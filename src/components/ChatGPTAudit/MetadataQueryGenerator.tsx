@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { QueryTemplate, QUERY_TEMPLATE_LIBRARY } from './QueryTemplateLibrary';
+import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 
 interface AppStoreSearchResult {
   name: string;
@@ -52,95 +54,122 @@ interface GeneratedQuery {
   icon: React.ReactNode;
 }
 
+interface AppIntelligence {
+  refined_category: string;
+  learning_method?: string;
+  target_audience: string[];
+  competitors: string[];
+  key_features: string[];
+  use_cases: string[];
+  market_position: string;
+  confidence_score: number;
+}
+
 interface MetadataQueryGeneratorProps {
   validatedApp: ValidatedApp;
   onQueriesGenerated: (queries: GeneratedQuery[]) => void;
   selectedQueries: string[];
-  appIntelligence?: any; // Intelligence data from AppIntelligenceAnalyzer
+  appIntelligence?: AppIntelligence;
 }
 
 export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
   validatedApp,
   onQueriesGenerated,
   selectedQueries,
-  appIntelligence
+  appIntelligence: externalIntelligence
 }) => {
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedQuery[]>([]);
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [appIntelligence, setAppIntelligence] = useState<AppIntelligence | null>(externalIntelligence || null);
+  const [showIntelligenceAnalyzer, setShowIntelligenceAnalyzer] = useState(!externalIntelligence);
 
-  // Extract meaningful variables from app metadata
-  const extractAppVariables = () => {
+  // Enhanced app variables extraction using intelligence
+  const extractEnhancedAppVariables = () => {
     const metadata = validatedApp.metadata;
+    const intelligence = appIntelligence;
     const variables: Record<string, string> = {};
 
-    // Core app variables
-    variables.app_name = metadata.name || metadata.title;
-    variables.developer = metadata.developer || 'developer';
-    variables.category = metadata.applicationCategory || 'mobile app';
-    
-    // Derive additional variables from description
-    if (metadata.description) {
-      const desc = metadata.description.toLowerCase();
+    if (intelligence) {
+      // Use intelligence data for smart variables
+      variables.app_name = metadata.name || metadata.title;
+      variables.developer = metadata.developer || 'developer';
+      variables.category = intelligence.refined_category;
+      variables.target_audience = intelligence.target_audience.join(' and ');
+      variables.specific_need = intelligence.use_cases.join(' and ');
+      variables.use_case = intelligence.use_cases[0] || 'general use';
       
-      // Try to extract target audience from description
-      if (desc.includes('beginner') || desc.includes('new user')) {
-        variables.target_audience = 'beginners';
-      } else if (desc.includes('professional') || desc.includes('advanced')) {
-        variables.target_audience = 'professionals';
-      } else if (desc.includes('family') || desc.includes('kid')) {
-        variables.target_audience = 'families';
-      } else {
-        variables.target_audience = 'users';
+      // Set competitor variables
+      if (intelligence.competitors.length > 0) {
+        variables.competitor_app = intelligence.competitors[0];
+        variables.competitor_1 = intelligence.competitors[0] || 'CompetitorA';
+        variables.competitor_2 = intelligence.competitors[1] || 'CompetitorB';
       }
-
-      // Extract use cases from description
-      if (desc.includes('track') || desc.includes('monitor')) {
-        variables.use_case = 'tracking and monitoring';
-      } else if (desc.includes('learn') || desc.includes('education')) {
-        variables.use_case = 'learning and education';
-      } else if (desc.includes('social') || desc.includes('connect')) {
-        variables.use_case = 'social connection';
-      } else if (desc.includes('fitness') || desc.includes('health')) {
-        variables.use_case = 'fitness and health';
-      } else {
-        variables.use_case = 'general productivity';
-      }
+      
+      // Feature-based variables
+      variables.feature = intelligence.key_features.join(' and ') || 'key features';
+      variables.problem = `challenges with ${intelligence.refined_category}`;
+      variables.workflow = `${intelligence.refined_category} workflow`;
+      variables.activity = intelligence.refined_category.replace('_', ' ');
+      variables.user_type = intelligence.target_audience[0] || 'users';
+      variables.purpose = intelligence.use_cases[0] || intelligence.refined_category;
     } else {
+      // Fallback to basic extraction
+      variables.app_name = metadata.name || metadata.title;
+      variables.developer = metadata.developer || 'developer';
+      variables.category = metadata.applicationCategory || 'mobile app';
       variables.target_audience = 'users';
-      variables.use_case = 'general use';
-    }
-
-    // Category-specific variables
-    const category = metadata.applicationCategory?.toLowerCase() || '';
-    if (category.includes('finance')) {
-      variables.specific_need = 'manage finances and budgets';
-    } else if (category.includes('health') || category.includes('fitness')) {
-      variables.specific_need = 'stay healthy and fit';
-    } else if (category.includes('productivity')) {
-      variables.specific_need = 'stay organized and productive';
-    } else if (category.includes('education')) {
-      variables.specific_need = 'learn new skills';
-    } else if (category.includes('social')) {
-      variables.specific_need = 'connect with others';
-    } else {
       variables.specific_need = 'achieve their goals';
+      variables.use_case = 'general use';
+      variables.competitor_app = 'popular alternatives';
+      variables.competitor_1 = 'CompetitorA';
+      variables.competitor_2 = 'CompetitorB';
+      variables.feature = 'key features';
+      variables.problem = 'challenges';
+      variables.workflow = 'workflow';
+      variables.activity = 'activities';
+      variables.user_type = 'users';
+      variables.purpose = 'general use';
     }
 
     return variables;
   };
 
-  const generateQueriesFromMetadata = () => {
+  const generateQueriesFromIntelligence = () => {
     setIsGenerating(true);
     
-    const appVariables = extractAppVariables();
+    const appVariables = extractEnhancedAppVariables();
     const queries: GeneratedQuery[] = [];
 
-    // Generate queries based on templates, prioritizing by app category
-    const templates = QUERY_TEMPLATE_LIBRARY.slice(); // Copy array
+    // Filter templates based on intelligence category
+    let relevantTemplates = QUERY_TEMPLATE_LIBRARY;
     
-    templates.forEach(template => {
-      // Create a smart variable mapping
+    if (appIntelligence) {
+      const category = appIntelligence.refined_category.toLowerCase();
+      
+      // Category-specific template filtering
+      relevantTemplates = QUERY_TEMPLATE_LIBRARY.filter(template => {
+        const templateCategory = template.category.toLowerCase();
+        const templateSubcategory = template.subcategory.toLowerCase();
+        
+        return (
+          templateCategory.includes(category) ||
+          templateSubcategory.includes(category) ||
+          (category.includes('language') && (templateCategory.includes('education') || templateSubcategory.includes('learning'))) ||
+          (category.includes('fitness') && templateCategory.includes('health')) ||
+          (category.includes('meditation') && templateCategory.includes('wellness')) ||
+          template.priority <= 2 // Always include high-priority templates
+        );
+      });
+      
+      // If no specific templates found, take top priority ones
+      if (relevantTemplates.length < 3) {
+        relevantTemplates = QUERY_TEMPLATE_LIBRARY.filter(t => t.priority <= 3).slice(0, 6);
+      }
+    }
+
+    relevantTemplates.forEach(template => {
+      // Create smart variable mapping
       const variableMapping: Record<string, string> = {};
       
       Object.keys(template.variables).forEach(key => {
@@ -149,65 +178,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
         } else if (customVariables[key]) {
           variableMapping[key] = customVariables[key];
         } else {
-          // Smart defaults based on key name
-          switch (key) {
-            case 'app_name':
-              variableMapping[key] = appVariables.app_name;
-              break;
-            case 'category':
-              variableMapping[key] = appVariables.category;
-              break;
-            case 'target_audience':
-              variableMapping[key] = appVariables.target_audience;
-              break;
-            case 'specific_need':
-              variableMapping[key] = appVariables.specific_need;
-              break;
-            case 'use_case':
-              variableMapping[key] = appVariables.use_case;
-              break;
-            case 'competitor_app':
-              // Generate logical competitor based on category
-              const category = appVariables.category.toLowerCase();
-              if (category.includes('fitness')) {
-                variableMapping[key] = 'MyFitnessPal';
-              } else if (category.includes('finance')) {
-                variableMapping[key] = 'Mint';
-              } else if (category.includes('social')) {
-                variableMapping[key] = 'Instagram';
-              } else if (category.includes('productivity')) {
-                variableMapping[key] = 'Notion';
-              } else {
-                variableMapping[key] = 'popular alternatives';
-              }
-              break;
-            case 'competitor_1':
-              variableMapping[key] = 'CompetitorA';
-              break;
-            case 'competitor_2':
-              variableMapping[key] = 'CompetitorB';
-              break;
-            case 'feature':
-              variableMapping[key] = 'key features';
-              break;
-            case 'problem':
-              variableMapping[key] = `challenges with ${appVariables.category}`;
-              break;
-            case 'workflow':
-              variableMapping[key] = `${appVariables.category} workflow`;
-              break;
-            case 'activity':
-              variableMapping[key] = appVariables.category.replace('app', '').trim();
-              break;
-            case 'user_type':
-              variableMapping[key] = appVariables.target_audience;
-              break;
-            case 'purpose':
-              variableMapping[key] = appVariables.use_case;
-              break;
-            default:
-              variableMapping[key] = template.variables[key] || 'general use';
-          }
+          variableMapping[key] = template.variables[key] || 'general';
         }
       });
 
@@ -237,9 +208,20 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
     setIsGenerating(false);
   };
 
+  const handleIntelligenceGenerated = (intelligence: AppIntelligence) => {
+    setAppIntelligence(intelligence);
+    setShowIntelligenceAnalyzer(false);
+  };
+
+  const handleAnalysisComplete = () => {
+    generateQueriesFromIntelligence();
+  };
+
   useEffect(() => {
-    generateQueriesFromMetadata();
-  }, [validatedApp, customVariables]);
+    if (appIntelligence) {
+      generateQueriesFromIntelligence();
+    }
+  }, [appIntelligence, customVariables]);
 
   const handleCustomVariableChange = (key: string, value: string) => {
     setCustomVariables(prev => ({
@@ -248,60 +230,102 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
     }));
   };
 
-  const appVariables = extractAppVariables();
+  const appVariables = extractEnhancedAppVariables();
 
   return (
     <div className="space-y-6">
-      {/* App Context Summary */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
-            <Brain className="h-5 w-5 text-yodel-orange" />
-            <span>AI-Generated Queries</span>
-          </CardTitle>
-          <CardDescription className="text-zinc-400">
-            Intelligent queries generated from {validatedApp.metadata.name} metadata
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-zinc-400">App:</span>
-              <span className="text-white ml-2">{appVariables.app_name}</span>
+      {/* App Intelligence Analyzer */}
+      {showIntelligenceAnalyzer && (
+        <AppIntelligenceAnalyzer
+          appData={{
+            app_name: validatedApp.metadata.name || validatedApp.metadata.title,
+            description: validatedApp.metadata.description || '',
+            category: validatedApp.metadata.applicationCategory || '',
+            developer: validatedApp.metadata.developer || '',
+            bundle_id: validatedApp.appId
+          }}
+          onIntelligenceGenerated={handleIntelligenceGenerated}
+          onAnalysisComplete={handleAnalysisComplete}
+        />
+      )}
+
+      {/* Intelligence Summary */}
+      {appIntelligence && (
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center space-x-2">
+              <Brain className="h-5 w-5 text-green-400" />
+              <span>App Intelligence Applied</span>
+              <Badge variant="default" className="bg-green-600">
+                {Math.round(appIntelligence.confidence_score * 100)}% Confidence
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Using AI analysis for {validatedApp.metadata.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-zinc-400">Category:</span>
+                <span className="text-white ml-2">{appIntelligence.refined_category.replace('_', ' ')}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Audience:</span>
+                <span className="text-white ml-2">{appIntelligence.target_audience.slice(0, 2).join(', ')}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Competitors:</span>
+                <span className="text-white ml-2">{appIntelligence.competitors.slice(0, 2).join(', ')}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Queries:</span>
+                <span className="text-green-400 ml-2">{generatedQueries.length} Generated</span>
+              </div>
             </div>
-            <div>
-              <span className="text-zinc-400">Category:</span>
-              <span className="text-white ml-2">{appVariables.category}</span>
-            </div>
-            <div>
-              <span className="text-zinc-400">Target Audience:</span>
-              <span className="text-white ml-2">{appVariables.target_audience}</span>
-            </div>
-            <div>
-              <span className="text-zinc-400">Use Case:</span>
-              <span className="text-white ml-2">{appVariables.use_case}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            <Button
+              onClick={() => setShowIntelligenceAnalyzer(true)}
+              variant="outline"
+              size="sm"
+              className="mt-4 border-zinc-600"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Reanalyze App
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Custom Variables Override */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-white flex items-center space-x-2">
             <Settings className="h-5 w-5" />
-            <span>Custom Variables</span>
+            <span>Smart Variables</span>
+            {appIntelligence && (
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                AI Enhanced
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            Override extracted variables to fine-tune query generation
+            {appIntelligence 
+              ? 'Variables automatically extracted from app intelligence'
+              : 'Override extracted variables to fine-tune query generation'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.entries(appVariables).map(([key, defaultValue]) => (
               <div key={key} className="space-y-1">
-                <Label className="text-xs text-zinc-400 capitalize">
+                <Label className="text-xs text-zinc-400 capitalize flex items-center gap-2">
                   {key.replace('_', ' ')}:
+                  {appIntelligence && (
+                    <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+                      AI
+                    </Badge>
+                  )}
                 </Label>
                 <Input
                   placeholder={defaultValue}
@@ -314,7 +338,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
           </div>
           <div className="mt-4">
             <Button
-              onClick={generateQueriesFromMetadata}
+              onClick={generateQueriesFromIntelligence}
               disabled={isGenerating}
               variant="outline"
               size="sm"
@@ -330,9 +354,17 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
       {/* Generated Queries */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white">Generated Query Library</CardTitle>
+          <CardTitle className="text-white flex items-center space-x-2">
+            <Brain className="h-5 w-5 text-blue-400" />
+            <span>
+              {appIntelligence ? 'Intelligent Query Library' : 'Generated Query Library'}
+            </span>
+          </CardTitle>
           <CardDescription className="text-zinc-400">
             {generatedQueries.length} queries generated • {selectedQueries.length} selected
+            {appIntelligence && (
+              <span className="text-green-400"> • AI-Enhanced</span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -370,6 +402,11 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
                           <Badge variant="outline" className="text-xs text-zinc-400">
                             Priority {query.priority}
                           </Badge>
+                          {appIntelligence && (
+                            <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+                              AI
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="p-3 bg-zinc-800/50 rounded-md border border-zinc-700 mb-3">

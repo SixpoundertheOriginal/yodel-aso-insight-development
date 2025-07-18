@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,8 @@ import {
   QueryTemplateLibrary, 
   VisibilityResults, 
   AppValidationForm,
-  MetadataQueryGenerator
+  MetadataQueryGenerator,
+  AppIntelligenceAnalyzer
 } from '@/components/ChatGPTAudit';
 import { 
   MessageSquare, 
@@ -24,7 +24,8 @@ import {
   TrendingUp,
   Zap,
   Target,
-  BarChart3
+  BarChart3,
+  Brain
 } from 'lucide-react';
 
 interface AuditRun {
@@ -46,6 +47,11 @@ interface App {
   bundle_id?: string;
   platform: string;
   app_store_id?: string;
+  app_description?: string;
+  app_store_category?: string;
+  app_rating?: number;
+  app_reviews?: number;
+  app_subtitle?: string;
 }
 
 export default function ChatGPTVisibilityAudit() {
@@ -63,6 +69,9 @@ export default function ChatGPTVisibilityAudit() {
   const [newAuditDescription, setNewAuditDescription] = useState('');
   const [selectedTemplates, setSelectedTemplates] = useState([]);
   const [generatedQueries, setGeneratedQueries] = useState([]);
+
+  // Intelligence state
+  const [appIntelligence, setAppIntelligence] = useState(null);
 
   useEffect(() => {
     initializeData();
@@ -210,6 +219,22 @@ export default function ChatGPTVisibilityAudit() {
     loadAuditRuns(organizationId);
   };
 
+  const handleAppSelection = async (app: App) => {
+    setSelectedApp(app);
+    setAppIntelligence(null); // Reset intelligence when app changes
+    
+    // Pre-populate audit name with intelligent suggestion
+    if (app.app_name) {
+      const suggestion = `${app.app_name} Visibility Audit - ${new Date().toLocaleDateString()}`;
+      setNewAuditName(suggestion);
+    }
+  };
+
+  const handleIntelligenceGenerated = (intelligence: any) => {
+    setAppIntelligence(intelligence);
+    console.log('App intelligence generated:', intelligence);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -228,6 +253,12 @@ export default function ChatGPTVisibilityAudit() {
         <h1 className="text-3xl font-bold text-white flex items-center space-x-3">
           <MessageSquare className="h-8 w-8 text-blue-400" />
           <span>ChatGPT Visibility Audit</span>
+          {appIntelligence && (
+            <Badge className="bg-green-600 text-white">
+              <Brain className="h-3 w-3 mr-1" />
+              AI Enhanced
+            </Badge>
+          )}
         </h1>
         <p className="text-zinc-400">
           Analyze how often your app is mentioned by ChatGPT across different queries and contexts
@@ -284,17 +315,38 @@ export default function ChatGPTVisibilityAudit() {
                   {apps.map(app => (
                     <div
                       key={app.id}
-                      onClick={() => setSelectedApp(app)}
+                      onClick={() => handleAppSelection(app)}
                       className={`p-4 rounded-lg border cursor-pointer transition-colors ${
                         selectedApp?.id === app.id
                           ? 'border-blue-500 bg-blue-500/10'
                           : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                       }`}
                     >
-                      <h3 className="text-white font-medium">{app.app_name}</h3>
-                      <p className="text-sm text-zinc-400">{app.platform}</p>
-                      {app.bundle_id && (
-                        <p className="text-xs text-zinc-500 mt-1">{app.bundle_id}</p>
+                      <div className="flex items-center space-x-3 mb-2">
+                        {app.app_icon_url && (
+                          <img 
+                            src={app.app_icon_url} 
+                            alt={app.app_name}
+                            className="h-8 w-8 rounded-lg"
+                          />
+                        )}
+                        <div>
+                          <h3 className="text-white font-medium">{app.app_name}</h3>
+                          <p className="text-sm text-zinc-400">{app.platform}</p>
+                        </div>
+                      </div>
+                      
+                      {app.category && (
+                        <Badge variant="outline" className="text-xs mb-2">
+                          {app.category}
+                        </Badge>
+                      )}
+                      
+                      {selectedApp?.id === app.id && (
+                        <Badge className="bg-blue-600 text-white text-xs">
+                          <Brain className="h-3 w-3 mr-1" />
+                          Selected for Analysis
+                        </Badge>
                       )}
                     </div>
                   ))}
@@ -303,78 +355,128 @@ export default function ChatGPTVisibilityAudit() {
             </CardContent>
           </Card>
 
-          {/* Create New Audit */}
+          {/* App Intelligence Integration */}
           {selectedApp && (
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white">Create New Audit</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Set up a new ChatGPT visibility audit for {selectedApp.app_name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="audit-name" className="text-white">Audit Name</Label>
-                  <Input
-                    id="audit-name"
-                    value={newAuditName}
-                    onChange={(e) => setNewAuditName(e.target.value)}
-                    placeholder="e.g., Q1 2024 Visibility Check"
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
-                </div>
+            <>
+              {/* App Intelligence Analyzer */}
+              <AppIntelligenceAnalyzer
+                appData={{
+                  app_name: selectedApp.app_name,
+                  description: selectedApp.app_description || `${selectedApp.app_name} is a ${selectedApp.category || 'mobile'} app developed by ${selectedApp.developer_name || 'Unknown Developer'}.`,
+                  category: selectedApp.category || selectedApp.app_store_category || '',
+                  developer: selectedApp.developer_name || '',
+                  bundle_id: selectedApp.bundle_id || selectedApp.app_store_id || ''
+                }}
+                onIntelligenceGenerated={handleIntelligenceGenerated}
+                onAnalysisComplete={() => {
+                  // Automatically switch to showing generated queries
+                  console.log('Analysis complete, intelligence ready for query generation');
+                }}
+              />
 
-                <div className="space-y-2">
-                  <Label htmlFor="audit-description" className="text-white">Description (Optional)</Label>
-                  <Textarea
-                    id="audit-description"
-                    value={newAuditDescription}
-                    onChange={(e) => setNewAuditDescription(e.target.value)}
-                    placeholder="Describe the purpose of this audit..."
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                    rows={3}
-                  />
-                </div>
+              {/* Create New Audit */}
+              <Card className="bg-zinc-900/50 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center space-x-2">
+                    <Plus className="h-5 w-5" />
+                    <span>Create Intelligent Audit</span>
+                    {appIntelligence && (
+                      <Badge className="bg-green-600 text-white">
+                        <Brain className="h-3 w-3 mr-1" />
+                        AI Ready
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    Set up a new ChatGPT visibility audit for {selectedApp.app_name}
+                    {appIntelligence && (
+                      <span className="text-green-400"> with AI-generated queries</span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="audit-name" className="text-white">Audit Name</Label>
+                    <Input
+                      id="audit-name"
+                      value={newAuditName}
+                      onChange={(e) => setNewAuditName(e.target.value)}
+                      placeholder="e.g., Q1 2024 Visibility Check"
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                  </div>
 
-                <Button
-                  onClick={createAuditRun}
-                  disabled={!newAuditName.trim()}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Audit Run
-                </Button>
-              </CardContent>
-            </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="audit-description" className="text-white">Description (Optional)</Label>
+                    <Textarea
+                      id="audit-description"
+                      value={newAuditDescription}
+                      onChange={(e) => setNewAuditDescription(e.target.value)}
+                      placeholder="Describe the purpose of this audit..."
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                      rows={3}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={createAuditRun}
+                    disabled={!newAuditName.trim() || !appIntelligence}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {appIntelligence 
+                      ? 'Create Intelligent Audit Run' 
+                      : 'Waiting for App Analysis...'
+                    }
+                  </Button>
+                  
+                  {!appIntelligence && (
+                    <p className="text-xs text-zinc-500 text-center">
+                      Complete app analysis above to enable intelligent audit creation
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Enhanced Query Generation */}
+          {selectedApp && appIntelligence && (
+            <MetadataQueryGenerator
+              validatedApp={{
+                appId: selectedApp?.app_store_id || selectedApp?.id || '',
+                metadata: {
+                  name: selectedApp?.app_name || '',
+                  appId: selectedApp?.app_store_id || selectedApp?.id || '',
+                  title: selectedApp?.app_name || '',
+                  subtitle: selectedApp?.app_subtitle,
+                  description: selectedApp?.app_description,
+                  applicationCategory: selectedApp?.category || selectedApp?.app_store_category,
+                  developer: selectedApp?.developer_name,
+                  rating: selectedApp?.app_rating,
+                  reviews: selectedApp?.app_reviews,
+                  icon: selectedApp?.app_icon_url,
+                  url: '',
+                  locale: 'en-US'
+                },
+                isValid: true
+              }}
+              onQueriesGenerated={setGeneratedQueries}
+              selectedQueries={generatedQueries.map(q => q.id)}
+              appIntelligence={appIntelligence}
+            />
           )}
 
           {/* Query Templates */}
-        <QueryTemplateLibrary
-          onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
-          selectedTemplates={selectedTemplates}
-          appContext={selectedApp ? {
-            name: selectedApp.app_name,
-            category: selectedApp.platform
-          } : undefined}
-        />
-
-          {/* Metadata Query Generator */}
-          {selectedApp && (
-        <MetadataQueryGenerator
-          validatedApp={{
-            appId: selectedApp?.app_store_id || selectedApp?.id || '',
-            metadata: {
-              name: selectedApp?.app_name || '',
-              appId: selectedApp?.app_store_id || selectedApp?.id || '',
-              title: selectedApp?.app_name || '',
-              url: '',
-              locale: 'en-US'
-            },
-            isValid: true
-          }}
-          onQueriesGenerated={setGeneratedQueries}
-          selectedQueries={generatedQueries.map(q => q.id)}
-        />
+          {!appIntelligence && (
+            <QueryTemplateLibrary
+              onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
+              selectedTemplates={selectedTemplates}
+              appContext={selectedApp ? {
+                name: selectedApp.app_name,
+                category: selectedApp.category || selectedApp.platform
+              } : undefined}
+            />
           )}
         </div>
       )}
