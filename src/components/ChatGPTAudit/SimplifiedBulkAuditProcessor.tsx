@@ -66,8 +66,9 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
 }) => {
   const { toast } = useToast();
   
-  // Simple state management - no complex context or database persistence
+  // Fixed state management - using clear boolean flags
   const [isRunning, setIsRunning] = useState(false);
+  const [shouldStop, setShouldStop] = useState(false);
   const [progress, setProgress] = useState<ProcessingProgress>({
     current: 0,
     total: 0,
@@ -75,11 +76,11 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
     failed: 0,
     logs: []
   });
-  const [canStop, setCanStop] = useState(false);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const logMessage = `[${timestamp}] ${message}`;
+    console.log(`[SIMPLIFIED-PROCESSOR] ${message}`);
     setProgress(prev => ({
       ...prev,
       logs: [logMessage, ...prev.logs.slice(0, 19)] // Keep last 20 logs
@@ -181,6 +182,8 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
         appId: auditRun.app_id
       };
 
+      console.log(`[SIMPLIFIED-PROCESSOR] Calling edge function with payload:`, functionPayload);
+
       // Call the edge function
       const { data: functionData, error: functionError } = await supabase.functions.invoke('chatgpt-visibility-query', {
         body: functionPayload
@@ -217,7 +220,7 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
   const runAudit = async () => {
     console.log('[SIMPLIFIED-PROCESSOR] Starting audit run...');
     setIsRunning(true);
-    setCanStop(true);
+    setShouldStop(false);
     
     try {
       // Step 1: Generate queries if needed
@@ -265,8 +268,17 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
       );
       onStatusChange();
 
-      // Step 4: Process queries one by one
-      for (let i = 0; i < queries.length && isRunning && canStop; i++) {
+      // Step 4: Process queries one by one - FIXED LOOP CONDITION
+      for (let i = 0; i < queries.length; i++) {
+        // Check if we should stop (but continue if we're still running)
+        if (shouldStop) {
+          console.log(`[SIMPLIFIED-PROCESSOR] Stopping audit at query ${i + 1}/${queries.length}`);
+          addLog(`Audit stopped by user at query ${i + 1}/${queries.length}`);
+          break;
+        }
+
+        console.log(`[SIMPLIFIED-PROCESSOR] Processing query ${i + 1}/${queries.length} - isRunning: ${isRunning}, shouldStop: ${shouldStop}`);
+        
         const result = await processSingleQuery(queries[i], i, queries.length);
         
         setProgress(prev => ({
@@ -276,14 +288,15 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
           failed: prev.failed + (result.success ? 0 : 1)
         }));
 
-        // Rate limiting - wait 2 seconds between queries
-        if (i < queries.length - 1 && canStop) {
+        // Rate limiting - wait 2 seconds between queries (but only if not stopping)
+        if (i < queries.length - 1 && !shouldStop) {
+          console.log(`[SIMPLIFIED-PROCESSOR] Waiting 2 seconds before next query...`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
       // Step 5: Complete the audit
-      if (canStop) {
+      if (!shouldStop) {
         await DatabaseService.updateAuditRun(
           auditRun.id,
           { 
@@ -296,8 +309,14 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
         addLog('Audit completed successfully!');
         console.log('[SIMPLIFIED-PROCESSOR] Audit completed successfully');
       } else {
-        addLog('Audit stopped by user');
-        console.log('[SIMPLIFIED-PROCESSOR] Audit stopped by user');
+        await DatabaseService.updateAuditRun(
+          auditRun.id,
+          { status: 'paused' },
+          { organizationId }
+        );
+        onStatusChange();
+        addLog('Audit paused by user');
+        console.log('[SIMPLIFIED-PROCESSOR] Audit paused by user');
       }
 
     } catch (error) {
@@ -323,14 +342,14 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
       });
     } finally {
       setIsRunning(false);
-      setCanStop(false);
+      setShouldStop(false);
     }
   };
 
   const stopAudit = () => {
-    console.log('[SIMPLIFIED-PROCESSOR] Stopping audit...');
-    setCanStop(false);
-    addLog('Stopping audit...');
+    console.log('[SIMPLIFIED-PROCESSOR] User requested stop...');
+    setShouldStop(true);
+    addLog('Stop requested by user...');
   };
 
   const progressPercentage = progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
@@ -374,7 +393,7 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Processing Progress</span>
               <Badge variant={isRunning ? 'default' : 'outline'}>
-                {isRunning ? 'Running' : auditRun.status}
+                {isRunning ? 'Running' : shouldStop ? 'Stopping' : auditRun.status}
               </Badge>
             </div>
             <Progress value={progressPercentage} className="h-3" />
