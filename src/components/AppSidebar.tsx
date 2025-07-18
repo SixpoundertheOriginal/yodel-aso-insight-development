@@ -14,7 +14,9 @@ import {
   Smartphone,
   Database,
   PieChart,
-  Brain
+  Brain,
+  FileEdit,
+  Star
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +58,26 @@ const aiToolsItems = [
     title: "ASO AI Hub",
     url: "/aso-ai-hub",
     icon: Bot,
+  },
+  {
+    title: "Metadata Copilot",
+    url: "/metadata-copilot",
+    icon: FileEdit,
+  },
+  {
+    title: "Growth Gap Copilot",
+    url: "/growth-gap-copilot",
+    icon: TrendingUp,
+  },
+  {
+    title: "CPP Strategy Copilot",
+    url: "/cpp-strategy-copilot",
+    icon: Target,
+  },
+  {
+    title: "Featuring Toolkit",
+    url: "/featuring-toolkit",
+    icon: Star,
   },
   {
     title: "ChatGPT Visibility",

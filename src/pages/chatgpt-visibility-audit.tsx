@@ -52,6 +52,9 @@ interface App {
   app_rating?: number;
   app_reviews?: number;
   app_subtitle?: string;
+  app_icon_url?: string;
+  category?: string;
+  developer_name?: string;
 }
 
 export default function ChatGPTVisibilityAudit() {
