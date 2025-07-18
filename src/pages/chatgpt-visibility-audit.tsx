@@ -143,7 +143,12 @@ export default function ChatGPTVisibilityAudit() {
       if (runsError) {
         console.error('Error fetching audit runs:', runsError);
       } else {
-        setAuditRuns(runsData || []);
+        // Type cast to fix status field type mismatch
+        const typedRuns = (runsData || []).map(run => ({
+          ...run,
+          status: run.status as 'pending' | 'running' | 'completed' | 'error' | 'paused'
+        }));
+        setAuditRuns(typedRuns);
       }
     } catch (error) {
       console.error('Error loading audit runs:', error);
@@ -177,7 +182,10 @@ export default function ChatGPTVisibilityAudit() {
 
       if (error) throw error;
 
-      setSelectedAuditRun(data);
+      setSelectedAuditRun({
+        ...data,
+        status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused'
+      });
       setNewAuditName('');
       setNewAuditDescription('');
       setActiveTab('runs');
@@ -341,17 +349,32 @@ export default function ChatGPTVisibilityAudit() {
           )}
 
           {/* Query Templates */}
-          <QueryTemplateLibrary 
-            onTemplatesSelected={setSelectedTemplates}
-            selectedApp={selectedApp}
-          />
+        <QueryTemplateLibrary
+          onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
+          selectedTemplates={selectedTemplates}
+          appContext={selectedApp ? {
+            name: selectedApp.app_name,
+            category: selectedApp.platform
+          } : undefined}
+        />
 
           {/* Metadata Query Generator */}
           {selectedApp && (
-            <MetadataQueryGenerator
-              selectedApp={selectedApp}
-              onQueriesGenerated={setGeneratedQueries}
-            />
+        <MetadataQueryGenerator
+          validatedApp={{
+            appId: selectedApp?.app_store_id || selectedApp?.id || '',
+            metadata: {
+              name: selectedApp?.app_name || '',
+              appId: selectedApp?.app_store_id || selectedApp?.id || '',
+              title: selectedApp?.app_name || '',
+              url: '',
+              locale: 'en-US'
+            },
+            isValid: true
+          }}
+          onQueriesGenerated={setGeneratedQueries}
+          selectedQueries={generatedQueries.map(q => q.id)}
+        />
           )}
         </div>
       )}
@@ -448,7 +471,10 @@ export default function ChatGPTVisibilityAudit() {
       {activeTab === 'results' && (
         <div className="space-y-6">
           {selectedAuditRun && selectedAuditRun.status === 'completed' ? (
-            <VisibilityResults auditRunId={selectedAuditRun.id} />
+            <VisibilityResults 
+              auditRunId={selectedAuditRun.id}
+              organizationId={organizationId}
+            />
           ) : (
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardContent className="text-center py-12">
