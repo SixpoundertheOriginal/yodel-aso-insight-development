@@ -15,6 +15,7 @@ interface ProcessingState {
     estimatedTimeRemaining: number;
   };
   auditRunId: string | null;
+  lastStateUpdate: number; // Add timestamp to track state updates
 }
 
 interface ProcessingAction {
@@ -34,7 +35,8 @@ const initialState: ProcessingState = {
     totalCost: 0,
     estimatedTimeRemaining: 0
   },
-  auditRunId: null
+  auditRunId: null,
+  lastStateUpdate: Date.now()
 };
 
 const STORAGE_KEY = 'audit_processing_state';
@@ -42,30 +44,38 @@ const STORAGE_KEY = 'audit_processing_state';
 function processingReducer(state: ProcessingState, action: ProcessingAction): ProcessingState {
   switch (action.type) {
     case 'START_PROCESSING':
-      return {
+      console.log('[CONTEXT-REDUCER] START_PROCESSING called for audit:', action.payload.auditRunId);
+      const startState = {
         ...state,
         isProcessing: true,
         auditRunId: action.payload.auditRunId,
-        currentQueryIndex: 0
+        currentQueryIndex: 0,
+        lastStateUpdate: Date.now()
       };
+      console.log('[CONTEXT-REDUCER] START_PROCESSING result - isProcessing:', startState.isProcessing);
+      return startState;
     
     case 'STOP_PROCESSING':
+      console.log('[CONTEXT-REDUCER] STOP_PROCESSING called');
       return {
         ...state,
-        isProcessing: false
+        isProcessing: false,
+        lastStateUpdate: Date.now()
       };
     
     case 'UPDATE_PROGRESS':
       return {
         ...state,
-        currentQueryIndex: action.payload.currentQueryIndex
+        currentQueryIndex: action.payload.currentQueryIndex,
+        lastStateUpdate: Date.now()
       };
     
     case 'ADD_LOG':
       const newLogs = [action.payload, ...state.logs.slice(0, 19)]; // Keep last 20 logs
       return {
         ...state,
-        logs: newLogs
+        logs: newLogs,
+        lastStateUpdate: Date.now()
       };
     
     case 'UPDATE_STATS':
@@ -74,20 +84,51 @@ function processingReducer(state: ProcessingState, action: ProcessingAction): Pr
         processingStats: {
           ...state.processingStats,
           ...action.payload
-        }
+        },
+        lastStateUpdate: Date.now()
       };
     
     case 'RESTORE_STATE':
-      // Preserve isProcessing if currently processing to prevent race conditions
-      const preserveProcessing = state.isProcessing && state.auditRunId === action.payload.auditRunId;
+      const restoredData = action.payload;
+      const currentTime = Date.now();
+      
+      console.log('[CONTEXT-REDUCER] RESTORE_STATE called');
+      console.log('[CONTEXT-REDUCER] Current state - isProcessing:', state.isProcessing, 'auditRunId:', state.auditRunId);
+      console.log('[CONTEXT-REDUCER] Restored data - isProcessing:', restoredData.isProcessing, 'auditRunId:', restoredData.auditRunId);
+      
+      // CRITICAL: Don't overwrite active processing state with stale database state
+      // If we're currently processing and it's the same audit, preserve the processing state
+      const shouldPreserveProcessing = state.isProcessing && 
+                                     state.auditRunId === restoredData.auditRunId &&
+                                     state.lastStateUpdate > (restoredData.lastStateUpdate || 0);
+      
+      if (shouldPreserveProcessing) {
+        console.log('[CONTEXT-REDUCER] PRESERVING active processing state, ignoring stale database state');
+        return {
+          ...state,
+          // Only restore non-processing related data
+          logs: restoredData.logs || state.logs,
+          processingStats: restoredData.processingStats || state.processingStats,
+          currentQueryIndex: Math.max(state.currentQueryIndex, restoredData.currentQueryIndex || 0),
+          lastStateUpdate: currentTime
+        };
+      }
+      
+      console.log('[CONTEXT-REDUCER] RESTORING state from database');
       return {
         ...state,
-        ...action.payload,
-        isProcessing: preserveProcessing ? state.isProcessing : (action.payload.isProcessing || false)
+        ...restoredData,
+        // Always update timestamp and ensure boolean conversion
+        isProcessing: Boolean(restoredData.isProcessing),
+        lastStateUpdate: currentTime
       };
     
     case 'CLEAR_STATE':
-      return initialState;
+      console.log('[CONTEXT-REDUCER] CLEAR_STATE called');
+      return {
+        ...initialState,
+        lastStateUpdate: Date.now()
+      };
     
     default:
       return state;
@@ -118,6 +159,7 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState);
+        console.log('[CONTEXT-PROVIDER] Loading state from sessionStorage:', { isProcessing: parsedState.isProcessing });
         dispatch({ type: 'RESTORE_STATE', payload: parsedState });
       } catch (error) {
         console.warn('Failed to restore processing state:', error);
@@ -134,7 +176,29 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
 
   const startProcessing = (auditRunId: string) => {
     console.log('[CONTEXT] Starting processing for audit:', auditRunId);
+    console.log('[CONTEXT] Current state before start - isProcessing:', state.isProcessing);
+    
     dispatch({ type: 'START_PROCESSING', payload: { auditRunId } });
+    
+    // Clear any stale database state when starting new processing
+    setTimeout(async () => {
+      try {
+        // Get organization ID for database operations
+        const { data: { user } } = await DatabaseService.testAuthContext();
+        if (user && user.organizationId) {
+          await DatabaseService.saveProcessingState(auditRunId, {
+            currentQueryIndex: 0,
+            logs: [],
+            processingStats: initialState.processingStats,
+            isProcessing: true,
+            lastStateUpdate: Date.now()
+          }, { organizationId: user.organizationId });
+          console.log('[CONTEXT] Cleared stale database state for new processing');
+        }
+      } catch (error) {
+        console.warn('[CONTEXT] Failed to clear stale database state:', error);
+      }
+    }, 100);
   };
 
   const stopProcessing = () => {
@@ -166,12 +230,17 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
 
   const saveToDatabase = async (auditRunId: string, organizationId: string) => {
     try {
-      console.log('[CONTEXT] Saving state to database:', { isProcessing: state.isProcessing, currentQueryIndex: state.currentQueryIndex });
+      console.log('[CONTEXT] Saving state to database:', { 
+        isProcessing: state.isProcessing, 
+        currentQueryIndex: state.currentQueryIndex,
+        lastStateUpdate: state.lastStateUpdate
+      });
       await DatabaseService.saveProcessingState(auditRunId, {
         currentQueryIndex: state.currentQueryIndex,
         logs: state.logs,
         processingStats: state.processingStats,
-        isProcessing: state.isProcessing
+        isProcessing: state.isProcessing,
+        lastStateUpdate: state.lastStateUpdate
       }, { organizationId });
     } catch (error) {
       console.error('Failed to save processing state to database:', error);
@@ -179,9 +248,16 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   const loadFromDatabase = async (auditRunId: string, organizationId: string) => {
-    // Don't load state if currently processing to prevent race conditions
+    // CRITICAL: Don't load state if currently processing to prevent race conditions
     if (state.isProcessing && state.auditRunId === auditRunId) {
-      console.log('[CONTEXT] Skipping database load - currently processing');
+      console.log('[CONTEXT] Skipping database load - currently processing same audit');
+      return;
+    }
+
+    // Additional guard: Don't load if we just started processing (within last 5 seconds)
+    const timeSinceLastUpdate = Date.now() - state.lastStateUpdate;
+    if (state.isProcessing && timeSinceLastUpdate < 5000) {
+      console.log('[CONTEXT] Skipping database load - recently started processing');
       return;
     }
 
@@ -190,13 +266,19 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
       const { data, error } = await DatabaseService.getProcessingState(auditRunId, { organizationId });
       if (!error && data && typeof data === 'object' && !Array.isArray(data)) {
         const dbState = data as any;
-        console.log('[CONTEXT] Loaded state from database:', { isProcessing: dbState.isProcessing });
+        console.log('[CONTEXT] Loaded state from database:', { 
+          isProcessing: dbState.isProcessing,
+          lastStateUpdate: dbState.lastStateUpdate,
+          currentTimestamp: Date.now()
+        });
+        
         dispatch({ type: 'RESTORE_STATE', payload: {
           auditRunId,
           currentQueryIndex: dbState.currentQueryIndex || 0,
           logs: dbState.logs || [],
           processingStats: dbState.processingStats || initialState.processingStats,
-          isProcessing: dbState.isProcessing || false
+          isProcessing: dbState.isProcessing || false,
+          lastStateUpdate: dbState.lastStateUpdate || 0
         }});
       }
     } catch (error) {
