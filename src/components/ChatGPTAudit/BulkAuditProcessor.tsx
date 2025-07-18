@@ -263,58 +263,61 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
   const processQueriesBatch = async () => {
     console.log('[BULK-PROCESSOR] Starting processQueriesBatch...');
     
+    console.log('[BULK-PROCESSOR] Calling startProcessing...');
+    startProcessing(auditRun.id);
+    console.log('[BULK-PROCESSOR] startProcessing completed - isProcessing should be true');
+    addLog('Starting batch processing...');
+
+    // Test auth context first
+    console.log('[BULK-PROCESSOR] Testing auth context...');
+    const authTest = await DatabaseService.testAuthContext();
+    console.log('[BULK-PROCESSOR] Auth test result:', authTest);
+    addLog(`Auth status: ${authTest.hasAuth ? 'Connected' : 'Failed'} - User: ${authTest.userId || 'None'}`);
+    
+    if (authTest.error && !authTest.hasAuth) {
+      console.warn('[BULK-PROCESSOR] Auth warning:', authTest.error);
+      addLog(`Auth warning: ${authTest.error}`);
+    }
+
+    console.log('[BULK-PROCESSOR] Fetching pending queries...');
+    console.log('[BULK-PROCESSOR] Query params:', { auditRunId: auditRun.id, organizationId });
+
+    // Get pending queries with direct supabase approach
+    const { data: queries, error } = await supabase
+      .from('chatgpt_queries')
+      .select('*')
+      .eq('audit_run_id', auditRun.id)
+      .eq('organization_id', organizationId)
+      .eq('status', 'pending')
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: true });
+
+    console.log('[BULK-PROCESSOR] Query fetch result:', { 
+      queriesCount: queries?.length || 0, 
+      error: error?.message || 'none',
+      sampleQuery: queries?.[0] || 'none'
+    });
+
+    if (error) {
+      console.error('[BULK-PROCESSOR] Query fetch error:', error);
+      addLog(`Query fetch error: ${error.message}`);
+      stopProcessing();
+      return;
+    }
+
+    if (!queries || queries.length === 0) {
+      const msg = 'No pending queries found';
+      console.log(`[BULK-PROCESSOR] ${msg}`);
+      addLog(msg);
+      stopProcessing();
+      return;
+    }
+
+    console.log(`[BULK-PROCESSOR] Found ${queries.length} pending queries, starting processing...`);
+
+    // Update audit run to running with explicit organization filter
+    console.log('[BULK-PROCESSOR] Updating audit run status to running...');
     try {
-      console.log('[BULK-PROCESSOR] Calling startProcessing...');
-      startProcessing(auditRun.id);
-      console.log('[BULK-PROCESSOR] startProcessing completed - isProcessing should be true');
-      addLog('Starting batch processing...');
-
-      // Test auth context first
-      console.log('[BULK-PROCESSOR] Testing auth context...');
-      const authTest = await DatabaseService.testAuthContext();
-      console.log('[BULK-PROCESSOR] Auth test result:', authTest);
-      addLog(`Auth status: ${authTest.hasAuth ? 'Connected' : 'Failed'} - User: ${authTest.userId || 'None'}`);
-      
-      if (authTest.error && !authTest.hasAuth) {
-        console.warn('[BULK-PROCESSOR] Auth warning:', authTest.error);
-        addLog(`Auth warning: ${authTest.error}`);
-      }
-
-      console.log('[BULK-PROCESSOR] Fetching pending queries...');
-      console.log('[BULK-PROCESSOR] Query params:', { auditRunId: auditRun.id, organizationId });
-
-      // Get pending queries with direct supabase approach
-      const { data: queries, error } = await supabase
-        .from('chatgpt_queries')
-        .select('*')
-        .eq('audit_run_id', auditRun.id)
-        .eq('organization_id', organizationId)
-        .eq('status', 'pending')
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: true });
-
-      console.log('[BULK-PROCESSOR] Query fetch result:', { 
-        queriesCount: queries?.length || 0, 
-        error: error?.message || 'none',
-        sampleQuery: queries?.[0] || 'none'
-      });
-
-      if (error) {
-        console.error('[BULK-PROCESSOR] Query fetch error:', error);
-        throw error;
-      }
-
-      if (!queries || queries.length === 0) {
-        const msg = 'No pending queries found';
-        console.log(`[BULK-PROCESSOR] ${msg}`);
-        addLog(msg);
-        return;
-      }
-
-      console.log(`[BULK-PROCESSOR] Found ${queries.length} pending queries, starting processing...`);
-
-      // Update audit run to running with explicit organization filter
-      console.log('[BULK-PROCESSOR] Updating audit run status to running...');
       await DatabaseService.updateAuditRun(
         auditRun.id,
         { 
@@ -326,134 +329,131 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
       console.log('[BULK-PROCESSOR] Audit run status updated, calling onStatusChange...');
       onStatusChange();
+    } catch (error) {
+      console.error('[BULK-PROCESSOR] Failed to update audit run status:', error);
+      addLog(`Failed to update audit run status: ${error.message}`);
+      stopProcessing();
+      return;
+    }
 
-      console.log('[BULK-PROCESSOR] Starting query processing loop...');
-      console.log('[BULK-PROCESSOR] Current processing state before loop:', { 
+    console.log('[BULK-PROCESSOR] Starting query processing loop...');
+    console.log('[BULK-PROCESSOR] Current processing state before loop:', { 
+      isProcessing: processingState.isProcessing,
+      auditRunId: processingState.auditRunId 
+    });
+    
+    // Process queries with rate limiting (1 every 2 seconds to avoid hitting OpenAI limits)
+    for (let i = 0; i < queries.length; i++) {
+      console.log(`[BULK-PROCESSOR] Processing query ${i + 1}/${queries.length}...`);
+      console.log('[BULK-PROCESSOR] Checking processing state:', { 
         isProcessing: processingState.isProcessing,
-        auditRunId: processingState.auditRunId 
+        auditRunId: processingState.auditRunId,
+        currentAuditId: auditRun.id,
+        auditIdMatch: processingState.auditRunId === auditRun.id
       });
       
-      // Process queries with rate limiting (1 every 2 seconds to avoid hitting OpenAI limits)
-      for (let i = 0; i < queries.length; i++) {
-        console.log(`[BULK-PROCESSOR] Processing query ${i + 1}/${queries.length}...`);
-        console.log('[BULK-PROCESSOR] Checking processing state:', { 
-          isProcessing: processingState.isProcessing,
-          auditRunId: processingState.auditRunId,
-          currentAuditId: auditRun.id,
-          auditIdMatch: processingState.auditRunId === auditRun.id
+      if (!processingState.isProcessing || processingState.auditRunId !== auditRun.id) {
+        console.log('[BULK-PROCESSOR] Processing stopped or audit changed, breaking loop');
+        console.log('[BULK-PROCESSOR] Stop reason:', {
+          isProcessingFalse: !processingState.isProcessing,
+          auditIdMismatch: processingState.auditRunId !== auditRun.id,
+          expectedAuditId: auditRun.id,
+          actualAuditId: processingState.auditRunId
         });
+        addLog('Processing stopped or interrupted');
+        break;
+      }
+
+      const query = queries[i];
+      console.log(`[BULK-PROCESSOR] Current query:`, { 
+        id: query.id, 
+        text: query.query_text.substring(0, 50) + '...',
+        category: query.query_category
+      });
+      
+      updateProgress(i + 1);
+      
+      addLog(`Processing query ${i + 1}/${queries.length}: ${query.query_text.substring(0, 50)}...`);
+
+      const startTime = Date.now();
+
+      try {
+        console.log('[BULK-PROCESSOR] Calling edge function chatgpt-visibility-query...');
         
-        if (!processingState.isProcessing || processingState.auditRunId !== auditRun.id) {
-          console.log('[BULK-PROCESSOR] Processing stopped or audit changed, breaking loop');
-          console.log('[BULK-PROCESSOR] Stop reason:', {
-            isProcessingFalse: !processingState.isProcessing,
-            auditIdMismatch: processingState.auditRunId !== auditRun.id,
-            expectedAuditId: auditRun.id,
-            actualAuditId: processingState.auditRunId
-          });
-          addLog('Processing stopped or interrupted');
-          break;
+        const functionPayload = {
+          queryId: query.id,
+          queryText: query.query_text,
+          auditRunId: auditRun.id,
+          organizationId: organizationId,
+          appId: auditRun.app_id
+        };
+        
+        console.log('[BULK-PROCESSOR] Function payload:', functionPayload);
+
+        // Call the edge function
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('chatgpt-visibility-query', {
+          body: functionPayload
+        });
+
+        console.log('[BULK-PROCESSOR] Edge function response:', { 
+          data: functionData, 
+          error: functionError?.message || 'none' 
+        });
+
+        if (functionError) {
+          console.error('[BULK-PROCESSOR] Edge function error:', functionError);
+          throw new Error(`Edge function error: ${functionError.message}`);
         }
 
-        const query = queries[i];
-        console.log(`[BULK-PROCESSOR] Current query:`, { 
-          id: query.id, 
-          text: query.query_text.substring(0, 50) + '...',
-          category: query.query_category
-        });
+        const responseTime = Date.now() - startTime;
+        console.log(`[BULK-PROCESSOR] Query ${i + 1} completed in ${responseTime}ms`);
         
-        updateProgress(i + 1);
+        const newStats = {
+          completedQueries: processingStats.completedQueries + 1,
+          avgResponseTime: (processingStats.avgResponseTime * processingStats.completedQueries + responseTime) / (processingStats.completedQueries + 1),
+          estimatedTimeRemaining: (queries.length - (i + 1)) * 2000 // 2 seconds per query
+        };
         
-        addLog(`Processing query ${i + 1}/${queries.length}: ${query.query_text.substring(0, 50)}...`);
+        setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
+        updateStats(newStats);
 
-        const startTime = Date.now();
+        addLog(`✓ Query ${i + 1} completed (${responseTime}ms)`);
 
+      } catch (error) {
+        console.error(`[BULK-PROCESSOR] Query ${i + 1} failed:`, error);
+        addLog(`✗ Query ${i + 1} failed: ${error.message}`);
+        
+        const newStats = { failedQueries: processingStats.failedQueries + 1 };
+        setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
+        updateStats(newStats);
+
+        // Mark query as failed with explicit organization filter
+        console.log(`[BULK-PROCESSOR] Marking query ${query.id} as failed...`);
         try {
-          console.log('[BULK-PROCESSOR] Calling edge function chatgpt-visibility-query...');
-          
-          const functionPayload = {
-            queryId: query.id,
-            queryText: query.query_text,
-            auditRunId: auditRun.id,
-            organizationId: organizationId,
-            appId: auditRun.app_id
-          };
-          
-          console.log('[BULK-PROCESSOR] Function payload:', functionPayload);
-
-          // Call the edge function
-          const { data: functionData, error: functionError } = await supabase.functions.invoke('chatgpt-visibility-query', {
-            body: functionPayload
-          });
-
-          console.log('[BULK-PROCESSOR] Edge function response:', { 
-            data: functionData, 
-            error: functionError?.message || 'none' 
-          });
-
-          if (functionError) {
-            console.error('[BULK-PROCESSOR] Edge function error:', functionError);
-            throw new Error(`Edge function error: ${functionError.message}`);
-          }
-
-          const responseTime = Date.now() - startTime;
-          console.log(`[BULK-PROCESSOR] Query ${i + 1} completed in ${responseTime}ms`);
-          
-          const newStats = {
-            completedQueries: processingStats.completedQueries + 1,
-            avgResponseTime: (processingStats.avgResponseTime * processingStats.completedQueries + responseTime) / (processingStats.completedQueries + 1),
-            estimatedTimeRemaining: (queries.length - (i + 1)) * 2000 // 2 seconds per query
-          };
-          
-          setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
-          updateStats(newStats);
-
-          addLog(`✓ Query ${i + 1} completed (${responseTime}ms)`);
-
-        } catch (error) {
-          console.error(`[BULK-PROCESSOR] Query ${i + 1} failed:`, error);
-          addLog(`✗ Query ${i + 1} failed: ${error.message}`);
-          
-          const newStats = { failedQueries: processingStats.failedQueries + 1 };
-          setLocalProcessingStats(prev => ({ ...prev, ...newStats }));
-          updateStats(newStats);
-
-          // Mark query as failed with explicit organization filter
-          console.log(`[BULK-PROCESSOR] Marking query ${query.id} as failed...`);
-          try {
-            await DatabaseService.updateChatGPTQuery(
-              query.id,
-              { status: 'error' },
-              { organizationId }
-            );
-          } catch (updateError) {
-            console.error('[BULK-PROCESSOR] Failed to update query status:', updateError);
-          }
-        }
-
-        // Rate limiting delay
-        if (i < queries.length - 1) {
-          console.log('[BULK-PROCESSOR] Waiting 2 seconds before next query...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await DatabaseService.updateChatGPTQuery(
+            query.id,
+            { status: 'error' },
+            { organizationId }
+          );
+        } catch (updateError) {
+          console.error('[BULK-PROCESSOR] Failed to update query status:', updateError);
         }
       }
 
-      console.log('[BULK-PROCESSOR] Batch processing completed successfully');
-      addLog('Batch processing completed');
-      onStatusChange();
-
-    } catch (error) {
-      console.error('[BULK-PROCESSOR] Batch processing error:', error);
-      addLog(`Batch processing error: ${error.message}`);
-      toast({
-        title: 'Processing Error',
-        description: error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      console.log('[BULK-PROCESSOR] Stopping processing...');
-      stopProcessing();
+      // Rate limiting delay
+      if (i < queries.length - 1) {
+        console.log('[BULK-PROCESSOR] Waiting 2 seconds before next query...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
+
+    console.log('[BULK-PROCESSOR] Batch processing completed successfully');
+    addLog('Batch processing completed');
+    onStatusChange();
+
+    // Only stop processing after successful completion
+    console.log('[BULK-PROCESSOR] Stopping processing after completion...');
+    stopProcessing();
   };
 
   const handleStartProcessing = async () => {
@@ -469,6 +469,8 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       await processQueriesBatch();
     } catch (error) {
       console.error('[BULK-PROCESSOR] Error in handleStartProcessing:', error);
+      addLog(`Processing error: ${error.message}`);
+      stopProcessing();
       toast({
         title: 'Error',
         description: 'Failed to start processing. Please try again.',
