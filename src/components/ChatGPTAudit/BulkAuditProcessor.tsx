@@ -330,11 +330,18 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
         console.log('[BULK-PROCESSOR] Checking processing state:', { 
           isProcessing: processingState.isProcessing,
           auditRunId: processingState.auditRunId,
-          currentAuditId: auditRun.id
+          currentAuditId: auditRun.id,
+          auditIdMatch: processingState.auditRunId === auditRun.id
         });
         
         if (!processingState.isProcessing || processingState.auditRunId !== auditRun.id) {
           console.log('[BULK-PROCESSOR] Processing stopped or audit changed, breaking loop');
+          console.log('[BULK-PROCESSOR] Stop reason:', {
+            isProcessingFalse: !processingState.isProcessing,
+            auditIdMismatch: processingState.auditRunId !== auditRun.id,
+            expectedAuditId: auditRun.id,
+            actualAuditId: processingState.auditRunId
+          });
           addLog('Processing stopped or interrupted');
           break;
         }
