@@ -16,7 +16,8 @@ import {
   PieChart,
   Brain,
   FileEdit,
-  Star
+  Star,
+  Zap
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,13 +53,32 @@ const analyticsItems = [
   },
 ];
 
-// AI Copilots & Tools - Manual management and AI features
+// AI Tools & Analysis - Main AI-powered tools
 const aiToolsItems = [
   {
     title: "ASO AI Hub",
     url: "/aso-ai-hub",
     icon: Bot,
   },
+  {
+    title: "Keyword Intelligence",
+    url: "/keyword-intelligence",
+    icon: Search,
+  },
+  {
+    title: "ChatGPT Visibility",
+    url: "/chatgpt-visibility-audit",
+    icon: Brain,
+  },
+  {
+    title: "Apps",
+    url: "/apps",
+    icon: Smartphone,
+  },
+];
+
+// AI Copilots - Dedicated copilot interfaces
+const aiCopilotsItems = [
   {
     title: "Metadata Copilot",
     url: "/metadata-copilot",
@@ -78,21 +98,6 @@ const aiToolsItems = [
     title: "Featuring Toolkit",
     url: "/featuring-toolkit",
     icon: Star,
-  },
-  {
-    title: "ChatGPT Visibility",
-    url: "/chatgpt-visibility-audit",
-    icon: Brain,
-  },
-  {
-    title: "Keyword Intelligence",
-    url: "/keyword-intelligence",
-    icon: Search,
-  },
-  {
-    title: "Apps",
-    url: "/apps",
-    icon: Smartphone,
   },
 ];
 
@@ -158,7 +163,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* AI Copilots & Tools Section */}
+        {/* AI Tools & Analysis Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             🤖 AI Copilots & Tools
@@ -166,6 +171,35 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {aiToolsItems.map((item) => {
+                const isActive = location.pathname === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                      className="h-10 data-[active=true]:bg-yodel-orange data-[active=true]:text-white hover:bg-zinc-800 hover:text-white"
+                    >
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* AI Copilots Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            🚀 AI Copilots
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {aiCopilotsItems.map((item) => {
                 const isActive = location.pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
