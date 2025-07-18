@@ -184,15 +184,14 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
     setTimeout(async () => {
       try {
         // Get organization ID for database operations
-        const { data: { user } } = await DatabaseService.testAuthContext();
-        if (user && user.organizationId) {
+        const authResult = await DatabaseService.testAuthContext();
+        if (authResult.hasAuth && authResult.organizationId) {
           await DatabaseService.saveProcessingState(auditRunId, {
             currentQueryIndex: 0,
             logs: [],
             processingStats: initialState.processingStats,
-            isProcessing: true,
-            lastStateUpdate: Date.now()
-          }, { organizationId: user.organizationId });
+            isProcessing: true
+          }, { organizationId: authResult.organizationId });
           console.log('[CONTEXT] Cleared stale database state for new processing');
         }
       } catch (error) {
@@ -239,8 +238,7 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
         currentQueryIndex: state.currentQueryIndex,
         logs: state.logs,
         processingStats: state.processingStats,
-        isProcessing: state.isProcessing,
-        lastStateUpdate: state.lastStateUpdate
+        isProcessing: state.isProcessing
       }, { organizationId });
     } catch (error) {
       console.error('Failed to save processing state to database:', error);
@@ -278,7 +276,7 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
           logs: dbState.logs || [],
           processingStats: dbState.processingStats || initialState.processingStats,
           isProcessing: dbState.isProcessing || false,
-          lastStateUpdate: dbState.lastStateUpdate || 0
+          lastStateUpdate: dbState.lastUpdated ? new Date(dbState.lastUpdated).getTime() : 0
         }});
       }
     } catch (error) {
