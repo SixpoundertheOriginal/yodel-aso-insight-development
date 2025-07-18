@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -95,28 +94,32 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     estimatedTimeRemaining: 0
   });
 
+  // Ref to track if database load has been attempted
+  const dbLoadAttempted = useRef(false);
+
   // Use context state when available, fallback to local state
   const isProcessing = processingState.isProcessing;
   const currentQueryIndex = processingState.currentQueryIndex;
   const logs = processingState.logs;
   const processingStats = { ...localProcessingStats, ...processingState.processingStats };
 
-  // Initialize processing if we can resume - only on mount
+  // Initialize processing if we can resume - only on mount and once
   useEffect(() => {
     let mounted = true;
     
     const initializeProcessing = async () => {
-      if (!mounted) return;
+      if (!mounted || dbLoadAttempted.current) return;
+      
+      dbLoadAttempted.current = true;
       
       if (canResume(auditRun.id)) {
-        // Don't call addLog here as it triggers re-renders
-        console.log(`Processing state restored for audit: ${auditRun.name}`);
+        console.log(`[BULK-PROCESSOR] Processing state restored for audit: ${auditRun.name}`);
       } else {
         // Try loading from database on mount
         try {
           await loadFromDatabase(auditRun.id, organizationId);
         } catch (error) {
-          console.error('Failed to load processing state:', error);
+          console.error('[BULK-PROCESSOR] Failed to load processing state:', error);
         }
       }
     };
@@ -140,7 +143,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       try {
         await saveToDatabase(auditRun.id, organizationId);
       } catch (error) {
-        console.error('Failed to save processing state:', error);
+        console.error('[BULK-PROCESSOR] Failed to save processing state:', error);
       }
     };
     
@@ -254,7 +257,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     try {
       console.log('[BULK-PROCESSOR] Calling startProcessing...');
       startProcessing(auditRun.id);
-      console.log('[BULK-PROCESSOR] startProcessing completed');
+      console.log('[BULK-PROCESSOR] startProcessing completed - isProcessing should be true');
       addLog('Starting batch processing...');
 
       // Test auth context first
@@ -271,7 +274,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       console.log('[BULK-PROCESSOR] Fetching pending queries...');
       console.log('[BULK-PROCESSOR] Query params:', { auditRunId: auditRun.id, organizationId });
 
-      // Get pending queries with simplified approach
+      // Get pending queries with direct supabase approach
       const { data: queries, error } = await supabase
         .from('chatgpt_queries')
         .select('*')
@@ -316,13 +319,24 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       onStatusChange();
 
       console.log('[BULK-PROCESSOR] Starting query processing loop...');
+      console.log('[BULK-PROCESSOR] Current processing state before loop:', { 
+        isProcessing: processingState.isProcessing,
+        auditRunId: processingState.auditRunId 
+      });
+      
       // Process queries with rate limiting (1 every 2 seconds to avoid hitting OpenAI limits)
       for (let i = 0; i < queries.length; i++) {
         console.log(`[BULK-PROCESSOR] Processing query ${i + 1}/${queries.length}...`);
+        console.log('[BULK-PROCESSOR] Checking processing state:', { 
+          isProcessing: processingState.isProcessing,
+          auditRunId: processingState.auditRunId,
+          currentAuditId: auditRun.id
+        });
         
-        if (!processingState.isProcessing) {
-          console.log('[BULK-PROCESSOR] Processing stopped by user, breaking loop');
-          break; // Check if stopped
+        if (!processingState.isProcessing || processingState.auditRunId !== auditRun.id) {
+          console.log('[BULK-PROCESSOR] Processing stopped or audit changed, breaking loop');
+          addLog('Processing stopped or interrupted');
+          break;
         }
 
         const query = queries[i];
@@ -390,11 +404,15 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
 
           // Mark query as failed with explicit organization filter
           console.log(`[BULK-PROCESSOR] Marking query ${query.id} as failed...`);
-          await DatabaseService.updateChatGPTQuery(
-            query.id,
-            { status: 'error' },
-            { organizationId }
-          );
+          try {
+            await DatabaseService.updateChatGPTQuery(
+              query.id,
+              { status: 'error' },
+              { organizationId }
+            );
+          } catch (updateError) {
+            console.error('[BULK-PROCESSOR] Failed to update query status:', updateError);
+          }
         }
 
         // Rate limiting delay

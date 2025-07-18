@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface DatabaseQueryOptions {
@@ -130,6 +131,7 @@ export class DatabaseService {
       currentQueryIndex: number;
       logs: string[];
       processingStats: any;
+      isProcessing?: boolean;
     },
     options: DatabaseQueryOptions = {}
   ) {

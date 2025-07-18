@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { DatabaseService } from '@/lib/services/database.service';
 
@@ -77,9 +78,12 @@ function processingReducer(state: ProcessingState, action: ProcessingAction): Pr
       };
     
     case 'RESTORE_STATE':
+      // Preserve isProcessing if currently processing to prevent race conditions
+      const preserveProcessing = state.isProcessing && state.auditRunId === action.payload.auditRunId;
       return {
         ...state,
-        ...action.payload
+        ...action.payload,
+        isProcessing: preserveProcessing ? state.isProcessing : (action.payload.isProcessing || false)
       };
     
     case 'CLEAR_STATE':
@@ -129,10 +133,12 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
   }, [state]);
 
   const startProcessing = (auditRunId: string) => {
+    console.log('[CONTEXT] Starting processing for audit:', auditRunId);
     dispatch({ type: 'START_PROCESSING', payload: { auditRunId } });
   };
 
   const stopProcessing = () => {
+    console.log('[CONTEXT] Stopping processing');
     dispatch({ type: 'STOP_PROCESSING' });
   };
 
@@ -160,10 +166,12 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
 
   const saveToDatabase = async (auditRunId: string, organizationId: string) => {
     try {
+      console.log('[CONTEXT] Saving state to database:', { isProcessing: state.isProcessing, currentQueryIndex: state.currentQueryIndex });
       await DatabaseService.saveProcessingState(auditRunId, {
         currentQueryIndex: state.currentQueryIndex,
         logs: state.logs,
-        processingStats: state.processingStats
+        processingStats: state.processingStats,
+        isProcessing: state.isProcessing
       }, { organizationId });
     } catch (error) {
       console.error('Failed to save processing state to database:', error);
@@ -171,15 +179,24 @@ export const AuditProcessingProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   const loadFromDatabase = async (auditRunId: string, organizationId: string) => {
+    // Don't load state if currently processing to prevent race conditions
+    if (state.isProcessing && state.auditRunId === auditRunId) {
+      console.log('[CONTEXT] Skipping database load - currently processing');
+      return;
+    }
+
     try {
+      console.log('[CONTEXT] Loading state from database for audit:', auditRunId);
       const { data, error } = await DatabaseService.getProcessingState(auditRunId, { organizationId });
       if (!error && data && typeof data === 'object' && !Array.isArray(data)) {
-        const dbState = data as any; // Type assertion since we know the structure
+        const dbState = data as any;
+        console.log('[CONTEXT] Loaded state from database:', { isProcessing: dbState.isProcessing });
         dispatch({ type: 'RESTORE_STATE', payload: {
           auditRunId,
           currentQueryIndex: dbState.currentQueryIndex || 0,
           logs: dbState.logs || [],
-          processingStats: dbState.processingStats || initialState.processingStats
+          processingStats: dbState.processingStats || initialState.processingStats,
+          isProcessing: dbState.isProcessing || false
         }});
       }
     } catch (error) {
