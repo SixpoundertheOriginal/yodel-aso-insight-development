@@ -56,12 +56,14 @@ interface MetadataQueryGeneratorProps {
   validatedApp: ValidatedApp;
   onQueriesGenerated: (queries: GeneratedQuery[]) => void;
   selectedQueries: string[];
+  appIntelligence?: any; // Intelligence data from AppIntelligenceAnalyzer
 }
 
 export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
   validatedApp,
   onQueriesGenerated,
-  selectedQueries
+  selectedQueries,
+  appIntelligence
 }) => {
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedQuery[]>([]);
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
