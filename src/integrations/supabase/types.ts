@@ -52,15 +52,21 @@ export type Database = {
       }
       apps: {
         Row: {
+          app_description: string | null
           app_icon_url: string | null
           app_name: string
+          app_rating: number | null
+          app_reviews: number | null
+          app_store_category: string | null
           app_store_id: string | null
+          app_subtitle: string | null
           bundle_id: string | null
           category: string | null
           created_at: string
           created_by: string | null
           developer_name: string | null
           id: string
+          intelligence_metadata: Json | null
           is_active: boolean | null
           organization_id: string
           platform: string
@@ -68,15 +74,21 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          app_description?: string | null
           app_icon_url?: string | null
           app_name: string
+          app_rating?: number | null
+          app_reviews?: number | null
+          app_store_category?: string | null
           app_store_id?: string | null
+          app_subtitle?: string | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
           developer_name?: string | null
           id?: string
+          intelligence_metadata?: Json | null
           is_active?: boolean | null
           organization_id: string
           platform: string
@@ -84,15 +96,21 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          app_description?: string | null
           app_icon_url?: string | null
           app_name?: string
+          app_rating?: number | null
+          app_reviews?: number | null
+          app_store_category?: string | null
           app_store_id?: string | null
+          app_subtitle?: string | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
           developer_name?: string | null
           id?: string
+          intelligence_metadata?: Json | null
           is_active?: boolean | null
           organization_id?: string
           platform?: string
