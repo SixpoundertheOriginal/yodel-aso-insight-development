@@ -110,14 +110,23 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     const initializeProcessing = async () => {
       if (!mounted || dbLoadAttempted.current) return;
       
+      // CRITICAL: Don't load from database if processing is already active
+      if (processingState.isProcessing) {
+        console.log('[BULK-PROCESSOR] Skipping database load - processing already active');
+        return;
+      }
+      
       dbLoadAttempted.current = true;
+      console.log('[BULK-PROCESSOR] Loading state from database for audit:', auditRun.id);
       
       if (canResume(auditRun.id)) {
         console.log(`[BULK-PROCESSOR] Processing state restored for audit: ${auditRun.name}`);
       } else {
         // Try loading from database on mount
         try {
+          console.log('[BULK-PROCESSOR] Calling loadFromDatabase...');
           await loadFromDatabase(auditRun.id, organizationId);
+          console.log('[BULK-PROCESSOR] Database load completed');
         } catch (error) {
           console.error('[BULK-PROCESSOR] Failed to load processing state:', error);
         }
@@ -129,7 +138,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     return () => {
       mounted = false;
     };
-  }, [auditRun.id, organizationId, canResume, loadFromDatabase]);
+  }, [auditRun.id, organizationId]);
 
   // Auto-save to database when processing state changes meaningfully
   useEffect(() => {
