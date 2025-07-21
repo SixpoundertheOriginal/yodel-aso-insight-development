@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { AsoDataProvider } from './context/AsoDataContext';
+import { BigQueryAppProvider } from './context/BigQueryAppContext';
 import Dashboard from './pages/dashboard';
 import Apps from './pages/apps';
 import Settings from './pages/settings';
@@ -19,8 +20,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <AsoDataProvider>
-            <AppProvider>
+          <BigQueryAppProvider>
+            <AsoDataProvider>
+              <AppProvider>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -31,8 +33,9 @@ function App() {
                 <Route path="/aso-ai-hub" element={<AsoAiHubPage />} />
                 <Route path="/aso-insights" element={<AsoInsightsPage />} />
               </Routes>
-            </AppProvider>
-          </AsoDataProvider>
+              </AppProvider>
+            </AsoDataProvider>
+          </BigQueryAppProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
