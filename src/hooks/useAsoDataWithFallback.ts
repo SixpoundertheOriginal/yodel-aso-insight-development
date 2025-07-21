@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useBigQueryData } from './useBigQueryData';
 import { useMockAsoData, DateRange, AsoData } from './useMockAsoData';
+import { debugLog } from '@/lib/utils/debug';
 
 export type DataSource = 'bigquery' | 'mock' | 'auto';
 export type CurrentDataSource = 'bigquery' | 'mock';
@@ -75,7 +75,7 @@ export const useAsoDataWithFallback = (
 
     // BigQuery succeeded
     if (bigQueryResult.data && !bigQueryResult.error) {
-      console.log('✅ [Fallback] Using BigQuery data');
+      debugLog.info('✅ [Fallback] Using BigQuery data');
       setCurrentDataSource('bigquery');
       setDataSourceStatus('bigquery-success');
       setFinalResult({
@@ -88,7 +88,7 @@ export const useAsoDataWithFallback = (
 
     // BigQuery failed, fall back to mock
     if (bigQueryResult.error) {
-      console.warn('⚠️ [Fallback] BigQuery failed, using mock data:', bigQueryResult.error.message);
+      debugLog.warn('⚠️ [Fallback] BigQuery failed, using mock data:', bigQueryResult.error.message);
       setCurrentDataSource('mock');
       setDataSourceStatus('bigquery-failed-fallback');
       setFinalResult({

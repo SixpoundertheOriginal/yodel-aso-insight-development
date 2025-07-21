@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { useBigQueryData } from '../hooks/useBigQueryData';
 import { useMockAsoData, type AsoData, type DateRange, type TrafficSource } from '../hooks/useMockAsoData';
 import { subDays } from 'date-fns';
+import { debugLog } from '../lib/utils/debug';
 
 interface AsoDataFilters {
   dateRange: DateRange;
@@ -135,14 +136,14 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     // Check if this is the same data as last registration
     const lastDataHash = lastRegisteredDataRef.current.get(instanceId);
     if (lastDataHash === dataHash) {
-      console.log(`🚫 [LOOP PREVENTION] Instance ${instanceId} - skipping duplicate registration`);
+      debugLog.verbose(`🚫 [LOOP PREVENTION] Instance ${instanceId} - skipping duplicate registration`);
       return; // Skip registration - same data
     }
 
     // Update the hash tracker
     lastRegisteredDataRef.current.set(instanceId, dataHash);
 
-    console.log(`🔄 [HOOK REGISTRY] Registering instance ${instanceId}:`, {
+    debugLog.info(`🔄 [HOOK REGISTRY] Registering instance ${instanceId}:`, {
       sourcesCount: data.sourcesCount,
       hasData: !!data.data,
       loading: data.loading,
@@ -157,8 +158,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
         lastUpdated: Date.now()
       });
       
-      console.log(`📊 [REGISTRY STATUS] Total registered instances: ${newRegistry.size}`);
-      console.log(`📊 [REGISTRY SUMMARY]`, Array.from(newRegistry.entries()).map(([id, data]) => ({
+      debugLog.verbose(`📊 [REGISTRY STATUS] Total registered instances: ${newRegistry.size}`);
+      debugLog.verbose(`📊 [REGISTRY SUMMARY]`, Array.from(newRegistry.entries()).map(([id, data]) => ({
         id,
         sources: data.sourcesCount,
         hasData: !!data.data
@@ -173,10 +174,10 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     let bestInstance: HookInstanceData | null = null;
     let maxSources = 0;
     
-    console.log(`🔍 [BEST HOOK SEARCH] Searching through ${hookRegistry.size} registered instances`);
+    debugLog.verbose(`🔍 [BEST HOOK SEARCH] Searching through ${hookRegistry.size} registered instances`);
     
     for (const [instanceId, data] of hookRegistry.entries()) {
-      console.log(`🔍 [CHECKING INSTANCE] ${instanceId}:`, {
+      debugLog.verbose(`🔍 [CHECKING INSTANCE] ${instanceId}:`, {
         sourcesCount: data.sourcesCount,
         hasData: !!data.data,
         loading: data.loading,
@@ -188,18 +189,18 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
       if (data.sourcesCount > maxSources && !data.error && !data.loading && data.data) {
         maxSources = data.sourcesCount;
         bestInstance = data;
-        console.log(`🎯 [NEW BEST FOUND] Instance ${instanceId} with ${data.sourcesCount} sources`);
+        debugLog.info(`🎯 [NEW BEST FOUND] Instance ${instanceId} with ${data.sourcesCount} sources`);
       }
     }
     
     if (bestInstance) {
-      console.log(`✅ [BEST HOOK SELECTED]`, {
+      debugLog.info(`✅ [BEST HOOK SELECTED]`, {
         instanceId: bestInstance.instanceId,
         sourcesCount: bestInstance.sourcesCount,
         sources: bestInstance.availableTrafficSources
       });
     } else {
-      console.log(`❌ [NO BEST HOOK] No suitable instance found`);
+      debugLog.verbose(`❌ [NO BEST HOOK] No suitable instance found`);
     }
     
     return bestInstance;
@@ -232,7 +233,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
 
       // Only register if meta actually changed
       if (metaHash !== lastFallbackMetaRef.current) {
-        console.log('🔄 [FALLBACK REGISTRATION] Meta data changed, registering fallback hook');
+        debugLog.info('🔄 [FALLBACK REGISTRATION] Meta data changed, registering fallback hook');
         lastFallbackMetaRef.current = metaHash;
         
         registerHookInstanceRef.current('fallback-context-hook', {
@@ -246,7 +247,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
           lastUpdated: Date.now()
         });
       } else {
-        console.log('🚫 [FALLBACK SKIP] Meta data unchanged, skipping fallback registration');
+        debugLog.verbose('🚫 [FALLBACK SKIP] Meta data unchanged, skipping fallback registration');
       }
     }
   }, [fallbackBigQueryResult.data, fallbackBigQueryResult.meta, fallbackBigQueryResult.loading, fallbackBigQueryResult.error]);
@@ -265,7 +266,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   // ✅ NEW: Get Available Traffic Sources from Best Hook
   const bestAvailableTrafficSources = useMemo(() => {
     if (bestHookData?.availableTrafficSources && bestHookData.availableTrafficSources.length > 0) {
-      console.log('✅ [USING BEST HOOK SOURCES]', {
+      debugLog.info('✅ [USING BEST HOOK SOURCES]', {
         instanceId: bestHookData.instanceId,
         sourcesCount: bestHookData.sourcesCount,
         sources: bestHookData.availableTrafficSources
@@ -275,7 +276,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     
     // Fallback to fallback hook
     const fallbackSources = fallbackBigQueryResult.meta?.availableTrafficSources || [];
-    console.log('⏳ [USING FALLBACK SOURCES]', {
+    debugLog.verbose('⏳ [USING FALLBACK SOURCES]', {
       sourcesCount: fallbackSources.length,
       sources: fallbackSources
     });
@@ -289,7 +290,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
       setDataSourceStatus('loading');
       setCurrentDataSource('bigquery');
     } else if (selectedResult.error) {
-      console.warn('BigQuery failed, using mock data:', selectedResult.error.message);
+      debugLog.warn('BigQuery failed, using mock data:', selectedResult.error.message);
       setDataSourceStatus('fallback');
       setCurrentDataSource('mock');
     } else if (selectedResult.data) {
@@ -317,12 +318,12 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   };
 
   // ✅ FINAL: Log what context provides to components
-  console.log('🚨 [CONTEXT→COMPONENT] Context providing to components:');
-  console.log('  availableTrafficSources:', contextValue.availableTrafficSources);
-  console.log('  sourcesCount:', contextValue.availableTrafficSources?.length || 0);
-  console.log('  usingBestHook:', !!bestHookData);
-  console.log('  bestHookInstance:', bestHookData?.instanceId || 'none');
-  console.log('  registeredInstances:', hookRegistry.size);
+  debugLog.verbose('🚨 [CONTEXT→COMPONENT] Context providing to components:');
+  debugLog.verbose('  availableTrafficSources:', contextValue.availableTrafficSources);
+  debugLog.verbose('  sourcesCount:', contextValue.availableTrafficSources?.length || 0);
+  debugLog.verbose('  usingBestHook:', !!bestHookData);
+  debugLog.verbose('  bestHookInstance:', bestHookData?.instanceId || 'none');
+  debugLog.verbose('  registeredInstances:', hookRegistry.size);
 
   return (
     <AsoDataContext.Provider value={contextValue}>
