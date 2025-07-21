@@ -98,6 +98,8 @@ const saveFilters = (filters: AsoDataFilters) => {
 };
 
 export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) => {
+  console.log(`[${new Date().toISOString()}] [AsoDataContext] 🏗️ Provider mounted and initialized`);
+  
   const [currentDataSource, setCurrentDataSource] = useState<DataSource>('bigquery');
   const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus>('loading');
   

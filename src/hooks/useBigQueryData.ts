@@ -92,122 +92,81 @@ export const useBigQueryData = (
   }
   const instanceId = instanceIdRef.current;
 
-  // ✅ PHASE 2: Memoize dependencies to prevent infinite loops
-  const stableDateRange = useMemo(() => ({
-    from: dateRange.from.toISOString().split('T')[0],
-    to: dateRange.to.toISOString().split('T')[0]
-  }), [dateRange.from.toISOString().split('T')[0], dateRange.to.toISOString().split('T')[0]]);
-
-  const stableClientList = useMemo(() => [...clientList], [clientList.join(',')]);
-  const stableSelectedApps = useMemo(() => [...selectedApps], [selectedApps.join(',')]);
-  const stableTrafficSources = useMemo(() => [...trafficSources], [trafficSources.join(',')]);
-
-  // ✅ PHASE 2: Abort controller for cleanup
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // ✅ FIXED: Stable memoized filters to prevent infinite loops
+  const stableFilters = useMemo(() => {
+    const fromDate = dateRange.from.toISOString().split('T')[0];
+    const toDate = dateRange.to.toISOString().split('T')[0];
+    
+    return {
+      clientList: [...clientList],
+      selectedApps: [...selectedApps],
+      dateRange: { from: fromDate, to: toDate },
+      trafficSources: [...trafficSources]
+    };
+  }, [
+    clientList.join(','),
+    selectedApps.join(','), 
+    dateRange.from.toISOString().split('T')[0],
+    dateRange.to.toISOString().split('T')[0],
+    trafficSources.join(',')
+  ]);
 
   console.log(`[${new Date().toISOString()}] [useBigQueryData] Hook initialized:`, {
     instanceId,
-    clientList: stableClientList,
-    trafficSources: stableTrafficSources,
-    dateRange: stableDateRange,
+    clientList: stableFilters.clientList,
+    selectedApps: stableFilters.selectedApps,
+    trafficSources: stableFilters.trafficSources,
+    dateRange: stableFilters.dateRange,
     ready,
     hasRegistration: !!registerHookInstance,
     timestamp: new Date().toISOString()
   });
 
-  // ✅ NEW: Register this hook instance with context whenever data changes
   useEffect(() => {
-    if (!registerHookInstance) return; // No context available
-
-    const hookData = {
-      instanceId,
-      availableTrafficSources: meta?.availableTrafficSources || [],
-      sourcesCount: meta?.availableTrafficSources?.length || 0,
-      data,
-      metadata: meta,
-      loading,
-      error,
-      lastUpdated: Date.now()
-    };
-
-    console.log(`[${new Date().toISOString()}] [useBigQueryData] Registering instance ${instanceId}:`, {
-      sourcesCount: hookData.sourcesCount,
-      hasData: !!data,
-      loading,
-      error: !!error,
-      sources: hookData.availableTrafficSources
-    });
-
-    registerHookInstance(instanceId, hookData);
-
-  }, [instanceId, data, meta, loading, error, registerHookInstance]);
-
-  useEffect(() => {
-    if (!stableClientList.length || !ready) {
+    if (!stableFilters.clientList.length || !ready) {
       console.log(`[${new Date().toISOString()}] [useBigQueryData] Skipping fetch - not ready:`, {
-        clientsLength: stableClientList.length,
+        clientsLength: stableFilters.clientList.length,
         ready
       });
       return;
     }
 
-    // ✅ PHASE 2: Cancel previous request
-    if (abortControllerRef.current) {
-      console.log(`[${new Date().toISOString()}] [useBigQueryData] Aborting previous request`);
-      abortControllerRef.current.abort();
-    }
+    let isActive = true;
+    const abortController = new AbortController();
 
     const fetchBigQueryData = async () => {
-      // ✅ PHASE 2: Create new abort controller
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
-
       try {
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] ⏳ Starting fetch...`);
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚀 Starting fetch...`);
         setLoading(true);
         setError(null);
         setMeta(undefined);
 
-        const requestFilters = {
-          clientList: stableClientList,
-          selectedApps: stableSelectedApps,
-          dateRange: stableDateRange,
-          trafficSources: stableTrafficSources
-        };
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Fetching with filters:`, stableFilters);
 
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Fetching with filters:`, requestFilters);
-
-        const client = stableClientList[0] || 'yodel_pimsleur';
+        const client = stableFilters.clientList[0] || 'TUI';
 
         const requestBody = {
           client,
-          dateRange: stableDateRange,
-          selectedApps: stableSelectedApps.length > 0 ? stableSelectedApps : undefined,
-          trafficSources: stableTrafficSources.length > 0 ? stableTrafficSources : undefined,
+          dateRange: stableFilters.dateRange,
+          selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
+          trafficSources: stableFilters.trafficSources.length > 0 ? stableFilters.trafficSources : undefined,
           limit: 100
         };
 
         console.log(`[${new Date().toISOString()}] [useBigQueryData] 📤 Making request to edge function...`);
 
-        // ✅ PHASE 1: Enhanced network call with timeout
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
-        });
-
-        const fetchPromise = supabase.functions.invoke(
+        const { data: response, error: functionError } = await supabase.functions.invoke(
           'bigquery-aso-data',
           {
-            body: requestBody
+            body: requestBody,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           }
         );
 
-        const { data: response, error: functionError } = await Promise.race([
-          fetchPromise,
-          timeoutPromise
-        ]) as any;
-
         // Check if request was aborted
-        if (signal.aborted) {
+        if (abortController.signal.aborted || !isActive) {
           console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted`);
           return;
         }
@@ -237,70 +196,90 @@ export const useBigQueryData = (
             totalSourcesFound: bigQueryResponse.meta.dataArchitecture.discoveryQuery.sourcesFound,
             mainQueryFiltered: bigQueryResponse.meta.dataArchitecture.mainQuery.filtered,
             dataRowsReturned: bigQueryResponse.meta.dataArchitecture.mainQuery.rowsReturned,
-            requestedSources: stableTrafficSources,
+            requestedSources: stableFilters.trafficSources,
             metadataAvailableSources: bigQueryResponse.meta.availableTrafficSources
           });
         }
 
         console.log(`[${new Date().toISOString()}] [useBigQueryData] 📊 Available traffic sources:`, bigQueryResponse.meta.availableTrafficSources);
         
-        setMeta(bigQueryResponse.meta);
+        if (isActive) {
+          setMeta(bigQueryResponse.meta);
 
-        const transformedData = transformBigQueryToAsoData(
-          bigQueryResponse.data || [],
-          stableTrafficSources,
-          bigQueryResponse.meta
-        );
+          const transformedData = transformBigQueryToAsoData(
+            bigQueryResponse.data || [],
+            stableFilters.trafficSources,
+            bigQueryResponse.meta
+          );
 
-        setData(transformedData);
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Data transformed and set successfully`);
+          setData(transformedData);
+          console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Data transformed and set successfully`);
+
+          // Register with context
+          if (registerHookInstance) {
+            registerHookInstance(instanceId, {
+              instanceId,
+              availableTrafficSources: bigQueryResponse.meta.availableTrafficSources || [],
+              sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
+              data: transformedData,
+              metadata: bigQueryResponse.meta,
+              loading: false,
+              lastUpdated: Date.now()
+            });
+          }
+        }
 
       } catch (err) {
         // Check if request was aborted
-        if (signal.aborted) {
+        if (abortController.signal.aborted || !isActive) {
           console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted during error handling`);
           return;
         }
 
         console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Error fetching data:`, err);
         
-        if (err instanceof Error) {
-          if (err.message.includes('403') || err.message.includes('permission')) {
-            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🔐 Permission denied - check BigQuery credentials and table access`);
-          } else if (err.message.includes('404')) {
-            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Table not found - verify table name and project ID`);
-          } else if (err.message.includes('timeout')) {
-            console.error(`[${new Date().toISOString()}] [useBigQueryData] ⏰ Request timeout - check network connection`);
-          } else if (err.message.includes('non-2xx status')) {
-            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🚫 Edge function failed - check edge function logs`);
+        if (isActive) {
+          const error = err instanceof Error ? err : new Error('Unknown BigQuery error');
+          setError(error);
+          
+          // Register error with context  
+          if (registerHookInstance) {
+            registerHookInstance(instanceId, {
+              instanceId,
+              availableTrafficSources: [],
+              sourcesCount: 0,
+              data: null,
+              metadata: null,
+              loading: false,
+              error,
+              lastUpdated: Date.now()
+            });
           }
         }
-        
-        setError(err instanceof Error ? err : new Error('Unknown BigQuery error'));
       } finally {
-        // ✅ PHASE 1: Ensure loading is always cleared
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏁 Fetch complete, clearing loading state`);
-        setLoading(false);
+        if (isActive) {
+          console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏁 Fetch complete, clearing loading state`);
+          setLoading(false);
+        }
       }
     };
 
     fetchBigQueryData();
 
-    // ✅ PHASE 2: Cleanup function
     return () => {
-      if (abortControllerRef.current) {
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🧹 Cleaning up - aborting request`);
-        abortControllerRef.current.abort();
-      }
+      console.log(`[${new Date().toISOString()}] [useBigQueryData] 🧹 Cleaning up - aborting request`);
+      isActive = false;
+      abortController.abort();
     };
   }, [
-    stableClientList, 
-    stableDateRange.from,
-    stableDateRange.to, 
-    stableTrafficSources,
-    stableSelectedApps,
-    ready
-  ]);
+    stableFilters.clientList.join(','),
+    stableFilters.selectedApps.join(','),
+    stableFilters.dateRange.from,
+    stableFilters.dateRange.to,
+    stableFilters.trafficSources.join(','),
+    ready,
+    instanceId
+  ]); // Removed registerHookInstance from deps to prevent loops
 
   console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚨 Hook returning:`, {
     instanceId,
@@ -309,9 +288,9 @@ export const useBigQueryData = (
     availableTrafficSources: meta?.availableTrafficSources,
     sourcesCount: meta?.availableTrafficSources?.length || 0,
     loading,
-    error: error?.message,
+    error: error ? { type: typeof error, message: error.message } : { _type: 'undefined', value: 'undefined' },
     willRegister: !!registerHookInstance,
-    dateRange: stableDateRange
+    dateRange: stableFilters.dateRange
   });
 
   return { data, loading, error, meta };
