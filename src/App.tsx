@@ -17,10 +17,10 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AsoDataProvider>
-          <AppProvider>
-            <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <AsoDataProvider>
+            <AppProvider>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -31,10 +31,10 @@ function App() {
                 <Route path="/aso-ai-hub" element={<AsoAiHubPage />} />
                 <Route path="/aso-insights" element={<AsoInsightsPage />} />
               </Routes>
-            </BrowserRouter>
-          </AppProvider>
-        </AsoDataProvider>
-      </AuthProvider>
+            </AppProvider>
+          </AsoDataProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
