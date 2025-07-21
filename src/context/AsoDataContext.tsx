@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback, useRef } from 'react';
 import { useBigQueryData } from '../hooks/useBigQueryData';
 import { useMockAsoData, type AsoData, type DateRange, type TrafficSource } from '../hooks/useMockAsoData';
+import { useBigQueryAppSelection } from './BigQueryAppContext';
 import { subDays } from 'date-fns';
 import { debugLog } from '../lib/utils/debug';
 
@@ -105,6 +106,9 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   // ✅ LOOP FIX: Track last registered data to prevent duplicate registrations
   const lastRegisteredDataRef = useRef<Map<string, string>>(new Map());
   
+  // ✅ FIX: Connect to BigQuery app selection context
+  const { selectedApps } = useBigQueryAppSelection();
+  
   const savedFilters = loadSavedFilters();
   const [userTouchedFilters, setUserTouchedFilters] = useState(false);
 
@@ -114,8 +118,19 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
       to: new Date(),
     },
     trafficSources: [],
-    clients: ['TUI'],
+    clients: selectedApps.length > 0 ? selectedApps : ['TUI'], // Use selected apps or fallback
   });
+
+  // ✅ FIX: Update clients when selected apps change
+  useEffect(() => {
+    if (selectedApps.length > 0) {
+      setFilters(prev => ({
+        ...prev,
+        clients: selectedApps
+      }));
+      debugLog.info('🔄 [APP SELECTION] Updated clients to:', selectedApps);
+    }
+  }, [selectedApps]);
 
   // Save filters to localStorage when they change
   useEffect(() => {
