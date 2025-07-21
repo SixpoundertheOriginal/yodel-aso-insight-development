@@ -127,38 +127,13 @@ const Dashboard: React.FC = () => {
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-white">No Data Found</h3>
             <p className="text-zinc-400 max-w-md">
-              {meta ? (
-                <>
-                  No results found for organization "{meta.queryParams.organizationId}"
-                  {meta.queryParams.dateRange && (
-                    <> between {meta.queryParams.dateRange.from} and {meta.queryParams.dateRange.to}</>
-                  )}
-                  {filters.trafficSources.length > 0 && (
-                    <> with traffic sources: {filters.trafficSources.join(", ")}</>
-                  )}.
-                </>
-              ) : (
-                'No data available for the selected time period and filters.'
+              No data available for the selected time period and filters.
+              {filters.trafficSources.length > 0 && (
+                <> Try clearing traffic source filters or adjusting your date range.</>
               )}
             </p>
           </div>
           
-          {/* Debug information in development */}
-          {meta && process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg text-xs text-zinc-400 text-left">
-              <div className="font-medium text-zinc-300 mb-2">Debug Information:</div>
-              <div>Organization ID: {meta.queryParams.organizationId}</div>
-              <div>Date Range: {meta.queryParams.dateRange ? 
-                `${meta.queryParams.dateRange.from} to ${meta.queryParams.dateRange.to}` : 
-                'No date filter'
-              }</div>
-              <div>Traffic Sources: {filters.trafficSources.length || 'All sources'}</div>
-              <div>Query Limit: {meta.queryParams.limit}</div>
-              <div>Execution Time: {meta.executionTimeMs}ms</div>
-              <div>Total Rows Found: {meta.totalRows}</div>
-            </div>
-          )}
-
           <div className="flex flex-col space-y-2 text-sm text-zinc-500">
             <div className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />

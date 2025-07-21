@@ -2,6 +2,9 @@
 import { useMemo } from 'react';
 import { useAsoData } from '../context/AsoDataContext';
 import { useBigQueryData } from './useBigQueryData';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 import { standardizeChartData } from '../utils/format';
 import { getPreviousPeriod, calculateDeltas } from '../utils/dateCalculations';
 import { AsoData } from './useMockAsoData';
@@ -27,6 +30,36 @@ export interface ComparisonData {
  */
 export const useComparisonData = (type: ComparisonType): ComparisonData => {
   const { filters } = useAsoData();
+  const { user } = useAuth();
+  const [organizationId, setOrganizationId] = useState<string>('');
+
+  // Get organization ID from user profile
+  useEffect(() => {
+    const fetchOrganizationId = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Failed to fetch user profile:', error);
+          return;
+        }
+
+        if (profile?.organization_id) {
+          setOrganizationId(profile.organization_id);
+        }
+      } catch (err) {
+        console.error('Error fetching organization ID:', err);
+      }
+    };
+
+    fetchOrganizationId();
+  }, [user]);
   
   // Calculate previous period date range
   const previousDateRange = useMemo(() => {
@@ -49,10 +82,10 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
     loading: previousLoading,
     error: previousError
   } = useBigQueryData(
-    filters.organizationId,
+    organizationId,
     previousDateRange,
     filters.trafficSources,
-    filters.organizationId.length > 0
+    organizationId.length > 0
   );
 
   const comparisonData = useMemo(() => {

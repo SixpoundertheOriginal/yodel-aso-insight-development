@@ -1,6 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useBigQueryData } from './useBigQueryData';
 import { useMockAsoData, DateRange, AsoData } from './useMockAsoData';
+import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/lib/utils/debug';
 
 export type DataSource = 'bigquery' | 'mock' | 'auto';
@@ -15,26 +19,64 @@ interface UseAsoDataWithFallbackResult {
 }
 
 export const useAsoDataWithFallback = (
-  clientList: string[],
   dateRange: DateRange,
   trafficSources: string[],
   preferredDataSource: DataSource = 'auto'
 ): UseAsoDataWithFallbackResult => {
   const [currentDataSource, setCurrentDataSource] = useState<CurrentDataSource | null>(null);
   const [dataSourceStatus, setDataSourceStatus] = useState<'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only'>('loading');
+  const [organizationId, setOrganizationId] = useState<string>('');
+
+  // Get auth context and app selection
+  const { user } = useAuth();
+  const { selectedApps } = useBigQueryAppSelection();
+
+  // Get organization ID from user profile
+  useEffect(() => {
+    const fetchOrganizationId = async () => {
+      if (!user) {
+        debugLog.warn('⚠️ [Fallback] No authenticated user found');
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          debugLog.error('❌ [Fallback] Failed to fetch user profile:', error);
+          return;
+        }
+
+        if (profile?.organization_id) {
+          setOrganizationId(profile.organization_id);
+          debugLog.info('✅ [Fallback] Organization ID retrieved:', profile.organization_id);
+        } else {
+          debugLog.warn('⚠️ [Fallback] User has no organization ID');
+        }
+      } catch (err) {
+        debugLog.error('❌ [Fallback] Error fetching organization ID:', err);
+      }
+    };
+
+    fetchOrganizationId();
+  }, [user]);
 
   // Always fetch BigQuery data (unless explicitly set to mock-only)
-  const bigQueryReady = clientList.length > 0;
+  const bigQueryReady = organizationId.length > 0;
   const bigQueryResult = useBigQueryData(
-    clientList[0] || '', // Use first client ID as organizationId
+    organizationId, // Use actual organization UUID
     dateRange,
     trafficSources,
     bigQueryReady
   );
 
-  // Always prepare mock data as fallback
+  // Always prepare mock data as fallback using selected apps for consistency
   const mockResult = useMockAsoData(
-    clientList,
+    selectedApps,
     dateRange,
     trafficSources
   );
