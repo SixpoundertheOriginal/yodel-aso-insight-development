@@ -144,6 +144,7 @@ Current analysis: ${auditAnalysis.auditData ? JSON.stringify(auditAnalysis.audit
     activeTab: state.activeTab,
     isLoading,
     hasData,
+    organizationId,
     
     // Data
     auditData: auditAnalysis.auditData,

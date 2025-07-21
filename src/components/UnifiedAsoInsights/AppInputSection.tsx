@@ -14,7 +14,7 @@ export const AppInputSection: React.FC = () => {
     return (
       <AppImporter 
         onImportSuccess={analysis.handleAppImport}
-        organizationId={analysis.auditAnalysis?.organizationId || ''}
+        organizationId={analysis.organizationId || ''}
       />
     );
   }

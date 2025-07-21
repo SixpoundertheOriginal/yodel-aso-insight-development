@@ -11,7 +11,7 @@ export const MetadataTab: React.FC = () => {
   return (
     <MetadataWorkspace 
       initialData={analysis.importedApp} 
-      organizationId={analysis.auditAnalysis?.organizationId || ''}
+      organizationId={analysis.organizationId || ''}
     />
   );
 };
