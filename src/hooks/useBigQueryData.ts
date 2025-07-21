@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateRange, AsoData, TimeSeriesPoint, MetricSummary, TrafficSource } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
@@ -85,16 +85,31 @@ export const useBigQueryData = (
   // Get selected apps from BigQuery app selector
   const { selectedApps } = useBigQueryAppSelection();
 
-  // Hook instance tracking
-  const instanceId = Math.random().toString(36).substr(2, 9);
-  debugLog.info('🚨 [HOOK INSTANCE] useBigQueryData called with:', {
+  // Hook instance tracking with stable ID
+  const instanceIdRef = useRef<string>();
+  if (!instanceIdRef.current) {
+    instanceIdRef.current = Math.random().toString(36).substr(2, 9);
+  }
+  const instanceId = instanceIdRef.current;
+
+  // ✅ PHASE 2: Memoize dependencies to prevent infinite loops
+  const stableDateRange = useMemo(() => ({
+    from: dateRange.from.toISOString().split('T')[0],
+    to: dateRange.to.toISOString().split('T')[0]
+  }), [dateRange.from.toISOString().split('T')[0], dateRange.to.toISOString().split('T')[0]]);
+
+  const stableClientList = useMemo(() => [...clientList], [clientList.join(',')]);
+  const stableSelectedApps = useMemo(() => [...selectedApps], [selectedApps.join(',')]);
+  const stableTrafficSources = useMemo(() => [...trafficSources], [trafficSources.join(',')]);
+
+  // ✅ PHASE 2: Abort controller for cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  console.log(`[${new Date().toISOString()}] [useBigQueryData] Hook initialized:`, {
     instanceId,
-    clientList,
-    trafficSources,
-    dateRange: {
-      from: dateRange.from.toISOString().split('T')[0],
-      to: dateRange.to.toISOString().split('T')[0]
-    },
+    clientList: stableClientList,
+    trafficSources: stableTrafficSources,
+    dateRange: stableDateRange,
     ready,
     hasRegistration: !!registerHookInstance,
     timestamp: new Date().toISOString()
@@ -115,7 +130,7 @@ export const useBigQueryData = (
       lastUpdated: Date.now()
     };
 
-    debugLog.verbose(`🔄 [HOOK REGISTRATION] Instance ${instanceId} registering:`, {
+    console.log(`[${new Date().toISOString()}] [useBigQueryData] Registering instance ${instanceId}:`, {
       sourcesCount: hookData.sourcesCount,
       hasData: !!data,
       loading,
@@ -125,135 +140,169 @@ export const useBigQueryData = (
 
     registerHookInstance(instanceId, hookData);
 
-  }, [instanceId, data, meta, loading, error]);
+  }, [instanceId, data, meta, loading, error, registerHookInstance]);
 
   useEffect(() => {
-    if (!clientList.length || !ready) return;
+    if (!stableClientList.length || !ready) {
+      console.log(`[${new Date().toISOString()}] [useBigQueryData] Skipping fetch - not ready:`, {
+        clientsLength: stableClientList.length,
+        ready
+      });
+      return;
+    }
+
+    // ✅ PHASE 2: Cancel previous request
+    if (abortControllerRef.current) {
+      console.log(`[${new Date().toISOString()}] [useBigQueryData] Aborting previous request`);
+      abortControllerRef.current.abort();
+    }
 
     const fetchBigQueryData = async () => {
+      // ✅ PHASE 2: Create new abort controller
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+
       try {
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] ⏳ Starting fetch...`);
         setLoading(true);
         setError(null);
         setMeta(undefined);
 
         const requestFilters = {
-          clientList,
-          selectedApps,
-          dateRange: {
-            from: dateRange.from.toISOString().split('T')[0],
-            to: dateRange.to.toISOString().split('T')[0]
-          },
-          trafficSources
+          clientList: stableClientList,
+          selectedApps: stableSelectedApps,
+          dateRange: stableDateRange,
+          trafficSources: stableTrafficSources
         };
 
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] fetching with filters:`, requestFilters);
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Fetching with filters:`, requestFilters);
 
-        debugLog.info('🔍 [BigQuery Hook] Fetching data with params:', requestFilters);
-
-        const client = clientList[0] || 'yodel_pimsleur';
+        const client = stableClientList[0] || 'yodel_pimsleur';
 
         const requestBody = {
           client,
-          dateRange: {
-            from: dateRange.from.toISOString().split('T')[0],
-            to: dateRange.to.toISOString().split('T')[0]
-          },
-          selectedApps: selectedApps.length > 0 ? selectedApps : undefined,
-          trafficSources: trafficSources.length > 0 ? trafficSources : undefined,
+          dateRange: stableDateRange,
+          selectedApps: stableSelectedApps.length > 0 ? stableSelectedApps : undefined,
+          trafficSources: stableTrafficSources.length > 0 ? stableTrafficSources : undefined,
           limit: 100
         };
 
-        debugLog.verbose('📤 [BigQuery Hook] Making request to edge function...');
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📤 Making request to edge function...`);
 
-        const { data: response, error: functionError } = await supabase.functions.invoke(
+        // ✅ PHASE 1: Enhanced network call with timeout
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+        });
+
+        const fetchPromise = supabase.functions.invoke(
           'bigquery-aso-data',
           {
             body: requestBody
           }
         );
 
+        const { data: response, error: functionError } = await Promise.race([
+          fetchPromise,
+          timeoutPromise
+        ]) as any;
+
+        // Check if request was aborted
+        if (signal.aborted) {
+          console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted`);
+          return;
+        }
+
         if (functionError) {
-          debugLog.error('❌ [BigQuery Hook] Edge function error:', functionError);
+          console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Edge function error:`, functionError);
           throw new Error(`BigQuery function error: ${functionError.message}`);
         }
 
         const bigQueryResponse = response as BigQueryResponse;
 
         if (!bigQueryResponse.success) {
-          debugLog.error('❌ [BigQuery Hook] Service error:', bigQueryResponse.error);
+          console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Service error:`, bigQueryResponse.error);
           throw new Error(bigQueryResponse.error || 'BigQuery request failed');
         }
 
-        debugLog.info('✅ [BigQuery Hook] Raw data received:', { recordCount: bigQueryResponse.data?.length });
-        debugLog.verbose('📊 [BigQuery Hook] Query metadata:', bigQueryResponse.meta);
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Response received:`, { 
+          recordCount: bigQueryResponse.data?.length,
+          meta: bigQueryResponse.meta
+        });
         
         if (bigQueryResponse.meta.dataArchitecture) {
-          debugLog.info('🏗️ [Phase 1 Architecture] Data fetching summary:', {
+          console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏗️ Data architecture:`, {
             phase: bigQueryResponse.meta.dataArchitecture.phase,
             discoveryExecuted: bigQueryResponse.meta.dataArchitecture.discoveryQuery.executed,
             allAvailableSources: bigQueryResponse.meta.dataArchitecture.discoveryQuery.sources,
             totalSourcesFound: bigQueryResponse.meta.dataArchitecture.discoveryQuery.sourcesFound,
             mainQueryFiltered: bigQueryResponse.meta.dataArchitecture.mainQuery.filtered,
             dataRowsReturned: bigQueryResponse.meta.dataArchitecture.mainQuery.rowsReturned,
-            requestedSources: trafficSources,
+            requestedSources: stableTrafficSources,
             metadataAvailableSources: bigQueryResponse.meta.availableTrafficSources
           });
         }
 
-        debugLog.info('📊 [BigQuery Hook] Available traffic sources:', bigQueryResponse.meta.availableTrafficSources);
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📊 Available traffic sources:`, bigQueryResponse.meta.availableTrafficSources);
         
-        debugLog.verbose('🚨 [HOOK→CONTEXT] Hook instance is setting meta', {
-          instanceId,
-          availableTrafficSources: bigQueryResponse.meta.availableTrafficSources,
-          sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
-          dateRange: {
-            from: dateRange.from.toISOString().split('T')[0],
-            to: dateRange.to.toISOString().split('T')[0]
-          },
-          trafficSources
-        });
-
         setMeta(bigQueryResponse.meta);
 
         const transformedData = transformBigQueryToAsoData(
           bigQueryResponse.data || [],
-          trafficSources,
+          stableTrafficSources,
           bigQueryResponse.meta
         );
 
         setData(transformedData);
-        debugLog.info('✅ [BigQuery Hook] Data transformed successfully');
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Data transformed and set successfully`);
 
       } catch (err) {
-        debugLog.error('❌ [BigQuery Hook] Error fetching data:', err);
+        // Check if request was aborted
+        if (signal.aborted) {
+          console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted during error handling`);
+          return;
+        }
+
+        console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Error fetching data:`, err);
         
         if (err instanceof Error) {
           if (err.message.includes('403') || err.message.includes('permission')) {
-            debugLog.error('🔐 [BigQuery Hook] Permission denied - check BigQuery credentials and table access');
+            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🔐 Permission denied - check BigQuery credentials and table access`);
           } else if (err.message.includes('404')) {
-            debugLog.error('🔍 [BigQuery Hook] Table not found - verify table name and project ID');
+            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Table not found - verify table name and project ID`);
+          } else if (err.message.includes('timeout')) {
+            console.error(`[${new Date().toISOString()}] [useBigQueryData] ⏰ Request timeout - check network connection`);
           } else if (err.message.includes('non-2xx status')) {
-            debugLog.error('🚫 [BigQuery Hook] Edge function failed - check edge function logs');
+            console.error(`[${new Date().toISOString()}] [useBigQueryData] 🚫 Edge function failed - check edge function logs`);
           }
         }
         
         setError(err instanceof Error ? err : new Error('Unknown BigQuery error'));
       } finally {
+        // ✅ PHASE 1: Ensure loading is always cleared
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏁 Fetch complete, clearing loading state`);
         setLoading(false);
       }
     };
 
     fetchBigQueryData();
+
+    // ✅ PHASE 2: Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🧹 Cleaning up - aborting request`);
+        abortControllerRef.current.abort();
+      }
+    };
   }, [
-    clientList, 
-    dateRange.from.toISOString().split('T')[0],
-    dateRange.to.toISOString().split('T')[0], 
-    trafficSources,
-    selectedApps,
+    stableClientList, 
+    stableDateRange.from,
+    stableDateRange.to, 
+    stableTrafficSources,
+    stableSelectedApps,
     ready
   ]);
 
-  debugLog.verbose('🚨 [HOOK RETURN] useBigQueryData instance returning', {
+  console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚨 Hook returning:`, {
     instanceId,
     hasData: !!data,
     hasMeta: !!meta,
@@ -262,10 +311,7 @@ export const useBigQueryData = (
     loading,
     error: error?.message,
     willRegister: !!registerHookInstance,
-    dateRange: {
-      from: dateRange.from.toISOString().split('T')[0],
-      to: dateRange.to.toISOString().split('T')[0]
-    }
+    dateRange: stableDateRange
   });
 
   return { data, loading, error, meta };
@@ -346,13 +392,6 @@ function transformBigQueryToAsoData(
   });
 
   const availableTrafficSources = meta.availableTrafficSources || [];
-  debugLog.verbose('🔍 [Transform Phase 1] Using traffic sources from metadata:', {
-    fromMetadata: availableTrafficSources,
-    fromRequestParams: trafficSources,
-    usingMetadata: availableTrafficSources.length > 0,
-    dataArchitecture: meta.dataArchitecture?.phase || 'unknown'
-  });
-  
   const sourcesToShow = availableTrafficSources.length > 0 ? availableTrafficSources : trafficSources;
   
   const trafficSourceData: TrafficSource[] = sourcesToShow.map(source => ({
@@ -361,13 +400,11 @@ function transformBigQueryToAsoData(
     delta: trafficSourceGroups[source]?.delta || 0
   }));
 
-  debugLog.verbose('📊 [Transform] Aggregation debug with NULL handling fix:', {
+  console.log(`[${new Date().toISOString()}] [useBigQueryData] 📊 Transform complete:`, {
     totalItems: bigQueryData.length,
     nonNullPageViewItems: bigQueryData.filter(d => d.product_page_views !== null).length,
     nullPageViewItems: bigQueryData.filter(d => d.product_page_views === null).length,
     totalProductPageViews: totals.product_page_views,
-    maxPageViews: bigQueryData.filter(d => d.product_page_views !== null).length > 0 ? 
-      Math.max(...bigQueryData.filter(d => d.product_page_views !== null).map(d => d.product_page_views)) : 0,
     aggregationWorking: totals.product_page_views > 0 ? 'YES - NULL handling fixed!' : 'Still showing 0',
     trafficSourceArchitecture: {
       phase: meta.dataArchitecture?.phase || 'unknown',

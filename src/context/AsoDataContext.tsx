@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback, useRef } from 'react';
 import { useBigQueryData } from '../hooks/useBigQueryData';
 import { useMockAsoData, type AsoData, type DateRange, type TrafficSource } from '../hooks/useMockAsoData';
@@ -27,7 +28,7 @@ interface BigQueryMeta {
   timestamp: string;
   debug?: {
     queryPreview: string;
-    parameterCount: number;
+    parameterNumber: number;
     jobComplete: boolean;
   };
 }
@@ -100,41 +101,56 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   const [currentDataSource, setCurrentDataSource] = useState<DataSource>('bigquery');
   const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus>('loading');
   
-  // ✅ NEW: Hook Registry to track ALL hook instances
+  // ✅ PHASE 3: Hook Registry to track ALL hook instances
   const [hookRegistry, setHookRegistry] = useState<Map<string, HookInstanceData>>(new Map());
   
-  // ✅ LOOP FIX: Track last registered data to prevent duplicate registrations
+  // ✅ PHASE 3: Track last registered data to prevent duplicate registrations
   const lastRegisteredDataRef = useRef<Map<string, string>>(new Map());
   
-  // ✅ FIX: Connect to BigQuery app selection context
+  // ✅ PHASE 3: Connect to BigQuery app selection context
   const { selectedApps } = useBigQueryAppSelection();
   
   const savedFilters = loadSavedFilters();
   const [userTouchedFilters, setUserTouchedFilters] = useState(false);
 
-  const [filters, setFilters] = useState<AsoDataFilters>({
-    dateRange: {
-      from: subDays(new Date(), 30),
-      to: new Date(),
-    },
-    trafficSources: [],
-    clients: selectedApps.length > 0 ? selectedApps : ['TUI'], // Use selected apps or fallback
+  // ✅ PHASE 3: Stable initial filters with proper fallback
+  const [filters, setFilters] = useState<AsoDataFilters>(() => {
+    const initialClients = selectedApps.length > 0 ? selectedApps : ['TUI'];
+    console.log(`[${new Date().toISOString()}] [AsoDataContext] Initializing with clients:`, initialClients);
+    
+    return {
+      dateRange: {
+        from: subDays(new Date(), 30),
+        to: new Date(),
+      },
+      trafficSources: [],
+      clients: initialClients,
+    };
   });
 
-  // ✅ FIX: Update clients when selected apps change
+  // ✅ PHASE 3: Update clients when selected apps change (with stability check)
+  const prevSelectedAppsRef = useRef<string[]>([]);
   useEffect(() => {
-    if (selectedApps.length > 0) {
-      console.log(`[${new Date().toISOString()}] [AsoDataContext] selectedApps:`, selectedApps);
+    const prevApps = prevSelectedAppsRef.current;
+    const currentApps = selectedApps;
+    
+    // Only update if apps actually changed
+    if (currentApps.length > 0 && JSON.stringify(prevApps) !== JSON.stringify(currentApps)) {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] selectedApps changed:`, {
+        from: prevApps,
+        to: currentApps
+      });
       
       setFilters(prev => {
-        console.log(`[${new Date().toISOString()}] [AsoDataContext] syncing filters → { old: [${prev.clients.join(', ')}], new: [${selectedApps.join(', ')}] }`);
+        console.log(`[${new Date().toISOString()}] [AsoDataContext] syncing filters → { old: [${prev.clients.join(', ')}], new: [${currentApps.join(', ')}] }`);
         return {
           ...prev,
-          clients: selectedApps
+          clients: currentApps
         };
       });
       
-      debugLog.info('🔄 [APP SELECTION] Updated clients to:', selectedApps);
+      prevSelectedAppsRef.current = [...currentApps];
+      debugLog.info('🔄 [APP SELECTION] Updated clients to:', currentApps);
     }
   }, [selectedApps]);
 
@@ -143,7 +159,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     saveFilters(filters);
   }, [filters]);
 
-  // ✅ LOOP FIX: Stable registration function that prevents duplicate registrations
+  // ✅ PHASE 3: Stable registration function that prevents duplicate registrations
   const registerHookInstance = useCallback((instanceId: string, data: HookInstanceData) => {
     // Create a hash of the important data to detect if it actually changed
     const dataHash = JSON.stringify({
@@ -157,19 +173,19 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     // Check if this is the same data as last registration
     const lastDataHash = lastRegisteredDataRef.current.get(instanceId);
     if (lastDataHash === dataHash) {
-      debugLog.verbose(`🚫 [LOOP PREVENTION] Instance ${instanceId} - skipping duplicate registration`);
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] 🚫 Skipping duplicate registration for instance ${instanceId}`);
       return; // Skip registration - same data
     }
 
     // Update the hash tracker
     lastRegisteredDataRef.current.set(instanceId, dataHash);
 
-    debugLog.info(`🔄 [HOOK REGISTRY] Registering instance ${instanceId}:`, {
+    console.log(`[${new Date().toISOString()}] [AsoDataContext] 🔄 Registering instance ${instanceId}:`, {
       sourcesCount: data.sourcesCount,
       hasData: !!data.data,
       loading: data.loading,
       error: !!data.error,
-      dataHash: dataHash.slice(0, 50) + '...' // Log partial hash for debugging
+      dataHash: dataHash.slice(0, 50) + '...'
     });
 
     setHookRegistry(prev => {
@@ -179,26 +195,21 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
         lastUpdated: Date.now()
       });
       
-      debugLog.verbose(`📊 [REGISTRY STATUS] Total registered instances: ${newRegistry.size}`);
-      debugLog.verbose(`📊 [REGISTRY SUMMARY]`, Array.from(newRegistry.entries()).map(([id, data]) => ({
-        id,
-        sources: data.sourcesCount,
-        hasData: !!data.data
-      })));
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] 📊 Registry updated - total instances: ${newRegistry.size}`);
       
       return newRegistry;
     });
-  }, []); // ✅ LOOP FIX: Empty dependency array - stable reference
+  }, []); // ✅ PHASE 3: Empty dependency array - stable reference
 
-  // ✅ NEW: Find Best Hook Instance
+  // ✅ PHASE 3: Find Best Hook Instance
   const getBestHookData = useCallback((): HookInstanceData | null => {
     let bestInstance: HookInstanceData | null = null;
     let maxSources = 0;
     
-    debugLog.verbose(`🔍 [BEST HOOK SEARCH] Searching through ${hookRegistry.size} registered instances`);
+    console.log(`[${new Date().toISOString()}] [AsoDataContext] 🔍 Searching ${hookRegistry.size} registered instances`);
     
     for (const [instanceId, data] of hookRegistry.entries()) {
-      debugLog.verbose(`🔍 [CHECKING INSTANCE] ${instanceId}:`, {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] Checking instance ${instanceId}:`, {
         sourcesCount: data.sourcesCount,
         hasData: !!data.data,
         loading: data.loading,
@@ -210,24 +221,24 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
       if (data.sourcesCount > maxSources && !data.error && !data.loading && data.data) {
         maxSources = data.sourcesCount;
         bestInstance = data;
-        debugLog.info(`🎯 [NEW BEST FOUND] Instance ${instanceId} with ${data.sourcesCount} sources`);
+        console.log(`[${new Date().toISOString()}] [AsoDataContext] 🎯 New best instance found: ${instanceId} with ${data.sourcesCount} sources`);
       }
     }
     
     if (bestInstance) {
-      debugLog.info(`✅ [BEST HOOK SELECTED]`, {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ✅ Best instance selected:`, {
         instanceId: bestInstance.instanceId,
         sourcesCount: bestInstance.sourcesCount,
         sources: bestInstance.availableTrafficSources
       });
     } else {
-      debugLog.verbose(`❌ [NO BEST HOOK] No suitable instance found`);
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ❌ No suitable instance found`);
     }
     
     return bestInstance;
   }, [hookRegistry]);
 
-  // ✅ MODIFIED: Still create one hook for fallback, but pass registration function
+  // ✅ PHASE 1 & 2: Create fallback hook with enhanced error handling
   const bigQueryReady = filters.clients.length > 0;
   const fallbackBigQueryResult = useBigQueryData(
     filters.clients,
@@ -237,11 +248,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     registerHookInstance  // Pass registration function as parameter
   );
 
-  // ✅ DEEPER LOOP FIX: Use a ref to store registration function - prevents re-renders from affecting useBigQueryData
-  const registerHookInstanceRef = useRef(registerHookInstance);
-  registerHookInstanceRef.current = registerHookInstance;
-
-  // ✅ DEEPER LOOP FIX: Only register fallback hook when meta actually has NEW data
+  // ✅ PHASE 3: Stable registration for fallback hook
   const lastFallbackMetaRef = useRef<string>('');
   useEffect(() => {
     if (fallbackBigQueryResult.meta?.availableTrafficSources) {
@@ -255,10 +262,10 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
 
       // Only register if meta actually changed
       if (metaHash !== lastFallbackMetaRef.current) {
-        debugLog.info('🔄 [FALLBACK REGISTRATION] Meta data changed, registering fallback hook');
+        console.log(`[${new Date().toISOString()}] [AsoDataContext] 🔄 Fallback meta changed, registering`);
         lastFallbackMetaRef.current = metaHash;
         
-        registerHookInstanceRef.current('fallback-context-hook', {
+        registerHookInstance('fallback-context-hook', {
           instanceId: 'fallback-context-hook',
           availableTrafficSources: fallbackBigQueryResult.meta.availableTrafficSources,
           sourcesCount: fallbackBigQueryResult.meta.availableTrafficSources.length,
@@ -269,10 +276,10 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
           lastUpdated: Date.now()
         });
       } else {
-        debugLog.verbose('🚫 [FALLBACK SKIP] Meta data unchanged, skipping fallback registration');
+        console.log(`[${new Date().toISOString()}] [AsoDataContext] 🚫 Fallback meta unchanged, skipping registration`);
       }
     }
-  }, [fallbackBigQueryResult.data, fallbackBigQueryResult.meta, fallbackBigQueryResult.loading, fallbackBigQueryResult.error]);
+  }, [fallbackBigQueryResult.data, fallbackBigQueryResult.meta, fallbackBigQueryResult.loading, fallbackBigQueryResult.error, registerHookInstance]);
 
   // Fallback to mock data
   const mockResult = useMockAsoData(
@@ -281,14 +288,14 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     filters.trafficSources
   );
 
-  // ✅ NEW: Use Best Hook Data Instead of Single Hook
+  // ✅ PHASE 3: Use Best Hook Data Instead of Single Hook
   const bestHookData = getBestHookData();
   const selectedResult = bestHookData || fallbackBigQueryResult;
 
-  // ✅ NEW: Get Available Traffic Sources from Best Hook
+  // ✅ PHASE 3: Get Available Traffic Sources from Best Hook
   const bestAvailableTrafficSources = useMemo(() => {
     if (bestHookData?.availableTrafficSources && bestHookData.availableTrafficSources.length > 0) {
-      debugLog.info('✅ [USING BEST HOOK SOURCES]', {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ✅ Using best hook sources:`, {
         instanceId: bestHookData.instanceId,
         sourcesCount: bestHookData.sourcesCount,
         sources: bestHookData.availableTrafficSources
@@ -298,7 +305,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     
     // Fallback to fallback hook
     const fallbackSources = fallbackBigQueryResult.meta?.availableTrafficSources || [];
-    debugLog.verbose('⏳ [USING FALLBACK SOURCES]', {
+    console.log(`[${new Date().toISOString()}] [AsoDataContext] ⏳ Using fallback sources:`, {
       sourcesCount: fallbackSources.length,
       sources: fallbackSources
     });
@@ -306,19 +313,29 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     
   }, [bestHookData, fallbackBigQueryResult.meta?.availableTrafficSources]);
 
-  // Determine data source status
+  // ✅ PHASE 1: Determine data source status with enhanced logging
   useEffect(() => {
+    console.log(`[${new Date().toISOString()}] [AsoDataContext] 📊 Data source status evaluation:`, {
+      loading: selectedResult.loading,
+      hasError: !!selectedResult.error,
+      hasData: !!selectedResult.data,
+      errorMessage: selectedResult.error?.message
+    });
+
     if (selectedResult.loading) {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ⏳ Setting status: loading`);
       setDataSourceStatus('loading');
       setCurrentDataSource('bigquery');
     } else if (selectedResult.error) {
-      debugLog.warn('BigQuery failed, using mock data:', selectedResult.error.message);
+      console.warn(`[${new Date().toISOString()}] [AsoDataContext] ❌ BigQuery failed, using mock data:`, selectedResult.error.message);
       setDataSourceStatus('fallback');
       setCurrentDataSource('mock');
     } else if (selectedResult.data) {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ✅ Setting status: available`);
       setDataSourceStatus('available');
       setCurrentDataSource('bigquery');
     } else {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] ⚠️ No data, falling back to mock`);
       setDataSourceStatus('fallback'); 
       setCurrentDataSource('mock');
     }
@@ -336,16 +353,22 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     availableTrafficSources: [...bestAvailableTrafficSources],
     userTouchedFilters,
     setUserTouchedFilters,
-    registerHookInstance, // ✅ NEW: Expose registration function
+    registerHookInstance,
   };
 
-  // ✅ FINAL: Log what context provides to components
-  debugLog.verbose('🚨 [CONTEXT→COMPONENT] Context providing to components:');
-  debugLog.verbose('  availableTrafficSources:', contextValue.availableTrafficSources);
-  debugLog.verbose('  sourcesCount:', contextValue.availableTrafficSources?.length || 0);
-  debugLog.verbose('  usingBestHook:', !!bestHookData);
-  debugLog.verbose('  bestHookInstance:', bestHookData?.instanceId || 'none');
-  debugLog.verbose('  registeredInstances:', hookRegistry.size);
+  // ✅ PHASE 4: Final context debugging
+  console.log(`[${new Date().toISOString()}] [AsoDataContext] 🚨 Providing context to components:`, {
+    availableTrafficSources: contextValue.availableTrafficSources,
+    sourcesCount: contextValue.availableTrafficSources?.length || 0,
+    usingBestHook: !!bestHookData,
+    bestHookInstance: bestHookData?.instanceId || 'none',
+    registeredInstances: hookRegistry.size,
+    currentDataSource,
+    dataSourceStatus,
+    loading: contextValue.loading,
+    hasData: !!contextValue.data,
+    hasError: !!contextValue.error
+  });
 
   return (
     <AsoDataContext.Provider value={contextValue}>

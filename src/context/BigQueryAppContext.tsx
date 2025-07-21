@@ -9,16 +9,28 @@ interface BigQueryAppContextType {
 const BigQueryAppContext = createContext<BigQueryAppContextType | undefined>(undefined);
 
 export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [selectedApps, setSelectedApps] = useState<string[]>([]);
+  // ✅ PHASE 3: Start with stable fallback instead of empty array
+  const [selectedApps, setSelectedApps] = useState<string[]>(['TUI']);
 
-  // Initialize with all apps selected (empty array means all)
+  // ✅ PHASE 3: Enhanced initialization logging
   useEffect(() => {
-    // Default to all apps - the selector will handle the "all apps" logic
-    setSelectedApps([]);
+    console.log(`[${new Date().toISOString()}] [BigQueryAppContext] Context initialized with apps:`, selectedApps);
+    
+    // If needed, could load from localStorage or API here
+    // For now, maintain ['TUI'] as default to prevent context switching
   }, []);
 
+  // ✅ PHASE 3: Log app selection changes
+  const handleSetSelectedApps = (apps: string[]) => {
+    console.log(`[${new Date().toISOString()}] [BigQueryAppContext] App selection changing:`, {
+      from: selectedApps,
+      to: apps
+    });
+    setSelectedApps(apps);
+  };
+
   return (
-    <BigQueryAppContext.Provider value={{ selectedApps, setSelectedApps }}>
+    <BigQueryAppContext.Provider value={{ selectedApps, setSelectedApps: handleSetSelectedApps }}>
       {children}
     </BigQueryAppContext.Provider>
   );
