@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { debugLog } from "@/lib/utils/debug";
 
 /**
  * Shared Analytics Traffic Source Filter Component
@@ -79,12 +80,13 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
   const [searchTerm, setSearchTerm] = useState("");
   
   // **COMPONENT DIAGNOSTIC: Component received data**
-  console.log('🔍 [COMPONENT DIAGNOSTIC] Filter component state:');
-  console.log('  availableTrafficSources_length:', availableTrafficSources?.length);
-  console.log('  availableTrafficSources_actual FULL ARRAY:', JSON.stringify(availableTrafficSources, null, 2));
-  console.log('  data_trafficSources_length:', data?.trafficSources?.length);
-  console.log('  data_trafficSources_actual FULL ARRAY:', JSON.stringify(data?.trafficSources?.map(s => s.name), null, 2));
-  console.log('  timestamp:', new Date().toISOString());
+  debugLog.verbose('Filter component state', {
+    availableTrafficSources_length: availableTrafficSources?.length,
+    availableTrafficSources_actual: availableTrafficSources,
+    data_trafficSources_length: data?.trafficSources?.length,
+    data_trafficSources_actual: data?.trafficSources?.map(s => s.name),
+    timestamp: new Date().toISOString()
+  });
   
   // **ENTERPRISE MULTI-TIER FALLBACK: Always ensure sources available**
   const allAvailableSources = useMemo(() => {
@@ -108,7 +110,7 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
   }, [availableTrafficSources, data?.trafficSources]);
 
   // **DIAGNOSTIC: Component computed sources**
-  console.log('🔍 [COMPONENT DIAGNOSTIC] Computed allAvailableSources:', {
+  debugLog.verbose('Computed allAvailableSources', {
     allAvailableSources_length: allAvailableSources.length,
     allAvailableSources_actual: allAvailableSources,
     selectedSources_length: selectedSources.length,
