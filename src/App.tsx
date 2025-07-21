@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -32,6 +33,7 @@ const Settings = lazy(() => import("./pages/settings"));
 const Admin = lazy(() => import("./pages/admin"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
+const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -71,6 +73,7 @@ function App() {
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/admin" element={<Admin />} />
+                          <Route path="/smoke-test" element={<SmokeTest />} />
                           <Route path="/404" element={<NotFound />} />
                           <Route path="*" element={<Navigate to="/404" replace />} />
                         </Routes>

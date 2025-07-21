@@ -12,10 +12,13 @@ import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Toggle } from "@/components/ui/toggle";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Calendar, Database, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
+  const navigate = useNavigate();
   const {
     data,
     loading,
@@ -193,12 +196,21 @@ const Dashboard: React.FC = () => {
           />
         </div>
         
-        {/* Data Source Indicator */}
+        {/* Data Source Indicator with Test Button */}
         <div className="ml-4 flex flex-col items-end gap-2">
           <DataSourceIndicator 
             currentDataSource={currentDataSource}
             dataSourceStatus={dataSourceStatus}
           />
+          <Button 
+            onClick={() => navigate('/smoke-test')}
+            variant="outline"
+            size="sm"
+            className="border-zinc-700 text-zinc-400 hover:text-white"
+          >
+            <TestTube className="h-3 w-3 mr-1" />
+            Test BigQuery
+          </Button>
         </div>
       </div>
 
