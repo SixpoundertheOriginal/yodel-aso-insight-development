@@ -69,10 +69,11 @@ interface BigQueryDataResult {
   loading: boolean;
   error: Error | null;
   meta?: BigQueryMeta;
+  availableTrafficSources: string[] | undefined;
 }
 
 export const useBigQueryData = (
-  organizationId: string, // ✅ FIXED: Accept organizationId as first parameter
+  organizationId: string,
   dateRange: DateRange,
   trafficSources: string[],
   ready: boolean = true,
@@ -99,13 +100,13 @@ export const useBigQueryData = (
     const toDate = dateRange.to.toISOString().split('T')[0];
     
     return {
-      organizationId, // ✅ FIXED: Use organizationId instead of clientList
+      organizationId,
       selectedApps: [...selectedApps],
       dateRange: { from: fromDate, to: toDate },
       trafficSources: [...trafficSources]
     };
   }, [
-    organizationId, // ✅ FIXED: Include organizationId in dependencies
+    organizationId,
     selectedApps.join(','), 
     dateRange.from.toISOString().split('T')[0],
     dateRange.to.toISOString().split('T')[0],
@@ -273,14 +274,14 @@ export const useBigQueryData = (
       abortController.abort();
     };
   }, [
-    stableFilters.organizationId, // ✅ FIXED: Use organizationId instead of clientList
+    stableFilters.organizationId,
     stableFilters.selectedApps.join(','),
     stableFilters.dateRange.from,
     stableFilters.dateRange.to,
     stableFilters.trafficSources.join(','),
     ready,
     instanceId
-  ]); // Removed registerHookInstance from deps to prevent loops
+  ]);
 
   console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚨 Hook returning:`, {
     instanceId,
@@ -294,7 +295,13 @@ export const useBigQueryData = (
     dateRange: stableFilters.dateRange
   });
 
-  return { data, loading, error, meta };
+  return { 
+    data, 
+    loading, 
+    error, 
+    meta, 
+    availableTrafficSources: meta?.availableTrafficSources 
+  };
 };
 
 function transformBigQueryToAsoData(

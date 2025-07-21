@@ -70,7 +70,7 @@ export const useAsoDataWithFallback = (
   // Always fetch BigQuery data (unless explicitly set to mock-only)
   const bigQueryReady = organizationId.length > 0;
   const bigQueryResult = useBigQueryData(
-    organizationId, // Use actual organization UUID
+    organizationId,
     dateRange,
     trafficSources,
     bigQueryReady

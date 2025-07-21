@@ -5,10 +5,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Database, TestTube, AlertTriangle, Loader2 } from 'lucide-react';
 
 type DataSource = 'mock' | 'bigquery';
-type DataSourceStatus = 'available' | 'loading' | 'error' | 'fallback';
+type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
 
 interface DataSourceIndicatorProps {
-  currentDataSource: DataSource;
+  currentDataSource: DataSource | null;
   dataSourceStatus: DataSourceStatus;
 }
 
@@ -26,7 +26,7 @@ export const DataSourceIndicator: React.FC<DataSourceIndicatorProps> = ({
           tooltip: 'Loading data from BigQuery...'
         };
       
-      case 'available':
+      case 'bigquery-success':
         return {
           icon: <Database className="h-3 w-3" />,
           text: 'Live Data',
@@ -34,7 +34,7 @@ export const DataSourceIndicator: React.FC<DataSourceIndicatorProps> = ({
           tooltip: 'Data from BigQuery (Live ASO metrics)'
         };
       
-      case 'fallback':
+      case 'bigquery-failed-fallback':
         return {
           icon: <AlertTriangle className="h-3 w-3" />,
           text: 'Demo Data',
@@ -42,12 +42,12 @@ export const DataSourceIndicator: React.FC<DataSourceIndicatorProps> = ({
           tooltip: 'BigQuery unavailable - showing demo data'
         };
       
-      case 'error':
+      case 'mock-only':
         return {
-          icon: <AlertTriangle className="h-3 w-3" />,
-          text: 'Error',
-          variant: 'destructive' as const,
-          tooltip: 'Data source error - check logs'
+          icon: <TestTube className="h-3 w-3" />,
+          text: 'Demo Data',
+          variant: 'secondary' as const,
+          tooltip: 'Using demo data'
         };
       
       default:
