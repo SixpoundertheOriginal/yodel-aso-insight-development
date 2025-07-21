@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateRange, AsoData, TimeSeriesPoint, MetricSummary, TrafficSource } from './useMockAsoData';
@@ -24,7 +25,7 @@ interface BigQueryMeta {
   totalRows: number;
   executionTimeMs: number;
   queryParams: {
-    client: string;
+    organizationId: string;
     dateRange: { from: string; to: string } | null;
     selectedApps?: string[];
     trafficSources?: string[];
@@ -71,7 +72,7 @@ interface BigQueryDataResult {
 }
 
 export const useBigQueryData = (
-  clientList: string[],
+  organizationId: string, // ✅ FIXED: Accept organizationId as first parameter
   dateRange: DateRange,
   trafficSources: string[],
   ready: boolean = true,
@@ -98,13 +99,13 @@ export const useBigQueryData = (
     const toDate = dateRange.to.toISOString().split('T')[0];
     
     return {
-      clientList: [...clientList],
+      organizationId, // ✅ FIXED: Use organizationId instead of clientList
       selectedApps: [...selectedApps],
       dateRange: { from: fromDate, to: toDate },
       trafficSources: [...trafficSources]
     };
   }, [
-    clientList.join(','),
+    organizationId, // ✅ FIXED: Include organizationId in dependencies
     selectedApps.join(','), 
     dateRange.from.toISOString().split('T')[0],
     dateRange.to.toISOString().split('T')[0],
@@ -113,7 +114,7 @@ export const useBigQueryData = (
 
   console.log(`[${new Date().toISOString()}] [useBigQueryData] Hook initialized:`, {
     instanceId,
-    clientList: stableFilters.clientList,
+    organizationId: stableFilters.organizationId,
     selectedApps: stableFilters.selectedApps,
     trafficSources: stableFilters.trafficSources,
     dateRange: stableFilters.dateRange,
@@ -123,9 +124,10 @@ export const useBigQueryData = (
   });
 
   useEffect(() => {
-    if (!stableFilters.clientList.length || !ready) {
+    // ✅ FIXED: Check if organizationId exists and ready
+    if (!stableFilters.organizationId || !ready) {
       console.log(`[${new Date().toISOString()}] [useBigQueryData] Skipping fetch - not ready:`, {
-        clientsLength: stableFilters.clientList.length,
+        hasOrganizationId: !!stableFilters.organizationId,
         ready
       });
       return;
@@ -143,17 +145,16 @@ export const useBigQueryData = (
 
         console.log(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Fetching with filters:`, stableFilters);
 
-        const client = stableFilters.clientList[0] || 'TUI';
-
+        // ✅ FIXED: Construct proper request body with organizationId
         const requestBody = {
-          client,
+          organizationId: stableFilters.organizationId,
           dateRange: stableFilters.dateRange,
           selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
           trafficSources: stableFilters.trafficSources.length > 0 ? stableFilters.trafficSources : undefined,
           limit: 100
         };
 
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📤 Making request to edge function...`);
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📤 Making request to edge function...`, requestBody);
 
         const { data: response, error: functionError } = await supabase.functions.invoke(
           'bigquery-aso-data',
@@ -272,7 +273,7 @@ export const useBigQueryData = (
       abortController.abort();
     };
   }, [
-    stableFilters.clientList.join(','),
+    stableFilters.organizationId, // ✅ FIXED: Use organizationId instead of clientList
     stableFilters.selectedApps.join(','),
     stableFilters.dateRange.from,
     stableFilters.dateRange.to,

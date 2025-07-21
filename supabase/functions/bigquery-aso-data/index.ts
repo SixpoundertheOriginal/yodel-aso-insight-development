@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -20,8 +21,7 @@ interface BigQueryCredentials {
 }
 
 interface BigQueryRequest {
-  client?: string;
-  organizationId?: string; // Deprecated fallback
+  organizationId: string; // ✅ FIXED: Use organizationId instead of client
   dateRange?: {
     from: string;
     to: string;
@@ -136,7 +136,7 @@ serve(async (req) => {
     // Parse request body
     let body: BigQueryRequest;
     if (req.method === 'GET') {
-      body = { client: "84728f94-91db-4f9c-b025-5221fbed4065", limit: 100 };
+      body = { organizationId: "84728f94-91db-4f9c-b025-5221fbed4065", limit: 100 };
     } else {
       try {
         body = await req.json();
@@ -155,17 +155,17 @@ serve(async (req) => {
       }
     }
 
-    // Support both 'client' and legacy 'organizationId'
-    const clientParam = body.client || body.organizationId;
-    if (!clientParam) {
-      throw new Error('client parameter is required');
+    // ✅ FIXED: Use organizationId parameter correctly
+    const organizationId = body.organizationId;
+    if (!organizationId) {
+      throw new Error('organizationId parameter is required');
     }
 
-    console.log(`📋 [BigQuery] Processing request for client: ${clientParam}`);
+    console.log(`📋 [BigQuery] Processing request for organization: ${organizationId}`);
     
     // Enhanced parameter logging for debugging filter issues
     console.log('🔍 [BigQuery] Request parameters received:', {
-      client: clientParam,
+      organizationId,
       dateRange: body.dateRange,
       trafficSources: body.trafficSources,
       trafficSourcesType: typeof body.trafficSources,
@@ -174,9 +174,9 @@ serve(async (req) => {
       limit: body.limit
     });
 
-    // Get approved apps for this client
+    // ✅ FIXED: Get approved apps for organization using organizationId
     const { data: approvedApps, error: approvedAppsError } = await supabaseClient
-      .rpc('get_approved_apps', { p_organization_id: clientParam });
+      .rpc('get_approved_apps', { p_organization_id: organizationId });
 
     if (approvedAppsError) {
       console.error('❌ [BigQuery] Failed to get approved apps:', approvedAppsError);
@@ -184,6 +184,12 @@ serve(async (req) => {
 
     const approvedAppIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
     
+    console.log('🔍 [BigQuery] Approved apps retrieved:', {
+      organizationId,
+      approvedAppsCount: approvedAppIdentifiers.length,
+      approvedApps: approvedAppIdentifiers
+    });
+
     // Determine clients to query
     let clientsToQuery = approvedAppIdentifiers;
     let shouldAutoApprove = false;
@@ -194,16 +200,22 @@ serve(async (req) => {
       shouldAutoApprove = true;
     }
 
-    // Apply selectedApps filtering if provided
+    // ✅ FIXED: Apply selectedApps filtering if provided
     if (body.selectedApps && body.selectedApps.length > 0) {
+      console.log('🔍 [BigQuery] Filtering by selectedApps:', body.selectedApps);
       const filteredClients = clientsToQuery.filter(client => 
         body.selectedApps!.includes(client)
       );
       
       if (filteredClients.length > 0) {
         clientsToQuery = filteredClients;
+        console.log('✅ [BigQuery] Filtered clients:', filteredClients);
+      } else {
+        console.log('⚠️ [BigQuery] No matching clients found in selectedApps, using all approved apps');
       }
     }
+
+    console.log('🎯 [BigQuery] Final clients to query:', clientsToQuery);
 
     // Get BigQuery OAuth token
     const credentials: BigQueryCredentials = JSON.parse(credentialString);
@@ -424,7 +436,7 @@ serve(async (req) => {
       // Current field mapping based on SELECT order:
       // 0: date, 1: organization_id, 2: traffic_source, 3: impressions, 4: downloads, 5: product_page_views
       const date = fields[0]?.v || null;
-      const organizationId = fields[1]?.v || clientParam;
+      const orgId = fields[1]?.v || organizationId;
       const originalTrafficSource = fields[2]?.v || 'organic';
       const impressions = parseInt(fields[3]?.v || '0');
       const downloads = parseInt(fields[4]?.v || '0');
@@ -440,7 +452,7 @@ serve(async (req) => {
       if (isDevelopment() && index < 3) {
         console.log(`🔧 [BigQuery] Field mapping debug (row ${index}):`, {
           date,
-          organizationId,
+          orgId,
           originalTrafficSource,
           impressions,
           downloads,
@@ -464,7 +476,7 @@ serve(async (req) => {
       
       return {
         date,
-        organization_id: organizationId,
+        organization_id: orgId,
         traffic_source: mapTrafficSourceToDisplay(originalTrafficSource),
         traffic_source_raw: originalTrafficSource,
         impressions,
@@ -486,7 +498,7 @@ serve(async (req) => {
           const { error: upsertError } = await supabaseClient
             .from('organization_apps')
             .upsert({
-              organization_id: clientParam,
+              organization_id: organizationId,
               app_identifier: client,
               app_name: client,
               data_source: 'bigquery',
@@ -543,7 +555,7 @@ serve(async (req) => {
           totalRows: parseInt(queryResult.totalRows || '0'),
           executionTimeMs,
           queryParams: {
-            client: clientParam,
+            organizationId,
             dateRange: body.dateRange || null,
             selectedApps: body.selectedApps || null,
             trafficSources: normalizedTrafficSources || null,

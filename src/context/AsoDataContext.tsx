@@ -3,13 +3,14 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { useBigQueryData } from '../hooks/useBigQueryData';
 import { useMockAsoData, type AsoData, type DateRange, type TrafficSource } from '../hooks/useMockAsoData';
 import { useBigQueryAppSelection } from './BigQueryAppContext';
+import { supabase } from '@/integrations/supabase/client';
 import { subDays } from 'date-fns';
 import { debugLog } from '../lib/utils/debug';
 
 interface AsoDataFilters {
   dateRange: DateRange;
   trafficSources: string[];
-  clients: string[];
+  organizationId: string; // ✅ FIXED: Use organizationId instead of clients array
 }
 
 type DataSource = 'mock' | 'bigquery';
@@ -20,7 +21,7 @@ interface BigQueryMeta {
   totalRows: number;
   executionTimeMs: number;
   queryParams: {
-    client: string;
+    organizationId: string;
     dateRange: { from: string; to: string } | null;
     limit: number;
   };
@@ -109,52 +110,65 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   // ✅ PHASE 3: Track last registered data to prevent duplicate registrations
   const lastRegisteredDataRef = useRef<Map<string, string>>(new Map());
   
+  // ✅ PHASE 3: Get user organization ID for data fetching
+  const [organizationId, setOrganizationId] = useState<string>('');
+  
   // ✅ PHASE 3: Connect to BigQuery app selection context
   const { selectedApps } = useBigQueryAppSelection();
   
   const savedFilters = loadSavedFilters();
   const [userTouchedFilters, setUserTouchedFilters] = useState(false);
 
+  // ✅ FIXED: Load user organization ID
+  useEffect(() => {
+    const loadUserOrganization = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log(`[${new Date().toISOString()}] [AsoDataContext] No user found`);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.organization_id) {
+          console.log(`[${new Date().toISOString()}] [AsoDataContext] Found organization:`, profile.organization_id);
+          setOrganizationId(profile.organization_id);
+        }
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] [AsoDataContext] Error loading organization:`, err);
+      }
+    };
+
+    loadUserOrganization();
+  }, []);
+
   // ✅ PHASE 3: Stable initial filters with proper fallback
   const [filters, setFilters] = useState<AsoDataFilters>(() => {
-    const initialClients = selectedApps.length > 0 ? selectedApps : ['TUI'];
-    console.log(`[${new Date().toISOString()}] [AsoDataContext] Initializing with clients:`, initialClients);
-    
     return {
       dateRange: {
         from: subDays(new Date(), 30),
         to: new Date(),
       },
       trafficSources: [],
-      clients: initialClients,
+      organizationId: '', // Will be updated when user loads
     };
   });
 
-  // ✅ PHASE 3: Update clients when selected apps change (with stability check)
-  const prevSelectedAppsRef = useRef<string[]>([]);
+  // ✅ FIXED: Update organizationId in filters when loaded
   useEffect(() => {
-    const prevApps = prevSelectedAppsRef.current;
-    const currentApps = selectedApps;
-    
-    // Only update if apps actually changed
-    if (currentApps.length > 0 && JSON.stringify(prevApps) !== JSON.stringify(currentApps)) {
-      console.log(`[${new Date().toISOString()}] [AsoDataContext] selectedApps changed:`, {
-        from: prevApps,
-        to: currentApps
-      });
-      
-      setFilters(prev => {
-        console.log(`[${new Date().toISOString()}] [AsoDataContext] syncing filters → { old: [${prev.clients.join(', ')}], new: [${currentApps.join(', ')}] }`);
-        return {
-          ...prev,
-          clients: currentApps
-        };
-      });
-      
-      prevSelectedAppsRef.current = [...currentApps];
-      debugLog.info('🔄 [APP SELECTION] Updated clients to:', currentApps);
+    if (organizationId && filters.organizationId !== organizationId) {
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] Updating organizationId in filters:`, organizationId);
+      setFilters(prev => ({
+        ...prev,
+        organizationId
+      }));
     }
-  }, [selectedApps]);
+  }, [organizationId, filters.organizationId]);
 
   // Save filters to localStorage when they change
   useEffect(() => {
@@ -240,10 +254,10 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     return bestInstance;
   }, [hookRegistry]);
 
-  // ✅ PHASE 1 & 2: Create fallback hook with enhanced error handling
-  const bigQueryReady = filters.clients.length > 0;
+  // ✅ FIXED: Create fallback hook with organizationId instead of clients array
+  const bigQueryReady = !!filters.organizationId;
   const fallbackBigQueryResult = useBigQueryData(
-    filters.clients,
+    filters.organizationId,
     filters.dateRange,
     filters.trafficSources,
     bigQueryReady,
@@ -285,7 +299,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
 
   // Fallback to mock data
   const mockResult = useMockAsoData(
-    filters.clients,
+    [filters.organizationId], // Pass as array for mock compatibility
     filters.dateRange,
     filters.trafficSources
   );
@@ -369,7 +383,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     dataSourceStatus,
     loading: contextValue.loading,
     hasData: !!contextValue.data,
-    hasError: !!contextValue.error
+    hasError: !!contextValue.error,
+    organizationId: filters.organizationId
   });
 
   return (
