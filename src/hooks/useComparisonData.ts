@@ -49,10 +49,10 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
     loading: previousLoading,
     error: previousError
   } = useBigQueryData(
-    filters.clients,
+    filters.organizationId,
     previousDateRange,
     filters.trafficSources,
-    filters.clients.length > 0
+    filters.organizationId.length > 0
   );
 
   const comparisonData = useMemo(() => {

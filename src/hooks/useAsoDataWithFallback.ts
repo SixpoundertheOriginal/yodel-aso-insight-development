@@ -26,7 +26,7 @@ export const useAsoDataWithFallback = (
   // Always fetch BigQuery data (unless explicitly set to mock-only)
   const bigQueryReady = clientList.length > 0;
   const bigQueryResult = useBigQueryData(
-    clientList,
+    clientList[0] || '', // Use first client ID as organizationId
     dateRange,
     trafficSources,
     bigQueryReady
