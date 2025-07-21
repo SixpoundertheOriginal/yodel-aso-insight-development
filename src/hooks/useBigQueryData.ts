@@ -146,7 +146,7 @@ export const useBigQueryData = (
         setError(null);
         setMeta(undefined);
 
-        debugLog.info('🔍 [BigQuery Hook] Fetching data with params:', {
+        const requestFilters = {
           clientList,
           selectedApps,
           dateRange: {
@@ -154,7 +154,11 @@ export const useBigQueryData = (
             to: dateRange.to.toISOString().split('T')[0]
           },
           trafficSources
-        });
+        };
+
+        console.log(`[${new Date().toISOString()}] [useBigQueryData] fetching with filters:`, requestFilters);
+
+        debugLog.info('🔍 [BigQuery Hook] Fetching data with params:', requestFilters);
 
         const client = clientList[0] || 'yodel_pimsleur';
 

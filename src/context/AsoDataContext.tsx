@@ -124,10 +124,16 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
   // ✅ FIX: Update clients when selected apps change
   useEffect(() => {
     if (selectedApps.length > 0) {
-      setFilters(prev => ({
-        ...prev,
-        clients: selectedApps
-      }));
+      console.log(`[${new Date().toISOString()}] [AsoDataContext] selectedApps:`, selectedApps);
+      
+      setFilters(prev => {
+        console.log(`[${new Date().toISOString()}] [AsoDataContext] syncing filters → { old: [${prev.clients.join(', ')}], new: [${selectedApps.join(', ')}] }`);
+        return {
+          ...prev,
+          clients: selectedApps
+        };
+      });
+      
       debugLog.info('🔄 [APP SELECTION] Updated clients to:', selectedApps);
     }
   }, [selectedApps]);
