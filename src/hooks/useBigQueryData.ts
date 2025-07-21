@@ -190,7 +190,7 @@ export const useBigQueryData = (
           throw new Error(bigQueryResponse.error || 'BigQuery request failed');
         }
 
-        debugLog.info('✅ [BigQuery Hook] Raw data received:', bigQueryResponse.data?.length, 'records');
+        debugLog.info('✅ [BigQuery Hook] Raw data received:', { recordCount: bigQueryResponse.data?.length });
         debugLog.verbose('📊 [BigQuery Hook] Query metadata:', bigQueryResponse.meta);
         
         if (bigQueryResponse.meta.dataArchitecture) {
@@ -208,7 +208,8 @@ export const useBigQueryData = (
 
         debugLog.info('📊 [BigQuery Hook] Available traffic sources:', bigQueryResponse.meta.availableTrafficSources);
         
-        debugLog.verbose('🚨 [HOOK→CONTEXT] Hook instance', instanceId, 'is setting meta with:', {
+        debugLog.verbose('🚨 [HOOK→CONTEXT] Hook instance is setting meta', {
+          instanceId,
           availableTrafficSources: bigQueryResponse.meta.availableTrafficSources,
           sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
           dateRange: {
@@ -258,7 +259,8 @@ export const useBigQueryData = (
     ready
   ]);
 
-  debugLog.verbose('🚨 [HOOK RETURN] useBigQueryData instance', instanceId, 'returning:', {
+  debugLog.verbose('🚨 [HOOK RETURN] useBigQueryData instance returning', {
+    instanceId,
     hasData: !!data,
     hasMeta: !!meta,
     availableTrafficSources: meta?.availableTrafficSources,
