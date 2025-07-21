@@ -227,13 +227,14 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({ children }) =>
     return bestInstance;
   }, [hookRegistry]);
 
-  // ✅ MODIFIED: Still create one hook for fallback, but don't rely on it exclusively
+  // ✅ MODIFIED: Still create one hook for fallback, but pass registration function
   const bigQueryReady = filters.clients.length > 0;
   const fallbackBigQueryResult = useBigQueryData(
     filters.clients,
     filters.dateRange,
     filters.trafficSources,
-    bigQueryReady
+    bigQueryReady,
+    registerHookInstance  // Pass registration function as parameter
   );
 
   // ✅ DEEPER LOOP FIX: Use a ref to store registration function - prevents re-renders from affecting useBigQueryData

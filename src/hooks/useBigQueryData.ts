@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DateRange, AsoData, TimeSeriesPoint, MetricSummary, TrafficSource } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
-import { useAsoData } from '@/context/AsoDataContext';
 import { debugLog } from '@/lib/utils/debug';
 
 interface BigQueryDataPoint {
@@ -75,7 +74,8 @@ export const useBigQueryData = (
   clientList: string[],
   dateRange: DateRange,
   trafficSources: string[],
-  ready: boolean = true
+  ready: boolean = true,
+  registerHookInstance?: (instanceId: string, data: any) => void
 ): BigQueryDataResult => {
   const [data, setData] = useState<AsoData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -84,16 +84,6 @@ export const useBigQueryData = (
   
   // Get selected apps from BigQuery app selector
   const { selectedApps } = useBigQueryAppSelection();
-
-  // ✅ NEW: Get registration function from context (with fallback for non-context usage)
-  let registerHookInstance: ((instanceId: string, data: any) => void) | undefined;
-  try {
-    const context = useAsoData();
-    registerHookInstance = context.registerHookInstance;
-  } catch (e) {
-    // Hook used outside context - that's fine, just won't register
-    debugLog.verbose('🔍 [HOOK] Used outside AsoDataContext - no registration needed');
-  }
 
   // Hook instance tracking
   const instanceId = Math.random().toString(36).substr(2, 9);
