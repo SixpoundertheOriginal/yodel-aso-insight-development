@@ -9,13 +9,15 @@ import { debugLog } from '@/lib/utils/debug';
 
 export type DataSource = 'bigquery' | 'mock' | 'auto';
 export type CurrentDataSource = 'bigquery' | 'mock';
+export type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
 
 interface UseAsoDataWithFallbackResult {
   data: AsoData | null;
   loading: boolean;
   error: Error | null;
   currentDataSource: CurrentDataSource | null;
-  dataSourceStatus: 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+  dataSourceStatus: DataSourceStatus;
+  availableTrafficSources: string[] | undefined;
 }
 
 export const useAsoDataWithFallback = (
@@ -24,7 +26,7 @@ export const useAsoDataWithFallback = (
   preferredDataSource: DataSource = 'auto'
 ): UseAsoDataWithFallbackResult => {
   const [currentDataSource, setCurrentDataSource] = useState<CurrentDataSource | null>(null);
-  const [dataSourceStatus, setDataSourceStatus] = useState<'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only'>('loading');
+  const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus>('loading');
   const [organizationId, setOrganizationId] = useState<string>('');
 
   // Get auth context and app selection
@@ -85,10 +87,12 @@ export const useAsoDataWithFallback = (
     data: AsoData | null;
     loading: boolean;
     error: Error | null;
+    availableTrafficSources: string[] | undefined;
   }>({
     data: null,
     loading: true,
-    error: null
+    error: null,
+    availableTrafficSources: undefined
   });
 
   useEffect(() => {
@@ -99,7 +103,8 @@ export const useAsoDataWithFallback = (
       setFinalResult({
         data: mockResult.data,
         loading: mockResult.loading,
-        error: mockResult.error
+        error: mockResult.error,
+        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || []
       });
       return;
     }
@@ -110,7 +115,8 @@ export const useAsoDataWithFallback = (
       setFinalResult({
         data: null,
         loading: true,
-        error: null
+        error: null,
+        availableTrafficSources: undefined
       });
       return;
     }
@@ -123,7 +129,8 @@ export const useAsoDataWithFallback = (
       setFinalResult({
         data: bigQueryResult.data,
         loading: false,
-        error: null
+        error: null,
+        availableTrafficSources: bigQueryResult.availableTrafficSources
       });
       return;
     }
@@ -136,7 +143,8 @@ export const useAsoDataWithFallback = (
       setFinalResult({
         data: mockResult.data,
         loading: mockResult.loading,
-        error: null // Don't propagate BigQuery error when using fallback
+        error: null, // Don't propagate BigQuery error when using fallback
+        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || []
       });
       return;
     }
@@ -145,6 +153,7 @@ export const useAsoDataWithFallback = (
     bigQueryResult.data,
     bigQueryResult.loading,
     bigQueryResult.error,
+    bigQueryResult.availableTrafficSources,
     mockResult.data,
     mockResult.loading,
     mockResult.error,

@@ -9,14 +9,18 @@ export interface AsoDataFilters {
   trafficSources: string[];
 }
 
+export type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+
 interface AsoDataContextType {
   data: AsoData | null;
   loading: boolean;
+  error: Error | null;
   filters: AsoDataFilters;
   setFilters: (filters: AsoDataFilters | ((prev: AsoDataFilters) => AsoDataFilters)) => void;
   setUserTouchedFilters: (touched: boolean) => void;
   currentDataSource: 'bigquery' | 'mock' | null;
-  dataSourceStatus: 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+  dataSourceStatus: DataSourceStatus;
+  availableTrafficSources: string[] | undefined;
   meta?: any;
 }
 
@@ -49,7 +53,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     loading,
     error,
     currentDataSource,
-    dataSourceStatus
+    dataSourceStatus,
+    availableTrafficSources
   } = useAsoDataWithFallback(
     filters.dateRange,
     filters.trafficSources,
@@ -65,11 +70,13 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       value={{
         data,
         loading,
+        error,
         filters,
         setFilters: updateFilters,
         setUserTouchedFilters,
         currentDataSource,
         dataSourceStatus,
+        availableTrafficSources,
         meta: undefined // Will be populated by BigQuery hook if needed
       }}
     >
