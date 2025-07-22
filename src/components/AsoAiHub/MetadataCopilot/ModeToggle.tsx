@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
+import { YodelButton } from '@/components/ui/design-system/YodelButton';
 import { Wand2, Edit3 } from 'lucide-react';
 
 export type WorkspaceMode = 'ai-generation' | 'manual-editor';
@@ -18,35 +18,27 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
 }) => {
   return (
     <div className="flex items-center space-x-1 bg-zinc-800 rounded-lg p-1">
-      <Button
-        variant={mode === 'ai-generation' ? 'default' : 'ghost'}
+      <YodelButton
+        variant={mode === 'ai-generation' ? 'primary' : 'ghost'}
         size="sm"
         onClick={() => onModeChange('ai-generation')}
         disabled={disabled}
-        className={`flex items-center space-x-2 ${
-          mode === 'ai-generation' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
-        }`}
+        leftIcon={<Wand2 className="w-4 h-4" />}
+        className={mode === 'ai-generation' ? 'shadow-glow-sm' : ''}
       >
-        <Wand2 className="w-4 h-4" />
-        <span>AI Generation</span>
-      </Button>
+        AI Generation
+      </YodelButton>
       
-      <Button
-        variant={mode === 'manual-editor' ? 'default' : 'ghost'}
+      <YodelButton
+        variant={mode === 'manual-editor' ? 'primary' : 'ghost'}
         size="sm"
         onClick={() => onModeChange('manual-editor')}
         disabled={disabled}
-        className={`flex items-center space-x-2 ${
-          mode === 'manual-editor' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
-        }`}
+        leftIcon={<Edit3 className="w-4 h-4" />}
+        className={mode === 'manual-editor' ? 'shadow-glow-sm' : ''}
       >
-        <Edit3 className="w-4 h-4" />
-        <span>Manual Editor</span>
-      </Button>
+        Manual Editor
+      </YodelButton>
     </div>
   );
 };

@@ -108,10 +108,25 @@ export default {
             900: "#1E3A8A",
             DEFAULT: "#3B82F6",
           },
+          richBlack: {
+            DEFAULT: "#121212",
+            light: "#1A1A1A",
+            lighter: "#222222",
+            dark: "#0A0A0A",
+            darker: "#050505",
+          },
           success: "#10B981",
+          "success-light": "#34D399",
+          "success-dark": "#059669",
           warning: "#F59E0B", 
+          "warning-light": "#FBBF24",
+          "warning-dark": "#D97706",
           error: "#EF4444",
+          "error-light": "#F87171",
+          "error-dark": "#DC2626",
           info: "#06B6D4",
+          "info-light": "#22D3EE",
+          "info-dark": "#0891B2",
         },
       },
       spacing: {
@@ -147,6 +162,16 @@ export default {
             transform: "translateY(0)"
           }
         },
+        "fade-out": {
+          "0%": {
+            opacity: "1",
+            transform: "translateY(0)"
+          },
+          "100%": {
+            opacity: "0",
+            transform: "translateY(10px)"
+          }
+        },
         "slide-in-left": {
           "0%": {
             opacity: "0",
@@ -167,6 +192,26 @@ export default {
             transform: "translateX(0)"
           }
         },
+        "slide-out-left": {
+          "0%": {
+            opacity: "1",
+            transform: "translateX(0)"
+          },
+          "100%": {
+            opacity: "0",
+            transform: "translateX(-20px)"
+          }
+        },
+        "slide-out-right": {
+          "0%": {
+            opacity: "1",
+            transform: "translateX(0)"
+          },
+          "100%": {
+            opacity: "0",
+            transform: "translateX(20px)"
+          }
+        },
         "scale-in": {
           "0%": {
             opacity: "0",
@@ -177,6 +222,24 @@ export default {
             transform: "scale(1)"
           }
         },
+        "scale-out": {
+          "0%": {
+            opacity: "1",
+            transform: "scale(1)"
+          },
+          "100%": {
+            opacity: "0",
+            transform: "scale(0.95)"
+          }
+        },
+        "pulse-gentle": {
+          "0%, 100%": {
+            opacity: "1"
+          },
+          "50%": {
+            opacity: "0.8"
+          }
+        },
         shimmer: {
           "0%": {
             "background-position": "-200% 0"
@@ -184,16 +247,32 @@ export default {
           "100%": {
             "background-position": "200% 0"
           }
+        },
+        "float": {
+          "0%, 100%": {
+            transform: "translateY(0)"
+          },
+          "50%": {
+            transform: "translateY(-5px)"
+          }
         }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
+        "fade-out": "fade-out 0.3s ease-out",
         "slide-in-left": "slide-in-left 0.3s ease-out", 
         "slide-in-right": "slide-in-right 0.3s ease-out",
+        "slide-out-left": "slide-out-left 0.3s ease-out",
+        "slide-out-right": "slide-out-right 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
+        "scale-out": "scale-out 0.2s ease-out",
+        "pulse-gentle": "pulse-gentle 3s ease-in-out infinite",
         shimmer: "shimmer 1.5s infinite",
+        "float": "float 3s ease-in-out infinite",
+        "enter": "fade-in 0.3s ease-out, scale-in 0.2s ease-out",
+        "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out"
       },
       zIndex: {
         '60': '60',
@@ -201,6 +280,14 @@ export default {
         '80': '80',
         '90': '90',
         '100': '100',
+      },
+      boxShadow: {
+        'glow-sm': '0 0 10px rgba(249, 115, 22, 0.1)',
+        'glow': '0 0 20px rgba(249, 115, 22, 0.15)',
+        'glow-lg': '0 0 30px rgba(249, 115, 22, 0.2)',
+        'glow-blue-sm': '0 0 10px rgba(59, 130, 246, 0.1)',
+        'glow-blue': '0 0 20px rgba(59, 130, 246, 0.15)',
+        'glow-blue-lg': '0 0 30px rgba(59, 130, 246, 0.2)',
       }
     },
   },

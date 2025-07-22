@@ -1,15 +1,17 @@
 
 import React from "react";
-import { Button } from "@/components/ui/button";
+import { YodelButton } from "@/components/ui/design-system/YodelButton";
+import { RotateCcw } from "lucide-react";
 
 const ResetButton: React.FC = React.memo(() => {
   return (
-    <Button 
+    <YodelButton 
       variant="outline" 
-      className="border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+      size="md"
+      leftIcon={<RotateCcw className="h-4 w-4" />}
     >
       Reset
-    </Button>
+    </YodelButton>
   );
 });
 
