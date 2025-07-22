@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { cppStrategyService, AmbiguousSearchResult } from '@/services/cpp-strategy.service';
+import { cppStrategyService, AmbiguousSearchResult, CppAnalysisConfig } from '@/services/cpp-strategy.service';
 import { CppStrategyData } from '@/types/cpp';
 import { ScrapedMetadata } from '@/types/aso';
 import { SecurityContext } from '@/types/security';
@@ -93,7 +93,8 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         return;
       }
 
-      const result = await cppStrategyService.generateCppStrategy(searchInput, {
+      // FIRST CALL: Search for apps without analysis
+      const result = await cppStrategyService.searchAppsForCpp(searchInput, {
         organizationId,
         includeScreenshotAnalysis: true,
         generateThemes: true,
@@ -114,16 +115,19 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         return;
       }
 
-      const strategyData = result as CppStrategyData;
-      const themeCount = strategyData.suggestedThemes.length;
-      const appName = strategyData.originalApp.name;
+      // Single app result - should be CppStrategyData
+      if ('suggestedThemes' in result) {
+        const strategyData = result as CppStrategyData;
+        const themeCount = strategyData.suggestedThemes.length;
+        const appName = strategyData.originalApp.name;
 
-      toast({
-        title: 'CPP Strategy Generated!',
-        description: `Found ${themeCount} theme ${themeCount === 1 ? 'opportunity' : 'opportunities'} for ${appName}.`,
-      });
+        toast({
+          title: 'CPP Strategy Generated!',
+          description: `Found ${themeCount} theme ${themeCount === 1 ? 'opportunity' : 'opportunities'} for ${appName}.`,
+        });
 
-      onStrategySuccess(strategyData, organizationId);
+        onStrategySuccess(strategyData, organizationId);
+      }
 
     } catch (error: any) {
       console.error('❌ [CPP-IMPORT] Analysis failed:', error);
@@ -168,13 +172,14 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     try {
       console.log('🎯 [CPP-IMPORT] Analyzing selected app:', selectedApp.name);
       
-      const strategyData = await cppStrategyService.selectAppForCppStrategy(selectedApp, {
+      // SECOND CALL: Analyze specific selected app
+      const strategyData = await cppStrategyService.generateCppStrategy(selectedApp.url || selectedApp.name, {
         organizationId,
         includeScreenshotAnalysis: true,
         generateThemes: true,
         includeCompetitorAnalysis: true,
         debugMode: process.env.NODE_ENV === 'development'
-      }, securityContext);
+      }, securityContext) as CppStrategyData;
 
       const themeCount = strategyData.suggestedThemes.length;
 
