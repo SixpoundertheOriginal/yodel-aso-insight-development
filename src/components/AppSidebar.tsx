@@ -56,6 +56,11 @@ const analyticsItems = [
 // AI Tools & Analysis - Main AI-powered tools
 const aiToolsItems = [
   {
+    title: "ASO Intelligence Hub",
+    url: "/aso-unified",
+    icon: Zap,
+  },
+  {
     title: "ASO AI Audit",
     url: "/aso-ai-hub",
     icon: Bot,
