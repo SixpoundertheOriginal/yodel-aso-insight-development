@@ -7,6 +7,44 @@ export interface AnalyticsEvent {
 export class AnalyticsService {
   constructor(private supabase: any) {}
 
+  async trackSearch(searchData: any): Promise<any> {
+    try {
+      console.log('📊 [ANALYTICS] Search tracked:', {
+        searchTerm: searchData.searchTerm,
+        resultsCount: searchData.resultsCount,
+        organizationId: searchData.organizationId,
+        searchType: searchData.searchType,
+        processingTime: searchData.processingTime,
+        cached: searchData.cached,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Log to audit_logs table for analytics
+      await this.logEvent('search_completed', {
+        organizationId: searchData.organizationId,
+        searchTerm: searchData.searchTerm,
+        searchType: searchData.searchType,
+        resultsCount: searchData.resultsCount,
+        processingTime: searchData.processingTime,
+        cached: searchData.cached
+      });
+      
+      return {
+        success: true,
+        tracked: true,
+        searchId: crypto.randomUUID().substring(0, 8)
+      };
+      
+    } catch (error) {
+      console.warn('📊 [ANALYTICS] Tracking failed, continuing:', error.message);
+      return {
+        success: false,
+        tracked: false,
+        error: error.message
+      };
+    }
+  }
+
   async logEvent(eventName: string, properties: Record<string, any>): Promise<void> {
     try {
       const { organizationId, requestId, ...otherProperties } = properties;
