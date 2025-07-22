@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export interface CopilotData {
@@ -6,7 +7,7 @@ export interface CopilotData {
   description: string;
   icon: string;
   progress: number;
-  category: 'optimization' | 'strategy' | 'analysis' | 'system';
+  category: 'optimization' | 'strategy' | 'analysis' | 'system' | 'knowledge';
   status: 'available' | 'in-progress' | 'completed';
 }
 
@@ -42,6 +43,15 @@ export const useAsoAiHub = () => {
 };
 
 const initialCopilots: CopilotData[] = [
+  {
+    id: 'aso-knowledge-engine',
+    name: 'ASO Knowledge Engine',
+    description: 'Comprehensive ASO expert with AI-powered insights, contextual analysis, and strategic guidance',
+    icon: '🧠',
+    progress: 98,
+    category: 'knowledge',
+    status: 'available'
+  },
   {
     id: 'metadata-copilot',
     name: 'Metadata Copilot',

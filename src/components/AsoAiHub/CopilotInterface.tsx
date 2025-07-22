@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,10 @@ import { useAsoAiHub } from '@/context/AsoAiHubContext';
 import { CopilotChatMessage } from './CopilotChatMessage';
 import { MetadataCopilot } from './MetadataCopilot/MetadataCopilot';
 import { GrowthGapCopilot } from './GrowthGapCopilot';
+import { AsoKnowledgeEngine } from './AsoKnowledgeEngine';
 import { useCopilotChat } from '@/hooks/useCopilotChat';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export const CopilotInterface: React.FC = () => {
   const { 
@@ -21,6 +25,25 @@ export const CopilotInterface: React.FC = () => {
   const [message, setMessage] = useState('');
   const { sendMessage, isLoading } = useCopilotChat();
 
+  // Get organization ID for knowledge engine
+  const { data: userContext } = useQuery({
+    queryKey: ['user-context'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      return {
+        organizationId: profile?.organization_id || null
+      };
+    },
+  });
+
   const activeCopilotData = copilots.find(c => c.id === activeCopilot);
 
   if (!activeCopilot || !currentSession || !activeCopilotData) {
@@ -29,6 +52,16 @@ export const CopilotInterface: React.FC = () => {
 
   const renderCopilot = () => {
     switch (activeCopilot) {
+      case 'aso-knowledge-engine':
+        return userContext?.organizationId ? (
+          <AsoKnowledgeEngine organizationId={userContext.organizationId} />
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">🧠</div>
+            <h3 className="text-xl font-semibold text-white mb-2">Authentication Required</h3>
+            <p className="text-zinc-400">Please sign in to access the ASO Knowledge Engine</p>
+          </div>
+        );
       case 'metadata-copilot':
         return <MetadataCopilot />;
       case 'growth-gap-finder':
@@ -140,7 +173,7 @@ export const CopilotInterface: React.FC = () => {
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 overflow-y-auto p-4">
+      <CardContent className="flex-1 overflow-y-auto p-0">
         {renderCopilot()}
       </CardContent>
     </Card>
