@@ -76,9 +76,9 @@ class CppStrategyService {
         throw new Error(responseData.error);
       }
 
-      // Check if response is ambiguous (multiple apps found)
-      if (responseData.isAmbiguous && responseData.candidates) {
-        console.log('🎯 [CPP-SEARCH] Multiple apps found, returning rich candidates for selection');
+      // Handle multiple apps found (ambiguous search)
+      if (responseData.isAmbiguous && responseData.candidates && responseData.candidates.length > 1) {
+        console.log(`🎯 [CPP-SEARCH] ${responseData.candidates.length} apps found with rich metadata, showing selection modal`);
         return {
           isAmbiguous: true,
           candidates: responseData.candidates,
@@ -86,17 +86,19 @@ class CppStrategyService {
         };
       }
 
-      // If single app found with rich metadata, return it for user confirmation
-      console.log('✅ [CPP-SEARCH] Single app found with rich metadata, returning for user confirmation');
-      
-      // Handle both single app and array responses
-      const singleApp = responseData.targetApp || responseData.candidates?.[0] || responseData;
-      
-      return {
-        isAmbiguous: false,
-        candidates: [singleApp],
-        searchTerm: sanitizedSearchTerm
-      };
+      // Handle single app found - still show in modal for user confirmation
+      if (responseData.candidates && responseData.candidates.length === 1) {
+        console.log('✅ [CPP-SEARCH] Single app found with rich metadata, showing for user confirmation');
+        return {
+          isAmbiguous: false,
+          candidates: responseData.candidates,
+          searchTerm: sanitizedSearchTerm
+        };
+      }
+
+      // Fallback - no candidates found
+      console.warn('⚠️ [CPP-SEARCH] No candidates found in response');
+      throw new Error('No apps found matching your search criteria');
 
     } catch (error: any) {
       console.error('❌ [CPP-SEARCH] Search failed:', error);
