@@ -17,7 +17,12 @@ export interface SecurityValidationResult {
 }
 
 export class SecurityService {
-  constructor(private supabase: any) {}
+  constructor(private supabase?: any) {
+    // Make supabase client optional with graceful handling
+    if (!this.supabase) {
+      console.warn('[SECURITY] Supabase client not provided - rate limiting will be bypassed');
+    }
+  }
 
   async validateRequest(input: SecurityValidationInput): Promise<SecurityValidationResult> {
     try {
@@ -41,7 +46,7 @@ export class SecurityService {
       // Validate organization exists and is active (with fallback for development)
       const orgValidation = await this.validateOrganization(input.organizationId);
       if (!orgValidation.success) {
-        console.warn('Organization validation failed:', orgValidation.error);
+        console.warn('[SECURITY] Organization validation failed:', orgValidation.error);
         // In development/emergency mode, warn but don't block
       }
 
@@ -59,7 +64,7 @@ export class SecurityService {
         }
       };
     } catch (error) {
-      console.warn('Security validation error:', error);
+      console.warn('[SECURITY] Security validation error:', error);
       // In emergency mode, don't fail - just warn and allow with default values
       return {
         success: true,
@@ -85,8 +90,18 @@ export class SecurityService {
            !maliciousPatterns.some(pattern => pattern.test(searchTerm));
   }
 
-  private async checkRateLimit(organizationId: string, ipAddress: string): Promise<{allowed: boolean}> {
+  private async checkRateLimit(organizationId: string, ipAddress: string): Promise<{allowed: boolean; remaining?: number; message?: string}> {
     try {
+      // Handle missing Supabase client gracefully
+      if (!this.supabase) {
+        console.warn('[SECURITY] Supabase client not available, allowing request');
+        return { 
+          allowed: true, 
+          remaining: 100,
+          message: 'Rate limiting bypassed - development mode'
+        };
+      }
+
       // Simple rate limiting - 100 requests per hour per organization
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -98,19 +113,41 @@ export class SecurityService {
         .gte('created_at', oneHourAgo.toISOString());
 
       if (error) {
-        console.warn('Rate limit check failed:', error);
-        return { allowed: true }; // Allow on error during emergency
+        console.warn('[SECURITY] Rate limit check failed:', error.message);
+        return { 
+          allowed: true, 
+          remaining: 100,
+          message: 'Rate limit check failed, allowing request'
+        }; // Allow on error during emergency
       }
 
-      return { allowed: (count || 0) < 100 };
+      const requestCount = count || 0;
+      const remaining = Math.max(0, 100 - requestCount);
+
+      return { 
+        allowed: requestCount < 100,
+        remaining,
+        message: `${requestCount}/100 requests used in last hour`
+      };
     } catch (error) {
-      console.warn('Rate limit check failed:', error);
-      return { allowed: true }; // Allow on error
+      console.warn('[SECURITY] Rate limit check failed:', error.message);
+      return { 
+        allowed: true, 
+        remaining: 100,
+        message: 'Rate limit exception, allowing request'
+      }; // Allow on error
     }
   }
 
   private async validateOrganization(organizationId: string): Promise<{success: boolean, error?: string}> {
     try {
+      if (!this.supabase) {
+        return {
+          success: false,
+          error: 'Supabase client not available'
+        };
+      }
+
       const { data, error } = await this.supabase
         .from('organizations')
         .select('id, subscription_status')

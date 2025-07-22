@@ -35,17 +35,17 @@ serve(async (req) => {
 }`);
 
   try {
-    // Initialize services
+    // Initialize services with proper Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const discoveryService = new DiscoveryService();
     const metadataService = new MetadataExtractionService();
     const screenshotService = new ScreenshotAnalysisService();
     const cppService = new CppAnalysisService();
-    const securityService = new SecurityService();
+    const securityService = new SecurityService(supabase); // ✅ Pass Supabase client
     const cacheService = new CacheManagerService(supabase);
     const analyticsService = new AnalyticsService(supabase);
     const errorHandler = new ErrorHandler();
@@ -116,16 +116,21 @@ serve(async (req) => {
 
       const startTime = Date.now();
       
-      // Security validation
-      const securityResult = securityService.validateRequest({
+      // Security validation with proper client
+      const securityResult = await securityService.validateRequest({
         searchTerm: body.searchTerm,
         organizationId: body.organizationId,
-        ipAddress: req.headers.get('x-forwarded-for') || 'unknown'
+        securityContext: body.securityContext,
+        ipAddress: req.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: req.headers.get('user-agent') || 'unknown'
       });
 
       if (!securityResult.success) {
-        return responseBuilder.error(securityResult.error, 400, corsHeaders);
+        console.error(`❌ [${requestId}] Security validation failed:`, securityResult.error);
+        return responseBuilder.error(securityResult.error || 'Security validation failed', 400, corsHeaders);
       }
+
+      console.log(`✅ [${requestId}] Security validation passed`);
 
       // Check cache
       const cacheKey = `search:${body.searchTerm}:${body.country || 'us'}`;
