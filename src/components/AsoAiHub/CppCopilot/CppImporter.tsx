@@ -64,7 +64,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     fetchSecurityContext();
   }, [toast]);
 
-  const handleAnalyze = async (appStoreUrl: string) => {
+  const handleAnalyze = async (searchInput: string) => {
     if (!organizationId || !securityContext) {
       toast({
         title: 'Security context missing.',
@@ -75,10 +75,23 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     }
 
     setIsAnalyzing(true);
-    console.log('🚀 [CPP-IMPORT] Starting secure CPP analysis for:', appStoreUrl);
+    console.log('🚀 [CPP-IMPORT] Starting secure CPP analysis for:', searchInput);
 
     try {
-      const strategyData = await cppStrategyService.generateCppStrategy(appStoreUrl, {
+      // Validate input format
+      const isUrl = searchInput.startsWith('http');
+      const isKeywordSearch = searchInput.includes(' in ') && !isUrl;
+      
+      if (!isUrl && !isKeywordSearch) {
+        toast({
+          title: 'Invalid Input Format',
+          description: 'Please enter either an App Store URL or keyword search (e.g., "photo editor in US")',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const strategyData = await cppStrategyService.generateCppStrategy(searchInput, {
         organizationId,
         includeScreenshotAnalysis: true,
         generateThemes: true,
@@ -86,18 +99,36 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         debugMode: process.env.NODE_ENV === 'development'
       }, securityContext);
 
+      const themeCount = strategyData.suggestedThemes.length;
+      const appName = strategyData.originalApp.name;
+
       toast({
         title: 'CPP Strategy Generated!',
-        description: `Found ${strategyData.suggestedThemes.length} theme opportunities for ${strategyData.originalApp.name}.`,
+        description: `Found ${themeCount} theme ${themeCount === 1 ? 'opportunity' : 'opportunities'} for ${appName}.`,
       });
 
       onStrategySuccess(strategyData, organizationId);
 
     } catch (error: any) {
       console.error('❌ [CPP-IMPORT] Analysis failed:', error);
+      
+      let errorMessage = 'An unknown error occurred while analyzing the app for CPP strategy.';
+      
+      if (error.message.includes('Rate limit exceeded')) {
+        errorMessage = 'Rate limit exceeded. Please try again later.';
+      } else if (error.message.includes('URL validation failed')) {
+        errorMessage = 'Invalid App Store URL. Please check the URL format.';
+      } else if (error.message.includes('Organization access denied')) {
+        errorMessage = 'You do not have permission to perform this analysis.';
+      } else if (error.message.includes('service unavailable')) {
+        errorMessage = 'Analysis service is temporarily unavailable. Please try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Analysis Failed',
-        description: error.message || 'An unknown error occurred while analyzing the app for CPP strategy.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

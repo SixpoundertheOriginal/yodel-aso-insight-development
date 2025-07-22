@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ScrapedMetadata, CppConfig, CppStrategyData, CppTheme } from '@/types/aso';
 import { securityService } from './security.service';
@@ -145,19 +144,73 @@ class CppStrategyService {
     // Sanitize all text inputs
     const sanitizedName = securityService.sanitizeInput(metadata.name || 'Unknown App');
     
+    // Use the CPP-specific data from the enhanced scraper response
+    const suggestedThemes = metadata.suggestedCppThemes || this.generateFallbackThemes(metadata);
+    const screenshotAnalysis = metadata.screenshotAnalysis || [];
+    
     return {
       originalApp: {
         name: sanitizedName,
-        screenshots: metadata.screenshotAnalysis || []
+        screenshots: screenshotAnalysis
       },
-      suggestedThemes: metadata.suggestedCppThemes || [],
+      suggestedThemes,
       competitorInsights: metadata.competitorScreenshots,
       recommendations: {
-        primaryTheme: metadata.suggestedCppThemes?.[0]?.name || 'Feature Showcase',
-        alternativeThemes: metadata.suggestedCppThemes?.slice(1, 3).map(t => t.name) || [],
+        primaryTheme: suggestedThemes[0]?.name || 'Feature Showcase',
+        alternativeThemes: suggestedThemes.slice(1, 3).map(t => t.name) || [],
         keyDifferentiators: this.extractKeyDifferentiators(metadata)
       }
     };
+  }
+
+  /**
+   * Generate fallback themes when AI analysis fails
+   */
+  private generateFallbackThemes(metadata: ScrapedMetadata): CppTheme[] {
+    const appName = metadata.name || 'App';
+    const category = metadata.applicationCategory || 'Productivity';
+
+    return [
+      {
+        id: 'feature-showcase',
+        name: 'Feature Showcase',
+        tagline: `Discover ${appName}'s powerful capabilities`,
+        targetAudience: 'Power users seeking advanced functionality',
+        valueHook: 'Comprehensive tool for serious users',
+        searchTerms: [category.toLowerCase(), 'features', 'advanced'],
+        visualStyle: {
+          mood: 'professional',
+          colors: ['primary', 'secondary'],
+          focusFeatures: ['core features', 'advanced tools']
+        }
+      },
+      {
+        id: 'lifestyle-integration',
+        name: 'Lifestyle Integration',
+        tagline: `${appName} fits seamlessly into your routine`,
+        targetAudience: 'Casual users wanting easy integration',
+        valueHook: 'Effortless part of your daily life',
+        searchTerms: [category.toLowerCase(), 'daily', 'lifestyle'],
+        visualStyle: {
+          mood: 'friendly',
+          colors: ['warm', 'inviting'],
+          focusFeatures: ['ease of use', 'daily workflow']
+        }
+      },
+      {
+        id: 'results-focused',
+        name: 'Results & Achievement',
+        tagline: `Achieve your goals with ${appName}`,
+        targetAudience: 'Goal-oriented users focused on outcomes',
+        valueHook: 'Proven results and measurable success',
+        searchTerms: [category.toLowerCase(), 'results', 'achievement'],
+        visualStyle: {
+          mood: 'bold',
+          colors: ['success', 'achievement'],
+          focusFeatures: ['progress tracking', 'goal achievement']
+        }
+      }
+    ];
   }
 
   /**
@@ -166,14 +219,22 @@ class CppStrategyService {
   private extractKeyDifferentiators(metadata: ScrapedMetadata): string[] {
     const features = new Set<string>();
     
+    // Extract from screenshot analysis
     metadata.screenshotAnalysis?.forEach(screenshot => {
-      screenshot.analysis.features.forEach(feature => {
+      screenshot.analysis.features?.forEach((feature: string) => {
         const sanitizedFeature = securityService.sanitizeInput(feature);
         if (sanitizedFeature.length > 0) {
           features.add(sanitizedFeature);
         }
       });
     });
+    
+    // Add fallback differentiators if no features found
+    if (features.size === 0) {
+      features.add('Intuitive user interface');
+      features.add('Powerful functionality');
+      features.add('Seamless experience');
+    }
     
     return Array.from(features).slice(0, 5);
   }
