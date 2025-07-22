@@ -152,9 +152,10 @@ class CppStrategyService {
       }
 
       // In analysis mode, we should not get ambiguous results
+      // This should only happen if there's an implementation error
       if (responseData.isAmbiguous) {
-        console.error('❌ [CPP-STRATEGY] Unexpected ambiguous response during analysis');
-        throw new Error('Analysis failed: Multiple apps returned when specific analysis was requested');
+        console.error('❌ [CPP-STRATEGY] Unexpected ambiguous response during analysis - this indicates an edge function logic error');
+        throw new Error('Analysis failed: Edge function returned multiple apps when specific analysis was requested');
       }
 
       // Transform the enhanced metadata into CPP strategy
