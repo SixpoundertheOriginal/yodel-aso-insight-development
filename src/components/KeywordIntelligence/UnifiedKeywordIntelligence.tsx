@@ -19,11 +19,13 @@ import { SmartDiscoveryEngine } from './SmartDiscoveryEngine';
 interface UnifiedKeywordIntelligenceProps {
   organizationId: string;
   selectedAppId?: string;
+  scrapedAppData?: any; // Support for scraped app data from unified page
 }
 
 export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProps> = ({
   organizationId,
-  selectedAppId
+  selectedAppId,
+  scrapedAppData
 }) => {
   const [keywordData, setKeywordData] = useState<any[]>([]);
   const [selectedPool, setSelectedPool] = useState<{ id: string; keywords: string[] } | null>(null);
@@ -48,7 +50,8 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
     targetAppId: selectedAppId
   });
 
-  if (!selectedAppId) {
+  // Use scraped app data if available, otherwise require selectedAppId
+  if (!selectedAppId && !scrapedAppData) {
     return (
       <Card className="bg-zinc-900 border-zinc-800">
         <CardContent className="p-8 text-center">
@@ -57,12 +60,19 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
             Unified Keyword Intelligence
           </h3>
           <p className="text-zinc-400 mb-6">
-            Select an app to access comprehensive keyword analytics, trends, and optimization opportunities.
+            {scrapedAppData ? 'Analyzing scraped app data...' : 'Select an app or scrape app data to access comprehensive keyword analytics.'}
           </p>
         </CardContent>
       </Card>
     );
   }
+
+  // Create effective app data from scraped data or selected app
+  const effectiveAppData = scrapedAppData ? {
+    app_name: scrapedAppData.name,
+    app_store_id: scrapedAppData.appId,
+    platform: scrapedAppData.url?.includes('play.google.com') ? 'android' : 'ios'
+  } : selectedApp;
 
   const handleRefresh = async () => {
     await refreshAllData();
@@ -153,7 +163,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
           </h2>
           <p className="text-zinc-400">
             Enhanced keyword analysis for{' '}
-            <span className="text-yodel-orange font-medium">{selectedApp?.app_name || 'Selected App'}</span>
+            <span className="text-yodel-orange font-medium">{effectiveAppData?.app_name || 'Selected App'}</span>
             {lastSuccessfulLoad && (
               <span className="text-zinc-500 text-sm ml-2">
                 • Last updated: {lastSuccessfulLoad.toLocaleTimeString()}
@@ -283,14 +293,14 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
         <TabsContent value="discovery" className="space-y-6">
           <SmartDiscoveryEngine
             organizationId={organizationId}
-            appId={selectedAppId}
-            selectedApp={selectedApp}
+            appId={selectedAppId || scrapedAppData?.appId}
+            selectedApp={effectiveAppData}
             onSuggestionsGenerated={handleSmartSuggestions}
           />
           
           <ProgressiveKeywordLoader
             organizationId={organizationId}
-            appId={selectedAppId}
+            appId={selectedAppId || scrapedAppData?.appId}
             onKeywordsLoaded={handleKeywordsLoaded}
           />
           

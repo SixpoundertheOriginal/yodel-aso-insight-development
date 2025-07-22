@@ -8,7 +8,14 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ASOUnifiedPage: React.FC = () => {
   const [activeMode, setActiveMode] = useState<'audit' | 'keywords'>('audit');
-  const [sharedAppData, setSharedAppData] = useState(null);
+  const [scrapedAppData, setScrapedAppData] = useState<any>(null);
+
+  // Handle scraped data from AppAuditHub
+  const handleAppScraped = (metadata: any) => {
+    setScrapedAppData(metadata);
+    // Auto-switch to keywords tab after successful scrape for better UX
+    setActiveMode('keywords');
+  };
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -59,16 +66,18 @@ const ASOUnifiedPage: React.FC = () => {
           </TabsList>
 
           <TabsContent value="audit">
-            {/* Reuse EXISTING AppAuditHub component - zero changes */}
+            {/* AppAuditHub with callback to share scraped data */}
             <AppAuditHub 
               organizationId={userContext.organizationId}
+              onAppScraped={handleAppScraped}
             />
           </TabsContent>
 
           <TabsContent value="keywords">
-            {/* Reuse EXISTING UnifiedKeywordIntelligence - zero changes */}
+            {/* UnifiedKeywordIntelligence with scraped data support */}
             <UnifiedKeywordIntelligence 
               organizationId={userContext.organizationId}
+              scrapedAppData={scrapedAppData}
             />
           </TabsContent>
         </Tabs>

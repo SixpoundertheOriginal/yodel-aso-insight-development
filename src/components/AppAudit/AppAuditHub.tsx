@@ -18,9 +18,10 @@ import { toast } from 'sonner';
 
 interface AppAuditHubProps {
   organizationId: string;
+  onAppScraped?: (metadata: ScrapedMetadata) => void; // Optional callback for unified page
 }
 
-export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
+export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppScraped }) => {
   const [importedMetadata, setImportedMetadata] = useState<ScrapedMetadata | null>(null);
   const [activeTab, setActiveTab] = useState('import');
 
@@ -43,6 +44,9 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId }) => {
     setImportedMetadata(metadata);
     setActiveTab('overview');
     toast.success(`Started comprehensive audit for ${metadata.name}`);
+    
+    // Share scraped data with unified page
+    onAppScraped?.(metadata);
   };
 
   const handleExportReport = async () => {
