@@ -78,14 +78,12 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     console.log('🚀 [CPP-IMPORT] Starting secure CPP analysis for:', searchInput);
 
     try {
-      // Validate input format
-      const isUrl = searchInput.startsWith('http');
-      const isKeywordSearch = searchInput.includes(' in ') && !isUrl;
-      
-      if (!isUrl && !isKeywordSearch) {
+      // Simple validation - accept any non-empty string
+      const trimmedInput = searchInput.trim();
+      if (!trimmedInput) {
         toast({
-          title: 'Invalid Input Format',
-          description: 'Please enter either an App Store URL or keyword search (e.g., "photo editor in US")',
+          title: 'Input Required',
+          description: 'Please enter a keyword or App Store URL',
           variant: 'destructive',
         });
         return;
@@ -140,8 +138,8 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     <div className="max-w-2xl mx-auto">
       <DataImporter
         title="Analyze Market for CPP Strategy"
-        description="Enter a keyword and country (e.g., 'photo editor in US') or a specific App Store URL to generate Custom Product Page themes and competitive insights."
-        placeholder="e.g., 'language learning app in US' or https://apps.apple.com/..."
+        description="Enter any keyword (e.g., 'pimsleur', 'duolingo') or App Store URL to generate Custom Product Page themes and competitive insights."
+        placeholder="e.g., 'pimsleur', 'fitness apps', or https://apps.apple.com/..."
         onImport={handleAnalyze}
         isLoading={isAnalyzing || !organizationId || !securityContext}
         icon={<Target className="w-4 h-4 ml-2" />}
