@@ -1,7 +1,15 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ScrapedMetadata, CppConfig, CppStrategyData, CppTheme } from '@/types/aso';
 import { securityService } from './security.service';
 import { SecurityContext } from '@/types/security';
+
+// New interface for ambiguous search results
+export interface AmbiguousSearchResult {
+  isAmbiguous: true;
+  candidates: ScrapedMetadata[];
+  searchTerm: string;
+}
 
 class CppStrategyService {
   private cache = new Map<string, { data: CppStrategyData; timestamp: number }>();
@@ -10,7 +18,7 @@ class CppStrategyService {
   /**
    * Generate CPP strategy from App Store URL or search term with enterprise security
    */
-  async generateCppStrategy(searchTerm: string, config: CppConfig, securityContext: SecurityContext): Promise<CppStrategyData> {
+  async generateCppStrategy(searchTerm: string, config: CppConfig, securityContext: SecurityContext): Promise<CppStrategyData | AmbiguousSearchResult> {
     // Security validation
     const isUrl = searchTerm.startsWith('http');
     let sanitizedSearchTerm = searchTerm;
@@ -38,7 +46,7 @@ class CppStrategyService {
     }
 
     // Audit logging
-    const auditResult = await securityService.logAuditEntry({
+    await securityService.logAuditEntry({
       organizationId: config.organizationId,
       userId: securityContext.userId,
       action: 'cpp-analysis-started',
@@ -90,6 +98,16 @@ class CppStrategyService {
         throw new Error(responseData.error);
       }
 
+      // Check if response is ambiguous (multiple apps found)
+      if (responseData.isAmbiguous && responseData.candidates) {
+        console.log('🎯 [CPP-STRATEGY] Ambiguous search detected, returning candidates for selection');
+        return {
+          isAmbiguous: true,
+          candidates: responseData.candidates,
+          searchTerm: sanitizedSearchTerm
+        };
+      }
+
       // Transform the enhanced metadata into CPP strategy
       const cppStrategy = this.transformToCppStrategy(responseData);
       
@@ -138,6 +156,45 @@ class CppStrategyService {
   }
 
   /**
+   * Generate CPP strategy for a specific selected app
+   */
+  async selectAppForCppStrategy(selectedApp: ScrapedMetadata, config: CppConfig, securityContext: SecurityContext): Promise<CppStrategyData> {
+    console.log('🎯 [CPP-STRATEGY] Analyzing selected app:', selectedApp.name);
+
+    try {
+      // Generate CPP strategy directly from the selected app metadata
+      const cppStrategy = this.transformToCppStrategy(selectedApp);
+      
+      // Cache the result
+      const cacheKey = `${config.organizationId}-${selectedApp.appId}-cpp-selected`;
+      this.cache.set(cacheKey, {
+        data: cppStrategy,
+        timestamp: Date.now()
+      });
+
+      // Success audit log
+      await securityService.logAuditEntry({
+        organizationId: config.organizationId,
+        userId: securityContext.userId,
+        action: 'cpp-app-selected',
+        resourceType: 'cpp-analysis',
+        details: {
+          selectedAppId: selectedApp.appId,
+          selectedAppName: selectedApp.name,
+          themesGenerated: cppStrategy.suggestedThemes.length
+        },
+        ipAddress: securityContext.ipAddress,
+        userAgent: securityContext.userAgent
+      });
+
+      return cppStrategy;
+    } catch (error) {
+      console.error('❌ [CPP-STRATEGY] Selected app analysis failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Transform enhanced metadata into CPP strategy data with security validation
    */
   private transformToCppStrategy(metadata: ScrapedMetadata): CppStrategyData {
@@ -163,9 +220,6 @@ class CppStrategyService {
     };
   }
 
-  /**
-   * Generate fallback themes when AI analysis fails
-   */
   private generateFallbackThemes(metadata: ScrapedMetadata): CppTheme[] {
     const appName = metadata.name || 'App';
     const category = metadata.applicationCategory || 'Productivity';
@@ -213,9 +267,6 @@ class CppStrategyService {
     ];
   }
 
-  /**
-   * Extract key differentiators from screenshot analysis with input sanitization
-   */
   private extractKeyDifferentiators(metadata: ScrapedMetadata): string[] {
     const features = new Set<string>();
     
@@ -239,9 +290,6 @@ class CppStrategyService {
     return Array.from(features).slice(0, 5);
   }
 
-  /**
-   * Generate theme variations for A/B testing
-   */
   generateThemeVariations(baseTheme: CppTheme): CppTheme[] {
     const variations: CppTheme[] = [];
     
@@ -264,9 +312,6 @@ class CppStrategyService {
     return variations.slice(0, 2); // Return top 2 variations
   }
 
-  /**
-   * Export CPP strategy to different formats
-   */
   exportStrategy(strategy: CppStrategyData, format: 'json' | 'csv' | 'notion'): string {
     switch (format) {
       case 'json':
@@ -308,9 +353,6 @@ class CppStrategyService {
     return markdown;
   }
 
-  /**
-   * Clear cache with organization isolation
-   */
   clearCache(organizationId?: string): void {
     if (organizationId) {
       const keysToDelete = Array.from(this.cache.keys()).filter(key => key.includes(organizationId));

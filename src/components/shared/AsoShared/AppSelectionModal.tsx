@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, Download } from 'lucide-react';
+import { Star, Download, Target } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 
 interface AppSelectionModalProps {
@@ -19,6 +19,7 @@ interface AppSelectionModalProps {
   candidates: ScrapedMetadata[];
   onSelect: (app: ScrapedMetadata) => void;
   searchTerm: string;
+  mode?: 'select' | 'analyze'; // New prop to control button text
 }
 
 export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
@@ -26,17 +27,27 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   onClose,
   candidates,
   onSelect,
-  searchTerm
+  searchTerm,
+  mode = 'select'
 }) => {
+  const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
+  const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="text-white">
-            Multiple apps found for "{searchTerm}"
+            {mode === 'analyze' 
+              ? `Choose an app to analyze for "${searchTerm}"`
+              : `Multiple apps found for "${searchTerm}"`
+            }
           </DialogTitle>
           <DialogDescription>
-            Select the app you want to analyze:
+            {mode === 'analyze'
+              ? `Found ${candidates.length} apps matching your search. Select which one you want to analyze for CPP strategy:`
+              : 'Select the app you want to analyze:'
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -85,9 +96,10 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                   
                   <Button
                     onClick={() => onSelect(app)}
-                    className="bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+                    className="bg-yodel-orange hover:bg-yodel-orange/90 text-white flex items-center"
                   >
-                    Select
+                    {buttonIcon}
+                    {buttonText}
                   </Button>
                 </div>
               </div>

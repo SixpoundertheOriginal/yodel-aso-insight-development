@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { cppStrategyService } from '@/services/cpp-strategy.service';
+import { cppStrategyService, AmbiguousSearchResult } from '@/services/cpp-strategy.service';
 import { CppStrategyData } from '@/types/cpp';
+import { ScrapedMetadata } from '@/types/aso';
 import { SecurityContext } from '@/types/security';
 import { DataImporter } from '@/components/shared/DataImporter';
+import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import { Target } from 'lucide-react';
 
 interface CppImporterProps {
@@ -16,6 +17,9 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [securityContext, setSecurityContext] = useState<SecurityContext | null>(null);
+  const [candidates, setCandidates] = useState<ScrapedMetadata[]>([]);
+  const [showAppSelection, setShowAppSelection] = useState(false);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,10 +79,10 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     }
 
     setIsAnalyzing(true);
+    setCurrentSearchTerm(searchInput);
     console.log('🚀 [CPP-IMPORT] Starting secure CPP analysis for:', searchInput);
 
     try {
-      // Simple validation - accept any non-empty string
       const trimmedInput = searchInput.trim();
       if (!trimmedInput) {
         toast({
@@ -89,7 +93,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         return;
       }
 
-      const strategyData = await cppStrategyService.generateCppStrategy(searchInput, {
+      const result = await cppStrategyService.generateCppStrategy(searchInput, {
         organizationId,
         includeScreenshotAnalysis: true,
         generateThemes: true,
@@ -97,6 +101,20 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         debugMode: process.env.NODE_ENV === 'development'
       }, securityContext);
 
+      if ('isAmbiguous' in result && result.isAmbiguous) {
+        console.log('🎯 [CPP-IMPORT] Multiple apps found, showing selection modal');
+        setCandidates(result.candidates);
+        setShowAppSelection(true);
+        setIsAnalyzing(false);
+        
+        toast({
+          title: 'Multiple Apps Found',
+          description: `Found ${result.candidates.length} apps matching "${searchInput}". Please select which one to analyze.`,
+        });
+        return;
+      }
+
+      const strategyData = result as CppStrategyData;
       const themeCount = strategyData.suggestedThemes.length;
       const appName = strategyData.originalApp.name;
 
@@ -134,6 +152,58 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     }
   };
 
+  const handleAppSelect = async (selectedApp: ScrapedMetadata) => {
+    if (!organizationId || !securityContext) {
+      toast({
+        title: 'Security context missing.',
+        description: 'Could not perform the analysis without proper security context.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setShowAppSelection(false);
+    
+    try {
+      console.log('🎯 [CPP-IMPORT] Analyzing selected app:', selectedApp.name);
+      
+      const strategyData = await cppStrategyService.selectAppForCppStrategy(selectedApp, {
+        organizationId,
+        includeScreenshotAnalysis: true,
+        generateThemes: true,
+        includeCompetitorAnalysis: true,
+        debugMode: process.env.NODE_ENV === 'development'
+      }, securityContext);
+
+      const themeCount = strategyData.suggestedThemes.length;
+
+      toast({
+        title: 'CPP Strategy Generated!',
+        description: `Found ${themeCount} theme ${themeCount === 1 ? 'opportunity' : 'opportunities'} for ${selectedApp.name}.`,
+      });
+
+      onStrategySuccess(strategyData, organizationId);
+
+    } catch (error: any) {
+      console.error('❌ [CPP-IMPORT] Selected app analysis failed:', error);
+      
+      toast({
+        title: 'Analysis Failed',
+        description: error.message || 'Failed to analyze the selected app.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAppSelectionClose = () => {
+    setShowAppSelection(false);
+    setCandidates([]);
+    setCurrentSearchTerm('');
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <DataImporter
@@ -144,6 +214,15 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         isLoading={isAnalyzing || !organizationId || !securityContext}
         icon={<Target className="w-4 h-4 ml-2" />}
       />
+
+      <AppSelectionModal
+        isOpen={showAppSelection}
+        onClose={handleAppSelectionClose}
+        candidates={candidates}
+        onSelect={handleAppSelect}
+        searchTerm={currentSearchTerm}
+        mode="analyze"
+      />
       
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-4 bg-zinc-800/50 p-3 rounded text-xs text-zinc-300">
@@ -152,6 +231,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
           <div>CPP Debug Mode: Active</div>
           <div>Features: Screenshot Analysis + Theme Generation + Competitor Insights</div>
           <div>Security: Rate Limiting + Audit Logging + Input Validation</div>
+          <div>App Selection: {showAppSelection ? `Showing ${candidates.length} candidates` : 'Ready'}</div>
         </div>
       )}
     </div>
