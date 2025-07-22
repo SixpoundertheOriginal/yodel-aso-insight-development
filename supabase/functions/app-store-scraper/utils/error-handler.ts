@@ -38,4 +38,10 @@ export class ErrorHandler {
       }
     );
   }
+
+  // ✅ NEW METHOD: Add static method for backward compatibility
+  static handleError(error: any, corsHeaders: Record<string, string>, requestId?: string): Response {
+    const handler = new ErrorHandler();
+    return handler.handle(error, requestId);
+  }
 }

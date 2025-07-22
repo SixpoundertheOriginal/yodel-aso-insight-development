@@ -41,6 +41,15 @@ export class MetadataExtractionService {
     }
   }
 
+  transformSearchResults(results: any[]): any[] {
+    if (!Array.isArray(results)) {
+      console.warn('[METADATA] transformSearchResults received non-array:', typeof results);
+      return [];
+    }
+
+    return results.map(result => this.mapItunesDataToMetadata(result));
+  }
+
   private async enrichMetadata(app: any): Promise<any> {
     // Start with iTunes API data
     let metadata = this.mapItunesDataToMetadata(app);

@@ -42,14 +42,14 @@ serve(async (req) => {
     );
 
     const discoveryService = new DiscoveryService();
-    const metadataService = new MetadataExtractionService();
+    const metadataService = new MetadataExtractionService(supabase);
     const screenshotService = new ScreenshotAnalysisService();
     const cppService = new CppAnalysisService();
     const securityService = new SecurityService(supabase); // ✅ Pass Supabase client
     const cacheService = new CacheManagerService(supabase);
     const analyticsService = new AnalyticsService(supabase);
     const errorHandler = new ErrorHandler();
-    const responseBuilder = new ResponseBuilder();
+    const responseBuilder = new ResponseBuilder(corsHeaders); // ✅ Pass CORS headers
 
     // Parse request body
     console.log(`📡 [${requestId}] ENHANCED PARSING REQUEST (Method: unknown)`);
@@ -83,7 +83,7 @@ serve(async (req) => {
 }`);
       } catch (error) {
         console.error(`❌ [${requestId}] JSON parsing failed:`, error);
-        return responseBuilder.error('Invalid JSON in request body', 400, corsHeaders);
+        return responseBuilder.error('Invalid JSON in request body', 400);
       }
     }
 
@@ -127,7 +127,7 @@ serve(async (req) => {
 
       if (!securityResult.success) {
         console.error(`❌ [${requestId}] Security validation failed:`, securityResult.error);
-        return responseBuilder.error(securityResult.error || 'Security validation failed', 400, corsHeaders);
+        return responseBuilder.error(securityResult.error || 'Security validation failed', 400);
       }
 
       console.log(`✅ [${requestId}] Security validation passed`);
@@ -137,7 +137,7 @@ serve(async (req) => {
       const cached = await cacheService.get(cacheKey);
       if (cached) {
         console.log(`📦 [${requestId}] CACHE HIT for search`);
-        return responseBuilder.success(cached, corsHeaders);
+        return responseBuilder.success(cached);
       }
 
       // Perform search
@@ -159,7 +159,7 @@ serve(async (req) => {
       
       console.log(`📊 [${requestId}] ITUNES API RESPONSE: { resultCount: ${searchData.resultCount}, resultsLength: ${searchData.results?.length} }`);
 
-      // Transform results
+      // Transform results using the new method
       const transformedResults = metadataService.transformSearchResults(searchData.results);
       
       console.log(`✅ [${requestId}] TRANSFORMED ${transformedResults.length} RESULTS`);
@@ -266,7 +266,7 @@ serve(async (req) => {
         cached: false
       });
 
-      return responseBuilder.success(responseData, corsHeaders);
+      return responseBuilder.success(responseData);
       
     } else if (body.targetApp || body.competitorApps || body.seedKeywords) {
       // Keyword Discovery Route
@@ -281,17 +281,18 @@ serve(async (req) => {
       });
 
       if (!discoveryResult.success) {
-        return responseBuilder.error(discoveryResult.error, 500, corsHeaders);
+        return responseBuilder.error(discoveryResult.error, 500);
       }
 
-      return responseBuilder.success(discoveryResult.data, corsHeaders);
+      return responseBuilder.success(discoveryResult.data);
       
     } else {
-      return responseBuilder.error('Invalid request: missing required parameters', 400, corsHeaders);
+      return responseBuilder.error('Invalid request: missing required parameters', 400);
     }
 
   } catch (error) {
     console.error(`❌ [${requestId}] REQUEST PROCESSING ERROR:`, error);
-    return ErrorHandler.handleError(error, corsHeaders);
+    // ✅ Use static method for error handling
+    return ErrorHandler.handleError(error, corsHeaders, requestId);
   }
 });

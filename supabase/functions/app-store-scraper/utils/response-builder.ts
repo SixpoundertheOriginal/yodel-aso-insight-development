@@ -1,6 +1,14 @@
 
 export class ResponseBuilder {
-  constructor(private corsHeaders: Record<string, string>) {}
+  constructor(private corsHeaders: Record<string, string> = {}) {
+    // ✅ Ensure default CORS headers if none provided
+    if (Object.keys(this.corsHeaders).length === 0) {
+      this.corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      };
+    }
+  }
 
   success(data: any, additionalHeaders: Record<string, string> = {}): Response {
     return new Response(
