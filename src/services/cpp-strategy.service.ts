@@ -76,6 +76,15 @@ class CppStrategyService {
         throw new Error(responseData.error);
       }
 
+      // Debug: Log the actual response structure
+      console.log('🔍 [CPP-SEARCH] Raw response from edge function:', {
+        isAmbiguous: responseData.isAmbiguous,
+        resultsCount: responseData.resultsCount,
+        candidatesLength: responseData.candidates?.length,
+        hasTargetApp: !!responseData.targetApp,
+        responseKeys: Object.keys(responseData)
+      });
+
       // Handle multiple apps found (ambiguous search)
       if (responseData.isAmbiguous && responseData.candidates && responseData.candidates.length > 1) {
         console.log(`🎯 [CPP-SEARCH] ${responseData.candidates.length} apps found with rich metadata, showing selection modal`);
@@ -96,8 +105,18 @@ class CppStrategyService {
         };
       }
 
+      // Check for targetApp (alternative response format)
+      if (responseData.targetApp) {
+        console.log('✅ [CPP-SEARCH] Found targetApp in response, converting to candidates format');
+        return {
+          isAmbiguous: false,
+          candidates: [responseData.targetApp],
+          searchTerm: sanitizedSearchTerm
+        };
+      }
+
       // Fallback - no candidates found
-      console.warn('⚠️ [CPP-SEARCH] No candidates found in response');
+      console.warn('⚠️ [CPP-SEARCH] No candidates found in response structure:', responseData);
       throw new Error('No apps found matching your search criteria');
 
     } catch (error: any) {
