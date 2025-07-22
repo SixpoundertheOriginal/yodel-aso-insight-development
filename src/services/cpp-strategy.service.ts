@@ -6,7 +6,7 @@ import { SecurityContext } from '@/types/security';
 
 // New interface for ambiguous search results
 export interface AmbiguousSearchResult {
-  isAmbiguous: true;
+  isAmbiguous: boolean;
   candidates: ScrapedMetadata[];
   searchTerm: string;
 }
@@ -36,7 +36,7 @@ class CppStrategyService {
     searchTerm: string,
     config: CppAnalysisConfig,
     securityContext: SecurityContext
-  ): Promise<AmbiguousSearchResult | CppStrategyData> {
+  ): Promise<AmbiguousSearchResult> {
     const sanitizedSearchTerm = this.sanitizeInput(searchTerm);
     
     console.log('🔍 [CPP-SEARCH] Searching for apps:', sanitizedSearchTerm);
@@ -83,8 +83,14 @@ class CppStrategyService {
         };
       }
 
-      // If single app found, proceed with immediate analysis
-      return await this.generateCppStrategy(sanitizedSearchTerm, config, securityContext);
+      // If single app found, return it as a single-item result (not as analysis)
+      // The caller will decide whether to proceed with analysis
+      console.log('✅ [CPP-SEARCH] Single app found, returning for user confirmation');
+      return {
+        isAmbiguous: false,
+        candidates: responseData.candidates || [responseData],
+        searchTerm: sanitizedSearchTerm
+      } as AmbiguousSearchResult;
 
     } catch (error: any) {
       console.error('❌ [CPP-SEARCH] Search failed:', error);

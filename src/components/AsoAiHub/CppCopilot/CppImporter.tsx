@@ -115,19 +115,22 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         return;
       }
 
-      // Single app result - should be CppStrategyData
-      if ('suggestedThemes' in result) {
-        const strategyData = result as CppStrategyData;
-        const themeCount = strategyData.suggestedThemes.length;
-        const appName = strategyData.originalApp.name;
-
+      // Single app result - show it in selection modal for user confirmation
+      if (result.candidates && result.candidates.length === 1) {
+        console.log('✅ [CPP-IMPORT] Single app found, showing for confirmation');
+        setCandidates(result.candidates);
+        setShowAppSelection(true);
+        setIsAnalyzing(false);
+        
         toast({
-          title: 'CPP Strategy Generated!',
-          description: `Found ${themeCount} theme ${themeCount === 1 ? 'opportunity' : 'opportunities'} for ${appName}.`,
+          title: 'App Found',
+          description: `Found "${result.candidates[0].name}". Click "Analyze This App" to proceed.`,
         });
-
-        onStrategySuccess(strategyData, organizationId);
+        return;
       }
+
+      // Fallback - should not reach here
+      throw new Error('Unexpected response format from search');
 
     } catch (error: any) {
       console.error('❌ [CPP-IMPORT] Analysis failed:', error);
