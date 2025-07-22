@@ -30,7 +30,7 @@ class CppStrategyService {
   }
 
   /**
-   * Search for apps matching the term (first step - gets candidate list)
+   * Search for apps with rich metadata for selection (Phase 1)
    */
   async searchAppsForCpp(
     searchTerm: string,
@@ -39,7 +39,7 @@ class CppStrategyService {
   ): Promise<AmbiguousSearchResult> {
     const sanitizedSearchTerm = this.sanitizeInput(searchTerm);
     
-    console.log('🔍 [CPP-SEARCH] Searching for apps:', sanitizedSearchTerm);
+    console.log('🔍 [CPP-SEARCH] Searching for apps with rich metadata:', sanitizedSearchTerm);
 
     // Audit log for search
     await this.auditLogger.log({
@@ -53,12 +53,15 @@ class CppStrategyService {
     });
 
     try {
-      // Call app-store-scraper WITHOUT analysis to get candidates
+      // Call app-store-scraper WITH rich metadata extraction for proper app selection
       const { data: responseData, error: invokeError } = await supabase.functions.invoke('app-store-scraper', {
         body: { 
           searchTerm: sanitizedSearchTerm, 
           organizationId: config.organizationId,
-          analyzeCpp: false, // KEY CHANGE: Don't analyze, just search
+          analyzeCpp: false, // Don't analyze, just get rich metadata for selection
+          includeIntelligence: true, // Get rich app data like ASO AI Audit
+          includeMetadata: true, // Full metadata extraction
+          cacheResults: true,
           securityContext
         },
       });
@@ -75,7 +78,7 @@ class CppStrategyService {
 
       // Check if response is ambiguous (multiple apps found)
       if (responseData.isAmbiguous && responseData.candidates) {
-        console.log('🎯 [CPP-SEARCH] Multiple apps found, returning candidates for selection');
+        console.log('🎯 [CPP-SEARCH] Multiple apps found, returning rich candidates for selection');
         return {
           isAmbiguous: true,
           candidates: responseData.candidates,
@@ -83,14 +86,17 @@ class CppStrategyService {
         };
       }
 
-      // If single app found, return it as a single-item result (not as analysis)
-      // The caller will decide whether to proceed with analysis
-      console.log('✅ [CPP-SEARCH] Single app found, returning for user confirmation');
+      // If single app found with rich metadata, return it for user confirmation
+      console.log('✅ [CPP-SEARCH] Single app found with rich metadata, returning for user confirmation');
+      
+      // Handle both single app and array responses
+      const singleApp = responseData.targetApp || responseData.candidates?.[0] || responseData;
+      
       return {
         isAmbiguous: false,
-        candidates: responseData.candidates || [responseData],
+        candidates: [singleApp],
         searchTerm: sanitizedSearchTerm
-      } as AmbiguousSearchResult;
+      };
 
     } catch (error: any) {
       console.error('❌ [CPP-SEARCH] Search failed:', error);
@@ -99,7 +105,7 @@ class CppStrategyService {
   }
 
   /**
-   * Generate CPP strategy from App Store URL or search term with enterprise security
+   * Generate CPP strategy from selected app (Phase 2)
    */
   async generateCppStrategy(searchTerm: string, config: CppAnalysisConfig, securityContext: SecurityContext): Promise<CppStrategyData> {
     const sanitizedSearchTerm = this.sanitizeInput(searchTerm);
@@ -131,7 +137,7 @@ class CppStrategyService {
       return cached.data;
     }
 
-    console.log('🚀 [CPP-STRATEGY] Starting secure CPP analysis for:', sanitizedSearchTerm);
+    console.log('🚀 [CPP-STRATEGY] Starting CPP analysis for selected app:', sanitizedSearchTerm);
 
     try {
       // Call enhanced app-store-scraper with CPP analysis
@@ -139,7 +145,7 @@ class CppStrategyService {
         body: { 
           searchTerm: sanitizedSearchTerm, 
           organizationId: config.organizationId,
-          analyzeCpp: true, // KEY: This time we DO want analysis
+          analyzeCpp: true, // Now we DO want analysis
           includeScreenshotAnalysis: config.includeScreenshotAnalysis !== false,
           generateThemes: config.generateThemes !== false,
           includeCompetitorAnalysis: config.includeCompetitorAnalysis,
@@ -158,10 +164,9 @@ class CppStrategyService {
       }
 
       // In analysis mode, we should not get ambiguous results
-      // This should only happen if there's an implementation error
       if (responseData.isAmbiguous) {
-        console.error('❌ [CPP-STRATEGY] Unexpected ambiguous response during analysis - this indicates an edge function logic error');
-        throw new Error('Analysis failed: Edge function returned multiple apps when specific analysis was requested');
+        console.error('❌ [CPP-STRATEGY] Unexpected ambiguous response during analysis');
+        throw new Error('Analysis failed: Multiple apps returned when specific analysis was requested');
       }
 
       // Transform the enhanced metadata into CPP strategy

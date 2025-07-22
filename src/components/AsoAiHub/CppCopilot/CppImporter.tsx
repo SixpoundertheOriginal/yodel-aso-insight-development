@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +7,7 @@ import { CppStrategyData } from '@/types/cpp';
 import { ScrapedMetadata } from '@/types/aso';
 import { SecurityContext } from '@/types/security';
 import { DataImporter } from '@/components/shared/DataImporter';
-import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
+import { AppSearchResultsModal } from '@/components/AsoAiHub/MetadataCopilot/AppSearchResultsModal';
 import { Target } from 'lucide-react';
 
 interface CppImporterProps {
@@ -93,7 +94,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         return;
       }
 
-      // FIRST CALL: Search for apps without analysis
+      // Search for apps with rich metadata for selection
       const result = await cppStrategyService.searchAppsForCpp(searchInput, {
         organizationId,
         includeScreenshotAnalysis: true,
@@ -102,7 +103,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         debugMode: process.env.NODE_ENV === 'development'
       }, securityContext);
 
-      if ('isAmbiguous' in result && result.isAmbiguous) {
+      if (result.isAmbiguous && result.candidates.length > 1) {
         console.log('🎯 [CPP-IMPORT] Multiple apps found, showing selection modal');
         setCandidates(result.candidates);
         setShowAppSelection(true);
@@ -175,7 +176,7 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
     try {
       console.log('🎯 [CPP-IMPORT] Analyzing selected app:', selectedApp.name);
       
-      // SECOND CALL: Analyze specific selected app
+      // Generate CPP strategy for the selected app
       const strategyData = await cppStrategyService.generateCppStrategy(selectedApp.url || selectedApp.name, {
         organizationId,
         includeScreenshotAnalysis: true,
@@ -223,13 +224,12 @@ export const CppImporter: React.FC<CppImporterProps> = ({ onStrategySuccess }) =
         icon={<Target className="w-4 h-4 ml-2" />}
       />
 
-      <AppSelectionModal
-        isOpen={showAppSelection}
-        onClose={handleAppSelectionClose}
-        candidates={candidates}
+      <AppSearchResultsModal
+        results={candidates}
         onSelect={handleAppSelect}
+        onCancel={handleAppSelectionClose}
         searchTerm={currentSearchTerm}
-        mode="analyze"
+        isOpen={showAppSelection}
       />
       
       {process.env.NODE_ENV === 'development' && (
