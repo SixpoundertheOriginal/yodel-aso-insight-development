@@ -85,6 +85,11 @@ const aiToolsItems = [
 // AI Copilots - Dedicated copilot interfaces
 const aiCopilotsItems = [
   {
+    title: "ASO Knowledge Engine",
+    url: "/aso-knowledge-engine",
+    icon: Brain,
+  },
+  {
     title: "Metadata Copilot",
     url: "/metadata-copilot",
     icon: FileEdit,
