@@ -1,1 +1,74 @@
+
 project_id = "bkbcqocpjahewqjmlgvf"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+port = 54323
+tenant_id = "realtime-dev"
+
+[studio]
+enabled = true
+port = 54324
+api_url = "http://127.0.0.1:54321"
+openai_api_key = "env(OPENAI_API_KEY)"
+
+[inbucket]
+enabled = true
+port = 54325
+smtp_port = 54326
+pop3_port = 54327
+
+[functions]
+verify_jwt = true
+
+[functions.ai-insights-generator]
+verify_jwt = true
+
+[functions.aso-chat]
+verify_jwt = true
+
+[functions.bigquery-aso-data]
+verify_jwt = true
+
+[functions.app-store-scraper]
+verify_jwt = false
+
+[functions.app-discovery]
+verify_jwt = true
+
+[functions.chatgpt-visibility-query]
+verify_jwt = true
+
+[functions.create-platform-admin]
+verify_jwt = false
+
+[functions.get-environment-config]
+verify_jwt = false
+
+[auth]
+enabled = true
+port = 54326
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["https://bkbcqocpjahewqjmlgvf.supabase.co/auth/v1/callback"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_require_reauthentication = true
