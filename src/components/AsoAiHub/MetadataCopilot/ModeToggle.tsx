@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Wand2, Edit3, Users } from 'lucide-react';
+import { Wand2, Edit3, Users, FileText } from 'lucide-react';
 
-export type WorkspaceMode = 'ai-generation' | 'manual-editor' | 'competitive-analysis';
+export type WorkspaceMode = 'ai-generation' | 'manual-editor' | 'competitive-analysis' | 'long-description';
 
 interface ModeToggleProps {
   mode: WorkspaceMode;
@@ -61,6 +61,21 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
       >
         <Users className="w-4 h-4" />
         <span>Competitors</span>
+      </Button>
+
+      <Button
+        variant={mode === 'long-description' ? 'default' : 'ghost'}
+        size="sm"
+        onClick={() => onModeChange('long-description')}
+        disabled={disabled}
+        className={`flex items-center space-x-2 ${
+          mode === 'long-description' 
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
+            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+        }`}
+      >
+        <FileText className="w-4 h-4" />
+        <span>Long Description</span>
       </Button>
     </div>
   );

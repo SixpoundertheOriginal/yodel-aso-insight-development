@@ -4,6 +4,7 @@ import { CurrentMetadataPanel } from './CurrentMetadataPanel';
 import { SuggestedMetadataPanel } from './SuggestedMetadataPanel';
 import { ManualMetadataEditor } from './ManualMetadataEditor';
 import { CompetitiveAnalysisPanel } from './CompetitiveAnalysisPanel';
+import { LongDescriptionPanel } from './LongDescriptionPanel';
 import { ModeToggle, WorkspaceMode } from './ModeToggle';
 import { DataIntegrityChecker } from './DataIntegrityChecker';
 import { ScrapedMetadata, MetadataField, MetadataScore } from '@/types/aso';
@@ -154,6 +155,11 @@ Respond with ONLY the suggested ${field}, no formatting or explanation.`;
               onRequestAiSuggestion={handleAiSuggestion}
               appName={initialData.name}
               isSaving={isSaving}
+            />
+          ) : mode === 'long-description' ? (
+            <LongDescriptionPanel
+              initialData={initialData}
+              organizationId={organizationId}
             />
           ) : (
             <CompetitiveAnalysisPanel
