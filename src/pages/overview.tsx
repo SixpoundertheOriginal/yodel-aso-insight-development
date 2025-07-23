@@ -2,7 +2,7 @@
 import React from "react";
 import { MainLayout } from "../layouts";
 import { useAsoData } from "../context/AsoDataContext";
-import { useComparisonData } from "../hooks";
+// import { useComparisonData } from "../hooks"; // Removed - not needed anymore
 import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiInsightsPanel } from "../components/AiInsightsPanel";
@@ -12,7 +12,6 @@ import KpiCard from "../components/KpiCard";
 
 const OverviewPage: React.FC = () => {
   const { data, loading, filters, setFilters, setUserTouchedFilters } = useAsoData();
-  const { current, previous, loading: comparisonLoading, deltas } = useComparisonData('period');
 
   // Handle traffic source filter change - now supports multi-select
   const handleSourceChange = (sources: string[]) => {
@@ -24,7 +23,7 @@ const OverviewPage: React.FC = () => {
     }));
   };
 
-  const isLoading = loading || comparisonLoading;
+  const isLoading = loading;
 
   console.log('📊 [Overview Detailed Debug]', { 
     loading: isLoading, 
@@ -36,9 +35,6 @@ const OverviewPage: React.FC = () => {
     trafficSources: data?.trafficSources?.length || 'no traffic sources',
     selectedTrafficSources: filters.trafficSources,
     selectedTrafficSourcesCount: filters.trafficSources.length,
-    deltas,
-    current,
-    previous,
     firstTimeseriesItem: data?.timeseriesData?.[0]
   });
 
