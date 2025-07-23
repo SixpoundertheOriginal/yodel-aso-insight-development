@@ -2,12 +2,13 @@
 import React from "react";
 import { MainLayout } from "../layouts";
 import { useAsoData } from "../context/AsoDataContext";
-import ComparisonChart from "../components/ComparisonChart";
 import { useComparisonData } from "../hooks";
 import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
+import TimeSeriesChart from "../components/TimeSeriesChart";
+import KpiCard from "../components/KpiCard";
 
 const OverviewPage: React.FC = () => {
   const { data, loading, filters, setFilters, setUserTouchedFilters } = useAsoData();
@@ -25,16 +26,20 @@ const OverviewPage: React.FC = () => {
 
   const isLoading = loading || comparisonLoading;
 
-  console.log('📊 [Overview Debug] Current state:', { 
+  console.log('📊 [Overview Detailed Debug]', { 
     loading: isLoading, 
     hasData: !!data, 
+    dataLength: data?.timeseriesData?.length || 'no timeseries',
     dataStructure: data ? Object.keys(data) : 'no data',
     dataType: typeof data,
+    summaryData: data?.summary,
+    trafficSources: data?.trafficSources?.length || 'no traffic sources',
     selectedTrafficSources: filters.trafficSources,
     selectedTrafficSourcesCount: filters.trafficSources.length,
     deltas,
     current,
-    previous
+    previous,
+    firstTimeseriesItem: data?.timeseriesData?.[0]
   });
 
   return (
@@ -75,83 +80,62 @@ const OverviewPage: React.FC = () => {
           </div>
         )}
         
-        {/* Charts with Real Period Comparison */}
+        {/* Data Display like Store Performance */}
         {!isLoading && data && (
-          <div className="grid grid-cols-1 gap-10">
-            {/* Impressions Chart */}
+          <div className="flex flex-col space-y-6">
+            
+            {/* KPI Cards Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {data.trafficSources && data.trafficSources.map((source) => (
+                <KpiCard
+                  key={source.name}
+                  title={source.name}
+                  value={source.value}
+                  delta={source.delta}
+                />
+              ))}
+            </div>
+            
+            {/* Time Series Chart */}
             <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
               <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
-                <CardTitle className="text-2xl font-bold text-white">Impressions</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white">Performance Over Time</CardTitle>
               </CardHeader>
               <CardContent className="p-8">
-                <ComparisonChart
-                  currentData={data.timeseriesData}
-                  previousData={[]}
-                  title="Impressions"
-                  metric="impressions"
-                />
+                <TimeSeriesChart data={data.timeseriesData} />
               </CardContent>
             </Card>
             
-            {/* Downloads Chart */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
-              <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
-                <CardTitle className="text-2xl font-bold text-white">Downloads</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                <ComparisonChart
-                  currentData={data.timeseriesData}
-                  previousData={[]}
-                  title="Downloads"
-                  metric="downloads"
-                />
-              </CardContent>
-            </Card>
-            
-            {/* Conversion Rate Chart with Real Deltas */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
-              <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
-                <CardTitle className="text-2xl font-bold text-white">Conversion Rate</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                {data && data.summary && (
-                  <>
-                    <div className="mb-10">
-                      <div className="h-[250px]">
-                        <div className="flex flex-col h-full justify-center items-center">
-                          <div className="text-8xl font-bold text-yodel-orange">
-                            {data.summary.cvr ? data.summary.cvr.value.toFixed(1) : '0.0'}%
-                          </div>
-                          <div className="flex items-center mt-8">
-                            <span className="text-xl text-zinc-400">Conversion Rate</span>
-                          </div>
-                        </div>
+            {/* Summary Stats */}
+            {data.summary && (
+              <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
+                <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
+                  <CardTitle className="text-2xl font-bold text-white">Summary Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-white mb-2">
+                        {data.summary.impressions ? data.summary.impressions.value.toLocaleString() : '0'}
                       </div>
+                      <div className="text-zinc-400">Total Impressions</div>
                     </div>
-                    
-                    <div className="mt-8">
-                      <div className="h-[220px]">
-                        <div className="grid grid-cols-2 gap-8 h-full">
-                          <div className="stat-card flex flex-col justify-center">
-                            <div className="text-zinc-400 mb-3 text-lg">Total Impressions</div>
-                            <div className="text-4xl font-bold text-white">
-                              {data.summary.impressions ? data.summary.impressions.value.toLocaleString() : '0'}
-                            </div>
-                          </div>
-                          
-                          <div className="stat-card flex flex-col justify-center">
-                            <div className="text-zinc-400 mb-3 text-lg">Total Downloads</div>
-                            <div className="text-4xl font-bold text-white">
-                              {data.summary.downloads ? data.summary.downloads.value.toLocaleString() : '0'}
-                            </div>
-                          </div>
-                        </div>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-white mb-2">
+                        {data.summary.downloads ? data.summary.downloads.value.toLocaleString() : '0'}
                       </div>
+                      <div className="text-zinc-400">Total Downloads</div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-yodel-orange mb-2">
+                        {data.summary.cvr ? data.summary.cvr.value.toFixed(1) : '0.0'}%
+                      </div>
+                      <div className="text-zinc-400">Conversion Rate</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>
