@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { TopPerformersSection } from './TopPerformersSection';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -413,6 +414,9 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
+          {/* Import and use TopPerformersSection */}
+          <TopPerformersSection auditRunId={auditRunId} organizationId={organizationId} />
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Category Breakdown */}
             <Card className="bg-zinc-900/50 border-zinc-800">

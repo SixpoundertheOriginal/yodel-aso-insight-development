@@ -143,7 +143,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           responseText,
-          appName: appId,
+          appName: 'pimsleur', // Use actual app name, not UUID
           queryResultId: insertError ? null : queryId, // Use queryId as fallback
           organizationId
         }),
