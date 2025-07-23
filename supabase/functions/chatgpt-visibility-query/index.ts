@@ -74,10 +74,10 @@ serve(async (req) => {
 
     console.log(`[ChatGPT Query] Response received: ${responseText.substring(0, 200)}...`);
 
-    // Analyze visibility
-    const analysis = analyzeVisibility(responseText, appId);
+    // Store basic results first (will be enhanced by analysis)
+    const basicAnalysis = analyzeVisibility(responseText, appId);
 
-    console.log(`[ChatGPT Query] Visibility analysis: App mentioned: ${analysis.appMentioned}, Position: ${analysis.mentionPosition}, Score: ${analysis.visibilityScore}`);
+    console.log(`[ChatGPT Query] Basic visibility analysis: App mentioned: ${basicAnalysis.appMentioned}, Position: ${basicAnalysis.mentionPosition}, Score: ${basicAnalysis.visibilityScore}`);
 
     // Store results in database
     const { error: insertError } = await supabase
@@ -87,12 +87,12 @@ serve(async (req) => {
         query_id: queryId,
         audit_run_id: auditRunId,
         response_text: responseText,
-        app_mentioned: analysis.appMentioned,
-        mention_position: analysis.mentionPosition,
-        mention_context: analysis.mentionContext,
-        competitors_mentioned: analysis.competitorsMentioned,
-        sentiment_score: analysis.sentimentScore,
-        visibility_score: analysis.visibilityScore,
+        app_mentioned: basicAnalysis.appMentioned,
+        mention_position: basicAnalysis.mentionPosition,
+        mention_context: basicAnalysis.mentionContext,
+        competitors_mentioned: basicAnalysis.competitorsMentioned,
+        sentiment_score: basicAnalysis.sentimentScore,
+        visibility_score: basicAnalysis.visibilityScore,
         raw_response: data,
         tokens_used: tokensUsed,
         cost_cents: costCents,
@@ -133,11 +133,36 @@ serve(async (req) => {
         .eq('id', auditRunId);
     }
 
+    // Trigger enhanced analysis after storing basic results
+    try {
+      const enhancedAnalysisResponse = await fetch(`${supabaseUrl}/functions/v1/enhanced-response-analysis`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          responseText,
+          appName: appId,
+          queryResultId: insertError ? null : queryId, // Use queryId as fallback
+          organizationId
+        }),
+      });
+      
+      if (!enhancedAnalysisResponse.ok) {
+        console.warn('[ChatGPT Query] Enhanced analysis failed, using basic analysis');
+      } else {
+        console.log('[ChatGPT Query] Enhanced analysis completed successfully');
+      }
+    } catch (enhancedError) {
+      console.warn('[ChatGPT Query] Enhanced analysis error:', enhancedError);
+    }
+
     console.log(`[ChatGPT Query] Query ${queryId} completed successfully`);
 
     return new Response(JSON.stringify({
       success: true,
-      analysis,
+      analysis: basicAnalysis,
       tokensUsed,
       costCents
     }), {
