@@ -2,13 +2,21 @@
 import React from "react";
 import { MainLayout } from "../layouts";
 import { useAsoData } from "../context/AsoDataContext";
-// import { useComparisonData } from "../hooks"; // Removed - not needed anymore
-import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import KpiCard from "../components/KpiCard";
+import { 
+  PremiumCard, 
+  PremiumCardHeader, 
+  PremiumCardContent, 
+  PremiumTypography,
+  LayoutSection,
+  ResponsiveGrid,
+  AnimatedCounter,
+  StatusIndicator
+} from "@/components/ui/premium";
 
 const OverviewPage: React.FC = () => {
   const { data, loading, filters, setFilters, setUserTouchedFilters } = useAsoData();
@@ -40,17 +48,19 @@ const OverviewPage: React.FC = () => {
 
   return (
     <MainLayout>
-      <div className="flex flex-col space-y-10">
+      <LayoutSection spacing="md">
         {/* AI Insights Panel - Top Priority */}
-        <div className="mb-6">
+        <div className="mb-8">
           <AiInsightsPanel maxDisplayed={3} />
         </div>
 
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-white">Performance Overview</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <PremiumTypography.H1 gradient="orange" animated>
+            Performance Overview
+          </PremiumTypography.H1>
           
           <div className="flex gap-4">
-            {/* Shared Analytics Traffic Source Filter */}
+            <StatusIndicator status="success" pulse label="Live Data" />
             <AnalyticsTrafficSourceFilter 
               selectedSources={filters.trafficSources}
               onChange={handleSourceChange}
@@ -60,81 +70,108 @@ const OverviewPage: React.FC = () => {
         
         {/* Loading State */}
         {isLoading && (
-          <div className="grid grid-cols-1 gap-10">
+          <ResponsiveGrid cols={{ default: 1, lg: 2, xl: 3 }} gap="lg">
             {[1, 2, 3].map((_, index) => (
-              <Card key={index} className="bg-zinc-900 border-zinc-800 shadow-lg">
-                <CardHeader>
-                  <CardTitle>
-                    <Skeleton className="h-8 w-48" />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-[500px] w-full" />
-                </CardContent>
-              </Card>
+              <PremiumCard key={index} variant="glass" intensity="medium" animated>
+                <PremiumCardHeader>
+                  <Skeleton className="h-8 w-48" />
+                </PremiumCardHeader>
+                <PremiumCardContent>
+                  <Skeleton className="h-[300px] w-full" />
+                </PremiumCardContent>
+              </PremiumCard>
             ))}
-          </div>
+          </ResponsiveGrid>
         )}
         
         {/* Data Display like Store Performance */}
         {!isLoading && data && (
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-8">
             
             {/* KPI Cards Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {data.trafficSources && data.trafficSources.map((source) => (
-                <KpiCard
+            <ResponsiveGrid cols={{ default: 1, sm: 2, md: 3, lg: 4 }} gap="lg">
+              {data.trafficSources && data.trafficSources.map((source, index) => (
+                <PremiumCard
                   key={source.name}
-                  title={source.name}
-                  value={source.value}
-                  delta={source.delta}
-                />
+                  variant="interactive"
+                  intensity="medium"
+                  glowColor="orange"
+                  className="group"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <PremiumCardContent className="p-6">
+                    <div className="text-center">
+                      <PremiumTypography.H3 className="mb-2 group-hover:text-orange-400 transition-colors">
+                        {source.name}
+                      </PremiumTypography.H3>
+                      <AnimatedCounter
+                        value={source.value}
+                        format="number"
+                        className="text-2xl text-white mb-1"
+                      />
+                      <div className={`text-sm ${source.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {source.delta >= 0 ? '+' : ''}{source.delta}%
+                      </div>
+                    </div>
+                  </PremiumCardContent>
+                </PremiumCard>
               ))}
-            </div>
+            </ResponsiveGrid>
             
             {/* Time Series Chart */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
-              <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
-                <CardTitle className="text-2xl font-bold text-white">Performance Over Time</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
+            <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
+              <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+                <PremiumTypography.H2 className="flex items-center gap-3">
+                  Performance Over Time
+                  <StatusIndicator status="info" size="sm" />
+                </PremiumTypography.H2>
+              </PremiumCardHeader>
+              <PremiumCardContent className="p-8">
                 <TimeSeriesChart data={data.timeseriesData} />
-              </CardContent>
-            </Card>
+              </PremiumCardContent>
+            </PremiumCard>
             
             {/* Summary Stats */}
             {data.summary && (
-              <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
-                <CardHeader className="bg-zinc-900/80 backdrop-filter backdrop-blur-sm border-b border-zinc-800/50">
-                  <CardTitle className="text-2xl font-bold text-white">Summary Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-white mb-2">
-                        {data.summary.impressions ? data.summary.impressions.value.toLocaleString() : '0'}
-                      </div>
-                      <div className="text-zinc-400">Total Impressions</div>
+              <PremiumCard variant="gradient" intensity="strong" className="overflow-hidden">
+                <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+                  <PremiumTypography.H2 gradient="success">
+                    Summary Statistics
+                  </PremiumTypography.H2>
+                </PremiumCardHeader>
+                <PremiumCardContent className="p-8">
+                  <ResponsiveGrid cols={{ default: 1, md: 3 }} gap="lg">
+                    <div className="text-center group">
+                      <AnimatedCounter
+                        value={data.summary.impressions ? data.summary.impressions.value : 0}
+                        format="number"
+                        className="text-4xl font-bold text-white mb-2 block group-hover:text-blue-400 transition-colors"
+                      />
+                      <PremiumTypography.Caption>Total Impressions</PremiumTypography.Caption>
                     </div>
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-white mb-2">
-                        {data.summary.downloads ? data.summary.downloads.value.toLocaleString() : '0'}
-                      </div>
-                      <div className="text-zinc-400">Total Downloads</div>
+                    <div className="text-center group">
+                      <AnimatedCounter
+                        value={data.summary.downloads ? data.summary.downloads.value : 0}
+                        format="number"
+                        className="text-4xl font-bold text-white mb-2 block group-hover:text-emerald-400 transition-colors"
+                      />
+                      <PremiumTypography.Caption>Total Downloads</PremiumTypography.Caption>
                     </div>
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-yodel-orange mb-2">
-                        {data.summary.cvr ? data.summary.cvr.value.toFixed(1) : '0.0'}%
-                      </div>
-                      <div className="text-zinc-400">Conversion Rate</div>
+                    <div className="text-center group">
+                      <AnimatedCounter
+                        value={data.summary.cvr ? data.summary.cvr.value : 0}
+                        format="percentage"
+                        className="text-4xl font-bold text-orange-500 mb-2 block group-hover:text-orange-400 transition-colors"
+                      />
+                      <PremiumTypography.Caption>Conversion Rate</PremiumTypography.Caption>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </ResponsiveGrid>
+                </PremiumCardContent>
+              </PremiumCard>
             )}
           </div>
         )}
-      </div>
+      </LayoutSection>
     </MainLayout>
   );
 };

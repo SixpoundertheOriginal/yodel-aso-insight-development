@@ -139,6 +139,21 @@
   --ease-spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-bounce: cubic-bezier(0.68, -0.6, 0.32, 1.6);
 
+  /* Premium Effects */
+  --backdrop-blur: 12px;
+  --backdrop-blur-sm: 4px;
+  --backdrop-blur-lg: 24px;
+  
+  /* Enhanced Shadow System */
+  --shadow-glow-orange: 0 0 40px rgba(249, 115, 22, 0.3);
+  --shadow-glow-blue: 0 0 40px rgba(59, 130, 246, 0.3);
+  --shadow-glow-success: 0 0 40px rgba(16, 185, 129, 0.3);
+  
+  /* Interactive States */
+  --hover-scale: 1.02;
+  --hover-scale-lg: 1.05;
+  --active-scale: 0.95;
+
   /* Gradient Definitions */
   --gradient-orange: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
   --gradient-blue: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
