@@ -1419,6 +1419,7 @@ export type Database = {
           id: string
           is_live: boolean
           keywords: string
+          long_description: string | null
           notes: string | null
           organization_id: string
           score: Json | null
@@ -1432,6 +1433,7 @@ export type Database = {
           id?: string
           is_live?: boolean
           keywords: string
+          long_description?: string | null
           notes?: string | null
           organization_id: string
           score?: Json | null
@@ -1445,6 +1447,7 @@ export type Database = {
           id?: string
           is_live?: boolean
           keywords?: string
+          long_description?: string | null
           notes?: string | null
           organization_id?: string
           score?: Json | null
