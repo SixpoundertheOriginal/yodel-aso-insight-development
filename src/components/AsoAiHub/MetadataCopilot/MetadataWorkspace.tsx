@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { CurrentMetadataPanel } from './CurrentMetadataPanel';
 import { SuggestedMetadataPanel } from './SuggestedMetadataPanel';
 import { ManualMetadataEditor } from './ManualMetadataEditor';
+import { CompetitiveAnalysisPanel } from './CompetitiveAnalysisPanel';
 import { ModeToggle, WorkspaceMode } from './ModeToggle';
 import { DataIntegrityChecker } from './DataIntegrityChecker';
 import { ScrapedMetadata, MetadataField, MetadataScore } from '@/types/aso';
@@ -146,13 +147,22 @@ Respond with ONLY the suggested ${field}, no formatting or explanation.`;
               onEditResults={switchToManualMode}
               onGenerationSuccess={handleGenerationSuccess}
             />
-          ) : (
+          ) : mode === 'manual-editor' ? (
             <ManualMetadataEditor
               initialData={generatedMetadata || undefined}
               onSave={handleSaveMetadata}
               onRequestAiSuggestion={handleAiSuggestion}
               appName={initialData.name}
               isSaving={isSaving}
+            />
+          ) : (
+            <CompetitiveAnalysisPanel
+              initialData={initialData}
+              organizationId={organizationId}
+              onApplyInsight={(insight, field) => {
+                // TODO: Apply competitive insights to metadata fields
+                console.log('Apply insight:', insight, 'to field:', field);
+              }}
             />
           )}
         </div>

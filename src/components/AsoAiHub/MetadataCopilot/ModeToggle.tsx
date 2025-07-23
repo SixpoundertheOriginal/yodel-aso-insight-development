@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Wand2, Edit3 } from 'lucide-react';
+import { Wand2, Edit3, Users } from 'lucide-react';
 
-export type WorkspaceMode = 'ai-generation' | 'manual-editor';
+export type WorkspaceMode = 'ai-generation' | 'manual-editor' | 'competitive-analysis';
 
 interface ModeToggleProps {
   mode: WorkspaceMode;
@@ -46,6 +46,21 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
       >
         <Edit3 className="w-4 h-4" />
         <span>Manual Editor</span>
+      </Button>
+
+      <Button
+        variant={mode === 'competitive-analysis' ? 'default' : 'ghost'}
+        size="sm"
+        onClick={() => onModeChange('competitive-analysis')}
+        disabled={disabled}
+        className={`flex items-center space-x-2 ${
+          mode === 'competitive-analysis' 
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
+            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+        }`}
+      >
+        <Users className="w-4 h-4" />
+        <span>Competitors</span>
       </Button>
     </div>
   );
