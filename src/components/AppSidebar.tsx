@@ -34,78 +34,78 @@ import {
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/usePermissions";
 
-// Analytics & Insights - Pure data visualization from BigQuery
+// Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems = [
   {
-    title: "Overview",
+    title: "Executive Dashboard",
     url: "/overview",
     icon: Home,
   },
   {
-    title: "Store Performance", 
+    title: "Analytics", 
     url: "/dashboard",
     icon: BarChart3,
   },
   {
-    title: "Conversion Analysis",
+    title: "Conversion Intelligence",
     url: "/conversion-analysis", 
     icon: Target,
   },
 ];
 
-// AI Tools & Analysis - Main AI-powered tools
+// AI Command Center - Main AI-powered tools
 const aiToolsItems = [
   {
-    title: "ASO Intelligence Hub",
+    title: "Market Intelligence",
     url: "/aso-unified",
     icon: Zap,
   },
   {
-    title: "ASO AI Audit",
+    title: "Strategic Audit Engine",
     url: "/aso-ai-hub",
     icon: Bot,
   },
   {
-    title: "Keyword Intelligence",
+    title: "Search Domination",
     url: "/keyword-intelligence",
     icon: Search,
   },
   {
-    title: "ChatGPT Visibility",
+    title: "AI Visibility Optimizer",
     url: "/chatgpt-visibility-audit",
     icon: Brain,
   },
   {
-    title: "Apps",
+    title: "Portfolio Manager",
     url: "/apps",
     icon: Smartphone,
   },
 ];
 
-// AI Copilots - Dedicated copilot interfaces
+// Growth Accelerators - Dedicated copilot interfaces
 const aiCopilotsItems = [
   {
-    title: "ASO Knowledge Engine",
+    title: "Strategy Brain",
     url: "/aso-knowledge-engine",
     icon: Brain,
   },
   {
-    title: "Metadata Copilot",
+    title: "Metadata Optimizer",
     url: "/metadata-copilot",
     icon: FileEdit,
   },
   {
-    title: "Growth Gap Copilot",
+    title: "Opportunity Scanner",
     url: "/growth-gap-copilot",
     icon: TrendingUp,
   },
   {
-    title: "CPP Strategy Copilot",
+    title: "Campaign Intelligence",
     url: "/cpp-strategy-copilot",
     icon: Target,
   },
   {
-    title: "Featuring Toolkit",
+    title: "Feature Maximizer",
     url: "/featuring-toolkit",
     icon: Star,
   },
@@ -119,7 +119,7 @@ const userItems = [
     icon: User,
   },
   {
-    title: "Settings",
+    title: "Preferences",
     url: "/settings",
     icon: SettingsIcon,
   },
@@ -144,10 +144,10 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
-        {/* Analytics & Insights Section */}
+        {/* Performance Intelligence Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            📊 Analytics & Insights
+            📊 Performance Intelligence
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -173,10 +173,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* AI Tools & Analysis Section */}
+        {/* AI Command Center Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            🤖 AI Copilots & Tools
+            🧠 AI Command Center
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -202,10 +202,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* AI Copilots Section */}
+        {/* Growth Accelerators Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            🚀 AI Copilots
+            ⚡ Growth Accelerators
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -231,11 +231,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Administration Section - visible to org admins and super admins */}
+        {/* Control Center Section - visible to org admins and super admins */}
         {(isSuperAdmin || isOrganizationAdmin) && (
           <SidebarGroup>
             <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              🔧 Administration
+              ⚙️ Control Center
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -243,12 +243,12 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === '/app-discovery'}
-                    tooltip="App Discovery"
+                    tooltip="App Intelligence"
                     className="h-10 data-[active=true]:bg-yodel-orange data-[active=true]:text-white hover:bg-zinc-800 hover:text-white"
                   >
                     <Link to="/app-discovery" className="flex items-center gap-3">
                       <Database className="h-4 w-4 shrink-0" />
-                      <span className="truncate">App Discovery</span>
+                      <span className="truncate">App Intelligence</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -258,12 +258,12 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={location.pathname === '/admin'}
-                      tooltip="Admin Panel"
+                      tooltip="System Control"
                       className="h-10 data-[active=true]:bg-yodel-orange data-[active=true]:text-white hover:bg-zinc-800 hover:text-white"
                     >
                       <Link to="/admin" className="flex items-center gap-3">
                         <Shield className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Admin Panel</span>
+                        <span className="truncate">System Control</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -276,7 +276,7 @@ export function AppSidebar() {
         {/* Account Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Account
+            👤 Account
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
