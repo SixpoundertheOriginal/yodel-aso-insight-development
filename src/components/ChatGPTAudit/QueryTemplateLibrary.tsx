@@ -34,22 +34,44 @@ export const QUERY_TEMPLATE_LIBRARY: QueryTemplate[] = [
   {
     id: 'rec_general_best',
     name: 'General Best Apps',
-    query_text: 'What are the best {category} apps for {target_audience}?',
+    query_text: 'What are the best {specific_category} apps for {target_personas}?',
     category: 'recommendation',
     subcategory: 'general',
-    variables: { category: 'fitness', target_audience: 'beginners' },
+    variables: { specific_category: 'language learning', target_personas: 'business travelers' },
     description: 'Tests how the app ranks in general "best of" recommendations',
     priority: 1,
     icon: <Star className="h-4 w-4" />
   },
   {
+    id: 'rec_persona_based',
+    name: 'Persona-Based Recommendation',
+    query_text: 'I\'m a {target_personas} looking for {specific_category} app for {authentic_use_cases}. What do you recommend?',
+    category: 'recommendation',
+    subcategory: 'persona',
+    variables: { target_personas: 'busy professional', specific_category: 'language learning', authentic_use_cases: 'business travel preparation' },
+    description: 'Tests recommendations based on specific user personas',
+    priority: 1,
+    icon: <Users className="h-4 w-4" />
+  },
+  {
     id: 'rec_specific_need',
     name: 'Specific Need',
-    query_text: 'I need a {category} app that can help me {specific_need}. What do you recommend?',
+    query_text: 'I need a {specific_category} app that can help me {authentic_use_cases}. What do you recommend?',
     category: 'recommendation',
     subcategory: 'specific',
-    variables: { category: 'finance', specific_need: 'track my expenses and budget' },
+    variables: { specific_category: 'language learning', authentic_use_cases: 'learn Spanish for business meetings' },
     description: 'Tests recommendations for specific use cases',
+    priority: 1,
+    icon: <Target className="h-4 w-4" />
+  },
+  {
+    id: 'user_intent_goal_based',
+    name: 'Goal-Based Query',
+    query_text: 'What\'s the best app for {persona_goals}?',
+    category: 'recommendation',
+    subcategory: 'goals',
+    variables: { persona_goals: 'learning Spanish for business travel' },
+    description: 'Tests visibility for specific user goals',
     priority: 1,
     icon: <Target className="h-4 w-4" />
   },
@@ -80,13 +102,35 @@ export const QUERY_TEMPLATE_LIBRARY: QueryTemplate[] = [
   {
     id: 'comp_direct',
     name: 'Direct Comparison',
-    query_text: 'Compare {app_name} vs {competitor_1} vs {competitor_2} for {use_case}',
+    query_text: 'Compare {app_name} vs {competitor_1} vs {competitor_2} for {authentic_use_cases}',
     category: 'comparison',
     subcategory: 'direct',
-    variables: { app_name: 'MyApp', competitor_1: 'CompetitorA', competitor_2: 'CompetitorB', use_case: 'budget tracking' },
+    variables: { app_name: 'MyApp', competitor_1: 'Duolingo', competitor_2: 'Babbel', authentic_use_cases: 'learning Spanish for business' },
     description: 'Direct head-to-head comparisons',
     priority: 1,
     icon: <Target className="h-4 w-4" />
+  },
+  {
+    id: 'comp_vs_competitor',
+    name: 'Head-to-Head Comparison', 
+    query_text: 'How does {app_name} compare to {competitor} for {authentic_use_cases}?',
+    category: 'comparison',
+    subcategory: 'versus',
+    variables: { app_name: 'Pimsleur', competitor: 'Duolingo', authentic_use_cases: 'learning languages for travel' },
+    description: 'Tests head-to-head positioning against competitors',
+    priority: 1,
+    icon: <TrendingUp className="h-4 w-4" />
+  },
+  {
+    id: 'comp_better_than',
+    name: 'Better Alternative Query',
+    query_text: 'Is {app_name} better than {competitor} for {authentic_use_cases}?',
+    category: 'comparison', 
+    subcategory: 'better',
+    variables: { app_name: 'Pimsleur', competitor: 'Babbel', authentic_use_cases: 'professional language learning' },
+    description: 'Tests positioning as superior alternative',
+    priority: 2,
+    icon: <Star className="h-4 w-4" />
   },
   {
     id: 'comp_features',
@@ -104,13 +148,24 @@ export const QUERY_TEMPLATE_LIBRARY: QueryTemplate[] = [
   {
     id: 'prob_solution',
     name: 'Problem Solution',
-    query_text: 'I\'m having trouble with {problem}. What app can help me solve this?',
+    query_text: 'I\'m having trouble with {pain_points_solved}. What app can help me solve this?',
     category: 'problem_solving',
     subcategory: 'solution',
-    variables: { problem: 'staying motivated to exercise' },
+    variables: { pain_points_solved: 'finding time to learn languages effectively' },
     description: 'Tests visibility for problem-solving scenarios',
     priority: 1,
     icon: <Lightbulb className="h-4 w-4" />
+  },
+  {
+    id: 'prob_competitor_weakness',
+    name: 'Competitor Weakness',
+    query_text: 'I tried {competitor} but had issues with {pain_points_solved}. Any alternatives?',
+    category: 'problem_solving',
+    subcategory: 'alternative',
+    variables: { competitor: 'Duolingo', pain_points_solved: 'too gamified approach for serious learning' },
+    description: 'Tests positioning against competitor weaknesses',
+    priority: 2,
+    icon: <TrendingUp className="h-4 w-4" />
   },
   {
     id: 'prob_workflow',

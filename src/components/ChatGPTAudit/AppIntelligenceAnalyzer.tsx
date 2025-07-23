@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Brain, Target, Users, Trophy, Zap, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AppData {
   app_name: string;
@@ -73,65 +74,104 @@ export const AppIntelligenceAnalyzer: React.FC<AppIntelligenceAnalyzerProps> = (
   const [intelligence, setIntelligence] = useState<AppIntelligence | null>(null);
   const [analysisStep, setAnalysisStep] = useState('');
 
-  const analyzeAppIntelligence = async () => {
+  const analyzeAppIntelligence = async (): Promise<void> => {
+    if (!appData) return;
+
     setIsAnalyzing(true);
-    setAnalysisStep('Analyzing app description...');
+    setAnalysisStep("Enhancing with AI analysis...");
 
     try {
-      // Step 1: Basic category refinement
-      const refinedCategory = refineCategory(appData.app_name, appData.description, appData.category);
-      setAnalysisStep('Identifying target audience...');
+      // Try AI enhancement first
+      const enhancedAnalysis = await enhanceWithAI();
+      
+      if (enhancedAnalysis) {
+        setIntelligence(enhancedAnalysis);
+        onIntelligenceGenerated(enhancedAnalysis);
+        setAnalysisStep("AI enhancement complete");
+        return;
+      }
+    } catch (error) {
+      console.warn('AI enhancement failed, using fallback analysis:', error);
+    }
 
-      // Step 2: Extract target audience
-      const targetAudience = extractTargetAudience(appData.description, refinedCategory);
-      setAnalysisStep('Finding competitors...');
+    // Fallback to rule-based analysis
+    setAnalysisStep("Using rule-based analysis...");
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAnalysisStep("Analyzing app category...");
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAnalysisStep("Extracting target audience...");
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAnalysisStep("Identifying competitors...");
 
-      // Step 3: Identify competitors
-      const competitors = identifyCompetitors(appData.app_name, refinedCategory, appData.description);
-      setAnalysisStep('Extracting key features...');
-
-      // Step 4: Extract features and use cases
-      const keyFeatures = extractKeyFeatures(appData.description);
-      const useCases = extractUseCases(appData.description, refinedCategory);
-      setAnalysisStep('Calculating market position...');
-
-      // Step 5: Determine market position
-      const marketPosition = determineMarketPosition(appData.app_name, competitors, keyFeatures);
-
-      const generatedIntelligence: AppIntelligence = {
-        refined_category: refinedCategory,
-        learning_method: extractLearningMethod(appData.description, refinedCategory),
-        target_audience: targetAudience,
-        competitors: competitors,
-        key_features: keyFeatures,
-        use_cases: useCases,
-        market_position: marketPosition,
+      const generated: AppIntelligence = {
+        refined_category: refineCategory(appData.app_name, appData.description, appData.category),
+        target_audience: extractTargetAudience(appData.description, appData.category),
+        competitors: identifyCompetitors(appData.app_name, appData.category, appData.description),
+        key_features: extractKeyFeatures(appData.description),
+        use_cases: extractUseCases(appData.description, appData.category),
+        learning_method: extractLearningMethod(appData.description, appData.category),
+        market_position: determineMarketPosition(appData.app_name, [], extractKeyFeatures(appData.description)),
         confidence_score: calculateConfidenceScore(appData.description)
       };
 
-      setIntelligence(generatedIntelligence);
-      onIntelligenceGenerated(generatedIntelligence);
-      setAnalysisStep('Analysis complete!');
-
+      setIntelligence(generated);
+      onIntelligenceGenerated(generated);
     } catch (error) {
       console.error('Error analyzing app intelligence:', error);
-      setAnalysisStep('Analysis failed - using fallback intelligence');
-      
-      // Fallback intelligence
-      const fallbackIntelligence: AppIntelligence = {
-        refined_category: appData.category || 'general',
-        target_audience: ['general_users'],
+      // Final fallback
+      const fallback: AppIntelligence = {
+        refined_category: appData.category,
+        target_audience: ['general users'],
         competitors: [],
-        key_features: ['mobile_app'],
-        use_cases: ['general_use'],
-        market_position: 'unknown',
+        key_features: ['mobile app'],
+        use_cases: ['general use'],
+        market_position: 'established',
         confidence_score: 0.3
       };
-      
-      setIntelligence(fallbackIntelligence);
-      onIntelligenceGenerated(fallbackIntelligence);
+      setIntelligence(fallback);
+      onIntelligenceGenerated(fallback);
     } finally {
       setIsAnalyzing(false);
+      setAnalysisStep("");
+    }
+  };
+
+  const enhanceWithAI = async (): Promise<AppIntelligence | null> => {
+    if (!appData) return null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('enhanced-app-intelligence', {
+        body: { appData }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.data) {
+        const enhanced = data.data;
+        
+        // Convert AI analysis to AppIntelligence format
+        return {
+          refined_category: enhanced.specific_category,
+          target_audience: enhanced.target_personas.map((p: any) => p.name),
+          competitors: enhanced.competitor_context.map((c: any) => c.name),
+          key_features: enhanced.authentic_use_cases,
+          use_cases: enhanced.authentic_use_cases,
+          learning_method: enhanced.user_language.find((lang: string) => 
+            lang.includes('learning') || lang.includes('method')
+          ),
+          market_position: enhanced.competitor_context.length > 3 ? 'competitive' : 'established',
+          confidence_score: enhanced.confidence_score || 0.8
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('AI enhancement error:', error);
+      return null;
     }
   };
 

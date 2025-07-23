@@ -91,37 +91,48 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
     const variables: Record<string, string> = {};
 
     if (intelligence) {
-      // Use intelligence data for smart variables
+      // Use AI intelligence data for smart variables
       variables.app_name = metadata.name || metadata.title;
       variables.developer = metadata.developer || 'developer';
       variables.category = intelligence.refined_category;
+      variables.specific_category = intelligence.refined_category;
       variables.target_audience = intelligence.target_audience.join(' and ');
+      variables.target_personas = intelligence.target_audience.map(a => a.replace(/_/g, ' ')).join(' and ');
       variables.specific_need = intelligence.use_cases.join(' and ');
+      variables.authentic_use_cases = intelligence.use_cases.join(', ');
       variables.use_case = intelligence.use_cases[0] || 'general use';
+      variables.persona_goals = intelligence.target_audience.map(p => `${p.replace(/_/g, ' ')} goals`).join(', ');
+      variables.user_language = intelligence.key_features.join(', ');
+      variables.pain_points_solved = intelligence.key_features.join(', ');
       
       // Set competitor variables
       if (intelligence.competitors.length > 0) {
         variables.competitor_app = intelligence.competitors[0];
+        variables.competitor = intelligence.competitors[0];
         variables.competitor_1 = intelligence.competitors[0] || 'CompetitorA';
         variables.competitor_2 = intelligence.competitors[1] || 'CompetitorB';
       }
       
       // Feature-based variables
       variables.feature = intelligence.key_features.join(' and ') || 'key features';
-      variables.problem = `challenges with ${intelligence.refined_category}`;
-      variables.workflow = `${intelligence.refined_category} workflow`;
-      variables.activity = intelligence.refined_category.replace('_', ' ');
-      variables.user_type = intelligence.target_audience[0] || 'users';
-      variables.purpose = intelligence.use_cases[0] || intelligence.refined_category;
+      variables.problem = `challenges with ${intelligence.refined_category.replace(/_/g, ' ')}`;
+      variables.workflow = `${intelligence.refined_category.replace(/_/g, ' ')} workflow`;
+      variables.activity = intelligence.refined_category.replace(/_/g, ' ');
+      variables.user_type = intelligence.target_audience[0]?.replace(/_/g, ' ') || 'users';
+      variables.purpose = intelligence.use_cases[0]?.replace(/_/g, ' ') || intelligence.refined_category.replace(/_/g, ' ');
     } else {
       // Fallback to basic extraction
       variables.app_name = metadata.name || metadata.title;
       variables.developer = metadata.developer || 'developer';
       variables.category = metadata.applicationCategory || 'mobile app';
+      variables.specific_category = metadata.applicationCategory || 'mobile app';
       variables.target_audience = 'users';
+      variables.target_personas = 'general users';
       variables.specific_need = 'achieve their goals';
+      variables.authentic_use_cases = 'general use';
       variables.use_case = 'general use';
       variables.competitor_app = 'popular alternatives';
+      variables.competitor = 'popular alternatives';
       variables.competitor_1 = 'CompetitorA';
       variables.competitor_2 = 'CompetitorB';
       variables.feature = 'key features';
@@ -130,6 +141,9 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
       variables.activity = 'activities';
       variables.user_type = 'users';
       variables.purpose = 'general use';
+      variables.persona_goals = 'general goals';
+      variables.user_language = 'mobile app features';
+      variables.pain_points_solved = 'various challenges';
     }
 
     return variables;
