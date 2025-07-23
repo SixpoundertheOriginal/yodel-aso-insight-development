@@ -25,12 +25,16 @@ const OverviewPage: React.FC = () => {
 
   const isLoading = loading || comparisonLoading;
 
-  console.log('📊 [Overview] Current state:', { 
+  console.log('📊 [Overview Debug] Current state:', { 
     loading: isLoading, 
     hasData: !!data, 
+    dataStructure: data ? Object.keys(data) : 'no data',
+    dataType: typeof data,
     selectedTrafficSources: filters.trafficSources,
     selectedTrafficSourcesCount: filters.trafficSources.length,
-    deltas
+    deltas,
+    current,
+    previous
   });
 
   return (
@@ -72,7 +76,7 @@ const OverviewPage: React.FC = () => {
         )}
         
         {/* Charts with Real Period Comparison */}
-        {!isLoading && current && previous && (
+        {!isLoading && data && (
           <div className="grid grid-cols-1 gap-10">
             {/* Impressions Chart */}
             <Card className="bg-zinc-900 border-zinc-800 shadow-xl overflow-hidden">
@@ -81,8 +85,8 @@ const OverviewPage: React.FC = () => {
               </CardHeader>
               <CardContent className="p-8">
                 <ComparisonChart
-                  currentData={current.timeseriesData}
-                  previousData={previous.timeseriesData}
+                  currentData={data.timeseriesData}
+                  previousData={[]}
                   title="Impressions"
                   metric="impressions"
                 />
@@ -96,8 +100,8 @@ const OverviewPage: React.FC = () => {
               </CardHeader>
               <CardContent className="p-8">
                 <ComparisonChart
-                  currentData={current.timeseriesData}
-                  previousData={previous.timeseriesData}
+                  currentData={data.timeseriesData}
+                  previousData={[]}
                   title="Downloads"
                   metric="downloads"
                 />
@@ -110,20 +114,16 @@ const OverviewPage: React.FC = () => {
                 <CardTitle className="text-2xl font-bold text-white">Conversion Rate</CardTitle>
               </CardHeader>
               <CardContent className="p-8">
-                {data && data.summary && deltas && (
+                {data && data.summary && (
                   <>
                     <div className="mb-10">
                       <div className="h-[250px]">
                         <div className="flex flex-col h-full justify-center items-center">
                           <div className="text-8xl font-bold text-yodel-orange">
-                            {((data.summary.downloads.value / data.summary.impressions.value) * 100).toFixed(1)}%
+                            {data.summary.cvr ? data.summary.cvr.value.toFixed(1) : '0.0'}%
                           </div>
                           <div className="flex items-center mt-8">
-                            <span className={`text-2xl ${deltas.cvr >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {deltas.cvr >= 0 ? '↑' : '↓'}
-                              {Math.abs(deltas.cvr).toFixed(1)}%
-                            </span>
-                            <span className="text-xl text-zinc-400 ml-3">vs previous period</span>
+                            <span className="text-xl text-zinc-400">Conversion Rate</span>
                           </div>
                         </div>
                       </div>
@@ -135,22 +135,14 @@ const OverviewPage: React.FC = () => {
                           <div className="stat-card flex flex-col justify-center">
                             <div className="text-zinc-400 mb-3 text-lg">Total Impressions</div>
                             <div className="text-4xl font-bold text-white">
-                              {data.summary.impressions.value.toLocaleString()}
-                            </div>
-                            <div className={`text-base mt-4 ${deltas.impressions >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {deltas.impressions >= 0 ? '↑' : '↓'} 
-                              {Math.abs(deltas.impressions).toFixed(1)}% vs previous
+                              {data.summary.impressions ? data.summary.impressions.value.toLocaleString() : '0'}
                             </div>
                           </div>
                           
                           <div className="stat-card flex flex-col justify-center">
                             <div className="text-zinc-400 mb-3 text-lg">Total Downloads</div>
                             <div className="text-4xl font-bold text-white">
-                              {data.summary.downloads.value.toLocaleString()}
-                            </div>
-                            <div className={`text-base mt-4 ${deltas.downloads >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {deltas.downloads >= 0 ? '↑' : '↓'} 
-                              {Math.abs(deltas.downloads).toFixed(1)}% vs previous
+                              {data.summary.downloads ? data.summary.downloads.value.toLocaleString() : '0'}
                             </div>
                           </div>
                         </div>
