@@ -500,6 +500,263 @@ export type Database = {
           },
         ]
       }
+      competitive_trends: {
+        Row: {
+          avg_rating: number | null
+          created_at: string | null
+          declining_keywords: string[] | null
+          emerging_keywords: string[] | null
+          id: string
+          market_saturation_score: number | null
+          organization_id: string
+          search_term: string
+          total_competitors: number | null
+          trend_date: string | null
+          trending_keywords: string[] | null
+        }
+        Insert: {
+          avg_rating?: number | null
+          created_at?: string | null
+          declining_keywords?: string[] | null
+          emerging_keywords?: string[] | null
+          id?: string
+          market_saturation_score?: number | null
+          organization_id: string
+          search_term: string
+          total_competitors?: number | null
+          trend_date?: string | null
+          trending_keywords?: string[] | null
+        }
+        Update: {
+          avg_rating?: number | null
+          created_at?: string | null
+          declining_keywords?: string[] | null
+          emerging_keywords?: string[] | null
+          id?: string
+          market_saturation_score?: number | null
+          organization_id?: string
+          search_term?: string
+          total_competitors?: number | null
+          trend_date?: string | null
+          trending_keywords?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitive_trends_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitive_trends_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_analysis: {
+        Row: {
+          ai_summary: string | null
+          analysis_date: string | null
+          analysis_status: string | null
+          created_at: string | null
+          id: string
+          insights: Json | null
+          organization_id: string
+          search_term: string
+          search_type: string
+          total_apps_analyzed: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          analysis_date?: string | null
+          analysis_status?: string | null
+          created_at?: string | null
+          id?: string
+          insights?: Json | null
+          organization_id: string
+          search_term: string
+          search_type: string
+          total_apps_analyzed?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          analysis_date?: string | null
+          analysis_status?: string | null
+          created_at?: string | null
+          id?: string
+          insights?: Json | null
+          organization_id?: string
+          search_term?: string
+          search_type?: string
+          total_apps_analyzed?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitor_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_apps: {
+        Row: {
+          ai_keyword_analysis: Json | null
+          analysis_id: string | null
+          app_id: string
+          app_name: string
+          category: string | null
+          competitive_strengths: string | null
+          created_at: string | null
+          description_keywords: string[] | null
+          developer_name: string | null
+          id: string
+          organization_id: string
+          platform: string
+          positioning_summary: string | null
+          price: number | null
+          ranking_position: number | null
+          rating_count: number | null
+          rating_score: number | null
+          subtitle_keywords: string[] | null
+          title_keywords: string[] | null
+        }
+        Insert: {
+          ai_keyword_analysis?: Json | null
+          analysis_id?: string | null
+          app_id: string
+          app_name: string
+          category?: string | null
+          competitive_strengths?: string | null
+          created_at?: string | null
+          description_keywords?: string[] | null
+          developer_name?: string | null
+          id?: string
+          organization_id: string
+          platform?: string
+          positioning_summary?: string | null
+          price?: number | null
+          ranking_position?: number | null
+          rating_count?: number | null
+          rating_score?: number | null
+          subtitle_keywords?: string[] | null
+          title_keywords?: string[] | null
+        }
+        Update: {
+          ai_keyword_analysis?: Json | null
+          analysis_id?: string | null
+          app_id?: string
+          app_name?: string
+          category?: string | null
+          competitive_strengths?: string | null
+          created_at?: string | null
+          description_keywords?: string[] | null
+          developer_name?: string | null
+          id?: string
+          organization_id?: string
+          platform?: string
+          positioning_summary?: string | null
+          price?: number | null
+          ranking_position?: number | null
+          rating_count?: number | null
+          rating_score?: number | null
+          subtitle_keywords?: string[] | null
+          title_keywords?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_apps_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_apps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitor_apps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_keyword_intelligence: {
+        Row: {
+          competitor_app_id: string | null
+          created_at: string | null
+          frequency_score: number | null
+          id: string
+          keyword: string
+          keyword_source: string | null
+          organization_id: string
+          relevance_score: number | null
+        }
+        Insert: {
+          competitor_app_id?: string | null
+          created_at?: string | null
+          frequency_score?: number | null
+          id?: string
+          keyword: string
+          keyword_source?: string | null
+          organization_id: string
+          relevance_score?: number | null
+        }
+        Update: {
+          competitor_app_id?: string | null
+          created_at?: string | null
+          frequency_score?: number | null
+          id?: string
+          keyword?: string
+          keyword_source?: string | null
+          organization_id?: string
+          relevance_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_keyword_intelligence_competitor_app_id_fkey"
+            columns: ["competitor_app_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_keyword_intelligence_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitor_keyword_intelligence_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_keywords: {
         Row: {
           analyzed_at: string

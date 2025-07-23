@@ -10,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, Download, Target } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Star, Download, Target, BarChart3, TrendingUp } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 
 interface AppSelectionModalProps {
@@ -19,7 +20,9 @@ interface AppSelectionModalProps {
   candidates: ScrapedMetadata[];
   onSelect: (app: ScrapedMetadata) => void;
   searchTerm: string;
-  mode?: 'select' | 'analyze'; // New prop to control button text
+  mode?: 'select' | 'analyze';
+  onCompetitorAnalysis?: (searchTerm: string, analysisType: 'brand' | 'keyword' | 'category') => void;
+  showCompetitorAnalysis?: boolean;
 }
 
 export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
@@ -28,10 +31,18 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   candidates,
   onSelect,
   searchTerm,
-  mode = 'select'
+  mode = 'select',
+  onCompetitorAnalysis,
+  showCompetitorAnalysis = true
 }) => {
   const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
   const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
+
+  const handleCompetitorAnalysis = (analysisType: 'brand' | 'keyword' | 'category') => {
+    if (onCompetitorAnalysis) {
+      onCompetitorAnalysis(searchTerm, analysisType);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -106,6 +117,45 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
             ))}
           </div>
         </ScrollArea>
+        
+        {/* Competitor Analysis Section */}
+        {showCompetitorAnalysis && onCompetitorAnalysis && (
+          <>
+            <Separator className="bg-zinc-800" />
+            <div className="space-y-3 pt-4">
+              <div className="text-center">
+                <h4 className="text-sm font-medium text-white mb-2">
+                  Or analyze the competitive landscape
+                </h4>
+                <p className="text-xs text-zinc-400 mb-4">
+                  Get insights on top competing apps for "{searchTerm}"
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  onClick={() => handleCompetitorAnalysis('keyword')}
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 w-full justify-start"
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analyze Keyword Competition
+                  <span className="ml-auto text-xs text-zinc-500">Top 10 apps</span>
+                </Button>
+                
+                <Button
+                  onClick={() => handleCompetitorAnalysis('category')}
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 w-full justify-start"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Market Trend Analysis
+                  <span className="ml-auto text-xs text-zinc-500">Category insights</span>
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

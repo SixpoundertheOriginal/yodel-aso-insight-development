@@ -22,9 +22,10 @@ import { useDebouncedSearch } from '@/hooks/useDebouncedSearch';
 
 interface MetadataImporterProps {
   onImportSuccess: (data: ScrapedMetadata, organizationId: string) => void;
+  onCompetitorAnalysis?: (searchTerm: string, analysisType: 'brand' | 'keyword' | 'category') => void;
 }
 
-export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSuccess }) => {
+export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSuccess, onCompetitorAnalysis }) => {
   const [mode, setMode] = useState<'selector' | 'existing' | 'pre-launch'>('selector');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
