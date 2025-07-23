@@ -12,7 +12,9 @@ interface BigQueryAppContextType {
 const BigQueryAppContext = createContext<BigQueryAppContextType | undefined>(undefined);
 
 export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  console.log(`[${new Date().toISOString()}] [BigQueryAppContext] 🏗️ Provider mounted and initialized`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[BigQueryAppContext] Provider mounted');
+  }
   
   // ✅ PHASE 3: Enhanced state management with loading
   const [selectedApps, setSelectedApps] = useState<string[]>([]);
@@ -23,12 +25,12 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     const loadApprovedApps = async () => {
       try {
-        console.log(`[${new Date().toISOString()}] [BigQueryAppContext] Loading user's approved apps...`);
-        
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log(`[${new Date().toISOString()}] [BigQueryAppContext] No user found, using fallback`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[BigQueryAppContext] No user found, using fallback');
+          }
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
           setLoading(false);
@@ -43,21 +45,21 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
           .single();
 
         if (!profile?.organization_id) {
-          console.log(`[${new Date().toISOString()}] [BigQueryAppContext] No organization found, using fallback`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[BigQueryAppContext] No organization found, using fallback');
+          }
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
           setLoading(false);
           return;
         }
 
-        console.log(`[${new Date().toISOString()}] [BigQueryAppContext] Found organization:`, profile.organization_id);
-
         // Get approved apps for organization using RPC
         const { data: approvedApps, error } = await supabase
           .rpc('get_approved_apps', { p_organization_id: profile.organization_id });
 
         if (error) {
-          console.error(`[${new Date().toISOString()}] [BigQueryAppContext] Error loading approved apps:`, error);
+          console.error('[BigQueryAppContext] Error loading approved apps:', error);
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
           setLoading(false);
@@ -66,23 +68,23 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         const appIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
         
-        console.log(`[${new Date().toISOString()}] [BigQueryAppContext] Loaded approved apps:`, {
-          organizationId: profile.organization_id,
-          approvedAppsCount: appIdentifiers.length,
-          apps: appIdentifiers
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[BigQueryAppContext] Loaded approved apps:', {
+            organizationId: profile.organization_id,
+            approvedAppsCount: appIdentifiers.length
+          });
+        }
 
         if (appIdentifiers.length > 0) {
           setAvailableApps(appIdentifiers);
           setSelectedApps(appIdentifiers); // Select all by default
         } else {
-          console.log(`[${new Date().toISOString()}] [BigQueryAppContext] No approved apps, using fallback`);
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
         }
 
       } catch (err) {
-        console.error(`[${new Date().toISOString()}] [BigQueryAppContext] Error in loadApprovedApps:`, err);
+        console.error('[BigQueryAppContext] Error in loadApprovedApps:', err);
         setAvailableApps(['TUI']);
         setSelectedApps(['TUI']);
       } finally {
@@ -93,21 +95,16 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
     loadApprovedApps();
   }, []);
 
-  // ✅ PHASE 3: Log app selection changes
+  // App selection handler
   const handleSetSelectedApps = (apps: string[]) => {
-    console.log(`[${new Date().toISOString()}] [BigQueryAppContext] App selection changing:`, {
-      from: selectedApps,
-      to: apps
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[BigQueryAppContext] App selection changing:', {
+        from: selectedApps.length,
+        to: apps.length
+      });
+    }
     setSelectedApps(apps);
   };
-
-  console.log(`[${new Date().toISOString()}] [BigQueryAppContext] 🚨 Provider state:`, {
-    selectedApps,
-    availableApps,
-    loading,
-    timestamp: new Date().toISOString()
-  });
 
   return (
     <BigQueryAppContext.Provider value={{ 

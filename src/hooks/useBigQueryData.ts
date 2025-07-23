@@ -5,6 +5,13 @@ import { DateRange, AsoData, TimeSeriesPoint, MetricSummary, TrafficSource } fro
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
 
+// Development-only logging helper
+const devLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV === 'development') {
+    debugLog.info(`[useBigQueryData] ${message}`, data);
+  }
+};
+
 interface BigQueryDataPoint {
   date: string;
   organization_id: string;
@@ -94,7 +101,7 @@ export const useBigQueryData = (
   }
   const instanceId = instanceIdRef.current;
 
-  // ✅ FIXED: Stable memoized filters to prevent infinite loops
+  // ✅ ENHANCED: Stable memoized filters with request deduplication
   const stableFilters = useMemo(() => {
     // Ensure dates are properly formatted
     const fromDate = typeof dateRange.from === 'string' 
@@ -118,186 +125,146 @@ export const useBigQueryData = (
     trafficSources.join(',')
   ]);
 
-  console.log(`[${new Date().toISOString()}] [useBigQueryData] Hook initialized:`, {
+  // ✅ ENHANCED: Request deduplication key
+  const requestKey = useMemo(() => 
+    `${stableFilters.organizationId}-${stableFilters.selectedApps.join(',')}-${stableFilters.dateRange.from}-${stableFilters.dateRange.to}-${stableFilters.trafficSources.join(',')}`,
+    [stableFilters]
+  );
+
+  devLog('Hook initialized', {
     instanceId,
-    organizationId: stableFilters.organizationId,
-    selectedApps: stableFilters.selectedApps,
-    trafficSources: stableFilters.trafficSources,
-    dateRange: stableFilters.dateRange,
+    requestKey,
     ready,
-    hasRegistration: !!registerHookInstance,
-    timestamp: new Date().toISOString()
+    hasRegistration: !!registerHookInstance
   });
 
-  useEffect(() => {
-    // ✅ FIXED: Check if organizationId exists and ready
+  const fetchData = useCallback(async () => {
     if (!stableFilters.organizationId || !ready) {
-      console.log(`[${new Date().toISOString()}] [useBigQueryData] Skipping fetch - not ready:`, {
+      devLog('Skipping fetch - not ready', {
         hasOrganizationId: !!stableFilters.organizationId,
         ready
       });
-      return;
+      return null;
     }
 
+    const startTime = Date.now();
+    setLoading(true);
+    setError(null);
+    setMeta(undefined);
+
+    try {
+      const requestBody = {
+        organizationId: stableFilters.organizationId,
+        dateRange: stableFilters.dateRange,
+        selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
+        trafficSources: stableFilters.trafficSources.length > 0 ? stableFilters.trafficSources : undefined,
+        limit: 100
+      };
+
+      devLog('Making request to edge function', { requestBody });
+
+      const { data: response, error: functionError } = await supabase.functions.invoke(
+        'bigquery-aso-data',
+        {
+          body: requestBody,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (functionError) {
+        debugLog.error('Edge function error', functionError);
+        throw new Error(`BigQuery function error: ${functionError.message}`);
+      }
+
+      const bigQueryResponse = response as BigQueryResponse;
+
+      if (!bigQueryResponse.success) {
+        debugLog.error('Service error', bigQueryResponse.error);
+        throw new Error(bigQueryResponse.error || 'BigQuery request failed');
+      }
+
+      const executionTime = Date.now() - startTime;
+      
+      devLog('Response received', { 
+        recordCount: bigQueryResponse.data?.length,
+        executionTimeMs: executionTime,
+        availableTrafficSources: bigQueryResponse.meta.availableTrafficSources?.length
+      });
+
+      setMeta(bigQueryResponse.meta);
+
+      const transformedData = transformBigQueryToAsoData(
+        bigQueryResponse.data || [],
+        stableFilters.trafficSources,
+        bigQueryResponse.meta
+      );
+
+      setData(transformedData);
+
+      // Register with context
+      if (registerHookInstance) {
+        registerHookInstance(instanceId, {
+          instanceId,
+          availableTrafficSources: bigQueryResponse.meta.availableTrafficSources || [],
+          sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
+          data: transformedData,
+          metadata: bigQueryResponse.meta,
+          loading: false,
+          lastUpdated: Date.now()
+        });
+      }
+
+      return transformedData;
+    } catch (err) {
+      debugLog.error('Error fetching data', err);
+      const error = err instanceof Error ? err : new Error('Unknown BigQuery error');
+      setError(error);
+      
+      // Register error with context  
+      if (registerHookInstance) {
+        registerHookInstance(instanceId, {
+          instanceId,
+          availableTrafficSources: [],
+          sourcesCount: 0,
+          data: null,
+          metadata: null,
+          loading: false,
+          error,
+          lastUpdated: Date.now()
+        });
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [stableFilters, ready, instanceId, registerHookInstance]);
+
+  useEffect(() => {
     let isActive = true;
     const abortController = new AbortController();
 
-    const fetchBigQueryData = async () => {
-      try {
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚀 Starting fetch...`);
-        setLoading(true);
-        setError(null);
-        setMeta(undefined);
-
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 🔍 Fetching with filters:`, stableFilters);
-
-        // ✅ FIXED: Construct proper request body with organizationId
-        const requestBody = {
-          organizationId: stableFilters.organizationId,
-          dateRange: stableFilters.dateRange,
-          selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
-          trafficSources: stableFilters.trafficSources.length > 0 ? stableFilters.trafficSources : undefined,
-          limit: 100
-        };
-
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📤 Making request to edge function...`, requestBody);
-
-        const { data: response, error: functionError } = await supabase.functions.invoke(
-          'bigquery-aso-data',
-          {
-            body: requestBody,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        // Check if request was aborted
-        if (abortController.signal.aborted || !isActive) {
-          console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted`);
-          return;
-        }
-
-        if (functionError) {
-          console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Edge function error:`, functionError);
-          throw new Error(`BigQuery function error: ${functionError.message}`);
-        }
-
-        const bigQueryResponse = response as BigQueryResponse;
-
-        if (!bigQueryResponse.success) {
-          console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Service error:`, bigQueryResponse.error);
-          throw new Error(bigQueryResponse.error || 'BigQuery request failed');
-        }
-
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Response received:`, { 
-          recordCount: bigQueryResponse.data?.length,
-          meta: bigQueryResponse.meta
-        });
-        
-        if (bigQueryResponse.meta.dataArchitecture) {
-          console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏗️ Data architecture:`, {
-            phase: bigQueryResponse.meta.dataArchitecture.phase,
-            discoveryExecuted: bigQueryResponse.meta.dataArchitecture.discoveryQuery.executed,
-            allAvailableSources: bigQueryResponse.meta.dataArchitecture.discoveryQuery.sources,
-            totalSourcesFound: bigQueryResponse.meta.dataArchitecture.discoveryQuery.sourcesFound,
-            mainQueryFiltered: bigQueryResponse.meta.dataArchitecture.mainQuery.filtered,
-            dataRowsReturned: bigQueryResponse.meta.dataArchitecture.mainQuery.rowsReturned,
-            requestedSources: stableFilters.trafficSources,
-            metadataAvailableSources: bigQueryResponse.meta.availableTrafficSources
-          });
-        }
-
-        console.log(`[${new Date().toISOString()}] [useBigQueryData] 📊 Available traffic sources:`, bigQueryResponse.meta.availableTrafficSources);
-        
-        if (isActive) {
-          setMeta(bigQueryResponse.meta);
-
-          const transformedData = transformBigQueryToAsoData(
-            bigQueryResponse.data || [],
-            stableFilters.trafficSources,
-            bigQueryResponse.meta
-          );
-
-          setData(transformedData);
-          console.log(`[${new Date().toISOString()}] [useBigQueryData] ✅ Data transformed and set successfully`);
-
-          // Register with context
-          if (registerHookInstance) {
-            registerHookInstance(instanceId, {
-              instanceId,
-              availableTrafficSources: bigQueryResponse.meta.availableTrafficSources || [],
-              sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
-              data: transformedData,
-              metadata: bigQueryResponse.meta,
-              loading: false,
-              lastUpdated: Date.now()
-            });
-          }
-        }
-
-      } catch (err) {
-        // Check if request was aborted
-        if (abortController.signal.aborted || !isActive) {
-          console.log(`[${new Date().toISOString()}] [useBigQueryData] ⚠️ Request was aborted during error handling`);
-          return;
-        }
-
-        console.error(`[${new Date().toISOString()}] [useBigQueryData] ❌ Error fetching data:`, err);
-        
-        if (isActive) {
-          const error = err instanceof Error ? err : new Error('Unknown BigQuery error');
-          setError(error);
-          
-          // Register error with context  
-          if (registerHookInstance) {
-            registerHookInstance(instanceId, {
-              instanceId,
-              availableTrafficSources: [],
-              sourcesCount: 0,
-              data: null,
-              metadata: null,
-              loading: false,
-              error,
-              lastUpdated: Date.now()
-            });
-          }
-        }
-      } finally {
-        if (isActive) {
-          console.log(`[${new Date().toISOString()}] [useBigQueryData] 🏁 Fetch complete, clearing loading state`);
-          setLoading(false);
-        }
+    const executeDataFetch = async () => {
+      if (isActive) {
+        await fetchData();
       }
     };
 
-    fetchBigQueryData();
+    executeDataFetch();
 
     return () => {
-      console.log(`[${new Date().toISOString()}] [useBigQueryData] 🧹 Cleaning up - aborting request`);
+      devLog('Cleaning up - aborting request');
       isActive = false;
       abortController.abort();
     };
-  }, [
-    stableFilters.organizationId,
-    stableFilters.selectedApps.join(','),
-    stableFilters.dateRange.from,
-    stableFilters.dateRange.to,
-    stableFilters.trafficSources.join(','),
-    ready,
-    instanceId
-  ]);
+  }, [fetchData]);
 
-  console.log(`[${new Date().toISOString()}] [useBigQueryData] 🚨 Hook returning:`, {
+  devLog('Hook returning', {
     instanceId,
     hasData: !!data,
-    hasMeta: !!meta,
-    availableTrafficSources: meta?.availableTrafficSources,
-    sourcesCount: meta?.availableTrafficSources?.length || 0,
     loading,
-    error: error ? { type: typeof error, message: error.message } : { _type: 'undefined', value: 'undefined' },
-    willRegister: !!registerHookInstance,
-    dateRange: stableFilters.dateRange
+    error: error?.message
   });
 
   return { 
@@ -392,19 +359,13 @@ function transformBigQueryToAsoData(
     delta: trafficSourceGroups[source]?.delta || 0
   }));
 
-  console.log(`[${new Date().toISOString()}] [useBigQueryData] 📊 Transform complete:`, {
-    totalItems: bigQueryData.length,
-    nonNullPageViewItems: bigQueryData.filter(d => d.product_page_views !== null).length,
-    nullPageViewItems: bigQueryData.filter(d => d.product_page_views === null).length,
-    totalProductPageViews: totals.product_page_views,
-    aggregationWorking: totals.product_page_views > 0 ? 'YES - NULL handling fixed!' : 'Still showing 0',
-    trafficSourceArchitecture: {
-      phase: meta.dataArchitecture?.phase || 'unknown',
-      sourcesFromMetadata: availableTrafficSources,
-      sourcesFromParams: trafficSources,
-      finalTrafficSourceData: trafficSourceData.map(ts => ({ name: ts.name, value: ts.value }))
-    }
-  });
+  if (process.env.NODE_ENV === 'development') {
+    debugLog.info('Transform complete', {
+      totalItems: bigQueryData.length,
+      totalProductPageViews: totals.product_page_views,
+      trafficSourceCount: trafficSourceData.length
+    });
+  }
 
   return {
     summary,

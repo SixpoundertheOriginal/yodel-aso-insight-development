@@ -25,12 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('AuthProvider: Setting up auth state listener');
-    
     // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('Auth state changed:', event, currentSession?.user?.email);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Auth state changed:', event, currentSession?.user?.email);
+        }
+        
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(async () => {
             try {
               const { data } = await supabase.auth.refreshSession();
-              if (data.session) {
+              if (data.session && process.env.NODE_ENV === 'development') {
                 console.log('Token refreshed successfully');
               }
             } catch (error) {
@@ -64,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log('Initial session check:', currentSession?.user?.email);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Initial session check:', currentSession?.user?.email);
+      }
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);

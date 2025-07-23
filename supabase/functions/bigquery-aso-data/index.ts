@@ -163,16 +163,15 @@ serve(async (req) => {
 
     console.log(`📋 [BigQuery] Processing request for organization: ${organizationId}`);
     
-    // Enhanced parameter logging for debugging filter issues
-    console.log('🔍 [BigQuery] Request parameters received:', {
-      organizationId,
-      dateRange: body.dateRange,
-      trafficSources: body.trafficSources,
-      trafficSourcesType: typeof body.trafficSources,
-      trafficSourcesLength: body.trafficSources ? body.trafficSources.length : 'undefined',
-      selectedApps: body.selectedApps,
-      limit: body.limit
-    });
+    if (isDevelopment()) {
+      console.log('🔍 [BigQuery] Request parameters:', {
+        organizationId,
+        hasDateRange: !!body.dateRange,
+        trafficSourcesCount: body.trafficSources?.length || 0,
+        selectedAppsCount: body.selectedApps?.length || 0,
+        limit: body.limit
+      });
+    }
 
     // ✅ FIXED: Get approved apps for organization using organizationId
     const { data: approvedApps, error: approvedAppsError } = await supabaseClient
@@ -184,11 +183,12 @@ serve(async (req) => {
 
     const approvedAppIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
     
-    console.log('🔍 [BigQuery] Approved apps retrieved:', {
-      organizationId,
-      approvedAppsCount: approvedAppIdentifiers.length,
-      approvedApps: approvedAppIdentifiers
-    });
+    if (isDevelopment()) {
+      console.log('🔍 [BigQuery] Approved apps retrieved:', {
+        organizationId,
+        approvedAppsCount: approvedAppIdentifiers.length
+      });
+    }
 
     // Determine clients to query
     let clientsToQuery = approvedAppIdentifiers;
