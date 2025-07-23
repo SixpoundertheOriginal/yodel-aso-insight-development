@@ -120,35 +120,60 @@ async function analyzeResponseWithAI(
   responseText: string, 
   appName: string
 ): Promise<EnhancedResponseAnalysis> {
-  const prompt = `Analyze this ChatGPT response for app mentions and rankings:
+const prompt = `You are an expert at analyzing text for brand mentions and competitive positioning. Analyze this ChatGPT response for precise app mentions and rankings.
 
-Target App: ${appName}
-ChatGPT Response: ${responseText}
+TARGET APP: "${appName}"
+RESPONSE TEXT:
+${responseText}
 
-Extract detailed analysis:
+Perform a detailed analysis and extract:
 
-1. APP_MENTIONED: Is "${appName}" mentioned anywhere in the response? Look for exact matches, variations, or formatted text like **${appName}**
-2. MENTION_COUNT: How many times is "${appName}" mentioned?
-3. RANKING_POSITION: If apps are listed numerically (1., 2., 3., etc.), what position is "${appName}" in? If no clear numbering, estimate position based on order mentioned
-4. SENTIMENT: How is "${appName}" described overall? positive/neutral/negative
-5. COMPETITORS: List ALL other app names mentioned (not generic terms like "app" or "application")
-6. RECOMMENDATION_STRENGTH: How strongly is "${appName}" recommended? Scale 0-10 (0=not mentioned, 10=top recommendation)
-7. CONTEXTS: What specific use cases or contexts is "${appName}" recommended for?
-8. EXCERPTS: Extract the exact sentences where "${appName}" is mentioned
+1. APP_MENTIONED: Is "${appName}" mentioned ANYWHERE in the response? 
+   - Check for exact matches: "${appName}", **${appName}**, *${appName}*
+   - Check for variations in spacing, capitalization, or punctuation
+   - Look in numbered lists, bullet points, and formatted text
+   
+2. MENTION_COUNT: Count ALL occurrences of "${appName}" in any format
 
-IMPORTANT: 
-- Look carefully for "${appName}" in different formats (**${appName}**, *${appName}*, or plain ${appName})
-- If apps are in a numbered list, extract the exact position number
-- Don't confuse "${appName}" with similar words
-- List only specific app names as competitors, not generic terms
+3. RANKING_POSITION: What position is "${appName}" in?
+   - Look for numbered lists (1., 2., 3.) or (1), (2), (3)
+   - Check for ordinal positions (first, second, third)
+   - If no explicit numbering, estimate based on order of appearance
+   
+4. SENTIMENT: How is "${appName}" portrayed?
+   - positive: recommended, praised, described favorably
+   - negative: criticized, warned against, described unfavorably  
+   - neutral: mentioned factually without strong opinion
+   
+5. COMPETITORS: List ONLY actual app/service names mentioned (not generic words)
+   - Include: Duolingo, Babbel, Rosetta Stone, etc.
+   - Exclude: "app", "application", "software", "tool", "platform", "this", "that", etc.
+   - Focus on proper nouns that are clearly app/service names
+   
+6. RECOMMENDATION_STRENGTH: Rate 0-10 how strongly "${appName}" is recommended
+   - 10: Top recommendation, first choice, highly endorsed
+   - 7-9: Strongly recommended, among top choices
+   - 4-6: Mentioned positively but not emphasized
+   - 1-3: Mentioned but not particularly recommended
+   - 0: Not mentioned or mentioned negatively
+   
+7. SPECIFIC_CONTEXTS: What use cases or scenarios is "${appName}" recommended for?
 
-Return JSON:
+8. MENTION_EXCERPTS: Extract the EXACT sentences/phrases where "${appName}" appears
+
+CRITICAL INSTRUCTIONS:
+- Be extremely precise about detecting "${appName}" - false negatives are worse than false positives
+- Only list actual app/brand names as competitors, never generic terms
+- If apps are in a numbered list, capture the exact position number
+- Look for formatting like **bold** or *italic* that might indicate recommendations
+
+Return only valid JSON:
 {
   "app_mentioned": boolean,
   "mention_count": number,
   "ranking_position": number | null,
   "sentiment": "positive" | "neutral" | "negative",
-  "competitors_mentioned": ["app1", "app2"],
+  "competitors_mentioned": ["ActualAppName1", "ActualAppName2"],
   "recommendation_strength": number,
   "specific_contexts": ["context1", "context2"],
   "mention_excerpts": ["exact sentence 1", "exact sentence 2"]
@@ -190,44 +215,92 @@ function fallbackAnalysis(responseText: string, appName: string): EnhancedRespon
   
   // Enhanced regex patterns to catch formatted mentions
   const patterns = [
-    new RegExp(`\\*\\*${appName}\\*\\*`, 'gi'), // **AppName**
-    new RegExp(`\\*${appName}\\*`, 'gi'),       // *AppName*
-    new RegExp(`\\b${appName}\\b`, 'gi')        // Plain AppName
+    new RegExp(`\\*\\*${escapeRegex(appName)}\\*\\*`, 'gi'), // **AppName**
+    new RegExp(`\\*${escapeRegex(appName)}\\*`, 'gi'),       // *AppName*
+    new RegExp(`\\b${escapeRegex(appName)}\\b`, 'gi'),       // Plain AppName with word boundaries
+    new RegExp(`"${escapeRegex(appName)}"`, 'gi'),           // "AppName"
+    new RegExp(`'${escapeRegex(appName)}'`, 'gi'),           // 'AppName'
   ];
   
   let app_mentioned = false;
   let mention_count = 0;
   let mention_excerpts: string[] = [];
   
-  for (const pattern of patterns) {
-    const matches = responseText.match(pattern);
-    if (matches) {
-      app_mentioned = true;
-      mention_count += matches.length;
-    }
-  }
-  
-  // Extract ranking position from numbered lists
-  let ranking_position: number | null = null;
-  const lines = responseText.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.toLowerCase().includes(lowerAppName)) {
-      const numberMatch = line.match(/^\s*(\d+)\./);
-      if (numberMatch) {
-        ranking_position = parseInt(numberMatch[1]);
-        break;
+  // Check for mentions and extract excerpts
+  const sentences = responseText.split(/[.!?]+/);
+  for (const sentence of sentences) {
+    for (const pattern of patterns) {
+      const matches = sentence.match(pattern);
+      if (matches) {
+        app_mentioned = true;
+        mention_count += matches.length;
+        if (sentence.trim() && !mention_excerpts.includes(sentence.trim())) {
+          mention_excerpts.push(sentence.trim());
+        }
       }
     }
   }
   
-  // Extract competitors
-  const competitors_mentioned: string[] = [];
-  const knownApps = ['duolingo', 'babbel', 'rosetta stone', 'busuu', 'lingoda', 'hellotalk', 'memrise', 'mondly', 'anki'];
+  // Enhanced ranking position detection
+  let ranking_position: number | null = null;
+  const lines = responseText.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (new RegExp(`\\b${escapeRegex(appName)}\\b`, 'gi').test(line)) {
+      // Look for various numbering patterns
+      const numberPatterns = [
+        /^\s*(\d+)\./,           // "1. AppName"
+        /^\s*(\d+)\)/,           // "1) AppName"
+        /^\s*(\d+)\.?\s*-/,      // "1. - AppName" or "1 - AppName"
+        /^\s*\*\s*(\d+)/,        // "* 1. AppName"
+        /#(\d+)/,                // "#1 AppName"
+      ];
+      
+      for (const numPattern of numberPatterns) {
+        const match = line.match(numPattern);
+        if (match) {
+          ranking_position = parseInt(match[1]);
+          break;
+        }
+      }
+      if (ranking_position) break;
+    }
+  }
   
-  for (const app of knownApps) {
-    if (app !== lowerAppName && lowerResponse.includes(app)) {
-      competitors_mentioned.push(app.charAt(0).toUpperCase() + app.slice(1));
+  // Enhanced competitor detection - only actual app names
+  const competitors_mentioned: string[] = [];
+  const knownLanguageApps = [
+    'duolingo', 'babbel', 'rosetta stone', 'rosetta', 'busuu', 'lingoda', 
+    'hellotalk', 'memrise', 'mondly', 'anki', 'italki', 'speaky', 'tandem',
+    'cambly', 'preply', 'verbling', 'fluentu', 'clozemaster', 'drops',
+    'beelinguapp', 'nemo', 'mango languages', 'rocket languages', 'lingq'
+  ];
+  
+  // Generic terms to exclude
+  const genericTerms = new Set([
+    'app', 'application', 'apps', 'software', 'program', 'tool', 'platform',
+    'service', 'system', 'website', 'solution', 'product', 'this', 'that',
+    'popular', 'best', 'top', 'good', 'great', 'other', 'another'
+  ]);
+  
+  for (const app of knownLanguageApps) {
+    if (app !== lowerAppName && lowerResponse.includes(app.toLowerCase())) {
+      const properName = app.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' ');
+      competitors_mentioned.push(properName);
+    }
+  }
+  
+  // Also look for capitalized words that might be app names
+  const capitalizedWords = responseText.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) || [];
+  for (const word of capitalizedWords) {
+    const lowerWord = word.toLowerCase();
+    if (!genericTerms.has(lowerWord) && 
+        lowerWord !== lowerAppName &&
+        word.length > 2 &&
+        !competitors_mentioned.includes(word)) {
+      competitors_mentioned.push(word);
     }
   }
   
@@ -236,11 +309,15 @@ function fallbackAnalysis(responseText: string, appName: string): EnhancedRespon
     mention_count,
     ranking_position,
     sentiment: app_mentioned ? 'positive' : 'neutral',
-    competitors_mentioned,
-    recommendation_strength: app_mentioned ? (ranking_position ? 11 - ranking_position : 5) : 0,
+    competitors_mentioned: competitors_mentioned.slice(0, 5), // Limit to 5
+    recommendation_strength: app_mentioned ? (ranking_position ? Math.max(1, 11 - ranking_position) : 5) : 0,
     specific_contexts: [],
     mention_excerpts
   };
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function calculateVisibilityScore(analysis: EnhancedResponseAnalysis): number {

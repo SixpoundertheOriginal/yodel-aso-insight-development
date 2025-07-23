@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { checkAppMention, extractCompetitors, extractRankingPosition } from './brand-recognition.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +41,18 @@ serve(async (req) => {
     const { queryId, queryText, auditRunId, organizationId, appId }: QueryRequest = await req.json();
 
     console.log(`[ChatGPT Query] Processing query: ${queryText}`);
-    console.log(`[ChatGPT Query] Target app: ${appId}`);
+    console.log(`[ChatGPT Query] Target app ID: ${appId}`);
+
+    // Get actual app name from database
+    const { data: appData } = await supabase
+      .from('apps')
+      .select('app_name')
+      .eq('id', appId)
+      .eq('organization_id', organizationId)
+      .single();
+
+    const actualAppName = appData?.app_name || appId;
+    console.log(`[ChatGPT Query] Resolved app name: ${actualAppName}`);
 
     // Call OpenAI ChatGPT API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -75,7 +87,7 @@ serve(async (req) => {
     console.log(`[ChatGPT Query] Response received: ${responseText.substring(0, 200)}...`);
 
     // Store basic results first (will be enhanced by analysis)
-    const basicAnalysis = analyzeVisibility(responseText, appId);
+    const basicAnalysis = analyzeVisibility(responseText, actualAppName);
 
     console.log(`[ChatGPT Query] Basic visibility analysis: App mentioned: ${basicAnalysis.appMentioned}, Position: ${basicAnalysis.mentionPosition}, Score: ${basicAnalysis.visibilityScore}`);
 
@@ -143,7 +155,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           responseText,
-          appName: 'pimsleur', // Use actual app name, not UUID
+          appName: actualAppName, // Use actual resolved app name
           queryResultId: insertError ? null : queryId, // Use queryId as fallback
           organizationId
         }),
@@ -195,28 +207,16 @@ function analyzeVisibility(responseText: string, targetApp: string): VisibilityA
   const lowerResponse = responseText.toLowerCase();
   const lowerTargetApp = targetApp.toLowerCase();
   
-  // Check if app is mentioned
-  const appMentioned = lowerResponse.includes(lowerTargetApp);
+  // Enhanced app mention detection with multiple patterns
+  const appMentioned = checkAppMention(responseText, targetApp);
   
   let mentionPosition: number | undefined;
   let mentionContext = 'not_mentioned';
   let visibilityScore = 0;
   
   if (appMentioned) {
-    // Determine mention position (1st, 2nd, 3rd app mentioned)
-    const sentences = responseText.split(/[.!?]+/);
-    let position = 1;
-    
-    for (const sentence of sentences) {
-      if (sentence.toLowerCase().includes(lowerTargetApp)) {
-        mentionPosition = position;
-        break;
-      }
-      // Count other potential app mentions to determine position
-      if (sentence.toLowerCase().includes('app') || sentence.toLowerCase().includes('application')) {
-        position++;
-      }
-    }
+    // Enhanced ranking position detection
+    mentionPosition = extractRankingPosition(responseText, targetApp) || 1;
     
     // Determine context
     if (lowerResponse.includes('recommend') || lowerResponse.includes('suggest')) {
@@ -240,20 +240,8 @@ function analyzeVisibility(responseText: string, targetApp: string): VisibilityA
     visibilityScore = Math.min(100, visibilityScore);
   }
   
-  // Extract potential competitor mentions
-  const competitorsMentioned: string[] = [];
-  const commonAppWords = ['fitness', 'finance', 'productivity', 'social', 'game', 'music', 'photo'];
-  
-  // Simple competitor detection (could be enhanced with ML)
-  const words = responseText.split(/\s+/);
-  for (let i = 0; i < words.length - 1; i++) {
-    const word = words[i].toLowerCase();
-    const nextWord = words[i + 1]?.toLowerCase();
-    
-    if ((word.endsWith('app') || nextWord === 'app') && word !== lowerTargetApp) {
-      competitorsMentioned.push(words[i]);
-    }
-  }
+  // Enhanced competitor detection
+  const competitorsMentioned = extractCompetitors(responseText, targetApp);
   
   // Calculate sentiment score (simplified)
   const positiveWords = ['best', 'great', 'excellent', 'recommend', 'top', 'reliable', 'popular'];
