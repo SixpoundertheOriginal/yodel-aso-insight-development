@@ -54,10 +54,6 @@ const AsoAiHubPage: React.FC = () => {
               title="Comprehensive App Audit"
               subtitle="Complete ASO analysis in minutes"
               description="Import your app to get actionable insights, competitor analysis, and optimization recommendations. Perfect for getting started or quick health checks."
-              primaryAction={{
-                text: 'Start Quick Audit',
-                onClick: () => {}
-              }}
             />
             
             {/* Main Audit Hub */}
