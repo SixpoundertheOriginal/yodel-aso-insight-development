@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp, Brain, Sparkles, RefreshCw } from 'lucide-react';
 import { InsightCard, Insight } from './InsightCard';
 import { useAsoInsights } from '../hooks/useAsoInsights';
+import { useAsoData } from '../context/AsoDataContext';
 
 interface AiInsightsPanelProps {
   className?: string;
@@ -17,7 +18,14 @@ export const AiInsightsPanel: React.FC<AiInsightsPanelProps> = ({
   className = '',
   maxDisplayed = 3
 }) => {
-  const { insights, loading, hasInsights, aiEnabled, aiError, refreshAIInsights } = useAsoInsights();
+  // Get the EXACT same data that dashboard is using
+  const { data: dashboardData, loading: dataLoading } = useAsoData();
+  
+  // Pass dashboard data to insights hook to ensure consistency
+  const { insights, loading, hasInsights, aiEnabled, aiError, refreshAIInsights } = useAsoInsights({
+    dashboardData: dashboardData // Pass dashboard data directly
+  });
+  
   const [isExpanded, setIsExpanded] = useState(false);
   
   const displayedInsights = isExpanded ? insights : insights.slice(0, maxDisplayed);
@@ -34,7 +42,7 @@ export const AiInsightsPanel: React.FC<AiInsightsPanelProps> = ({
     }
   };
 
-  if (loading) {
+  if (loading || dataLoading) {
     return (
       <Card className={`bg-gradient-to-r from-zinc-900 to-zinc-800 border-zinc-700 ${className}`}>
         <CardHeader>

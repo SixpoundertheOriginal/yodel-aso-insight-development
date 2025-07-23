@@ -10,6 +10,7 @@ interface InsightGenerationConfig {
   trendThreshold: number;
   maxInsights: number;
   enableAI: boolean;
+  dashboardData?: any; // Accept dashboard data directly
 }
 
 const defaultConfig: InsightGenerationConfig = {
@@ -30,9 +31,23 @@ interface AIInsight {
 }
 
 export const useAsoInsights = (config: Partial<InsightGenerationConfig> = {}) => {
-  const { data, loading } = useAsoData();
+  // Use dashboard data if provided, otherwise fall back to context
+  const contextData = useAsoData();
+  const data = config.dashboardData || contextData.data;
+  const loading = contextData.loading;
+  
   const periodComparison = useComparisonData('period');
   const finalConfig = { ...defaultConfig, ...config };
+  
+  // Log data source for debugging
+  console.log('🔍 [useAsoInsights] Data source:', {
+    usingDashboardData: !!config.dashboardData,
+    hasData: !!data,
+    dataSource: config.dashboardData ? 'dashboard-direct' : 'context',
+    cvrValue: data?.summary?.cvr?.value,
+    cvrDelta: data?.summary?.cvr?.delta,
+    timestamp: new Date().toISOString()
+  });
   
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
@@ -116,10 +131,28 @@ export const useAsoInsights = (config: Partial<InsightGenerationConfig> = {}) =>
         throw new Error('Organization not found');
       }
 
+      // Create comprehensive metrics data matching dashboard exactly
+      const metricsData = {
+        summary: data.summary,
+        timeseriesData: data.timeseriesData,
+        source: 'dashboard-consolidated',
+        timestamp: new Date().toISOString(),
+        // Add debugging info
+        debug: {
+          cvrValue: data.summary?.cvr?.value,
+          cvrDelta: data.summary?.cvr?.delta,
+          impressionsValue: data.summary?.impressions?.value,
+          impressionsDelta: data.summary?.impressions?.delta
+        }
+      };
+
+      console.log('📊 [useAsoInsights] Sending consolidated data to AI:', metricsData);
+
       const response = await supabase.functions.invoke('ai-insights-generator', {
         body: {
-          metricsData: data.summary,
-          organizationId: profile.organization_id
+          metricsData,
+          organizationId: profile.organization_id,
+          insightType: 'comprehensive'
         }
       });
 

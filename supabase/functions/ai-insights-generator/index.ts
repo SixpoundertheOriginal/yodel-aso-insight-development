@@ -17,6 +17,17 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const systemPrompt = `You are an expert App Store Optimization (ASO) analyst with deep expertise in mobile app growth strategies. Analyze the provided app performance metrics and provide specific, actionable insights to improve the app's visibility, downloads, and revenue.
 
+**CRITICAL DATA ACCURACY**: 
+- Use EXACT values from the provided data
+- Do not calculate or estimate different values  
+- Quote the exact CVR, delta percentages, and other metrics as provided
+- If data shows CVR: 0.24% with -10.5% change, use those EXACT numbers
+
+**DEBUGGING REQUIREMENTS**:
+- Always include the exact data values you're analyzing in your response
+- Reference the data source and timestamp if provided
+- Show your calculations clearly
+
 Your analysis MUST be:
 1. SPECIFIC to the exact metrics provided - reference actual numbers and trends
 2. ACTIONABLE with clear, implementable next steps
@@ -42,7 +53,7 @@ Respond in JSON format with the following structure:
 {
   "insights": [
     {
-      "title": "Specific insight title with actual metric reference",
+      "title": "Specific insight title with exact metrics",
       "description": "Detailed explanation referencing specific data points and numbers from the provided metrics",
       "type": "cvr_analysis|impression_trends|traffic_source_performance|keyword_optimization|competitive_analysis|seasonal_pattern|performance_alert",
       "priority": "high|medium|low",
@@ -58,7 +69,12 @@ Respond in JSON format with the following structure:
       },
       "related_kpis": ["impressions", "downloads", "conversion_rate"],
       "implementation_effort": "low|medium|high",
-      "expected_timeline": "1-2 weeks|1 month|2-3 months"
+      "expected_timeline": "1-2 weeks|1 month|2-3 months",
+      "data_validation": {
+        "source_cvr": "exact CVR from input",
+        "source_delta": "exact delta from input",
+        "data_source": "data source identifier"
+      }
     }
   ]
 }`;
@@ -99,6 +115,15 @@ serve(async (req) => {
     }
 
     const { metricsData, organizationId, insightType, userRequested = false } = await req.json();
+    
+    console.log('📊 [AI Insights] Received data:', {
+      organizationId,
+      insightType,
+      hasMetricsData: !!metricsData,
+      dataSource: metricsData?.source,
+      timestamp: metricsData?.timestamp,
+      debug: metricsData?.debug
+    });
 
     if (!metricsData || !organizationId) {
       return new Response(
@@ -166,7 +191,14 @@ serve(async (req) => {
     // Build context-specific prompt based on insight type and metrics
     let specificPrompt = `Analyze these app performance metrics and provide specific ASO insights:
 
-${JSON.stringify(metricsData, null, 2)}`;
+**Metrics Data:**
+${JSON.stringify(metricsData, null, 2)}
+
+**Data Validation Check:**
+- Source: ${metricsData.source || 'unknown'}
+- Timestamp: ${metricsData.timestamp || 'unknown'}
+- CVR Value: ${metricsData.summary?.cvr?.value || 'not found'}
+- CVR Delta: ${metricsData.summary?.cvr?.delta || 'not found'}`;
 
     if (insightType) {
       const typePrompts = {
@@ -181,7 +213,7 @@ ${JSON.stringify(metricsData, null, 2)}`;
       specificPrompt += `\n\nSPECIFIC FOCUS: ${typePrompts[insightType] || 'Provide comprehensive ASO analysis covering all key areas.'}`;
     }
 
-    specificPrompt += `\n\nIMPORTANT: Reference specific numbers and trends from the data. Avoid generic advice. Provide measurable, implementable recommendations.`;
+    specificPrompt += `\n\nCRITICAL: Use the exact CVR and delta values shown above in your analysis. Quote these exact numbers in your insights.`;
 
     // Generate AI insights using OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
