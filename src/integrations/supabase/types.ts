@@ -50,6 +50,63 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_insights: {
+        Row: {
+          actionable_recommendations: Json | null
+          confidence_score: number | null
+          content: string
+          created_at: string
+          data_fingerprint: string
+          expires_at: string | null
+          id: string
+          insight_type: string
+          is_user_requested: boolean | null
+          metrics_data: Json | null
+          organization_id: string
+          priority: string | null
+          related_kpis: string[] | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          actionable_recommendations?: Json | null
+          confidence_score?: number | null
+          content: string
+          created_at?: string
+          data_fingerprint: string
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          is_user_requested?: boolean | null
+          metrics_data?: Json | null
+          organization_id: string
+          priority?: string | null
+          related_kpis?: string[] | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          actionable_recommendations?: Json | null
+          confidence_score?: number | null
+          content?: string
+          created_at?: string
+          data_fingerprint?: string
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          is_user_requested?: boolean | null
+          metrics_data?: Json | null
+          organization_id?: string
+          priority?: string | null
+          related_kpis?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       apps: {
         Row: {
           app_description: string | null
@@ -1922,6 +1979,10 @@ export type Database = {
         Returns: boolean
       }
       clean_expired_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_expired_ai_insights: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
