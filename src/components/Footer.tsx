@@ -80,7 +80,7 @@ const Footer = React.memo(() => {
         
         <div className="mt-8 pt-6 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between">
           <p className="text-zinc-400 text-sm">
-            © {new Date().getFullYear()} YodelMobile. All rights reserved.
+            © 2025 Yodel Mobile by NP Digital. All rights reserved.
           </p>
           
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
