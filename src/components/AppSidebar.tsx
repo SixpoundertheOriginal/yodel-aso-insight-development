@@ -66,11 +66,6 @@ const aiToolsItems = [
     icon: Bot,
   },
   {
-    title: "Search Domination",
-    url: "/keyword-intelligence",
-    icon: Search,
-  },
-  {
     title: "AI Visibility Optimizer",
     url: "/chatgpt-visibility-audit",
     icon: Brain,

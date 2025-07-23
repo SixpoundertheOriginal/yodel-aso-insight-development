@@ -26,8 +26,6 @@ const TopBar: React.FC = React.memo(() => {
         return 'Conversion Analysis';
       case '/aso-ai-hub':
         return 'ASO AI Hub';
-      case '/keyword-intelligence':
-        return 'Keyword Intelligence';
       case '/apps':
         return 'Apps';
       case '/profile':

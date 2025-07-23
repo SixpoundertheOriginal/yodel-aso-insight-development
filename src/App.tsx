@@ -18,7 +18,7 @@ const Dashboard = lazy(() => import("./pages/dashboard"));
 const TrafficSources = lazy(() => import("./pages/traffic-sources"));
 const ConversionAnalysis = lazy(() => import("./pages/conversion-analysis"));
 const Overview = lazy(() => import("./pages/overview"));
-const KeywordIntelligence = lazy(() => import("./pages/keyword-intelligence"));
+
 const AsoAiHub = lazy(() => import("./pages/aso-ai-hub"));
 const ChatGPTVisibilityAudit = lazy(() => import("./pages/chatgpt-visibility-audit"));
 const AsoIntelligence = lazy(() => import("./pages/aso-intelligence"));
@@ -62,7 +62,7 @@ function App() {
                           <Route path="/traffic-sources" element={<TrafficSources />} />
                           <Route path="/conversion-analysis" element={<ConversionAnalysis />} />
                           <Route path="/overview" element={<Overview />} />
-                          <Route path="/keyword-intelligence" element={<KeywordIntelligence />} />
+                          
                           <Route path="/aso-ai-hub" element={<AsoAiHub />} />
                           <Route path="/chatgpt-visibility-audit" element={<ChatGPTVisibilityAudit />} />
                           <Route path="/aso-intelligence" element={<AsoIntelligence />} />

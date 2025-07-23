@@ -236,17 +236,6 @@ const AppsPage: React.FC = () => {
                         <Button 
                           asChild 
                           size="sm" 
-                          className="flex-1 bg-yodel-orange hover:bg-orange-600"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Link to="/keyword-intelligence">
-                            <Search className="h-4 w-4 mr-1" />
-                            Keywords
-                          </Link>
-                        </Button>
-                        <Button 
-                          asChild 
-                          size="sm" 
                           variant="outline" 
                           className="flex-1 border-zinc-700 hover:bg-zinc-800"
                           onClick={(e) => e.stopPropagation()}
