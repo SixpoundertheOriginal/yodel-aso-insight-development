@@ -461,16 +461,7 @@ export class KeywordDiscoveryService {
   }
 
   private async getAppMetadata(appId: string): Promise<any> {
-    try {
-      const { data } = await supabase
-        .from('apps')
-        .select('app_name, category')
-        .eq('id', appId)
-        .single();
-
-      return data;
-    } catch {
-      return null;
-    }
+    // Note: This would need to be implemented with proper Supabase client in edge function context
+    return null;
   }
 }

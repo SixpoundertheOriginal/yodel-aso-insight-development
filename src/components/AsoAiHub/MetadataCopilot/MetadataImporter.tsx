@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,9 @@ import { Sparkles, AlertCircle, Search, Zap, Loader2, Users, Target, Settings, S
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { PreLaunchModeSelector } from './PreLaunchModeSelector';
+import { PreLaunchForm, PreLaunchFormData } from './PreLaunchForm';
+import { strategicKeywordResearchService, StrategicKeywordResult } from '@/services/strategic-keyword-research.service';
 
 // Import bulletproof services
 import { userExperienceShieldService, LoadingState } from '@/services/user-experience-shield.service';
@@ -23,6 +25,7 @@ interface MetadataImporterProps {
 }
 
 export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSuccess }) => {
+  const [mode, setMode] = useState<'selector' | 'existing' | 'pre-launch'>('selector');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'auto' | 'keyword' | 'brand' | 'url'>('auto');
@@ -300,6 +303,95 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
     });
   };
 
+  // Handle pre-launch form submission
+  const handlePreLaunchSubmit = async (formData: PreLaunchFormData) => {
+    if (!organizationId) {
+      toast({
+        title: 'Organization Missing',
+        description: 'Cannot perform strategic research without organization context.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setLastError(null);
+    
+    try {
+      console.log('🚀 [PRE-LAUNCH] Starting strategic research for:', formData.appName);
+      
+      // Generate strategic research
+      const result = await strategicKeywordResearchService.generateStrategicResearch(
+        organizationId,
+        formData,
+        (progress, message) => {
+          setLoadingState({
+            isLoading: true,
+            stage: 'searching',
+            message,
+            progress,
+            showRetry: false
+          });
+        }
+      );
+      
+      // Convert to format expected by MetadataWorkspace
+      const mockScrapedData: ScrapedMetadata = {
+        name: formData.appName,
+        title: result.aiGeneratedMetadata.title,
+        subtitle: result.aiGeneratedMetadata.subtitle,
+        description: result.aiGeneratedMetadata.description,
+        category: formData.targetCategory,
+        keywords: result.aiGeneratedMetadata.keywords,
+        app_id: 'pre-launch',
+        appId: 'pre-launch',
+        url: '',
+        platform: 'ios' as const,
+        locale: 'en-US',
+        searchContext: {
+          isPreLaunch: true,
+          strategicData: result
+        }
+      };
+      
+      toast({
+        title: 'Strategic Research Complete! 🎯',
+        description: `Generated optimized metadata strategy for ${formData.appName}`,
+      });
+      
+      onImportSuccess(mockScrapedData, organizationId);
+      
+    } catch (error: any) {
+      console.error('❌ [PRE-LAUNCH] Strategic research failed:', error);
+      setLastError(error.message);
+      
+      toast({
+        title: 'Strategic Research Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingState({
+        isLoading: false,
+        stage: 'initial',
+        message: '',
+        progress: 0,
+        showRetry: false
+      });
+    }
+  };
+
+  // Handle mode selection
+  const handleModeSelect = (selectedMode: 'existing' | 'pre-launch') => {
+    setMode(selectedMode);
+    setLastError(null);
+  };
+
+  // Handle back to mode selector
+  const handleBackToSelector = () => {
+    setMode('selector');
+    setLastError(null);
+  };
+
   const getSearchTypeDescription = () => {
     switch (searchType) {
       case 'keyword':
@@ -339,202 +431,334 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Search Error:</strong> {lastError}
+            <strong>{mode === 'pre-launch' ? 'Research Error' : 'Search Error'}:</strong> {lastError}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Enhanced Loading State Display */}
-      {(loadingState.isLoading || isSearching) && (
-        <Card className="bg-zinc-900/70 border-zinc-700">
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Shield className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-medium text-white">
-                    {isSearching ? 'Debounced Search Active' : 'Bulletproof Search Active'}
-                  </span>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {isSearching ? 'debouncing' : loadingState.stage}
-                </Badge>
-              </div>
-              
-              <Progress value={isSearching ? 25 : loadingState.progress} className="h-2" />
-              
-              <div className="flex items-center space-x-2 text-sm text-zinc-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>
-                  {isSearching ? 'Processing search request...' : loadingState.message}
-                </span>
-              </div>
-              
-              {loadingState.stage === 'fallback' && (
-                <div className="text-xs text-zinc-400">
-                  Using intelligent fallback methods for best results...
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Mode Selection */}
+      {mode === 'selector' && (
+        <PreLaunchModeSelector onModeSelect={handleModeSelect} />
       )}
 
-      {/* System Health Dashboard */}
-      {showDebugInfo && systemHealth && (
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardHeader>
-            <CardTitle className="flex items-center text-lg">
-              <Activity className="w-5 h-5 mr-2 text-green-500" />
-              Bulletproof System Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-zinc-400">Overall Health:</span>
-                <div className="font-medium text-white">
-                  {Math.round(systemHealth.circuitBreakers.overallHealth * 100)}%
-                </div>
-              </div>
-              <div>
-                <span className="text-zinc-400">Cache Hit Rate:</span>
-                <div className="font-medium text-white">
-                  {Math.round(systemHealth.cacheStats.hitRate * 100)}%
-                </div>
-              </div>
-              <div>
-                <span className="text-zinc-400">Healthy Components:</span>
-                <div className="font-medium text-white">
-                  {systemHealth.circuitBreakers.healthyComponents}/{systemHealth.circuitBreakers.totalComponents}
-                </div>
-              </div>
-              <div>
-                <span className="text-zinc-400">Recovery Success:</span>
-                <div className="font-medium text-white">
-                  {systemHealth.recoveryStats.successfulRecoveries} ops
-                </div>
-              </div>
-            </div>
-            
-            {systemHealth.failureAnalytics.trends.degrading && (
-              <Alert variant="destructive" className="mt-2">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  System performance is degrading - automatic recovery in progress
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enhanced Competitive Intelligence Settings */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="flex items-center text-lg">
-            <Users className="w-5 h-5 mr-2 text-blue-500" />
-            Competitive Intelligence
-          </CardTitle>
-          <p className="text-sm text-zinc-400">
-            Automatically discover and analyze competitors for strategic insights
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-white">Enable Competitor Discovery</div>
-              <div className="text-xs text-zinc-400">
-                Automatically find and analyze top competitors during import
-              </div>
-            </div>
-            <Switch
-              checked={enableCompetitorDiscovery}
-              onCheckedChange={setEnableCompetitorDiscovery}
-            />
+      {/* Pre-Launch Mode */}
+      {mode === 'pre-launch' && (
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleBackToSelector}
+              className="text-sm text-zinc-400 hover:text-white"
+            >
+              ← Back to mode selection
+            </button>
           </div>
           
-          {enableCompetitorDiscovery && (
-            <>
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-white">Competitors to Analyze</div>
-                <div className="flex space-x-2">
-                  {[3, 5, 8, 10].map((limit) => (
-                    <button
-                      key={limit}
-                      onClick={() => setCompetitorLimit(limit)}
-                      className={`px-3 py-1 rounded text-sm transition-colors ${
-                        competitorLimit === limit
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {limit}
-                    </button>
-                  ))}
+          <PreLaunchForm 
+            onSubmit={handlePreLaunchSubmit}
+            isLoading={loadingState.isLoading}
+            loadingProgress={loadingState.progress}
+            loadingMessage={loadingState.message}
+          />
+        </div>
+      )}
+
+      {/* Existing App Mode - Original Content */}
+      {mode === 'existing' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <button 
+              onClick={handleBackToSelector}
+              className="text-sm text-zinc-400 hover:text-white"
+            >
+              ← Back to mode selection
+            </button>
+            <Badge variant="outline" className="text-xs">Existing App Mode</Badge>
+          </div>
+
+          {/* Enhanced Loading State Display */}
+          {(loadingState.isLoading || isSearching) && (
+            <Card className="bg-zinc-900/70 border-zinc-700">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Shield className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm font-medium text-white">
+                        {isSearching ? 'Debounced Search Active' : 'Bulletproof Search Active'}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {isSearching ? 'debouncing' : loadingState.stage}
+                    </Badge>
+                  </div>
+                  
+                  <Progress value={isSearching ? 25 : loadingState.progress} className="h-2" />
+                  
+                  <div className="flex items-center space-x-2 text-sm text-zinc-300">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>
+                      {isSearching ? 'Processing search request...' : loadingState.message}
+                    </span>
+                  </div>
+                  
+                  {loadingState.stage === 'fallback' && (
+                    <div className="text-xs text-zinc-400">
+                      Using intelligent fallback methods for best results...
+                    </div>
+                  )}
                 </div>
-              </div>
-              
+              </CardContent>
+            </Card>
+          )}
+
+          {/* System Health Dashboard */}
+          {showDebugInfo && systemHealth && (
+            <Card className="bg-zinc-900/50 border-zinc-800">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Activity className="w-5 h-5 mr-2 text-green-500" />
+                  Bulletproof System Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-zinc-400">Overall Health:</span>
+                    <div className="font-medium text-white">
+                      {Math.round(systemHealth.circuitBreakers.overallHealth * 100)}%
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-zinc-400">Cache Hit Rate:</span>
+                    <div className="font-medium text-white">
+                      {Math.round(systemHealth.cacheStats.hitRate * 100)}%
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-zinc-400">Healthy Components:</span>
+                    <div className="font-medium text-white">
+                      {systemHealth.circuitBreakers.healthyComponents}/{systemHealth.circuitBreakers.totalComponents}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-zinc-400">Recovery Success:</span>
+                    <div className="font-medium text-white">
+                      {systemHealth.recoveryStats.successfulRecoveries} ops
+                    </div>
+                  </div>
+                </div>
+                
+                {systemHealth.failureAnalytics.trends.degrading && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      System performance is degrading - automatic recovery in progress
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Enhanced Competitive Intelligence Settings */}
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="flex items-center text-lg">
+                <Users className="w-5 h-5 mr-2 text-blue-500" />
+                Competitive Intelligence
+              </CardTitle>
+              <p className="text-sm text-zinc-400">
+                Automatically discover and analyze competitors for strategic insights
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <div className="text-sm font-medium text-white">Keyword Gap Analysis</div>
+                  <div className="text-sm font-medium text-white">Enable Competitor Discovery</div>
                   <div className="text-xs text-zinc-400">
-                    Identify keyword opportunities from competitor analysis
+                    Automatically find and analyze top competitors during import
                   </div>
                 </div>
                 <Switch
-                  checked={includeKeywordAnalysis}
-                  onCheckedChange={setIncludeKeywordAnalysis}
+                  checked={enableCompetitorDiscovery}
+                  onCheckedChange={setEnableCompetitorDiscovery}
                 />
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              
+              {enableCompetitorDiscovery && (
+                <>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-white">Competitors to Analyze</div>
+                    <div className="flex space-x-2">
+                      {[3, 5, 8, 10].map((limit) => (
+                        <button
+                          key={limit}
+                          onClick={() => setCompetitorLimit(limit)}
+                          className={`px-3 py-1 rounded text-sm transition-colors ${
+                            competitorLimit === limit
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                          }`}
+                        >
+                          {limit}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-white">Keyword Gap Analysis</div>
+                      <div className="text-xs text-zinc-400">
+                        Identify keyword opportunities from competitor analysis
+                      </div>
+                    </div>
+                    <Switch
+                      checked={includeKeywordAnalysis}
+                      onCheckedChange={setIncludeKeywordAnalysis}
+                    />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* Search Type Selector */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-zinc-300 mb-2">
-          Search Type
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { value: 'auto', label: 'Auto-Detect', icon: Zap },
-            { value: 'keyword', label: 'Keywords', icon: Search },
-            { value: 'brand', label: 'App Name', icon: Sparkles },
-            { value: 'url', label: 'URL', icon: AlertCircle }
-          ].map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setSearchType(value as any)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                searchType === value
-                  ? 'bg-yodel-orange text-white'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{label}</span>
-            </button>
-          ))}
+          {/* Search Type Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
+              Search Type
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'auto', label: 'Auto-Detect', icon: Zap },
+                { value: 'keyword', label: 'Keywords', icon: Search },
+                { value: 'brand', label: 'App Name', icon: Sparkles },
+                { value: 'url', label: 'URL', icon: AlertCircle }
+              ].map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSearchType(value as any)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    searchType === value
+                      ? 'bg-yodel-orange text-white'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-zinc-500 mt-2">
+              {getSearchTypeDescription()}
+            </p>
+          </div>
+          
+          {/* Main Search Interface */}
+          <DataImporter
+            title="Bulletproof ASO Intelligence Search"
+            description={enableCompetitorDiscovery 
+              ? "Discover apps with bulletproof search, intelligent fallbacks, and competitive intelligence"
+              : "Discover apps with bulletproof search and intelligent fallbacks"
+            }
+            placeholder={getPlaceholderText()}
+            onImport={handleImport}
+            isLoading={isImporting || !organizationId}
+            icon={isImporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Shield className="w-4 h-4 ml-2" />}
+          />
+
+          {/* Quick Search Suggestions */}
+          {!isImporting && searchHistory.length === 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-zinc-300">Quick Search Examples:</h4>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'fitness apps',
+                  'meditation',
+                  'language learning',
+                  'photo editor',
+                  'Instagram',
+                  'TikTok'
+                ].map((term) => (
+                  <button
+                    key={term}
+                    onClick={() => handleQuickSearch(term)}
+                    className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-md transition-colors"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search History */}
+          {searchHistory.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-zinc-300">Recent Searches:</h4>
+              <div className="flex flex-wrap gap-2">
+                {searchHistory.map((term, index) => (
+                  <button
+                    key={`${term}-${index}`}
+                    onClick={() => handleQuickSearch(term)}
+                    className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-md transition-colors"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Feature Highlights */}
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="bg-zinc-800/30 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-white mb-2">🛡️ Bulletproof Search</h4>
+              <p className="text-xs text-zinc-400">
+                99%+ success rate with intelligent fallback chain, circuit breakers, and auto-recovery
+              </p>
+            </div>
+            <div className="bg-zinc-800/30 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-white mb-2">
+                {enableCompetitorDiscovery ? '🧠 Competitive Intelligence' : '🧠 ASO Intelligence'}
+              </h4>
+              <p className="text-xs text-zinc-400">
+                {enableCompetitorDiscovery 
+                  ? 'Advanced market analysis with competitor discovery and keyword gap analysis'
+                  : 'Smart market insights and optimization opportunities'
+                }
+              </p>
+            </div>
+          </div>
+          
+          {/* Enhanced Development Debug Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 bg-zinc-800/50 p-3 rounded text-xs text-zinc-300 space-y-1">
+              <div><strong>ASO Intelligence Platform v8.1.0-debounced-search</strong></div>
+              <div>Organization ID: {organizationId || 'Not loaded'}</div>
+              <div>Search Type: {searchType}</div>
+              <div>Competitive Intelligence: {enableCompetitorDiscovery ? 'Enabled' : 'Disabled'}</div>
+              <div>Competitor Limit: {competitorLimit}</div>
+              <div>Keyword Analysis: {includeKeywordAnalysis ? 'Enabled' : 'Disabled'}</div>
+              <div>Is Importing: {isImporting ? 'Yes' : 'No'}</div>
+              <div>Is Searching (Debounced): {isSearching ? 'Yes' : 'No'}</div>
+              <div>Loading Stage: {loadingState.stage}</div>
+              <div>Loading Progress: {loadingState.progress}%</div>
+              <div>Show App Selection: {showAppSelection ? 'Yes' : 'No'}</div>
+              <div>App Candidates: {appCandidates.length}</div>
+              <div className="text-green-400">✅ Phase 1 Complete - Infinite loop prevention active</div>
+              <div className="text-green-400">✅ Debounced search implemented</div>
+              <div className="text-green-400">✅ Enhanced audit stability</div>
+              <div className="text-green-400">✅ Circuit breaker protection</div>
+              <div className="text-green-400">✅ Operation cooldowns</div>
+              {lastError && <div className="text-red-400">❌ Last Error: {lastError}</div>}
+              {systemHealth && (
+                <div className="text-blue-400">📊 System Health: {Math.round(systemHealth.circuitBreakers.overallHealth * 100)}%</div>
+              )}
+            </div>
+          )}
         </div>
-        <p className="text-xs text-zinc-500 mt-2">
-          {getSearchTypeDescription()}
-        </p>
-      </div>
-      
-      {/* Main Search Interface */}
-      <DataImporter
-        title="Bulletproof ASO Intelligence Search"
-        description={enableCompetitorDiscovery 
-          ? "Discover apps with bulletproof search, intelligent fallbacks, and competitive intelligence"
-          : "Discover apps with bulletproof search and intelligent fallbacks"
-        }
-        placeholder={getPlaceholderText()}
-        onImport={handleImport}
-        isLoading={isImporting || !organizationId}
-        icon={isImporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Shield className="w-4 h-4 ml-2" />}
-      />
+      )}
 
       {/* App Selection Modal */}
       <AppSearchResultsModal
@@ -544,97 +768,6 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         onSelect={handleAppSelection}
         onCancel={handleAppSelectionCancel}
       />
-
-      {/* Quick Search Suggestions */}
-      {!isImporting && searchHistory.length === 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-zinc-300">Quick Search Examples:</h4>
-          <div className="flex flex-wrap gap-2">
-            {[
-              'fitness apps',
-              'meditation',
-              'language learning',
-              'photo editor',
-              'Instagram',
-              'TikTok'
-            ].map((term) => (
-              <button
-                key={term}
-                onClick={() => handleQuickSearch(term)}
-                className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-md transition-colors"
-              >
-                {term}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Search History */}
-      {searchHistory.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-zinc-300">Recent Searches:</h4>
-          <div className="flex flex-wrap gap-2">
-            {searchHistory.map((term, index) => (
-              <button
-                key={`${term}-${index}`}
-                onClick={() => handleQuickSearch(term)}
-                className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-md transition-colors"
-              >
-                {term}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Feature Highlights */}
-      <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className="bg-zinc-800/30 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-white mb-2">🛡️ Bulletproof Search</h4>
-          <p className="text-xs text-zinc-400">
-            99%+ success rate with intelligent fallback chain, circuit breakers, and auto-recovery
-          </p>
-        </div>
-        <div className="bg-zinc-800/30 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-white mb-2">
-            {enableCompetitorDiscovery ? '🧠 Competitive Intelligence' : '🧠 ASO Intelligence'}
-          </h4>
-          <p className="text-xs text-zinc-400">
-            {enableCompetitorDiscovery 
-              ? 'Advanced market analysis with competitor discovery and keyword gap analysis'
-              : 'Smart market insights and optimization opportunities'
-            }
-          </p>
-        </div>
-      </div>
-      
-      {/* Enhanced Development Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 bg-zinc-800/50 p-3 rounded text-xs text-zinc-300 space-y-1">
-          <div><strong>ASO Intelligence Platform v8.1.0-debounced-search</strong></div>
-          <div>Organization ID: {organizationId || 'Not loaded'}</div>
-          <div>Search Type: {searchType}</div>
-          <div>Competitive Intelligence: {enableCompetitorDiscovery ? 'Enabled' : 'Disabled'}</div>
-          <div>Competitor Limit: {competitorLimit}</div>
-          <div>Keyword Analysis: {includeKeywordAnalysis ? 'Enabled' : 'Disabled'}</div>
-          <div>Is Importing: {isImporting ? 'Yes' : 'No'}</div>
-          <div>Is Searching (Debounced): {isSearching ? 'Yes' : 'No'}</div>
-          <div>Loading Stage: {loadingState.stage}</div>
-          <div>Loading Progress: {loadingState.progress}%</div>
-          <div>Show App Selection: {showAppSelection ? 'Yes' : 'No'}</div>
-          <div>App Candidates: {appCandidates.length}</div>
-          <div className="text-green-400">✅ Phase 1 Complete - Infinite loop prevention active</div>
-          <div className="text-green-400">✅ Debounced search implemented</div>
-          <div className="text-green-400">✅ Enhanced audit stability</div>
-          <div className="text-green-400">✅ Circuit breaker protection</div>
-          <div className="text-green-400">✅ Operation cooldowns</div>
-          {lastError && <div className="text-red-400">❌ Last Error: {lastError}</div>}
-          {systemHealth && (
-            <div className="text-blue-400">📊 System Health: {Math.round(systemHealth.circuitBreakers.overallHealth * 100)}%</div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
