@@ -9,6 +9,8 @@ import { AlertCircle, TrendingUp, Target, Lightbulb, Copy } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 import { useCompetitiveAnalysis } from '@/hooks/useCompetitiveAnalysis';
 import { useToast } from '@/hooks/use-toast';
+import { TitleAnalysisTab } from './TitleAnalysisTab';
+import { KeywordAnalysisTab } from './KeywordAnalysisTab';
 
 interface CompetitiveAnalysisPanelProps {
   initialData: ScrapedMetadata;
@@ -168,8 +170,10 @@ export const CompetitiveAnalysisPanel: React.FC<CompetitiveAnalysisPanelProps> =
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="titles">Titles</TabsTrigger>
+            <TabsTrigger value="keyword-search">Keyword Search</TabsTrigger>
             <TabsTrigger value="keywords">Keywords</TabsTrigger>
             <TabsTrigger value="opportunities">Insights</TabsTrigger>
           </TabsList>
@@ -212,6 +216,21 @@ export const CompetitiveAnalysisPanel: React.FC<CompetitiveAnalysisPanelProps> =
                 </div>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="titles" className="space-y-4">
+            <TitleAnalysisTab
+              competitorApps={competitorApps}
+              currentTitle={initialData.title}
+              onApplyInsight={onApplyInsight}
+            />
+          </TabsContent>
+
+          <TabsContent value="keyword-search" className="space-y-4">
+            <KeywordAnalysisTab
+              competitorApps={competitorApps}
+              onApplyInsight={onApplyInsight}
+            />
           </TabsContent>
 
           <TabsContent value="keywords" className="space-y-4">
