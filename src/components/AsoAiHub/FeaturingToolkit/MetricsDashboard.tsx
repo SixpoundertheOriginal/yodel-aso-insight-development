@@ -8,24 +8,22 @@ export const MetricsDashboard = () => (
     <MetricCard
       title="Potential Visibility Boost"
       value="8x"
-      change={700}
-      changeLabel="vs. baseline"
+      change={{ value: 700, period: 'vs. baseline', trend: 'up' }}
       icon={<TrendingUp />}
-      accentColor="green"
+      variant="success"
     />
     <MetricCard
       title="Success Probability"
       value="75%"
-      change={25}
-      changeLabel="with toolkit"
+      change={{ value: 25, period: 'with toolkit', trend: 'up' }}
       icon={<Target />}
-      accentColor="blue"
+      variant="default"
     />
     <MetricCard
       title="Strategic Alignment"
       value="High"
       icon={<Award />}
-      accentColor="orange"
+      variant="warning"
     />
   </div>
 );
