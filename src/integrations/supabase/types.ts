@@ -375,11 +375,13 @@ export type Database = {
           created_at: string
           id: string
           mention_context: string | null
+          mention_excerpts: Json | null
           mention_position: number | null
           organization_id: string
           processing_metadata: Json | null
           query_id: string
           raw_response: Json | null
+          recommendation_strength: number | null
           response_text: string | null
           sentiment_score: number | null
           tokens_used: number | null
@@ -393,11 +395,13 @@ export type Database = {
           created_at?: string
           id?: string
           mention_context?: string | null
+          mention_excerpts?: Json | null
           mention_position?: number | null
           organization_id: string
           processing_metadata?: Json | null
           query_id: string
           raw_response?: Json | null
+          recommendation_strength?: number | null
           response_text?: string | null
           sentiment_score?: number | null
           tokens_used?: number | null
@@ -411,11 +415,13 @@ export type Database = {
           created_at?: string
           id?: string
           mention_context?: string | null
+          mention_excerpts?: Json | null
           mention_position?: number | null
           organization_id?: string
           processing_metadata?: Json | null
           query_id?: string
           raw_response?: Json | null
+          recommendation_strength?: number | null
           response_text?: string | null
           sentiment_score?: number | null
           tokens_used?: number | null
