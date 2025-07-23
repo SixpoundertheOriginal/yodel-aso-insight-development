@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ScrapedMetadata } from '@/types/aso';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { DataImporter } from '@/components/shared/DataImporter';
-import { AppSearchResultsModal } from './AppSearchResultsModal';
+import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, AlertCircle, Search, Zap, Loader2, Users, Target, Settings, Shield, Activity } from 'lucide-react';
@@ -754,12 +754,15 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       )}
 
       {/* App Selection Modal */}
-      <AppSearchResultsModal
+      <AppSelectionModal
         isOpen={showAppSelection}
-        results={appCandidates}
+        candidates={appCandidates}
         searchTerm={pendingSearchTerm}
         onSelect={handleAppSelection}
-        onCancel={handleAppSelectionCancel}
+        onClose={handleAppSelectionCancel}
+        mode="analyze"
+        onCompetitorAnalysis={onCompetitorAnalysis}
+        showCompetitorAnalysis={!!onCompetitorAnalysis}
       />
     </div>
   );
