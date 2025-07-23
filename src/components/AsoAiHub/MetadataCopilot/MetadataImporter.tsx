@@ -340,17 +340,9 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         title: result.aiGeneratedMetadata.title,
         subtitle: result.aiGeneratedMetadata.subtitle,
         description: result.aiGeneratedMetadata.description,
-        category: formData.targetCategory,
-        keywords: result.aiGeneratedMetadata.keywords,
-        app_id: 'pre-launch',
         appId: 'pre-launch',
         url: '',
-        platform: 'ios' as const,
-        locale: 'en-US',
-        searchContext: {
-          isPreLaunch: true,
-          strategicData: result
-        }
+        locale: 'en-US'
       };
       
       toast({

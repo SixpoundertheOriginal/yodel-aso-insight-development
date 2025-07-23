@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { DiscoveredKeyword, KeywordDiscoveryService } from 'supabase/functions/app-store-scraper/services/keyword-discovery.service';
 
 export interface PreLaunchAppData {
   appName: string;
@@ -9,6 +8,16 @@ export interface PreLaunchAppData {
   keyFeatures: string;
   differentiators: string;
   targetCountry: string;
+}
+
+export interface DiscoveredKeyword {
+  keyword: string;
+  estimatedVolume: number;
+  difficulty: number;
+  source: 'app_metadata' | 'competitor' | 'category' | 'semantic' | 'trending';
+  competitorRank?: number;
+  competitorApp?: string;
+  relevanceScore: number;
 }
 
 export interface CategoryIntelligence {
@@ -45,8 +54,6 @@ export interface StrategicKeywordResult {
 }
 
 class StrategicKeywordResearchService {
-  private keywordDiscoveryService = new KeywordDiscoveryService();
-
   /**
    * Main orchestrator for pre-launch strategic research
    */
@@ -163,32 +170,29 @@ class StrategicKeywordResearchService {
   ): Promise<DiscoveredKeyword[]> {
     console.log('🔍 [STRATEGIC] Discovering strategic keywords...');
     
-    // Create strategic keyword discovery options
-    const discoveryOptions = {
-      organizationId,
-      targetApp: {
-        name: appData.appName,
-        appId: 'pre-launch',
-        category: appData.targetCategory,
-        description: appData.appConcept,
-        subtitle: appData.keyFeatures.split(',')[0]?.trim() || ''
-      },
-      seedKeywords: [
-        ...categoryIntelligence.commonKeywords.slice(0, 10),
-        ...categoryIntelligence.trendingKeywords,
-        ...categoryIntelligence.opportunityKeywords,
-        ...this.extractKeywordsFromText(appData.appConcept),
-        ...this.extractKeywordsFromText(appData.keyFeatures)
-      ],
-      country: appData.targetCountry,
-      maxKeywords: 75
-    };
-
-    // Use the enhanced keyword discovery service
-    const discoveredKeywords = await this.keywordDiscoveryService.discoverKeywords(discoveryOptions);
+    // Generate keywords based on app concept and category intelligence
+    const keywords: DiscoveredKeyword[] = [];
     
-    // Enhance with strategic scoring based on app concept
-    return this.enhanceWithStrategicScoring(discoveredKeywords, appData, categoryIntelligence);
+    // 1. App name variations
+    const appNameKeywords = this.generateAppNameKeywords(appData.appName);
+    keywords.push(...appNameKeywords);
+    
+    // 2. Concept-based keywords
+    const conceptKeywords = this.generateConceptKeywords(appData.appConcept, appData.keyFeatures);
+    keywords.push(...conceptKeywords);
+    
+    // 3. Category-based keywords
+    const categoryKeywords = this.generateCategoryKeywords(appData.targetCategory, categoryIntelligence);
+    keywords.push(...categoryKeywords);
+    
+    // 4. Audience-targeted keywords
+    if (appData.targetAudience) {
+      const audienceKeywords = this.generateAudienceKeywords(appData.targetAudience, appData.targetCategory);
+      keywords.push(...audienceKeywords);
+    }
+    
+    // Enhance with strategic scoring
+    return this.enhanceWithStrategicScoring(keywords, appData, categoryIntelligence);
   }
 
   /**
@@ -202,7 +206,6 @@ class StrategicKeywordResearchService {
     // Categorize keywords by strategic value
     const highVolumeKeywords = keywords.filter(k => k.estimatedVolume > 2000).slice(0, 10);
     const lowCompetitionKeywords = keywords.filter(k => k.difficulty < 5).slice(0, 15);
-    const brandKeywords = keywords.filter(k => k.keyword.includes(appData.appName.toLowerCase()));
     
     // Primary keywords (high volume, medium competition)
     const primaryKeywords = keywords
@@ -267,6 +270,64 @@ class StrategicKeywordResearchService {
   }
 
   // Helper methods
+  private generateAppNameKeywords(appName: string): DiscoveredKeyword[] {
+    const variations = [
+      appName.toLowerCase(),
+      ...this.extractKeywordsFromText(appName)
+    ];
+    
+    return variations.map((keyword, index) => ({
+      keyword,
+      estimatedVolume: 5000 - (index * 500),
+      difficulty: 3.0 + (index * 0.5),
+      source: 'app_metadata' as const,
+      relevanceScore: 10.0 - (index * 1.0)
+    }));
+  }
+
+  private generateConceptKeywords(concept: string, features: string): DiscoveredKeyword[] {
+    const conceptWords = this.extractKeywordsFromText(concept);
+    const featureWords = this.extractKeywordsFromText(features);
+    const allWords = [...conceptWords, ...featureWords];
+    
+    return allWords.map((keyword, index) => ({
+      keyword,
+      estimatedVolume: 3000 - (index * 200),
+      difficulty: 4.0 + (index * 0.3),
+      source: 'semantic' as const,
+      relevanceScore: 8.0 - (index * 0.5)
+    }));
+  }
+
+  private generateCategoryKeywords(category: string, intelligence: CategoryIntelligence): DiscoveredKeyword[] {
+    const categoryKeywords = [
+      ...intelligence.commonKeywords.slice(0, 15),
+      ...intelligence.trendingKeywords,
+      ...intelligence.opportunityKeywords
+    ];
+    
+    return categoryKeywords.map((keyword, index) => ({
+      keyword,
+      estimatedVolume: 2500 - (index * 100),
+      difficulty: 4.5 + (index * 0.2),
+      source: 'category' as const,
+      relevanceScore: 7.0 - (index * 0.3)
+    }));
+  }
+
+  private generateAudienceKeywords(audience: string, category: string): DiscoveredKeyword[] {
+    const audienceWords = this.extractKeywordsFromText(audience);
+    const audienceKeywords = audienceWords.map(word => `${word} ${category}`);
+    
+    return audienceKeywords.map((keyword, index) => ({
+      keyword,
+      estimatedVolume: 1500 - (index * 150),
+      difficulty: 3.5 + (index * 0.4),
+      source: 'semantic' as const,
+      relevanceScore: 6.5 - (index * 0.4)
+    }));
+  }
+
   private extractKeywordsFromText(text: string): string[] {
     return text
       .toLowerCase()
