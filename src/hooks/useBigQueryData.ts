@@ -131,19 +131,26 @@ export const useBigQueryData = (
     [stableFilters]
   );
 
-  devLog('Hook initialized', {
+  // Only log initialization in verbose debug mode
+  debugLog.verbose('Hook initialized', {
     instanceId,
     requestKey,
     ready,
     hasRegistration: !!registerHookInstance
   });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (abortSignal?: AbortSignal) => {
     if (!stableFilters.organizationId || !ready) {
-      devLog('Skipping fetch - not ready', {
+      debugLog.verbose('Skipping fetch - not ready', {
         hasOrganizationId: !!stableFilters.organizationId,
         ready
       });
+      return null;
+    }
+
+    // Check if request was aborted before starting
+    if (abortSignal?.aborted) {
+      debugLog.verbose('Request aborted before fetch');
       return null;
     }
 
@@ -161,7 +168,13 @@ export const useBigQueryData = (
         limit: 100
       };
 
-      devLog('Making request to edge function', { requestBody });
+      debugLog.verbose('Making request to edge function', { requestBody });
+
+      // Check abort signal before making request
+      if (abortSignal?.aborted) {
+        debugLog.verbose('Request aborted before API call');
+        return null;
+      }
 
       const { data: response, error: functionError } = await supabase.functions.invoke(
         'bigquery-aso-data',
@@ -187,7 +200,7 @@ export const useBigQueryData = (
 
       const executionTime = Date.now() - startTime;
       
-      devLog('Response received', { 
+      debugLog.verbose('Response received', { 
         recordCount: bigQueryResponse.data?.length,
         executionTimeMs: executionTime,
         availableTrafficSources: bigQueryResponse.meta.availableTrafficSources?.length
@@ -246,21 +259,21 @@ export const useBigQueryData = (
     const abortController = new AbortController();
 
     const executeDataFetch = async () => {
-      if (isActive) {
-        await fetchData();
+      if (isActive && !abortController.signal.aborted) {
+        await fetchData(abortController.signal);
       }
     };
 
     executeDataFetch();
 
     return () => {
-      devLog('Cleaning up - aborting request');
+      debugLog.verbose('Cleaning up - aborting request');
       isActive = false;
       abortController.abort();
     };
   }, [fetchData]);
 
-  devLog('Hook returning', {
+  debugLog.verbose('Hook returning', {
     instanceId,
     hasData: !!data,
     loading,
@@ -359,13 +372,11 @@ function transformBigQueryToAsoData(
     delta: trafficSourceGroups[source]?.delta || 0
   }));
 
-  if (process.env.NODE_ENV === 'development') {
-    debugLog.info('Transform complete', {
-      totalItems: bigQueryData.length,
-      totalProductPageViews: totals.product_page_views,
-      trafficSourceCount: trafficSourceData.length
-    });
-  }
+  debugLog.verbose('Transform complete', {
+    totalItems: bigQueryData.length,
+    totalProductPageViews: totals.product_page_views,
+    trafficSourceCount: trafficSourceData.length
+  });
 
   return {
     summary,

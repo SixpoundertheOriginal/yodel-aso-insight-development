@@ -1,6 +1,7 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugLog } from '@/lib/utils/debug';
 
 interface BigQueryAppContextType {
   selectedApps: string[];
@@ -11,12 +12,11 @@ interface BigQueryAppContextType {
 
 const BigQueryAppContext = createContext<BigQueryAppContextType | undefined>(undefined);
 
-export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[BigQueryAppContext] Provider mounted');
-  }
+const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Only log provider mount in verbose debug mode
+  debugLog.verbose('[BigQueryAppContext] Provider mounted');
   
-  // ✅ PHASE 3: Enhanced state management with loading
+  // ✅ ENHANCED: State management with performance optimization
   const [selectedApps, setSelectedApps] = useState<string[]>([]);
   const [availableApps, setAvailableApps] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,9 +28,7 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[BigQueryAppContext] No user found, using fallback');
-          }
+          debugLog.verbose('[BigQueryAppContext] No user found, using fallback');
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
           setLoading(false);
@@ -45,9 +43,7 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
           .single();
 
         if (!profile?.organization_id) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[BigQueryAppContext] No organization found, using fallback');
-          }
+          debugLog.verbose('[BigQueryAppContext] No organization found, using fallback');
           setAvailableApps(['TUI']);
           setSelectedApps(['TUI']);
           setLoading(false);
@@ -68,12 +64,10 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         const appIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[BigQueryAppContext] Loaded approved apps:', {
-            organizationId: profile.organization_id,
-            approvedAppsCount: appIdentifiers.length
-          });
-        }
+        debugLog.verbose('[BigQueryAppContext] Loaded approved apps:', {
+          organizationId: profile.organization_id,
+          approvedAppsCount: appIdentifiers.length
+        });
 
         if (appIdentifiers.length > 0) {
           setAvailableApps(appIdentifiers);
@@ -95,28 +89,32 @@ export const BigQueryAppProvider: React.FC<{ children: React.ReactNode }> = ({ c
     loadApprovedApps();
   }, []);
 
-  // App selection handler
-  const handleSetSelectedApps = (apps: string[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[BigQueryAppContext] App selection changing:', {
-        from: selectedApps.length,
-        to: apps.length
-      });
-    }
+  // ✅ ENHANCED: Memoized app selection handler to prevent unnecessary re-renders
+  const handleSetSelectedApps = useCallback((apps: string[]) => {
+    debugLog.verbose('[BigQueryAppContext] App selection changing:', {
+      from: selectedApps.length,
+      to: apps.length
+    });
     setSelectedApps(apps);
-  };
+  }, [selectedApps.length]);
+
+  // ✅ ENHANCED: Memoized context value to prevent cascading re-renders
+  const contextValue = useMemo(() => ({
+    selectedApps,
+    setSelectedApps: handleSetSelectedApps,
+    availableApps,
+    loading
+  }), [selectedApps, handleSetSelectedApps, availableApps, loading]);
 
   return (
-    <BigQueryAppContext.Provider value={{ 
-      selectedApps, 
-      setSelectedApps: handleSetSelectedApps,
-      availableApps,
-      loading
-    }}>
+    <BigQueryAppContext.Provider value={contextValue}>
       {children}
     </BigQueryAppContext.Provider>
   );
 };
+
+// ✅ ENHANCED: Wrap provider with React.memo for performance optimization
+export const BigQueryAppProvider = React.memo(BigQueryAppProviderComponent);
 
 export const useBigQueryAppSelection = () => {
   const context = useContext(BigQueryAppContext);

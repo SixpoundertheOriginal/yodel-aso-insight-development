@@ -11,6 +11,7 @@ import { AppProvider } from "./context/AppContext";
 import { AsoAiHubProvider } from "./context/AsoAiHubContext";
 import { WorkflowProvider } from "./context/WorkflowContext";
 import { BigQueryAppProvider } from "./context/BigQueryAppContext";
+import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 
 // Lazy load components
 const Index = lazy(() => import("./pages/Index"));
@@ -53,7 +54,7 @@ function App() {
                 <AppProvider>
                   <AsoAiHubProvider>
                     <WorkflowProvider>
-                      <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-zinc-950 text-white">Loading...</div>}>
+                      <Suspense fallback={<BrandedLoadingSpinner />}>
                         <Routes>
                           <Route path="/auth/sign-in" element={<SignIn />} />
                           <Route path="/auth/sign-up" element={<SignUp />} />

@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { debugLog } from '@/lib/utils/debug';
 
 interface AuthContextType {
   session: Session | null;
@@ -28,9 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Auth state changed:', event, currentSession?.user?.email);
-        }
+        // Only log auth events in verbose debug mode
+        debugLog.verbose(`Auth state changed: ${event}`, currentSession?.user?.email);
         
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(async () => {
             try {
               const { data } = await supabase.auth.refreshSession();
-              if (data.session && process.env.NODE_ENV === 'development') {
-                console.log('Token refreshed successfully');
+              if (data.session) {
+                debugLog.verbose('Token refreshed successfully');
               }
             } catch (error) {
               console.warn('Token refresh failed:', error);
@@ -65,9 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Initial session check:', currentSession?.user?.email);
-      }
+      debugLog.verbose('Initial session check', currentSession?.user?.email);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);

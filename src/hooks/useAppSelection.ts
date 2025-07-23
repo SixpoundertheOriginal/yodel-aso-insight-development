@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { debugLog } from '@/lib/utils/debug';
 
 export interface AppSelectionState {
   selectedAppId: string | null;
@@ -54,7 +55,7 @@ export const useAppSelection = ({
     const isUUID = isValidUUID(appId);
     const isAppStoreId = isValidAppStoreId(appId);
     
-    console.log('🔄 [APP-SELECTION] Invalidating queries for app:', {
+    debugLog.verbose('[APP-SELECTION] Invalidating queries for app:', {
       appId,
       isUUID,
       isAppStoreId
@@ -71,7 +72,7 @@ export const useAppSelection = ({
     if (isAppStoreId) {
       // Note: We can't easily reverse-lookup UUID from App Store ID here,
       // but the enhanced queries hook should handle the resolution
-      console.log('🔄 [APP-SELECTION] App Store ID detected, enhanced invalidation may be needed');
+      debugLog.verbose('[APP-SELECTION] App Store ID detected, enhanced invalidation may be needed');
     }
 
     queriesToInvalidate.forEach(queryKey => {
@@ -85,7 +86,7 @@ export const useAppSelection = ({
       const isUUID = isValidUUID(appId);
       const isAppStoreId = isValidAppStoreId(appId);
       
-      console.log('🎯 [APP-SELECTION] Processing app selection:', {
+      debugLog.verbose('[APP-SELECTION] Processing app selection:', {
         appId,
         isUUID,
         isAppStoreId,
@@ -94,13 +95,13 @@ export const useAppSelection = ({
 
       // Prevent processing the same app ID multiple times
       if (appId === lastProcessedAppRef.current) {
-        console.log('🔄 [APP-SELECTION] App already processed:', appId);
+        debugLog.verbose('[APP-SELECTION] App already processed:', appId);
         return;
       }
 
       // Validate the ID format
       if (!isUUID && !isAppStoreId && appId.length < 3) {
-        console.warn('⚠️ [APP-SELECTION] Invalid app ID format:', appId);
+        debugLog.warn('[APP-SELECTION] Invalid app ID format:', appId);
         setState(prev => ({
           ...prev,
           transitionError: 'Invalid app ID format'
@@ -111,18 +112,18 @@ export const useAppSelection = ({
 
     // Prevent concurrent transitions
     if (transitionLockRef.current) {
-      console.log('🔒 [APP-SELECTION] Transition already in progress, ignoring request');
+      debugLog.verbose('[APP-SELECTION] Transition already in progress, ignoring request');
       return;
     }
 
     // Don't transition if already selected and not transitioning
     if (state.selectedAppId === appId && !state.isTransitioning) {
-      console.log('🔄 [APP-SELECTION] App already selected and stable:', appId);
+      debugLog.verbose('[APP-SELECTION] App already selected and stable:', appId);
       lastProcessedAppRef.current = appId;
       return;
     }
 
-    console.log('🎯 [APP-SELECTION] Starting app transition:', state.selectedAppId, '->', appId);
+    debugLog.verbose(`[APP-SELECTION] Starting app transition: ${state.selectedAppId} -> ${appId}`);
 
     // Set transition lock and update processed ref
     transitionLockRef.current = true;
@@ -162,7 +163,7 @@ export const useAppSelection = ({
         }));
 
         transitionLockRef.current = false;
-        console.log('✅ [APP-SELECTION] App transition completed:', {
+        debugLog.verbose('[APP-SELECTION] App transition completed:', {
           appId,
           organizationId,
           timestamp: new Date().toISOString()
@@ -170,7 +171,7 @@ export const useAppSelection = ({
       }, 100);
 
     } catch (error) {
-      console.error('❌ [APP-SELECTION] App transition failed:', error);
+      debugLog.error('[APP-SELECTION] App transition failed:', error);
       
       setState(prev => ({
         ...prev,
@@ -185,14 +186,14 @@ export const useAppSelection = ({
   }, [state.selectedAppId, state.isTransitioning, organizationId, invalidateAppQueries, onAppChange]);
 
   const clearSelection = useCallback(() => {
-    console.log('🗑️ [APP-SELECTION] Clearing app selection');
+    debugLog.verbose('[APP-SELECTION] Clearing app selection');
     lastProcessedAppRef.current = null;
     selectApp(null);
   }, [selectApp]);
 
   const forceRefresh = useCallback(() => {
     if (state.selectedAppId) {
-      console.log('🔄 [APP-SELECTION] Force refreshing app data:', state.selectedAppId);
+      debugLog.verbose('[APP-SELECTION] Force refreshing app data:', state.selectedAppId);
       invalidateAppQueries(state.selectedAppId);
     }
   }, [state.selectedAppId, invalidateAppQueries]);

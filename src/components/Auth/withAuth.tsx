@@ -1,13 +1,14 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useDebouncedAuth } from '@/hooks/useDebouncedAuth';
+import { BrandedLoadingSpinner } from '@/components/ui/LoadingSkeleton';
 
 export const withAuth = <P extends object>(
   Component: React.ComponentType<P>
 ) => {
   const AuthProtected: React.FC<P> = (props) => {
-    const { session, loading } = useAuth();
+    const { session, loading } = useDebouncedAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -16,13 +17,9 @@ export const withAuth = <P extends object>(
       }
     }, [session, loading, navigate]);
 
-    // If still loading, show a spinner
+    // If still loading, show branded spinner
     if (loading) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-        </div>
-      );
+      return <BrandedLoadingSpinner />;
     }
 
     // If not authenticated, don't render anything (redirect will happen)
