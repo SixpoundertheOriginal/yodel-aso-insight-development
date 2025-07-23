@@ -15,159 +15,269 @@ const supabase = createClient(
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+const systemPrompt = `You are an expert App Store Optimization (ASO) analyst with deep expertise in mobile app growth strategies. Analyze the provided app performance metrics and provide specific, actionable insights to improve the app's visibility, downloads, and revenue.
+
+Your analysis MUST be:
+1. SPECIFIC to the exact metrics provided - reference actual numbers and trends
+2. ACTIONABLE with clear, implementable next steps
+3. ASO-FOCUSED on keywords, metadata, conversion optimization, and competitive positioning  
+4. DATA-DRIVEN with quantifiable recommendations and expected outcomes
+5. PRIORITIZED by potential impact and implementation difficulty
+
+NEVER provide generic insights like "optimize your app store listing" or "improve your keywords". Instead, provide specific recommendations based on the actual data patterns you observe.
+
+For traffic source analysis, focus on:
+- App Store Search vs. Browse vs. Referral performance differences
+- Conversion rate optimization opportunities by source
+- Keyword ranking improvement strategies
+- Category positioning and competitive analysis
+
+For trend analysis, identify:
+- Seasonal patterns and timing opportunities
+- Performance drops that need immediate attention
+- Growth opportunities in underperforming metrics
+- Correlation between different metrics
+
+Respond in JSON format with the following structure:
+{
+  "insights": [
+    {
+      "title": "Specific insight title with actual metric reference",
+      "description": "Detailed explanation referencing specific data points and numbers from the provided metrics",
+      "type": "cvr_analysis|impression_trends|traffic_source_performance|keyword_optimization|competitive_analysis|seasonal_pattern|performance_alert",
+      "priority": "high|medium|low",
+      "confidence": 0.85,
+      "actionable_recommendations": [
+        "Specific action with expected outcome",
+        "Another specific action with measurable impact"
+      ],
+      "metrics_impact": {
+        "impressions": "Expected % change and timeframe",
+        "downloads": "Expected % change and timeframe", 
+        "conversion_rate": "Expected % change and timeframe"
+      },
+      "related_kpis": ["impressions", "downloads", "conversion_rate"],
+      "implementation_effort": "low|medium|high",
+      "expected_timeline": "1-2 weeks|1 month|2-3 months"
+    }
+  ]
+}`;
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Get the Authorization header from the request
+    const authorization = req.headers.get('Authorization');
+    
+    if (!authorization) {
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Verify the user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authorization.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    const { metricsData, organizationId } = await req.json();
+    const { metricsData, organizationId, insightType, userRequested = false } = await req.json();
 
-    // Create data fingerprint for caching
-    const dataFingerprint = btoa(JSON.stringify({
-      ...metricsData,
-      organizationId,
-      date: new Date().toISOString().split('T')[0] // Cache per day
-    }));
+    if (!metricsData || !organizationId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: metricsData and organizationId' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
-    // Check cache first
+    // Create a fingerprint of the data for caching (include insight type for specificity)
+    const dataFingerprint = btoa(JSON.stringify({ metricsData, insightType })).slice(0, 32);
+
+    // Check if we have cached insights for this specific request
     const { data: cachedInsights } = await supabase
       .from('ai_insights')
       .select('*')
-      .eq('organization_id', organizationId)
       .eq('data_fingerprint', dataFingerprint)
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()) // 6 hours
-      .single();
+      .eq('organization_id', organizationId)
+      .eq('is_user_requested', userRequested)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (cachedInsights) {
-      return new Response(JSON.stringify({ 
-        insights: cachedInsights.content.insights,
-        cached: true 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (cachedInsights && cachedInsights.length > 0) {
+      return new Response(
+        JSON.stringify({ insights: cachedInsights }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
+
+    if (!openAIApiKey) {
+      return new Response(
+        JSON.stringify({ 
+          insights: [{
+            title: "Analysis Ready - API Configuration Needed",
+            description: "Your ASO data is ready for AI analysis. Complete the OpenAI API setup to unlock specific, actionable insights based on your app's performance metrics.",
+            type: "configuration",
+            priority: "medium",
+            confidence: 1.0,
+            actionable_recommendations: [
+              "Configure OpenAI API key in project settings",
+              "Retry analysis to get specific ASO recommendations"
+            ],
+            metrics_impact: {
+              impressions: "Insights will show specific improvement opportunities",
+              downloads: "Recommendations will target conversion optimization",
+              conversion_rate: "Analysis will identify optimization strategies"
+            },
+            related_kpis: ["setup"],
+            implementation_effort: "low",
+            expected_timeline: "immediate"
+          }]
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Build context-specific prompt based on insight type and metrics
+    let specificPrompt = `Analyze these app performance metrics and provide specific ASO insights:
+
+${JSON.stringify(metricsData, null, 2)}`;
+
+    if (insightType) {
+      const typePrompts = {
+        'cvr_analysis': 'Focus specifically on conversion rate optimization opportunities, identifying traffic sources with low conversion and specific strategies to improve them.',
+        'impression_trends': 'Analyze impression patterns, seasonal trends, and visibility optimization opportunities. Identify keyword and metadata improvements.',
+        'traffic_source_performance': 'Deep dive into traffic source performance differences. Analyze App Store Search vs Browse vs Referral patterns and optimization strategies.',
+        'keyword_optimization': 'Focus on keyword performance, ranking opportunities, and metadata optimization recommendations.',
+        'competitive_analysis': 'Analyze competitive positioning and market opportunity insights.',
+        'seasonal_pattern': 'Identify seasonal trends, timing opportunities, and cyclical patterns in the data.'
+      };
+      
+      specificPrompt += `\n\nSPECIFIC FOCUS: ${typePrompts[insightType] || 'Provide comprehensive ASO analysis covering all key areas.'}`;
+    }
+
+    specificPrompt += `\n\nIMPORTANT: Reference specific numbers and trends from the data. Avoid generic advice. Provide measurable, implementable recommendations.`;
 
     // Generate AI insights using OpenAI
-    const systemPrompt = `You are an expert ASO (App Store Optimization) analyst. Analyze the provided app performance data and generate 3-5 actionable insights as bullet points.
-
-Focus on:
-- Trend identification and significance
-- Performance anomalies that need attention
-- Optimization opportunities
-- Specific, actionable recommendations
-
-Return JSON format:
-{
-  "insights": [
-    {
-      "id": "unique_id",
-      "type": "trend|anomaly|recommendation",
-      "priority": "high|medium|low", 
-      "title": "Brief insight title",
-      "description": "Detailed explanation with specific data points",
-      "confidence": 85,
-      "actionable": true
-    }
-  ]
-}`;
-
-    const userPrompt = `Analyze this ASO performance data:
-
-Metrics Summary:
-- Impressions: ${metricsData.impressions?.value || 0} (${metricsData.impressions?.delta > 0 ? '+' : ''}${metricsData.impressions?.delta || 0}%)
-- Downloads: ${metricsData.downloads?.value || 0} (${metricsData.downloads?.delta > 0 ? '+' : ''}${metricsData.downloads?.delta || 0}%)
-- CVR: ${metricsData.cvr?.value || 0}% (${metricsData.cvr?.delta > 0 ? '+' : ''}${metricsData.cvr?.delta || 0}%)
-- Product Page Views: ${metricsData.proceeds?.value || 0} (${metricsData.proceeds?.delta > 0 ? '+' : ''}${metricsData.proceeds?.delta || 0}%)
-
-Generate insights focusing on what the data reveals about app performance and what actions should be taken.`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          { role: 'user', content: specificPrompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1000,
+        temperature: 0.2,
+        max_tokens: 2500
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    if (!openaiResponse.ok) {
+      throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
     }
 
-    const data = await response.json();
-    const aiContent = data.choices[0].message.content;
-    
-    let insights;
+    const openaiData = await openaiResponse.json();
+    const aiContent = openaiData.choices[0].message.content;
+
+    let parsedInsights;
     try {
-      insights = JSON.parse(aiContent);
-    } catch (e) {
-      // Fallback parsing if JSON is malformed
-      insights = {
+      parsedInsights = JSON.parse(aiContent);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', aiContent);
+      // Create a fallback insight with the raw content
+      parsedInsights = {
         insights: [{
-          id: 'fallback-1',
-          type: 'recommendation',
+          title: "AI Analysis Generated",
+          description: aiContent.slice(0, 500) + (aiContent.length > 500 ? '...' : ''),
+          type: insightType || 'general',
           priority: 'medium',
-          title: 'AI Analysis Complete',
-          description: 'Performance data analyzed. Continue monitoring trends.',
-          confidence: 70,
-          actionable: false
+          confidence: 0.7,
+          actionable_recommendations: ["Review the detailed analysis provided"],
+          metrics_impact: {
+            impressions: "See analysis for specific recommendations",
+            downloads: "See analysis for specific recommendations",
+            conversion_rate: "See analysis for specific recommendations"
+          },
+          related_kpis: ["general"],
+          implementation_effort: "medium",
+          expected_timeline: "1-2 weeks"
         }]
       };
     }
 
-    // Cache the insights
-    await supabase
-      .from('ai_insights')
-      .insert({
-        organization_id: organizationId,
-        user_id: user.id,
-        data_fingerprint: dataFingerprint,
-        type: 'performance_analysis',
-        content: insights,
-        confidence_score: 85
-      });
+    // Store insights in the database
+    const insightsToStore = parsedInsights.insights.map((insight: any) => ({
+      organization_id: organizationId,
+      user_id: user.id,
+      insight_type: insight.type || insightType || 'general',
+      title: insight.title,
+      content: insight.description,
+      metrics_data: metricsData,
+      confidence_score: insight.confidence || 0.5,
+      data_fingerprint: dataFingerprint,
+      actionable_recommendations: insight.actionable_recommendations || insight.recommendations || [],
+      related_kpis: insight.related_kpis || [],
+      priority: insight.priority || 'medium',
+      is_user_requested: userRequested
+    }));
 
-    return new Response(JSON.stringify({ 
-      insights: insights.insights,
-      cached: false 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const { data: storedInsights, error: insertError } = await supabase
+      .from('ai_insights')
+      .insert(insightsToStore)
+      .select();
+
+    if (insertError) {
+      console.error('Error storing insights:', insertError);
+      // Don't fail the request if we can't cache, just return the insights
+    }
+
+    return new Response(
+      JSON.stringify({ insights: storedInsights || parsedInsights.insights }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
 
   } catch (error) {
-    console.error('AI Insights Generator Error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      insights: [] // Return empty insights on error
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Error in ai-insights-generator:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        message: error.message 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 });
