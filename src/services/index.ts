@@ -27,6 +27,7 @@ export { requestTransmissionService } from './request-transmission.service';
 // Add new enhanced audit services
 export { semanticClusteringService } from './semantic-clustering.service';
 export { metadataScoringService } from './metadata-scoring.service';
+export { auditKeywordAnalysisService } from './audit-keyword-analysis.service';
 
 // Re-export types for convenience
 export type { SearchResult, SearchConfig } from './aso-search.service';

@@ -12,6 +12,7 @@ import { RankDistributionChart } from '../KeywordIntelligence/RankDistributionCh
 import { KeywordTrendsTable } from '../KeywordIntelligence/KeywordTrendsTable';
 import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
 import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
+import { SearchDominationTab } from '../AsoAiHub/SearchDominationTab';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
@@ -285,8 +286,9 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-7 bg-zinc-900 border-zinc-800">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="search-domination">Search Domination</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
           <TabsTrigger value="creative">Creative</TabsTrigger>
@@ -340,6 +342,13 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="search-domination" className="space-y-6">
+          <SearchDominationTab
+            scrapedAppData={importedMetadata}
+            organizationId={organizationId}
+          />
         </TabsContent>
 
         <TabsContent value="metadata" className="space-y-6">
