@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
@@ -90,25 +91,7 @@ const Dashboard: React.FC = () => {
   if (loading || !data) {
     return (
       <MainLayout>
-        {/* AI Insights Loading State */}
-        <div className="mb-6">
-          <AiInsightsPanel />
-        </div>
-
-        <div className="flex justify-between items-center mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-zinc-800 animate-pulse rounded-md"></div>
-            ))}
-          </div>
-          <div className="ml-4">
-            <DataSourceIndicator 
-              currentDataSource={currentDataSource}
-              dataSourceStatus={dataSourceStatus}
-            />
-          </div>
-        </div>
-        <div className="h-64 bg-zinc-800 animate-pulse rounded-md"></div>
+        <DashboardSkeleton />
       </MainLayout>
     );
   }

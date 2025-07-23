@@ -96,8 +96,13 @@ export const useBigQueryData = (
 
   // ✅ FIXED: Stable memoized filters to prevent infinite loops
   const stableFilters = useMemo(() => {
-    const fromDate = dateRange.from.toISOString().split('T')[0];
-    const toDate = dateRange.to.toISOString().split('T')[0];
+    // Ensure dates are properly formatted
+    const fromDate = typeof dateRange.from === 'string' 
+      ? dateRange.from 
+      : dateRange.from.toISOString().split('T')[0];
+    const toDate = typeof dateRange.to === 'string' 
+      ? dateRange.to 
+      : dateRange.to.toISOString().split('T')[0];
     
     return {
       organizationId,
@@ -108,8 +113,8 @@ export const useBigQueryData = (
   }, [
     organizationId,
     selectedApps.join(','), 
-    dateRange.from.toISOString().split('T')[0],
-    dateRange.to.toISOString().split('T')[0],
+    typeof dateRange.from === 'string' ? dateRange.from : dateRange.from.toISOString().split('T')[0],
+    typeof dateRange.to === 'string' ? dateRange.to : dateRange.to.toISOString().split('T')[0],
     trafficSources.join(',')
   ]);
 
