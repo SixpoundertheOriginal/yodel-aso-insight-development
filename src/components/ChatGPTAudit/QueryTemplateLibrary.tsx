@@ -228,6 +228,74 @@ export const QUERY_TEMPLATE_LIBRARY: QueryTemplate[] = [
   }
 ];
 
+// Topic-specific query templates for the new topic analysis mode
+export const TOPIC_QUERY_TEMPLATES = {
+  // Service/Agency Recommendations
+  service_recommendation: {
+    name: "Service Recommendation",
+    description: "Tests how the topic ranks in general service recommendations",
+    priority: 1,
+    templates: [
+      "What are the best {topic} for {target_audience}?",
+      "I need reliable {topic} for {specific_use_case}, any recommendations?",
+      "Top {topic} that {target_audience} should consider in 2024?",
+      "Which {topic} provide the best value for {target_audience}?"
+    ]
+  },
+
+  // Comparison Analysis  
+  comparison_analysis: {
+    name: "Competitive Comparison",
+    description: "Tests how key players compare in ChatGPT responses",
+    priority: 1,
+    templates: [
+      "{player_1} vs {player_2} for {specific_need}",
+      "Which is better: {player_1} or {player_2} for {target_audience}?",
+      "Compare {player_1} and {player_2} for {use_case}",
+      "{player_1} vs {player_2}: pros and cons for {target_audience}"
+    ]
+  },
+
+  // Problem-Solving Queries
+  problem_solving: {
+    name: "Problem-Solving Context",
+    description: "Tests mentions in problem-solving scenarios",
+    priority: 2,
+    templates: [
+      "I'm struggling with {common_problem}, what {topic} can help?",
+      "Need {topic} that excel at {specific_capability} for {target_audience}",
+      "Looking for {topic} alternative to {popular_player} for {use_case}",
+      "Best {topic} for {target_audience} who need {specific_outcome}?"
+    ]
+  },
+
+  // Feature-Specific Queries
+  feature_specific: {
+    name: "Feature-Specific Analysis", 
+    description: "Tests mentions for specific capabilities or features",
+    priority: 2,
+    templates: [
+      "{topic} with {specific_feature} for {target_audience}",
+      "Do any {topic} offer {specific_capability}?",
+      "Best {topic} that specialize in {niche_area}",
+      "{topic} with proven {outcome} for {target_audience}"
+    ]
+  },
+
+  // Market Context Queries
+  market_context: {
+    name: "Market Context Analysis",
+    description: "Tests mentions in broader market discussions", 
+    priority: 3,
+    templates: [
+      "How is the {topic} market evolving for {target_audience}?",
+      "What should {target_audience} look for when choosing {topic}?",
+      "Current trends in {topic} for {industry} in 2024",
+      "Future of {topic} for {target_audience}"
+    ]
+  }
+};
+
 interface QueryTemplateLibraryProps {
   onSelectTemplates: (templates: QueryTemplate[]) => void;
   selectedTemplates: string[];

@@ -18,6 +18,10 @@ import {
   MetadataQueryGenerator,
   AppIntelligenceAnalyzer
 } from '@/components/ChatGPTAudit';
+import { ModeSelector } from '@/components/ChatGPTAudit/ModeSelector';
+import { TopicAnalysisInterface } from '@/components/ChatGPTAudit/TopicAnalysisInterface';
+import { AuditMode, TopicAuditData, TopicIntelligence } from '@/types/topic-audit.types';
+import { topicIntelligenceService } from '@/services/topic-intelligence.service';
 import { 
   MessageSquare, 
   Plus, 
@@ -69,6 +73,9 @@ export default function ChatGPTVisibilityAudit() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'setup' | 'runs' | 'results'>('setup');
 
+  // Mode selection state
+  const [auditMode, setAuditMode] = useState<AuditMode>('app');
+
   // Form state for creating new audit runs
   const [newAuditName, setNewAuditName] = useState('');
   const [newAuditDescription, setNewAuditDescription] = useState('');
@@ -77,6 +84,11 @@ export default function ChatGPTVisibilityAudit() {
 
   // Intelligence state
   const [appIntelligence, setAppIntelligence] = useState(null);
+  
+  // Topic analysis state
+  const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
+  const [topicIntelligence, setTopicIntelligence] = useState<TopicIntelligence | null>(null);
+  const [topicAnalysisLoading, setTopicAnalysisLoading] = useState(false);
 
   useEffect(() => {
     initializeData();
@@ -170,27 +182,52 @@ export default function ChatGPTVisibilityAudit() {
   };
 
   const createAuditRun = async () => {
-    if (!selectedApp || !newAuditName.trim()) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please select an app and enter an audit name.',
-        variant: 'destructive'
-      });
-      return;
+    // Validation based on audit mode
+    if (auditMode === 'app') {
+      if (!selectedApp || !newAuditName.trim()) {
+        toast({
+          title: 'Missing Information',
+          description: 'Please select an app and enter an audit name.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    } else {
+      if (!topicData || !newAuditName.trim()) {
+        toast({
+          title: 'Missing Information',
+          description: 'Please complete topic analysis and enter an audit name.',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     try {
+      const insertData: any = {
+        organization_id: organizationId,
+        name: newAuditName.trim(),
+        description: newAuditDescription.trim() || null,
+        status: 'pending',
+        total_queries: 0,
+        completed_queries: 0,
+        audit_type: auditMode
+      };
+
+      if (auditMode === 'app') {
+        insertData.app_id = selectedApp!.id;
+      } else {
+        insertData.app_id = 'topic'; // Placeholder for topic audits
+        insertData.topic_data = {
+          ...topicData,
+          refined_topic: topicIntelligence?.refined_topic || topicData!.topic,
+          analysis_confidence: topicIntelligence ? 0.85 : 0.5
+        };
+      }
+
       const { data, error } = await supabase
         .from('chatgpt_audit_runs')
-        .insert({
-          organization_id: organizationId,
-          app_id: selectedApp.id,
-          name: newAuditName.trim(),
-          description: newAuditDescription.trim() || null,
-          status: 'pending',
-          total_queries: 0,
-          completed_queries: 0
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -206,9 +243,10 @@ export default function ChatGPTVisibilityAudit() {
       
       await loadAuditRuns(organizationId);
 
+      const entityName = auditMode === 'app' ? selectedApp!.app_name : topicData!.topic;
       toast({
         title: 'Audit Created',
-        description: `Created audit "${data.name}" for ${selectedApp.app_name}`,
+        description: `Created ${auditMode} audit "${data.name}" for ${entityName}`,
       });
     } catch (error) {
       console.error('Error creating audit run:', error);
@@ -238,6 +276,47 @@ export default function ChatGPTVisibilityAudit() {
   const handleIntelligenceGenerated = (intelligence: any) => {
     setAppIntelligence(intelligence);
     console.log('App intelligence generated:', intelligence);
+  };
+
+  const handleTopicAnalysisGenerated = async (topic: TopicAuditData) => {
+    setTopicData(topic);
+    setTopicAnalysisLoading(true);
+    
+    try {
+      const intelligence = await topicIntelligenceService.analyzeTopicForAudit(topic);
+      setTopicIntelligence(intelligence);
+      
+      // Pre-populate audit name with intelligent suggestion
+      const suggestion = `${intelligence.refined_topic} Visibility Audit - ${new Date().toLocaleDateString()}`;
+      setNewAuditName(suggestion);
+      
+      toast({
+        title: 'Topic Analysis Complete',
+        description: `Generated intelligent analysis for "${intelligence.refined_topic}"`,
+      });
+    } catch (error) {
+      console.error('Topic analysis error:', error);
+      toast({
+        title: 'Analysis Warning',
+        description: 'Using basic analysis. AI enhancement failed.',
+        variant: 'destructive'
+      });
+    } finally {
+      setTopicAnalysisLoading(false);
+    }
+  };
+
+  const resetAnalysisState = () => {
+    setAppIntelligence(null);
+    setTopicData(null);
+    setTopicIntelligence(null);
+    setNewAuditName('');
+    setNewAuditDescription('');
+  };
+
+  const handleModeChange = (mode: AuditMode) => {
+    setAuditMode(mode);
+    resetAnalysisState();
   };
 
   if (loading) {
@@ -296,8 +375,24 @@ export default function ChatGPTVisibilityAudit() {
         {/* Setup Tab */}
         {activeTab === 'setup' && (
           <div className="space-y-6">
-            {/* App Selection */}
-            <Card className="bg-zinc-900/50 border-zinc-800">
+            {/* Mode Selection */}
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-primary">Choose Analysis Type</CardTitle>
+                <CardDescription>
+                  Select whether you want to analyze a specific app or any topic/market
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ModeSelector mode={auditMode} onModeChange={handleModeChange} />
+              </CardContent>
+            </Card>
+
+            {/* Conditional Rendering based on mode */}
+            {auditMode === 'app' ? (
+              <>
+                {/* App Selection */}
+                <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle className="text-white flex items-center space-x-2">
                   <Target className="h-5 w-5" />
@@ -448,40 +543,46 @@ export default function ChatGPTVisibilityAudit() {
 
             {/* Enhanced Query Generation */}
             {selectedApp && appIntelligence && (
-              <MetadataQueryGenerator
-                validatedApp={{
-                  appId: selectedApp?.app_store_id || selectedApp?.id || '',
-                  metadata: {
-                    name: selectedApp?.app_name || '',
+              <>
+                <MetadataQueryGenerator
+                  validatedApp={{
                     appId: selectedApp?.app_store_id || selectedApp?.id || '',
-                    title: selectedApp?.app_name || '',
-                    subtitle: selectedApp?.app_subtitle,
-                    description: selectedApp?.app_description,
-                    applicationCategory: selectedApp?.category || selectedApp?.app_store_category,
-                    developer: selectedApp?.developer_name,
-                    rating: selectedApp?.app_rating,
-                    reviews: selectedApp?.app_reviews,
-                    icon: selectedApp?.app_icon_url,
-                    url: '',
-                    locale: 'en-US'
-                  },
-                  isValid: true
-                }}
-                onQueriesGenerated={setGeneratedQueries}
-                selectedQueries={generatedQueries.map(q => q.id)}
-                appIntelligence={appIntelligence}
-              />
-            )}
+                    metadata: {
+                      name: selectedApp?.app_name || '',
+                      appId: selectedApp?.app_store_id || selectedApp?.id || '',
+                      title: selectedApp?.app_name || '',
+                      subtitle: selectedApp?.app_subtitle,
+                      description: selectedApp?.app_description,
+                      applicationCategory: selectedApp?.category || selectedApp?.app_store_category,
+                      developer: selectedApp?.developer_name,
+                      rating: selectedApp?.app_rating,
+                      reviews: selectedApp?.app_reviews,
+                      icon: selectedApp?.app_icon_url,
+                      url: '',
+                      locale: 'en-US'
+                    },
+                    isValid: true
+                  }}
+                  onQueriesGenerated={setGeneratedQueries}
+                  selectedQueries={generatedQueries.map(q => q.id)}
+                  appIntelligence={appIntelligence}
+                />
 
-            {/* Query Templates */}
-            {!appIntelligence && (
-              <QueryTemplateLibrary
-                onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
-                selectedTemplates={selectedTemplates}
-                appContext={selectedApp ? {
-                  name: selectedApp.app_name,
-                  category: selectedApp.category || selectedApp.platform
-                } : undefined}
+                {/* Query Templates */}
+                {!appIntelligence && (
+                  <QueryTemplateLibrary
+                    onSelectTemplates={(templates) => setSelectedTemplates(templates.map(t => t.id))}
+                    selectedTemplates={selectedTemplates}
+                    appContext={selectedApp ? {
+                      name: selectedApp.app_name,
+                      category: selectedApp.category || selectedApp.platform
+                    } : undefined}
+                  />
+                )}
+              </>
+            ) : (
+              <TopicAnalysisInterface 
+                onTopicAnalysisGenerated={handleTopicAnalysisGenerated} 
               />
             )}
           </div>

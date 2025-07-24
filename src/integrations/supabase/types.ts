@@ -328,6 +328,7 @@ export type Database = {
       chatgpt_audit_runs: {
         Row: {
           app_id: string
+          audit_type: string | null
           completed_at: string | null
           completed_queries: number | null
           created_at: string
@@ -339,11 +340,13 @@ export type Database = {
           processing_metadata: Json | null
           started_at: string | null
           status: string
+          topic_data: Json | null
           total_queries: number | null
           updated_at: string
         }
         Insert: {
           app_id: string
+          audit_type?: string | null
           completed_at?: string | null
           completed_queries?: number | null
           created_at?: string
@@ -355,11 +358,13 @@ export type Database = {
           processing_metadata?: Json | null
           started_at?: string | null
           status?: string
+          topic_data?: Json | null
           total_queries?: number | null
           updated_at?: string
         }
         Update: {
           app_id?: string
+          audit_type?: string | null
           completed_at?: string | null
           completed_queries?: number | null
           created_at?: string
@@ -371,6 +376,7 @@ export type Database = {
           processing_metadata?: Json | null
           started_at?: string | null
           status?: string
+          topic_data?: Json | null
           total_queries?: number | null
           updated_at?: string
         }
