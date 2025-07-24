@@ -219,11 +219,55 @@ export const BrandedLoadingSpinner: React.FC<{ className?: string }> = ({
   className = '' 
 }) => (
   <div className={`flex h-screen w-full items-center justify-center ${className}`}>
-    <div className="text-center space-y-4">
-      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-32 mx-auto" />
-        <Skeleton className="h-3 w-24 mx-auto" />
+    <div className="relative">
+      {/* Background blur effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background/50 to-background backdrop-blur-sm animate-fade-in" />
+      
+      {/* Main loading content */}
+      <div className="relative z-10 text-center space-y-8 animate-scale-in">
+        {/* Premium spinner with multiple rings */}
+        <div className="relative mx-auto w-20 h-20">
+          {/* Outer ring - orange gradient */}
+          <div className="absolute inset-0 rounded-full border-4 border-transparent bg-gradient-to-r from-yodel-orange via-yodel-orange/80 to-yodel-orange bg-clip-border animate-spin [animation-duration:2s]">
+            <div className="absolute inset-1 rounded-full bg-background" />
+          </div>
+          
+          {/* Inner ring - purple accent */}
+          <div className="absolute inset-2 rounded-full border-2 border-transparent bg-gradient-to-r from-purple-500 via-purple-400 to-purple-500 bg-clip-border animate-spin [animation-duration:1.5s] [animation-direction:reverse]">
+            <div className="absolute inset-0.5 rounded-full bg-background" />
+          </div>
+          
+          {/* Center dot with pulse */}
+          <div className="absolute inset-6 rounded-full bg-gradient-to-br from-yodel-orange to-purple-500 animate-pulse" />
+          
+          {/* Glow effect */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yodel-orange/20 to-purple-500/20 blur-lg animate-pulse" />
+        </div>
+        
+        {/* Branded text */}
+        <div className="space-y-3">
+          <div className="text-lg font-semibold bg-gradient-to-r from-yodel-orange to-purple-500 bg-clip-text text-transparent animate-fade-in [animation-delay:0.3s]">
+            ASO Intelligence Platform
+          </div>
+          <div className="text-sm text-muted-foreground animate-fade-in [animation-delay:0.6s]">
+            Analyzing your app's potential...
+          </div>
+          
+          {/* Progress dots */}
+          <div className="flex justify-center space-x-2 animate-fade-in [animation-delay:0.9s]">
+            <div className="w-2 h-2 rounded-full bg-yodel-orange animate-pulse [animation-delay:0s]" />
+            <div className="w-2 h-2 rounded-full bg-yodel-orange animate-pulse [animation-delay:0.2s]" />
+            <div className="w-2 h-2 rounded-full bg-yodel-orange animate-pulse [animation-delay:0.4s]" />
+          </div>
+        </div>
+        
+        {/* Subtle particle effects */}
+        <div className="absolute -inset-4 pointer-events-none">
+          <div className="absolute top-4 left-4 w-1 h-1 rounded-full bg-yodel-orange/40 animate-pulse [animation-delay:0.5s]" />
+          <div className="absolute top-8 right-6 w-1 h-1 rounded-full bg-purple-500/40 animate-pulse [animation-delay:1s]" />
+          <div className="absolute bottom-6 left-8 w-1 h-1 rounded-full bg-yodel-orange/40 animate-pulse [animation-delay:1.5s]" />
+          <div className="absolute bottom-4 right-4 w-1 h-1 rounded-full bg-purple-500/40 animate-pulse [animation-delay:2s]" />
+        </div>
       </div>
     </div>
   </div>
