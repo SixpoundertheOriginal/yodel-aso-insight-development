@@ -56,11 +56,6 @@ const analyticsItems = [
 // AI Command Center - Main AI-powered tools
 const aiToolsItems = [
   {
-    title: "Market Intelligence",
-    url: "/aso-unified",
-    icon: Zap,
-  },
-  {
     title: "Strategic Audit Engine",
     url: "/aso-ai-hub",
     icon: Bot,
