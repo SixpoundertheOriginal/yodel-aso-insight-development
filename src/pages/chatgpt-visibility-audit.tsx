@@ -18,6 +18,7 @@ import {
   MetadataQueryGenerator,
   AppIntelligenceAnalyzer
 } from '@/components/ChatGPTAudit';
+import { TopicBulkAuditProcessor } from '@/components/ChatGPTAudit/TopicBulkAuditProcessor';
 import { ModeSelector } from '@/components/ChatGPTAudit/ModeSelector';
 import { TopicAnalysisInterface } from '@/components/ChatGPTAudit/TopicAnalysisInterface';
 import { AuditMode, TopicAuditData, TopicIntelligence } from '@/types/topic-audit.types';
@@ -45,6 +46,8 @@ interface AuditRun {
   completed_at?: string;
   description?: string;
   created_at: string;
+  audit_type: string;
+  topic_data?: any; // Use any to match database Json type
 }
 
 interface App {
@@ -169,10 +172,13 @@ export default function ChatGPTVisibilityAudit() {
       if (runsError) {
         console.error('Error fetching audit runs:', runsError);
       } else {
-        // Type cast to fix status field type mismatch
+        // Type cast to fix status and other field type mismatches
         const typedRuns = (runsData || []).map(run => ({
           ...run,
-          status: run.status as 'pending' | 'running' | 'completed' | 'error' | 'paused'
+          status: run.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
+          audit_type: run.audit_type || 'app',
+          total_queries: run.total_queries || 0,
+          completed_queries: run.completed_queries || 0
         }));
         setAuditRuns(typedRuns);
       }
@@ -235,7 +241,10 @@ export default function ChatGPTVisibilityAudit() {
 
       setSelectedAuditRun({
         ...data,
-        status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused'
+        status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
+        audit_type: data.audit_type || auditMode,
+        total_queries: data.total_queries || 0,
+        completed_queries: data.completed_queries || 0
       });
       setNewAuditName('');
       setNewAuditDescription('');
@@ -283,16 +292,30 @@ export default function ChatGPTVisibilityAudit() {
     setTopicAnalysisLoading(true);
     
     try {
-      const intelligence = await topicIntelligenceService.analyzeTopicForAudit(topic);
-      setTopicIntelligence(intelligence);
-      
-      // Pre-populate audit name with intelligent suggestion
-      const suggestion = `${intelligence.refined_topic} Visibility Audit - ${new Date().toLocaleDateString()}`;
+      // Pre-populate audit name with simple suggestion (no AI needed)
+      const suggestion = `${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`;
       setNewAuditName(suggestion);
       
+      // Set basic topic intelligence without AI call
+      setTopicIntelligence({
+        refined_topic: topic.topic,
+        target_personas: [{
+          name: topic.target_audience,
+          demographics: topic.target_audience,
+          search_intent: ['research', 'comparison', 'recommendation']
+        }],
+        key_players: topic.known_players,
+        search_contexts: [topic.industry],
+        query_variations: [],
+        competitive_landscape: [{
+          category: topic.industry,
+          players: topic.known_players
+        }]
+      });
+      
       toast({
-        title: 'Topic Analysis Complete',
-        description: `Generated intelligent analysis for "${intelligence.refined_topic}"`,
+        title: 'Topic Analysis Ready',
+        description: `Ready to analyze visibility for "${topic.topic}"`,
       });
     } catch (error) {
       console.error('Topic analysis error:', error);
@@ -583,9 +606,65 @@ export default function ChatGPTVisibilityAudit() {
                 )}
               </>
             ) : (
-              <TopicAnalysisInterface 
-                onTopicAnalysisGenerated={handleTopicAnalysisGenerated} 
-              />
+              <>
+                <TopicAnalysisInterface 
+                  onTopicAnalysisGenerated={handleTopicAnalysisGenerated} 
+                />
+                
+                {/* Create New Topic Audit */}
+                {topicData && (
+                  <Card className="bg-zinc-900/50 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center space-x-2">
+                        <Plus className="h-5 w-5" />
+                        <span>Create Topic Audit</span>
+                        {topicIntelligence && (
+                          <Badge className="bg-green-600 text-white">
+                            <Target className="h-3 w-3 mr-1" />
+                            Ready
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        Set up a new ChatGPT visibility audit for "{topicData.topic}"
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="topic-audit-name" className="text-white">Audit Name</Label>
+                        <Input
+                          id="topic-audit-name"
+                          value={newAuditName}
+                          onChange={(e) => setNewAuditName(e.target.value)}
+                          placeholder="e.g., Marketing Tools Visibility Analysis"
+                          className="bg-zinc-800 border-zinc-700 text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="topic-audit-description" className="text-white">Description (Optional)</Label>
+                        <Textarea
+                          id="topic-audit-description"
+                          value={newAuditDescription}
+                          onChange={(e) => setNewAuditDescription(e.target.value)}
+                          placeholder="Describe the purpose of this topic analysis..."
+                          className="bg-zinc-800 border-zinc-700 text-white"
+                          rows={3}
+                        />
+                      </div>
+
+                      <Button
+                        onClick={createAuditRun}
+                        disabled={!newAuditName.trim() || !topicData}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Topic Audit Run
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </div>
         )}
@@ -667,13 +746,21 @@ export default function ChatGPTVisibilityAudit() {
 
             {/* Selected Audit Run Processor */}
             {selectedAuditRun && (
-              <SimplifiedBulkAuditProcessor
-                auditRun={selectedAuditRun}
-                selectedTemplates={selectedTemplates}
-                generatedQueries={generatedQueries}
-                organizationId={organizationId}
-                onStatusChange={handleStatusChange}
-              />
+              selectedAuditRun.audit_type === 'topic' ? (
+                <TopicBulkAuditProcessor
+                  selectedAuditRun={selectedAuditRun}
+                  onStatusChange={handleStatusChange}
+                  organizationId={organizationId}
+                />
+              ) : (
+                <SimplifiedBulkAuditProcessor
+                  auditRun={selectedAuditRun}
+                  selectedTemplates={selectedTemplates}
+                  generatedQueries={generatedQueries}
+                  organizationId={organizationId}
+                  onStatusChange={handleStatusChange}
+                />
+              )
             )}
           </div>
         )}
