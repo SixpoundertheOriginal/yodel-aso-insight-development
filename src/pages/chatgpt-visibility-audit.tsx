@@ -12,19 +12,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { DatabaseService } from '@/lib/services/database.service';
 import { 
   SimplifiedBulkAuditProcessor,
-  QueryTemplateLibrary, 
-  VisibilityResults, 
-  AppValidationForm,
-  MetadataQueryGenerator,
-  AppIntelligenceAnalyzer
+  VisibilityResults
 } from '@/components/ChatGPTAudit';
 import { TopicBulkAuditProcessor } from '@/components/ChatGPTAudit/TopicBulkAuditProcessor';
-import { ModeSelector } from '@/components/ChatGPTAudit/ModeSelector';
-import { TopicAnalysisInterface } from '@/components/ChatGPTAudit/TopicAnalysisInterface';
-import { AuditMode, TopicAuditData, TopicIntelligence, GeneratedTopicQuery } from '@/types/topic-audit.types';
-import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
-import { QueryReviewInterface } from '@/components/ChatGPTAudit/QueryReviewInterface';
-import { topicIntelligenceService } from '@/services/topic-intelligence.service';
+import { AuditRunManager } from '@/components/ChatGPTAudit/AuditRunManager';
+import { StreamlinedSetupFlow } from '@/components/ChatGPTAudit/StreamlinedSetupFlow';
+import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { 
   MessageSquare, 
   Plus, 
@@ -81,21 +74,7 @@ export default function ChatGPTVisibilityAudit() {
   // Mode selection state
   const [auditMode, setAuditMode] = useState<AuditMode>('app');
 
-  // Form state for creating new audit runs
-  const [newAuditName, setNewAuditName] = useState('');
-  const [newAuditDescription, setNewAuditDescription] = useState('');
-  const [selectedTemplates, setSelectedTemplates] = useState([]);
-  const [generatedQueries, setGeneratedQueries] = useState([]);
-
-  // Intelligence state
-  const [appIntelligence, setAppIntelligence] = useState(null);
-  
-  // Topic analysis state
-  const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
-  const [topicIntelligence, setTopicIntelligence] = useState<TopicIntelligence | null>(null);
-  const [topicAnalysisLoading, setTopicAnalysisLoading] = useState(false);
-  const [generatedTopicQueries, setGeneratedTopicQueries] = useState<GeneratedTopicQuery[]>([]);
-  const [showQueryReview, setShowQueryReview] = useState(false);
+  // No form state needed - handled by StreamlinedSetupFlow component
 
   useEffect(() => {
     initializeData();
@@ -191,49 +170,31 @@ export default function ChatGPTVisibilityAudit() {
     }
   };
 
-  const createAuditRun = async () => {
-    // Validation based on audit mode
-    if (auditMode === 'app') {
-      if (!selectedApp || !newAuditName.trim()) {
-        toast({
-          title: 'Missing Information',
-          description: 'Please select an app and enter an audit name.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    } else {
-      if (!topicData || !newAuditName.trim()) {
-        toast({
-          title: 'Missing Information',
-          description: 'Please complete topic analysis and enter an audit name.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-
+  const handleAuditCreate = async (auditData: {
+    name: string;
+    description: string;
+    mode: AuditMode;
+    app?: any;
+    topicData?: TopicAuditData;
+    queries?: GeneratedTopicQuery[];
+  }) => {
     try {
       const insertData: any = {
         organization_id: organizationId,
-        name: newAuditName.trim(),
-        description: newAuditDescription.trim() || null,
+        name: auditData.name.trim(),
+        description: auditData.description.trim() || null,
         status: 'pending',
         total_queries: 0,
         completed_queries: 0,
-        audit_type: auditMode
+        audit_type: auditData.mode
       };
 
-      if (auditMode === 'app') {
-        insertData.app_id = selectedApp!.id;
-      } else {
+      if (auditData.mode === 'app' && auditData.app) {
+        insertData.app_id = auditData.app.id;
+      } else if (auditData.mode === 'topic' && auditData.topicData) {
         insertData.app_id = 'topic'; // Placeholder for topic audits
-        insertData.topic_data = {
-          ...topicData,
-          refined_topic: topicIntelligence?.refined_topic || topicData!.topic,
-          analysis_confidence: topicIntelligence ? 0.85 : 0.5
-        };
-        insertData.total_queries = generatedTopicQueries.length;
+        insertData.topic_data = auditData.topicData;
+        insertData.total_queries = auditData.queries?.length || 0;
       }
 
       const { data, error } = await supabase
@@ -244,9 +205,9 @@ export default function ChatGPTVisibilityAudit() {
 
       if (error) throw error;
 
-      // Insert approved queries for topic audits
-      if (auditMode === 'topic' && generatedTopicQueries.length > 0) {
-        const queryInserts = generatedTopicQueries.map(query => ({
+      // Insert queries if provided
+      if (auditData.queries && auditData.queries.length > 0) {
+        const queryInserts = auditData.queries.map(query => ({
           id: query.id,
           organization_id: organizationId,
           audit_run_id: data.id,
@@ -264,20 +225,21 @@ export default function ChatGPTVisibilityAudit() {
       setSelectedAuditRun({
         ...data,
         status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
-        audit_type: data.audit_type || auditMode,
+        audit_type: data.audit_type || auditData.mode,
         total_queries: data.total_queries || 0,
         completed_queries: data.completed_queries || 0
       });
-      setNewAuditName('');
-      setNewAuditDescription('');
-      setActiveTab('runs');
       
+      setActiveTab('runs');
       await loadAuditRuns(organizationId);
 
-      const entityName = auditMode === 'app' ? selectedApp!.app_name : topicData!.topic;
+      const entityName = auditData.mode === 'app' 
+        ? auditData.app?.app_name 
+        : auditData.topicData?.topic;
+      
       toast({
         title: 'Audit Created',
-        description: `Created ${auditMode} audit "${data.name}" for ${entityName}`,
+        description: `Created ${auditData.mode} audit "${data.name}" for ${entityName}`,
       });
     } catch (error) {
       console.error('Error creating audit run:', error);
@@ -293,98 +255,8 @@ export default function ChatGPTVisibilityAudit() {
     loadAuditRuns(organizationId);
   };
 
-  const handleAppSelection = async (app: App) => {
-    setSelectedApp(app);
-    setAppIntelligence(null); // Reset intelligence when app changes
-    
-    // Pre-populate audit name with intelligent suggestion
-    if (app.app_name) {
-      const suggestion = `${app.app_name} Visibility Audit - ${new Date().toLocaleDateString()}`;
-      setNewAuditName(suggestion);
-    }
-  };
-
-  const handleIntelligenceGenerated = (intelligence: any) => {
-    setAppIntelligence(intelligence);
-    console.log('App intelligence generated:', intelligence);
-  };
-
-  const handleTopicAnalysisGenerated = async (topic: TopicAuditData) => {
-    setTopicData(topic);
-    setTopicAnalysisLoading(true);
-    
-    try {
-      // Generate queries immediately for user review
-      const queries = TopicQueryGeneratorService.generateQueries(topic, 15);
-      setGeneratedTopicQueries(queries);
-      
-      // Pre-populate audit name with simple suggestion (no AI needed)
-      const suggestion = `${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`;
-      setNewAuditName(suggestion);
-      
-      // Set basic topic intelligence without AI call
-      setTopicIntelligence({
-        refined_topic: topic.topic,
-        target_personas: [{
-          name: topic.target_audience,
-          demographics: topic.target_audience,
-          search_intent: ['research', 'comparison', 'recommendation']
-        }],
-        key_players: topic.known_players,
-        search_contexts: [topic.industry],
-        query_variations: [],
-        competitive_landscape: [{
-          category: topic.industry,
-          players: topic.known_players
-        }]
-      });
-      
-      // Show query review interface
-      setShowQueryReview(true);
-      
-      toast({
-        title: 'Queries Generated',
-        description: `Generated ${queries.length} queries for "${topic.topic}" - Review and approve them`,
-      });
-    } catch (error) {
-      console.error('Topic analysis error:', error);
-      toast({
-        title: 'Query Generation Failed',
-        description: 'Failed to generate queries. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setTopicAnalysisLoading(false);
-    }
-  };
-
-  const resetAnalysisState = () => {
-    setAppIntelligence(null);
-    setTopicData(null);
-    setTopicIntelligence(null);
-    setGeneratedTopicQueries([]);
-    setShowQueryReview(false);
-    setNewAuditName('');
-    setNewAuditDescription('');
-  };
-
-  const handleQueriesApproved = async (approvedQueries: GeneratedTopicQuery[]) => {
-    setGeneratedTopicQueries(approvedQueries);
-    setShowQueryReview(false);
-    
-    toast({
-      title: 'Queries Approved',
-      description: `${approvedQueries.length} queries approved and ready for audit creation`,
-    });
-  };
-
-  const handleBackToSetup = () => {
-    setShowQueryReview(false);
-  };
-
   const handleModeChange = (mode: AuditMode) => {
     setAuditMode(mode);
-    resetAnalysisState();
   };
 
   if (loading) {
@@ -406,12 +278,6 @@ export default function ChatGPTVisibilityAudit() {
           <h1 className="text-3xl font-bold text-white flex items-center space-x-3">
             <MessageSquare className="h-8 w-8 text-blue-400" />
             <span>ChatGPT Visibility Audit</span>
-            {appIntelligence && (
-              <Badge className="bg-green-600 text-white">
-                <Brain className="h-3 w-3 mr-1" />
-                AI Enhanced
-              </Badge>
-            )}
           </h1>
           <p className="text-zinc-400">
             Analyze how often your app is mentioned by ChatGPT across different queries and contexts
@@ -442,19 +308,13 @@ export default function ChatGPTVisibilityAudit() {
 
         {/* Setup Tab */}
         {activeTab === 'setup' && (
-          <div className="space-y-6">
-            {/* Mode Selection */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-primary">Choose Analysis Type</CardTitle>
-                <CardDescription>
-                  Select whether you want to analyze a specific app or any topic/market
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ModeSelector mode={auditMode} onModeChange={handleModeChange} />
-              </CardContent>
-            </Card>
+          <StreamlinedSetupFlow
+            apps={apps}
+            auditMode={auditMode}
+            onModeChange={handleModeChange}
+            onAuditCreate={handleAuditCreate}
+          />
+        )}
 
             {/* Conditional Rendering based on mode */}
             {auditMode === 'app' ? (
@@ -732,7 +592,33 @@ export default function ChatGPTVisibilityAudit() {
         {/* Audit Runs Tab */}
         {activeTab === 'runs' && (
           <div className="space-y-6">
-            {auditRuns.length === 0 ? (
+            {/* Enhanced Audit Run Manager */}
+            <AuditRunManager
+              auditRuns={auditRuns}
+              selectedAuditRun={selectedAuditRun}
+              onAuditRunSelect={setSelectedAuditRun}
+              onRefresh={handleStatusChange}
+              organizationId={organizationId}
+            />
+
+            {/* Processor */}
+            {selectedAuditRun && (
+              selectedAuditRun.audit_type === 'topic' ? (
+                <TopicBulkAuditProcessor
+                  selectedAuditRun={selectedAuditRun}
+                  onStatusChange={handleStatusChange}
+                  organizationId={organizationId}
+                />
+              ) : (
+                <SimplifiedBulkAuditProcessor
+                  auditRun={selectedAuditRun}
+                  organizationId={organizationId}
+                  onStatusChange={handleStatusChange}
+                />
+              )
+            )}
+          </div>
+        )}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardContent className="text-center py-12">
                   <MessageSquare className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
