@@ -21,7 +21,9 @@ import {
 import { TopicBulkAuditProcessor } from '@/components/ChatGPTAudit/TopicBulkAuditProcessor';
 import { ModeSelector } from '@/components/ChatGPTAudit/ModeSelector';
 import { TopicAnalysisInterface } from '@/components/ChatGPTAudit/TopicAnalysisInterface';
-import { AuditMode, TopicAuditData, TopicIntelligence } from '@/types/topic-audit.types';
+import { AuditMode, TopicAuditData, TopicIntelligence, GeneratedTopicQuery } from '@/types/topic-audit.types';
+import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
+import { QueryReviewInterface } from '@/components/ChatGPTAudit/QueryReviewInterface';
 import { topicIntelligenceService } from '@/services/topic-intelligence.service';
 import { 
   MessageSquare, 
@@ -92,6 +94,8 @@ export default function ChatGPTVisibilityAudit() {
   const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
   const [topicIntelligence, setTopicIntelligence] = useState<TopicIntelligence | null>(null);
   const [topicAnalysisLoading, setTopicAnalysisLoading] = useState(false);
+  const [generatedTopicQueries, setGeneratedTopicQueries] = useState<GeneratedTopicQuery[]>([]);
+  const [showQueryReview, setShowQueryReview] = useState(false);
 
   useEffect(() => {
     initializeData();
@@ -229,6 +233,7 @@ export default function ChatGPTVisibilityAudit() {
           refined_topic: topicIntelligence?.refined_topic || topicData!.topic,
           analysis_confidence: topicIntelligence ? 0.85 : 0.5
         };
+        insertData.total_queries = generatedTopicQueries.length;
       }
 
       const { data, error } = await supabase
@@ -238,6 +243,23 @@ export default function ChatGPTVisibilityAudit() {
         .single();
 
       if (error) throw error;
+
+      // Insert approved queries for topic audits
+      if (auditMode === 'topic' && generatedTopicQueries.length > 0) {
+        const queryInserts = generatedTopicQueries.map(query => ({
+          id: query.id,
+          organization_id: organizationId,
+          audit_run_id: data.id,
+          query_text: query.query_text,
+          query_type: query.query_type,
+          priority: query.priority,
+          status: 'pending'
+        }));
+
+        await supabase
+          .from('chatgpt_queries')
+          .insert(queryInserts);
+      }
 
       setSelectedAuditRun({
         ...data,
@@ -292,6 +314,10 @@ export default function ChatGPTVisibilityAudit() {
     setTopicAnalysisLoading(true);
     
     try {
+      // Generate queries immediately for user review
+      const queries = TopicQueryGeneratorService.generateQueries(topic, 15);
+      setGeneratedTopicQueries(queries);
+      
       // Pre-populate audit name with simple suggestion (no AI needed)
       const suggestion = `${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`;
       setNewAuditName(suggestion);
@@ -313,15 +339,18 @@ export default function ChatGPTVisibilityAudit() {
         }]
       });
       
+      // Show query review interface
+      setShowQueryReview(true);
+      
       toast({
-        title: 'Topic Analysis Ready',
-        description: `Ready to analyze visibility for "${topic.topic}"`,
+        title: 'Queries Generated',
+        description: `Generated ${queries.length} queries for "${topic.topic}" - Review and approve them`,
       });
     } catch (error) {
       console.error('Topic analysis error:', error);
       toast({
-        title: 'Analysis Warning',
-        description: 'Using basic analysis. AI enhancement failed.',
+        title: 'Query Generation Failed',
+        description: 'Failed to generate queries. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -333,8 +362,24 @@ export default function ChatGPTVisibilityAudit() {
     setAppIntelligence(null);
     setTopicData(null);
     setTopicIntelligence(null);
+    setGeneratedTopicQueries([]);
+    setShowQueryReview(false);
     setNewAuditName('');
     setNewAuditDescription('');
+  };
+
+  const handleQueriesApproved = async (approvedQueries: GeneratedTopicQuery[]) => {
+    setGeneratedTopicQueries(approvedQueries);
+    setShowQueryReview(false);
+    
+    toast({
+      title: 'Queries Approved',
+      description: `${approvedQueries.length} queries approved and ready for audit creation`,
+    });
+  };
+
+  const handleBackToSetup = () => {
+    setShowQueryReview(false);
   };
 
   const handleModeChange = (mode: AuditMode) => {
@@ -607,12 +652,21 @@ export default function ChatGPTVisibilityAudit() {
               </>
             ) : (
               <>
-                <TopicAnalysisInterface 
-                  onTopicAnalysisGenerated={handleTopicAnalysisGenerated} 
-                />
+                {showQueryReview ? (
+                  <QueryReviewInterface
+                    queries={generatedTopicQueries}
+                    onQueriesApproved={handleQueriesApproved}
+                    onBack={handleBackToSetup}
+                    topicData={topicData}
+                  />
+                ) : (
+                  <TopicAnalysisInterface 
+                    onTopicAnalysisGenerated={handleTopicAnalysisGenerated} 
+                  />
+                )}
                 
                 {/* Create New Topic Audit */}
-                {topicData && (
+                {topicData && !showQueryReview && (
                   <Card className="bg-zinc-900/50 border-zinc-800">
                     <CardHeader>
                       <CardTitle className="text-white flex items-center space-x-2">
@@ -655,12 +709,18 @@ export default function ChatGPTVisibilityAudit() {
 
                       <Button
                         onClick={createAuditRun}
-                        disabled={!newAuditName.trim() || !topicData}
+                        disabled={!newAuditName.trim() || !topicData || generatedTopicQueries.length === 0}
                         className="w-full"
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Create Topic Audit Run
+                        Create Topic Audit Run ({generatedTopicQueries.length} queries)
                       </Button>
+                      
+                      {generatedTopicQueries.length === 0 && (
+                        <p className="text-xs text-zinc-500 text-center">
+                          Generate and approve queries first to create audit run
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 )}

@@ -9,4 +9,5 @@ export { MetadataQueryGenerator } from './MetadataQueryGenerator';
 export { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 export { ModeSelector } from './ModeSelector';
 export { TopicAnalysisInterface } from './TopicAnalysisInterface';
+export { QueryReviewInterface } from './QueryReviewInterface';
 export type { QueryTemplate } from './QueryTemplateLibrary';
