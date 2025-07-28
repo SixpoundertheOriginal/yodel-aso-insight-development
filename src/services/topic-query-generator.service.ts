@@ -71,7 +71,7 @@ export class TopicQueryGeneratorService {
       const query = this.fillTemplate(template, topicData);
       
       queries.push({
-        id: `topic_query_${Date.now()}_${i}`,
+        id: crypto.randomUUID(),
         query_text: query,
         query_type: template.type,
         priority: template.priority,
@@ -126,7 +126,7 @@ export class TopicQueryGeneratorService {
     
     for (let i = 0; i < count && i < baseQueries.length; i++) {
       variations.push({
-        id: `topic_variation_${Date.now()}_${i}`,
+        id: crypto.randomUUID(),
         query_text: baseQueries[i],
         query_type: 'recommendation',
         priority: 4,
