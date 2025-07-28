@@ -105,8 +105,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setTopicData(topic);
     setAuditName(`${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
     
-    // Generate queries immediately
-    const queries = TopicQueryGeneratorService.generateQueries(topic, 12);
+    // Generate queries immediately with consistent count
+    console.log('StreamlinedSetupFlow: Generating 10 queries for topic:', topic.topic);
+    const queries = TopicQueryGeneratorService.generateQueries(topic, 10);
+    console.log('StreamlinedSetupFlow: Generated queries:', queries.length);
     setGeneratedQueries(queries);
     setCurrentStep('queries');
   };

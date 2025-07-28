@@ -168,6 +168,8 @@ export default function ChatGPTVisibilityAudit() {
     queries?: GeneratedTopicQuery[];
   }) => {
     try {
+      console.log('ChatGPTVisibilityAudit: Creating audit with data:', auditData);
+      
       const insertData: any = {
         organization_id: organizationId,
         name: auditData.name.trim(),
@@ -186,16 +188,25 @@ export default function ChatGPTVisibilityAudit() {
         insertData.total_queries = auditData.queries?.length || 0;
       }
 
+      console.log('ChatGPTVisibilityAudit: Inserting audit run:', insertData);
+      
       const { data, error } = await supabase
         .from('chatgpt_audit_runs')
         .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('ChatGPTVisibilityAudit: Error creating audit run:', error);
+        throw error;
+      }
+
+      console.log('ChatGPTVisibilityAudit: Created audit run:', data.id);
 
       // Insert queries if provided
       if (auditData.queries && auditData.queries.length > 0) {
+        console.log('ChatGPTVisibilityAudit: Inserting queries:', auditData.queries.length);
+        
         const queryInserts = auditData.queries.map(query => ({
           id: query.id,
           organization_id: organizationId,
@@ -206,9 +217,16 @@ export default function ChatGPTVisibilityAudit() {
           status: 'pending'
         }));
 
-        await supabase
+        const { error: queryError } = await supabase
           .from('chatgpt_queries')
           .insert(queryInserts);
+
+        if (queryError) {
+          console.error('ChatGPTVisibilityAudit: Error inserting queries:', queryError);
+          throw queryError;
+        }
+
+        console.log('ChatGPTVisibilityAudit: Successfully inserted queries');
       }
 
       setSelectedAuditRun({

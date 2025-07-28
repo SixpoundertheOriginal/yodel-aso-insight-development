@@ -67,25 +67,24 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     });
 
     try {
-      // Update audit status to running
-      await supabase
-        .from('chatgpt_audit_runs')
-        .update({ 
-          status: 'running',
-          started_at: new Date().toISOString()
-        })
-        .eq('id', selectedAuditRun.id);
+      console.log('TopicBulkAuditProcessor: Starting processing for audit run:', selectedAuditRun.id);
 
-      // Generate queries using the topic data
-      const queries = TopicQueryGeneratorService.generateQueries(selectedAuditRun.topic_data, 10);
-      
-      // Insert queries into database if not already present
+      // Check if queries already exist
+      console.log('TopicBulkAuditProcessor: Checking existing queries for audit run:', selectedAuditRun.id);
       const existingQueries = await supabase
         .from('chatgpt_queries')
         .select('id')
         .eq('audit_run_id', selectedAuditRun.id);
 
-      if (existingQueries.data?.length === 0) {
+      console.log('TopicBulkAuditProcessor: Found existing queries:', existingQueries.data?.length || 0);
+
+      if (!existingQueries.data || existingQueries.data.length === 0) {
+        console.log('TopicBulkAuditProcessor: No existing queries found, generating new ones');
+        
+        // Generate queries using the topic data
+        const queries = TopicQueryGeneratorService.generateQueries(selectedAuditRun.topic_data, 10);
+        console.log('TopicBulkAuditProcessor: Generated queries:', queries.length);
+        
         const queryInserts = queries.map(query => ({
           id: query.id,
           organization_id: organizationId,
@@ -96,18 +95,52 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           status: 'pending'
         }));
 
-        await supabase
+        console.log('TopicBulkAuditProcessor: Inserting queries into database');
+        const { error: insertError } = await supabase
           .from('chatgpt_queries')
           .insert(queryInserts);
 
+        if (insertError) {
+          console.error('TopicBulkAuditProcessor: Error inserting queries:', insertError);
+          throw new Error(`Failed to insert queries: ${insertError.message}`);
+        }
+
         // Update total queries count
-        await supabase
+        console.log('TopicBulkAuditProcessor: Updating total queries count to:', queries.length);
+        const { error: updateError } = await supabase
           .from('chatgpt_audit_runs')
           .update({ total_queries: queries.length })
           .eq('id', selectedAuditRun.id);
+
+        if (updateError) {
+          console.error('TopicBulkAuditProcessor: Error updating total queries count:', updateError);
+        }
+      } else {
+        console.log('TopicBulkAuditProcessor: Using existing queries');
       }
 
-      setProcessingStats(prev => ({ ...prev, total: queries.length }));
+      // Verify queries exist before starting processing
+      const allQueries = await supabase
+        .from('chatgpt_queries')
+        .select('*')
+        .eq('audit_run_id', selectedAuditRun.id);
+
+      if (!allQueries.data || allQueries.data.length === 0) {
+        throw new Error('No queries found for this audit run');
+      }
+
+      console.log('TopicBulkAuditProcessor: Found total queries:', allQueries.data.length);
+      setProcessingStats(prev => ({ ...prev, total: allQueries.data.length }));
+
+      // Update audit status to running only after queries are confirmed
+      console.log('TopicBulkAuditProcessor: Updating audit status to running');
+      await supabase
+        .from('chatgpt_audit_runs')
+        .update({ 
+          status: 'running',
+          started_at: new Date().toISOString()
+        })
+        .eq('id', selectedAuditRun.id);
 
       // Process queries
       const pendingQueries = await supabase
