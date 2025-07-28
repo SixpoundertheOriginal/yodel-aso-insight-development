@@ -41,8 +41,20 @@ serve(async (req) => {
 
     console.log(`[Topic Analysis] Processing query: ${queryText}`);
     console.log(`[Topic Analysis] Target topic: ${targetTopic}`);
+    
+    if (!queryId || !queryText || !auditRunId || !organizationId || !targetTopic) {
+      console.error(`[Topic Analysis] Missing required parameters:`, {
+        queryId: !!queryId,
+        queryText: !!queryText,
+        auditRunId: !!auditRunId,
+        organizationId: !!organizationId,
+        targetTopic: !!targetTopic
+      });
+      throw new Error('Missing required parameters');
+    }
 
     // Call OpenAI ChatGPT API
+    console.log(`[Topic Analysis] Calling OpenAI API...`);
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -64,7 +76,9 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[Topic Analysis] OpenAI API error:`, response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -80,37 +94,52 @@ serve(async (req) => {
     console.log(`[Topic Analysis] Visibility analysis: Topic mentioned: ${analysis.topicMentioned}, Position: ${analysis.mentionPosition}, Score: ${analysis.visibilityScore}`);
 
     // Store results in database
+    console.log(`[Topic Analysis] Storing results in database...`);
+    const insertData = {
+      organization_id: organizationId,
+      query_id: queryId,
+      audit_run_id: auditRunId,
+      response_text: responseText,
+      app_mentioned: analysis.topicMentioned, // Reusing app_mentioned field for topic
+      mention_position: analysis.mentionPosition,
+      mention_context: analysis.mentionContext,
+      competitors_mentioned: analysis.relatedEntitiesMentioned,
+      sentiment_score: analysis.sentimentScore,
+      visibility_score: analysis.visibilityScore,
+      raw_response: data,
+      tokens_used: tokensUsed,
+      cost_cents: costCents,
+      analysis_type: 'topic' // Flag to distinguish from app analysis
+    };
+    
+    console.log(`[Topic Analysis] Insert data:`, insertData);
+    
     const { error: insertError } = await supabase
       .from('chatgpt_query_results')
-      .insert({
-        organization_id: organizationId,
-        query_id: queryId,
-        audit_run_id: auditRunId,
-        response_text: responseText,
-        app_mentioned: analysis.topicMentioned, // Reusing app_mentioned field for topic
-        mention_position: analysis.mentionPosition,
-        mention_context: analysis.mentionContext,
-        competitors_mentioned: analysis.relatedEntitiesMentioned,
-        sentiment_score: analysis.sentimentScore,
-        visibility_score: analysis.visibilityScore,
-        raw_response: data,
-        tokens_used: tokensUsed,
-        cost_cents: costCents,
-        analysis_type: 'topic' // Flag to distinguish from app analysis
-      });
+      .insert(insertData);
 
     if (insertError) {
+      console.error(`[Topic Analysis] Database insert error:`, insertError);
       throw new Error(`Database insert error: ${insertError.message}`);
     }
+    
+    console.log(`[Topic Analysis] Results stored successfully`);
 
     // Update query status
+    console.log(`[Topic Analysis] Updating query status to completed...`);
     const { error: updateError } = await supabase
       .from('chatgpt_queries')
-      .update({ status: 'completed' })
+      .update({ 
+        status: 'completed',
+        processed_at: new Date().toISOString()
+      })
       .eq('id', queryId);
 
     if (updateError) {
-      console.error('Error updating query status:', updateError);
+      console.error(`[Topic Analysis] Error updating query status:`, updateError);
+      // Don't throw here, as the main processing was successful
+    } else {
+      console.log(`[Topic Analysis] Query status updated successfully`);
     }
 
     // Update audit run progress
@@ -148,18 +177,33 @@ serve(async (req) => {
   } catch (error) {
     console.error('[Topic Analysis] Error:', error);
 
-    // Update query status to error
-    const { queryId } = await req.json().catch(() => ({}));
+    // Try to get the queryId from the request if available
+    let queryId;
+    try {
+      const body = await req.clone().json();
+      queryId = body.queryId;
+    } catch {
+      // If we can't parse the request, we can't update the query status
+      console.log('[Topic Analysis] Could not parse request to get queryId for error handling');
+    }
+    
+    // Update query status to failed if we have a queryId
     if (queryId) {
+      console.log(`[Topic Analysis] Updating query ${queryId} status to failed`);
       await supabase
         .from('chatgpt_queries')
-        .update({ status: 'error' })
+        .update({ 
+          status: 'failed',
+          processed_at: new Date().toISOString(),
+          error_message: error.message
+        })
         .eq('id', queryId);
     }
 
     return new Response(JSON.stringify({ 
       error: error.message,
-      success: false
+      success: false,
+      details: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

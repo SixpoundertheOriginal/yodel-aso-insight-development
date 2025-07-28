@@ -160,8 +160,10 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           }));
 
           try {
+            console.log('TopicBulkAuditProcessor: Processing query:', query.id, query.query_text);
+            
             // Call the topic analysis function
-            const { error } = await supabase.functions.invoke('chatgpt-topic-analysis', {
+            const { data, error } = await supabase.functions.invoke('chatgpt-topic-analysis', {
               body: {
                 queryId: query.id,
                 queryText: query.query_text,
@@ -173,11 +175,21 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
 
             if (error) {
               console.error('Query processing error:', error);
+              toast({
+                title: 'Query Failed',
+                description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message}`,
+                variant: 'destructive'
+              });
               setProcessingStats(prev => ({ 
                 ...prev, 
                 failed: prev.failed + 1 
               }));
             } else {
+              console.log('Successfully processed query:', query.id, data);
+              toast({
+                title: 'Query Completed',
+                description: `Query "${query.query_text.substring(0, 50)}..." completed successfully`,
+              });
               setProcessingStats(prev => ({ 
                 ...prev, 
                 completed: prev.completed + 1 
@@ -189,6 +201,11 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
 
           } catch (error) {
             console.error('Query processing error:', error);
+            toast({
+              title: 'Query Error',
+              description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message || 'Unknown error'}`,
+              variant: 'destructive'
+            });
             setProcessingStats(prev => ({ 
               ...prev, 
               failed: prev.failed + 1 
@@ -328,7 +345,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
 
         {/* Stats */}
         {(isProcessing || selectedAuditRun.status === 'running') && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{processingStats.completed}</div>
               <div className="text-xs text-muted-foreground">Completed</div>
@@ -336,6 +353,12 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">{processingStats.failed}</div>
               <div className="text-xs text-muted-foreground">Failed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {processingStats.total - processingStats.completed - processingStats.failed}
+              </div>
+              <div className="text-xs text-muted-foreground">Pending</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{processingStats.total}</div>
@@ -377,6 +400,12 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
               <Square className="h-4 w-4" />
               <span>Stop</span>
             </Button>
+          )}
+          
+          {!isProcessing && processingStats.total > 0 && (
+            <div className="text-sm text-muted-foreground flex items-center">
+              Processing query {processingStats.completed + processingStats.failed + 1} of {processingStats.total}
+            </div>
           )}
         </div>
 

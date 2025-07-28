@@ -431,6 +431,7 @@ export type Database = {
       }
       chatgpt_query_results: {
         Row: {
+          analysis_type: string | null
           app_mentioned: boolean | null
           audit_run_id: string
           competitors_mentioned: string[] | null
@@ -451,6 +452,7 @@ export type Database = {
           visibility_score: number | null
         }
         Insert: {
+          analysis_type?: string | null
           app_mentioned?: boolean | null
           audit_run_id: string
           competitors_mentioned?: string[] | null
@@ -471,6 +473,7 @@ export type Database = {
           visibility_score?: number | null
         }
         Update: {
+          analysis_type?: string | null
           app_mentioned?: boolean | null
           audit_run_id?: string
           competitors_mentioned?: string[] | null
