@@ -163,8 +163,17 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         .eq('status', 'pending')
         .order('priority');
 
+      console.log('🔄 About to start processing queries:', {
+        totalQueries: pendingQueries.data?.length || 0,
+        firstQueryId: pendingQueries.data?.[0]?.id,
+        processingMode: 'topic-analysis'
+      });
+
       if (pendingQueries.data) {
-        for (const query of pendingQueries.data) {
+        for (let i = 0; i < pendingQueries.data.length; i++) {
+          const query = pendingQueries.data[i];
+          console.log(`🎯 Starting query ${i + 1}/${pendingQueries.data.length}: ${query.id}`);
+          
           if (!isProcessing) break; // Check if processing was stopped
 
           setProcessingStats(prev => ({ 
