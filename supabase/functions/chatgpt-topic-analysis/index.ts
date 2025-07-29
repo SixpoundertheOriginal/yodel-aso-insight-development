@@ -36,65 +36,150 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+
   try {
-    const { queryId, queryText, auditRunId, organizationId, targetTopic }: TopicQueryRequest = await req.json();
-
-    console.log(`[Topic Analysis] Processing query: ${queryText}`);
-    console.log(`[Topic Analysis] Target topic: ${targetTopic}`);
+    console.group(`🚀 ChatGPT Topic Analysis - Request ${requestId}`);
+    console.log('Request received at:', timestamp);
     
-    if (!queryId || !queryText || !auditRunId || !organizationId || !targetTopic) {
-      console.error(`[Topic Analysis] Missing required parameters:`, {
-        queryId: !!queryId,
-        queryText: !!queryText,
-        auditRunId: !!auditRunId,
-        organizationId: !!organizationId,
-        targetTopic: !!targetTopic
-      });
-      throw new Error('Missing required parameters');
-    }
+    // 🔍 Environment Validation
+    console.group('🔍 Environment Validation');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    console.log('Environment check:', {
+      supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'MISSING',
+      openaiKeyPresent: !!openaiKey,
+      openaiKeyFormat: openaiKey?.startsWith('sk-') ? 'Valid format' : 'Invalid/missing',
+      timestamp
+    });
+    console.groupEnd();
 
-    // Call OpenAI ChatGPT API
-    console.log(`[Topic Analysis] Calling OpenAI API...`);
+    // 🔍 Request Payload Validation
+    const requestBody = await req.json();
+    const { queryId, queryText, auditRunId, organizationId, targetTopic }: TopicQueryRequest = requestBody;
+    
+    console.group('🔍 Request Payload Validation');
+    console.log('Raw request body:', requestBody);
+    console.log('Extracted parameters:', {
+      queryId: queryId || 'MISSING',
+      queryText: queryText ? `${queryText.substring(0, 50)}...` : 'MISSING',
+      auditRunId: auditRunId || 'MISSING',
+      organizationId: organizationId || 'MISSING',
+      targetTopic: targetTopic || 'MISSING'
+    });
+
+    // Validate required parameters
+    const missingParams = [];
+    if (!queryId) missingParams.push('queryId');
+    if (!queryText) missingParams.push('queryText');
+    if (!auditRunId) missingParams.push('auditRunId');
+    if (!organizationId) missingParams.push('organizationId');
+    if (!targetTopic) missingParams.push('targetTopic');
+
+    if (missingParams.length > 0) {
+      console.error('❌ Missing required parameters:', missingParams);
+      console.groupEnd();
+      console.groupEnd();
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing required parameters', 
+          missing: missingParams,
+          requestId 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    console.groupEnd();
+
+    // 🤖 OpenAI API Call with Enhanced Logging
+    console.group('🤖 OpenAI API Call');
+    
+    const openaiRequest = {
+      model: 'gpt-4o-mini',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are a helpful assistant that provides recommendations and information. Be specific and mention actual brands, services, or solutions when possible. Provide clear, practical recommendations.' 
+        },
+        { role: 'user', content: queryText }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+    };
+
+    console.log('OpenAI request details:', {
+      model: openaiRequest.model,
+      messageCount: openaiRequest.messages.length,
+      systemPromptLength: openaiRequest.messages[0].content.length,
+      userPromptLength: queryText.length,
+      maxTokens: openaiRequest.max_tokens,
+      temperature: openaiRequest.temperature
+    });
+
+    const openaiStartTime = Date.now();
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a helpful assistant that provides recommendations and information. Be specific and mention actual brands, services, or solutions when possible. Provide clear, practical recommendations.' 
-          },
-          { role: 'user', content: queryText }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      }),
+      body: JSON.stringify(openaiRequest)
+    });
+
+    const openaiDuration = Date.now() - openaiStartTime;
+    console.log('OpenAI API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      duration: `${openaiDuration}ms`,
+      headers: Object.fromEntries(response.headers.entries())
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Topic Analysis] OpenAI API error:`, response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      console.error('❌ OpenAI API Error Response:', errorText);
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(errorText);
+      } catch {
+        errorDetails = { raw_error: errorText };
+      }
+      
+      console.groupEnd();
+      console.groupEnd();
+      throw new Error(`OpenAI API Error ${response.status}: ${JSON.stringify(errorDetails)}`);
     }
 
     const data = await response.json();
+    console.log('OpenAI response data:', {
+      hasChoices: !!data.choices?.length,
+      tokensUsed: data.usage?.total_tokens,
+      promptTokens: data.usage?.prompt_tokens,
+      completionTokens: data.usage?.completion_tokens,
+      model: data.model
+    });
+    console.groupEnd();
+
     const responseText = data.choices[0].message.content;
     const tokensUsed = data.usage?.total_tokens || 0;
     const costCents = Math.round((tokensUsed / 1000) * 0.2); // Rough cost calculation
 
-    console.log(`[Topic Analysis] Response received: ${responseText.substring(0, 200)}...`);
-
-    // Analyze topic visibility in response
+    // 🔍 Topic Visibility Analysis
+    console.group('🔍 Topic Visibility Analysis');
+    console.log('Analyzing response for topic:', targetTopic);
+    console.log('Response text length:', responseText.length);
+    
     const analysis = analyzeTopicVisibility(responseText, targetTopic);
+    console.log('Analysis result:', analysis);
+    console.groupEnd();
 
-    console.log(`[Topic Analysis] Visibility analysis: Topic mentioned: ${analysis.topicMentioned}, Position: ${analysis.mentionPosition}, Score: ${analysis.visibilityScore}`);
-
-    // Store results in database
-    console.log(`[Topic Analysis] Storing results in database...`);
+    // 💾 Database Storage with Enhanced Logging
+    console.group('💾 Database Storage');
     const insertData = {
       organization_id: organizationId,
       query_id: queryId,
@@ -111,19 +196,36 @@ serve(async (req) => {
       cost_cents: costCents,
       analysis_type: 'topic' // Flag to distinguish from app analysis
     };
-    
-    console.log(`[Topic Analysis] Insert data:`, insertData);
-    
+
+    console.log('Database insert payload:', {
+      organization_id: organizationId,
+      query_id: queryId,
+      audit_run_id: auditRunId,
+      response_text_length: responseText.length,
+      analysis_type: 'topic',
+      tokens_used: tokensUsed,
+      cost_cents: costCents
+    });
+
+    const dbStartTime = Date.now();
     const { error: insertError } = await supabase
       .from('chatgpt_query_results')
       .insert(insertData);
 
+    const dbDuration = Date.now() - dbStartTime;
+    console.log('Database operation result:', {
+      duration: `${dbDuration}ms`,
+      hasError: !!insertError,
+      errorMessage: insertError?.message
+    });
+
     if (insertError) {
-      console.error(`[Topic Analysis] Database insert error:`, insertError);
+      console.error('❌ Database insert error:', insertError);
+      console.groupEnd();
+      console.groupEnd();
       throw new Error(`Database insert error: ${insertError.message}`);
     }
-    
-    console.log(`[Topic Analysis] Results stored successfully`);
+    console.groupEnd();
 
     // Update query status
     console.log(`[Topic Analysis] Updating query status to completed...`);
@@ -165,17 +267,24 @@ serve(async (req) => {
 
     console.log(`[Topic Analysis] Query ${queryId} completed successfully`);
 
+    const totalDuration = Date.now() - Date.parse(timestamp);
+    console.log(`✅ Analysis completed successfully in ${totalDuration}ms`);
+    console.groupEnd();
+
     return new Response(JSON.stringify({
       success: true,
       analysis,
       tokensUsed,
-      costCents
+      costCents,
+      requestId,
+      duration: totalDuration
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('[Topic Analysis] Error:', error);
+    console.error(`💥 ChatGPT Topic Analysis Error [${requestId}]:`, error);
+    console.groupEnd();
 
     // Try to get the queryId from the request if available
     let queryId;
@@ -203,7 +312,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       error: error.message,
       success: false,
-      details: error.stack
+      details: error.stack,
+      requestId,
+      timestamp
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

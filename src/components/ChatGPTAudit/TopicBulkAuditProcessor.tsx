@@ -58,6 +58,19 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
       return;
     }
 
+    // 🔍 Environment and Configuration Audit
+    console.group('🔍 TopicBulkAuditProcessor - Environment Audit');
+    console.log('Environment:', {
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: new Date().toISOString(),
+      supabaseConfigured: !!supabase,
+      organizationId,
+      auditRunId: selectedAuditRun.id,
+      auditRunType: selectedAuditRun.audit_type,
+      targetTopic: selectedAuditRun.topic_data?.topic
+    });
+    console.groupEnd();
+
     setIsProcessing(true);
     setProcessingStats({
       completed: selectedAuditRun.completed_queries,
@@ -160,21 +173,43 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           }));
 
           try {
-            console.log('TopicBulkAuditProcessor: Processing query:', query.id, query.query_text);
+            console.group(`📝 Processing Query ${query.id}`);
+            console.log('Query Details:', {
+              queryId: query.id,
+              queryText: query.query_text?.substring(0, 100) + '...',
+              auditRunId: selectedAuditRun.id,
+              organizationId,
+              targetTopic: selectedAuditRun.topic_data.topic
+            });
+
+            const requestPayload = {
+              queryId: query.id,
+              queryText: query.query_text,
+              auditRunId: selectedAuditRun.id,
+              organizationId: organizationId,
+              targetTopic: selectedAuditRun.topic_data.topic
+            };
+
+            console.log('Edge Function Request Payload:', requestPayload);
+
+            const startTime = Date.now();
             
             // Call the topic analysis function
             const { data, error } = await supabase.functions.invoke('chatgpt-topic-analysis', {
-              body: {
-                queryId: query.id,
-                queryText: query.query_text,
-                auditRunId: selectedAuditRun.id,
-                organizationId: organizationId,
-                targetTopic: selectedAuditRun.topic_data.topic
-              }
+              body: requestPayload
+            });
+
+            const duration = Date.now() - startTime;
+            console.log('Edge Function Response:', {
+              duration: `${duration}ms`,
+              hasError: !!error,
+              hasData: !!data,
+              errorDetails: error
             });
 
             if (error) {
-              console.error('Query processing error:', error);
+              console.error('❌ Query processing failed:', error);
+              console.groupEnd();
               toast({
                 title: 'Query Failed',
                 description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message}`,
@@ -185,7 +220,8 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
                 failed: prev.failed + 1 
               }));
             } else {
-              console.log('Successfully processed query:', query.id, data);
+              console.log('✅ Successfully processed query in', duration + 'ms:', data);
+              console.groupEnd();
               toast({
                 title: 'Query Completed',
                 description: `Query "${query.query_text.substring(0, 50)}..." completed successfully`,
