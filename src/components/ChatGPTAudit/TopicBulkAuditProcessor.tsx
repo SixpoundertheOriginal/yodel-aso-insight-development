@@ -48,6 +48,128 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     selectedAuditRun.audit_type === 'topic' && 
     selectedAuditRun.status === 'running';
 
+  const testFunctionAccessibility = async () => {
+    try {
+      console.log('🔧 Testing Edge Function accessibility...');
+      const response = await supabase.functions.invoke('chatgpt-topic-analysis', {
+        body: { test: 'accessibility_check' }
+      });
+      console.log('🔧 Accessibility test response:', response);
+      return !response.error;
+    } catch (error) {
+      console.error('🔧 Function accessibility test failed:', error);
+      return false;
+    }
+  };
+
+  const processQueryWithDetailedLogging = async (query: any) => {
+    // ADD THESE LOGS FIRST:
+    console.log('🚀 ENTERED processQueryWithDetailedLogging function');
+    console.log('📝 Query parameter received:', {
+      id: query?.id,
+      query_text: query?.query_text?.substring(0, 50) + '...',
+      type: typeof query
+    });
+    
+    try {
+      console.log('🔧 About to start function accessibility test...');
+      
+      // Test function accessibility
+      const isAccessible = await testFunctionAccessibility();
+      console.log('🔧 Function accessibility result:', isAccessible);
+      
+      if (!isAccessible) {
+        console.error('❌ Function not accessible, aborting query processing');
+        return;
+      }
+      
+      console.log('✅ Function accessible, proceeding with query processing');
+      
+      // Continue with existing code...
+      console.group(`📋 Processing Query: ${query.id}`);
+
+      setProcessingStats(prev => ({ 
+        ...prev, 
+        currentQuery: query.query_text 
+      }));
+
+      console.log('Query Details:', {
+        queryId: query.id,
+        queryText: query.query_text?.substring(0, 100) + '...',
+        auditRunId: selectedAuditRun.id,
+        organizationId,
+        targetTopic: selectedAuditRun.topic_data.topic
+      });
+
+      const requestPayload = {
+        queryId: query.id,
+        queryText: query.query_text,
+        auditRunId: selectedAuditRun.id,
+        organizationId: organizationId,
+        targetTopic: selectedAuditRun.topic_data.topic
+      };
+
+      console.log('Edge Function Request Payload:', requestPayload);
+
+      const startTime = Date.now();
+      
+      // Call the topic analysis function
+      const { data, error } = await supabase.functions.invoke('chatgpt-topic-analysis', {
+        body: requestPayload
+      });
+
+      const duration = Date.now() - startTime;
+      console.log('Edge Function Response:', {
+        duration: `${duration}ms`,
+        hasError: !!error,
+        hasData: !!data,
+        errorDetails: error
+      });
+
+      if (error) {
+        console.error('❌ Query processing failed:', error);
+        console.groupEnd();
+        toast({
+          title: 'Query Failed',
+          description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message}`,
+          variant: 'destructive'
+        });
+        setProcessingStats(prev => ({ 
+          ...prev, 
+          failed: prev.failed + 1 
+        }));
+      } else {
+        console.log('✅ Successfully processed query in', duration + 'ms:', data);
+        console.groupEnd();
+        toast({
+          title: 'Query Completed',
+          description: `Query "${query.query_text.substring(0, 50)}..." completed successfully`,
+        });
+        setProcessingStats(prev => ({ 
+          ...prev, 
+          completed: prev.completed + 1 
+        }));
+      }
+
+      // Add delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+    } catch (error) {
+      console.error('💥 FATAL ERROR in processQueryWithDetailedLogging:', error);
+      console.error('Query processing error:', error);
+      toast({
+        title: 'Query Error',
+        description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message || 'Unknown error'}`,
+        variant: 'destructive'
+      });
+      setProcessingStats(prev => ({ 
+        ...prev, 
+        failed: prev.failed + 1 
+      }));
+      throw error;
+    }
+  };
+
   const startProcessing = async () => {
     if (!selectedAuditRun || !selectedAuditRun.topic_data) {
       toast({
@@ -176,86 +298,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           
           if (!isProcessing) break; // Check if processing was stopped
 
-          setProcessingStats(prev => ({ 
-            ...prev, 
-            currentQuery: query.query_text 
-          }));
-
-          try {
-            console.group(`📝 Processing Query ${query.id}`);
-            console.log('Query Details:', {
-              queryId: query.id,
-              queryText: query.query_text?.substring(0, 100) + '...',
-              auditRunId: selectedAuditRun.id,
-              organizationId,
-              targetTopic: selectedAuditRun.topic_data.topic
-            });
-
-            const requestPayload = {
-              queryId: query.id,
-              queryText: query.query_text,
-              auditRunId: selectedAuditRun.id,
-              organizationId: organizationId,
-              targetTopic: selectedAuditRun.topic_data.topic
-            };
-
-            console.log('Edge Function Request Payload:', requestPayload);
-
-            const startTime = Date.now();
-            
-            // Call the topic analysis function
-            const { data, error } = await supabase.functions.invoke('chatgpt-topic-analysis', {
-              body: requestPayload
-            });
-
-            const duration = Date.now() - startTime;
-            console.log('Edge Function Response:', {
-              duration: `${duration}ms`,
-              hasError: !!error,
-              hasData: !!data,
-              errorDetails: error
-            });
-
-            if (error) {
-              console.error('❌ Query processing failed:', error);
-              console.groupEnd();
-              toast({
-                title: 'Query Failed',
-                description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message}`,
-                variant: 'destructive'
-              });
-              setProcessingStats(prev => ({ 
-                ...prev, 
-                failed: prev.failed + 1 
-              }));
-            } else {
-              console.log('✅ Successfully processed query in', duration + 'ms:', data);
-              console.groupEnd();
-              toast({
-                title: 'Query Completed',
-                description: `Query "${query.query_text.substring(0, 50)}..." completed successfully`,
-              });
-              setProcessingStats(prev => ({ 
-                ...prev, 
-                completed: prev.completed + 1 
-              }));
-            }
-
-            // Add delay between requests to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-          } catch (error) {
-            console.error('Query processing error:', error);
-            toast({
-              title: 'Query Error',
-              description: `Query "${query.query_text.substring(0, 50)}..." failed: ${error.message || 'Unknown error'}`,
-              variant: 'destructive'
-            });
-            setProcessingStats(prev => ({ 
-              ...prev, 
-              failed: prev.failed + 1 
-            }));
-          }
+          await processQueryWithDetailedLogging(query);
         }
       }
 
