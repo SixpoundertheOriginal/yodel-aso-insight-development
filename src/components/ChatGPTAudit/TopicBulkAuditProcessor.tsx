@@ -298,7 +298,23 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           
           if (!isProcessing) break; // Check if processing was stopped
 
-          await processQueryWithDetailedLogging(query);
+          console.log('🚀 ABOUT TO CALL processQueryWithDetailedLogging');
+          console.log('📝 Query data:', { id: query.id, text: query.query_text?.substring(0, 50) });
+
+          try {
+            const result = await processQueryWithDetailedLogging(query);
+            console.log('✅ processQueryWithDetailedLogging RETURNED successfully');
+            console.log('📤 Result:', result);
+          } catch (error) {
+            console.error('❌ processQueryWithDetailedLogging FAILED with error:', error);
+            console.error('🔍 Error details:', {
+              message: (error as any).message,
+              stack: (error as any).stack?.substring(0, 200)
+            });
+            throw error;
+          }
+
+          console.log('🏁 COMPLETED processQueryWithDetailedLogging call');
         }
       }
 
