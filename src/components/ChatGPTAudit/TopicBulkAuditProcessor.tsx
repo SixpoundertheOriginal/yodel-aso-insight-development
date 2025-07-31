@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -39,6 +39,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     total: 0,
     currentQuery: ''
   });
+  const isProcessingRef = useRef(false);
 
   const canProcess = selectedAuditRun && 
     selectedAuditRun.audit_type === 'topic' && 
@@ -194,6 +195,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     console.groupEnd();
 
     setIsProcessing(true);
+    isProcessingRef.current = true;
     setProcessingStats({
       completed: selectedAuditRun.completed_queries,
       failed: 0,
@@ -296,7 +298,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
           const query = pendingQueries.data[i];
           console.log(`🎯 Starting query ${i + 1}/${pendingQueries.data.length}: ${query.id}`);
           
-          if (!isProcessing) break; // Check if processing was stopped
+          if (!isProcessingRef.current) break; // Check if processing was stopped
 
           console.log('🚀 ABOUT TO CALL processQueryWithDetailedLogging');
           console.log('📝 Query data:', { id: query.id, text: query.query_text?.substring(0, 50) });
@@ -339,6 +341,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
 
   const pauseProcessing = async () => {
     setIsProcessing(false);
+    isProcessingRef.current = false;
     
     if (selectedAuditRun) {
       await supabase
@@ -352,6 +355,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
 
   const stopProcessing = async () => {
     setIsProcessing(false);
+    isProcessingRef.current = false;
     
     if (selectedAuditRun) {
       await supabase
