@@ -84,7 +84,11 @@ serve(async (req) => {
 
     // 🔍 Request Payload Validation
     const requestBody = await req.json();
-    const { queryId, queryText, auditRunId, organizationId, targetTopic, topicData, entityToTrack, entityAliases }: TopicQueryRequest = requestBody;
+    const { queryId, queryText, auditRunId, organizationId, targetTopic, topicData }: TopicQueryRequest = requestBody;
+    
+    // Extract entity tracking data from topicData
+    const entityToTrack = topicData?.entityToTrack || null;
+    const entityAliases = topicData?.entityAliases || [];
     
     console.group('🔍 Request Payload Validation');
     console.log('Raw request body:', requestBody);
@@ -95,7 +99,7 @@ serve(async (req) => {
       organizationId: organizationId || 'MISSING',
       targetTopic: targetTopic || 'MISSING',
       entityToTrack: entityToTrack || 'NOT_PROVIDED',
-      entityAliases: entityAliases ? `${entityAliases.length} aliases` : 'NOT_PROVIDED'
+      entityAliases: entityAliases.length > 0 ? `${entityAliases.length} aliases` : 'NOT_PROVIDED'
     });
 
     // Validate required parameters
