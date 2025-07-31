@@ -427,6 +427,12 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
               <div><strong>Topic:</strong> {selectedAuditRun.topic_data.topic}</div>
               <div><strong>Industry:</strong> {selectedAuditRun.topic_data.industry}</div>
               <div><strong>Target Audience:</strong> {selectedAuditRun.topic_data.target_audience}</div>
+              {selectedAuditRun.topic_data.entityToTrack && (
+                <div><strong>Entity To Track:</strong> {selectedAuditRun.topic_data.entityToTrack}</div>
+              )}
+              {selectedAuditRun.topic_data.entityAliases && selectedAuditRun.topic_data.entityAliases.length > 0 && (
+                <div><strong>Entity Aliases:</strong> {selectedAuditRun.topic_data.entityAliases.join(', ')}</div>
+              )}
               {selectedAuditRun.topic_data.known_players.length > 0 && (
                 <div>
                   <strong>Known Players:</strong> {selectedAuditRun.topic_data.known_players.join(', ')}
