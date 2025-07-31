@@ -124,7 +124,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
           queryText: result.query_text,
           category: result.query_category,
           entityPosition: result.mention_position,
-          totalEntities: result.entity_analysis?.total_entities || result.total_entities_in_response || allEntities.length,
+          totalEntities: result.entity_analysis?.structured_entities?.length || result.total_entities_in_response || allEntities.length,
           visibilityScore: result.visibility_score,
           allEntities: allEntities.slice(0, 10) // Top 10 only
         });

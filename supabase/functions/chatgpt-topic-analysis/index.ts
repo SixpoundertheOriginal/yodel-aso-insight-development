@@ -336,7 +336,10 @@ Format as JSON array:
       tokens_used: tokensUsed,
       cost_cents: costCents,
       analysis_type: 'topic', // Flag to distinguish from app analysis
-      entity_analysis: analysis.entityAnalysis, // Store enhanced entity detection results
+      entity_analysis: {
+        ...analysis.entityAnalysis,
+        structured_entities: structuredEntities
+      }, // Store enhanced entity detection results with structured entities
       ranking_context: rankingData.isRankedList ? {
         position: rankingData.position,
         total_entities: rankingData.totalEntities,
@@ -344,7 +347,7 @@ Format as JSON array:
         competitors: rankingData.competitors || []
       } : null,
       total_entities_in_response: structuredEntities.length || rankingData.totalEntities || analysis.relatedEntitiesMentioned.length,
-      structured_entities: structuredEntities // Store the ChatGPT-extracted entities
+      
     };
 
     console.log('Database insert payload:', {
