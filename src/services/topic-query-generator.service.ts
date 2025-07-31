@@ -132,13 +132,15 @@ export class TopicQueryGeneratorService {
       `${topicData.topic} for ${topicData.target_audience} comparison`
     ];
     
-    // Entity-specific queries (if entity tracking enabled)
-    const entityQueries = topicData.entityToTrack ? [
-      `${topicData.entityToTrack} vs competitors`,
-      `Is ${topicData.entityToTrack} good for ${topicData.target_audience}?`,
-      `${topicData.entityToTrack} review ${topicData.industry}`,
-      `Alternatives to ${topicData.entityToTrack}`
-    ] : [];
+    // Client-discovery queries (realistic client scenarios)
+    const discoveryQueries = [
+      `Best ${topicData.topic} for ${topicData.target_audience}`,
+      `Top ${topicData.topic} recommendations ${new Date().getFullYear()}`, 
+      `${topicData.industry} providers for ${topicData.target_audience}`,
+      `Leading ${topicData.topic} with proven results`,
+      `${topicData.topic} comparison for ${topicData.target_audience}`,
+      `Recommended ${topicData.topic} platforms`
+    ];
     
     // Context-specific queries (if additional context provided)
     const contextQueries = topicData.context_description ? [
@@ -153,7 +155,7 @@ export class TopicQueryGeneratorService {
     ] : [];
     
     // Combine all query types
-    const allQueries = [...baseQueries, ...industryQueries, ...entityQueries, ...contextQueries, ...knownPlayersQueries];
+    const allQueries = [...baseQueries, ...industryQueries, ...discoveryQueries, ...contextQueries, ...knownPlayersQueries];
     
     // Convert to GeneratedTopicQuery objects with priorities
     allQueries.forEach((queryText, index) => {

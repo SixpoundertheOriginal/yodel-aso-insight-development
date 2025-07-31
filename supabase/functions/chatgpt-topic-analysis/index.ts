@@ -132,16 +132,28 @@ serve(async (req) => {
     console.group('🤖 OpenAI API Call');
     
     const openaiRequest = {
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         { 
           role: 'system', 
-          content: 'You are a helpful assistant that provides recommendations and information. Be specific and mention actual brands, services, or solutions when possible. Provide clear, practical recommendations.' 
+          content: `You are a factual business analyst providing accurate industry recommendations. 
+
+CRITICAL ACCURACY REQUIREMENTS:
+- Only recommend real, verifiable companies that actually exist
+- Focus on well-established, known players in the industry  
+- If uncertain about a company's existence or accuracy, do not mention it
+- Avoid generic phrases like "innovative startup" without specific verification
+- Provide specific, factual information about companies mentioned
+- Base recommendations on actual market presence and reputation
+
+Respond professionally and factually to business-related queries.`
         },
         { role: 'user', content: queryText }
       ],
-      temperature: 0.7,
-      max_tokens: 500,
+      temperature: 0.2,
+      max_tokens: 750,
+      top_p: 0.95,
+      frequency_penalty: 0.2,
     };
 
     console.log('OpenAI request details:', {
