@@ -445,11 +445,13 @@ export type Database = {
           organization_id: string
           processing_metadata: Json | null
           query_id: string
+          ranking_context: Json | null
           raw_response: Json | null
           recommendation_strength: number | null
           response_text: string | null
           sentiment_score: number | null
           tokens_used: number | null
+          total_entities_in_response: number | null
           visibility_score: number | null
         }
         Insert: {
@@ -467,11 +469,13 @@ export type Database = {
           organization_id: string
           processing_metadata?: Json | null
           query_id: string
+          ranking_context?: Json | null
           raw_response?: Json | null
           recommendation_strength?: number | null
           response_text?: string | null
           sentiment_score?: number | null
           tokens_used?: number | null
+          total_entities_in_response?: number | null
           visibility_score?: number | null
         }
         Update: {
@@ -489,11 +493,13 @@ export type Database = {
           organization_id?: string
           processing_metadata?: Json | null
           query_id?: string
+          ranking_context?: Json | null
           raw_response?: Json | null
           recommendation_strength?: number | null
           response_text?: string | null
           sentiment_score?: number | null
           tokens_used?: number | null
+          total_entities_in_response?: number | null
           visibility_score?: number | null
         }
         Relationships: [
@@ -506,6 +512,63 @@ export type Database = {
           },
           {
             foreignKeyName: "chatgpt_query_results_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatgpt_ranking_snapshots: {
+        Row: {
+          audit_run_id: string
+          competitors: Json | null
+          created_at: string | null
+          entity_name: string
+          id: string
+          organization_id: string
+          position: number | null
+          query_id: string
+          ranking_context: string | null
+          ranking_type: string | null
+          total_positions: number | null
+        }
+        Insert: {
+          audit_run_id: string
+          competitors?: Json | null
+          created_at?: string | null
+          entity_name: string
+          id?: string
+          organization_id: string
+          position?: number | null
+          query_id: string
+          ranking_context?: string | null
+          ranking_type?: string | null
+          total_positions?: number | null
+        }
+        Update: {
+          audit_run_id?: string
+          competitors?: Json | null
+          created_at?: string | null
+          entity_name?: string
+          id?: string
+          organization_id?: string
+          position?: number | null
+          query_id?: string
+          ranking_context?: string | null
+          ranking_type?: string | null
+          total_positions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_ranking_audit_run"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "chatgpt_audit_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ranking_query"
             columns: ["query_id"]
             isOneToOne: false
             referencedRelation: "chatgpt_queries"

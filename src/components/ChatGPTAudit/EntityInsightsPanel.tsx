@@ -11,7 +11,10 @@ import {
   Meh,
   ThumbsDown,
   Users,
-  Star
+  Star,
+  Trophy,
+  Medal,
+  Award
 } from 'lucide-react';
 
 interface EntityInsightsPanelProps {
@@ -20,6 +23,14 @@ interface EntityInsightsPanelProps {
     id: string;
     query_text: string;
     entityAnalysis?: EntityAnalysis;
+    ranking_context?: {
+      position?: number;
+      total_entities?: number;
+      ranking_type?: string;
+      competitors?: string[];
+    };
+    mention_position?: number;
+    total_entities_in_response?: number;
   }>;
 }
 
@@ -28,9 +39,17 @@ interface EntityInsights {
   totalMentions: number;
   mentionRate: number;
   averagePosition?: number;
+  bestRanking?: number;
+  totalRankings: number;
   overallSentiment: 'positive' | 'neutral' | 'negative';
   keyContexts: string[];
   competitiveInsight: string;
+  rankingDetails: Array<{
+    position: number;
+    query: string;
+    totalEntities?: number;
+    competitors?: string[];
+  }>;
 }
 
 export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
@@ -48,11 +67,29 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
     
     const mentionRate = queryResults.length > 0 ? mentionedResults.length / queryResults.length : 0;
     
-    // Calculate average position
+    // Calculate average position (from entity analysis)
     const positionedResults = mentionedResults.filter(result => result.entityAnalysis?.entityPosition);
     const averagePosition = positionedResults.length > 0 
       ? positionedResults.reduce((sum, result) => sum + (result.entityAnalysis?.entityPosition || 0), 0) / positionedResults.length
       : undefined;
+    
+    // Extract ranking details and calculate best ranking
+    const rankingResults = queryResults.filter(result => 
+      result.ranking_context?.position || result.mention_position
+    );
+    
+    const rankingDetails = rankingResults.map(result => ({
+      position: result.ranking_context?.position || result.mention_position || 1,
+      query: result.query_text,
+      totalEntities: result.ranking_context?.total_entities || result.total_entities_in_response,
+      competitors: result.ranking_context?.competitors
+    }));
+    
+    const bestRanking = rankingDetails.length > 0 
+      ? Math.min(...rankingDetails.map(r => r.position))
+      : undefined;
+    
+    const totalRankings = rankingDetails.length;
     
     // Determine overall sentiment
     const sentiments = mentionedResults.map(result => result.entityAnalysis?.sentiment || 'neutral');
@@ -70,19 +107,26 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
     const allContexts = mentionedResults.flatMap(result => result.entityAnalysis?.mentionContexts || []);
     const keyContexts = allContexts.slice(0, 3); // Keep top 3
     
-    // Generate competitive insight
-    const competitiveInsight = mentionedResults.length > 0 
+    // Enhanced competitive insight with ranking data
+    let competitiveInsight = mentionedResults.length > 0 
       ? `Mentioned in ${Math.round(mentionRate * 100)}% of queries`
       : 'Not mentioned in any responses';
+      
+    if (bestRanking) {
+      competitiveInsight += `, best ranking: #${bestRanking}`;
+    }
     
     return {
       entityName,
       totalMentions,
       mentionRate,
       averagePosition,
+      bestRanking,
+      totalRankings,
       overallSentiment,
       keyContexts,
-      competitiveInsight
+      competitiveInsight,
+      rankingDetails
     };
   };
 
@@ -154,7 +198,7 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
       
       <CardContent className="space-y-6">
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">{insights.totalMentions}</div>
             <div className="text-xs text-muted-foreground">Total Mentions</div>
@@ -164,6 +208,16 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
             <div className="text-2xl font-bold text-primary">{Math.round(insights.mentionRate * 100)}%</div>
             <div className="text-xs text-muted-foreground">Mention Rate</div>
           </div>
+          
+          {insights.bestRanking && (
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary flex items-center justify-center space-x-1">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                <span>#{insights.bestRanking}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Best Ranking</div>
+            </div>
+          )}
           
           {insights.averagePosition && (
             <div className="text-center">
@@ -233,6 +287,58 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Ranking Details */}
+        {insights.rankingDetails.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-primary flex items-center space-x-2">
+              <Medal className="h-4 w-4" />
+              <span>Ranking Performance</span>
+              <Badge variant="outline">{insights.totalRankings} rankings</Badge>
+            </h4>
+            <div className="space-y-2">
+              {insights.rankingDetails.slice(0, 5).map((ranking, index) => (
+                <div key={index} className="p-3 bg-background/50 rounded-lg border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        variant={ranking.position <= 3 ? "default" : "secondary"}
+                        className={ranking.position <= 3 ? "bg-yellow-500 text-yellow-50" : ""}
+                      >
+                        #{ranking.position}
+                      </Badge>
+                      {ranking.totalEntities && (
+                        <span className="text-xs text-muted-foreground">
+                          of {ranking.totalEntities} entities
+                        </span>
+                      )}
+                    </div>
+                    {ranking.position <= 3 && (
+                      <Award className="h-4 w-4 text-yellow-500" />
+                    )}
+                  </div>
+                  <p className="text-sm text-foreground mb-1">
+                    Query: "{ranking.query}"
+                  </p>
+                  {ranking.competitors && ranking.competitors.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium">Competitors mentioned:</span>{' '}
+                      {ranking.competitors.slice(0, 3).join(', ')}
+                      {ranking.competitors.length > 3 && ` (+${ranking.competitors.length - 3} more)`}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {insights.rankingDetails.length > 5 && (
+                <div className="text-center">
+                  <Badge variant="outline">
+                    +{insights.rankingDetails.length - 5} more rankings
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
