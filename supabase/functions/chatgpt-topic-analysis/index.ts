@@ -446,8 +446,10 @@ function analyzeEntityMentions(responseText: string, entityName: string, entityA
   const sentences = responseText.split(/[.!?]+/).filter(s => s.trim());
   sentences.forEach((sentence, index) => {
     const lowerSentence = sentence.toLowerCase();
-    const isEntityMentioned = allEntityNames.some(entityVariant => 
-      lowerSentence.includes(entityVariant)
+    const isEntityMentioned = allEntityNames.some(entityVariant => {
+      const entityRegex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return entityRegex.test(lowerSentence);
+    }
     );
     
     if (isEntityMentioned) {
