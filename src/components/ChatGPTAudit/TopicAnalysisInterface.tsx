@@ -21,9 +21,12 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
     industry: '',
     target_audience: '',
     known_players: [],
+    entityToTrack: '',
+    entityAliases: [],
   });
 
   const [newPlayer, setNewPlayer] = useState('');
+  const [newAlias, setNewAlias] = useState('');
 
   const addKnownPlayer = () => {
     if (newPlayer.trim() && !topicData.known_players.includes(newPlayer.trim())) {
@@ -39,6 +42,23 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
     setTopicData({
       ...topicData,
       known_players: topicData.known_players.filter(p => p !== player)
+    });
+  };
+
+  const addEntityAlias = () => {
+    if (newAlias.trim() && !topicData.entityAliases?.includes(newAlias.trim())) {
+      setTopicData({
+        ...topicData,
+        entityAliases: [...(topicData.entityAliases || []), newAlias.trim()]
+      });
+      setNewAlias('');
+    }
+  };
+
+  const removeEntityAlias = (alias: string) => {
+    setTopicData({
+      ...topicData,
+      entityAliases: topicData.entityAliases?.filter(a => a !== alias) || []
     });
   };
 
@@ -109,6 +129,76 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
             onChange={(e) => setTopicData({...topicData, target_audience: e.target.value})}
             className="bg-background border-border"
           />
+        </div>
+
+        {/* NEW - Entity Tracking Section */}
+        <div className="space-y-4 p-4 bg-background/50 rounded-lg border border-border">
+          <div className="flex items-center space-x-2">
+            <Target className="h-4 w-4 text-blue-400" />
+            <Label className="text-sm font-medium">Entity Tracking (Optional)</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Track how often a specific company/service is mentioned in responses
+          </p>
+          
+          {/* Entity to track */}
+          <div className="space-y-2">
+            <Label htmlFor="entityToTrack">What company/service do you want to track?</Label>
+            <Input 
+              id="entityToTrack"
+              placeholder="e.g., Ogilvy, HubSpot, your company name"
+              value={topicData.entityToTrack || ''}
+              onChange={(e) => setTopicData({...topicData, entityToTrack: e.target.value})}
+              className="bg-background border-border"
+            />
+          </div>
+          
+          {/* Entity aliases */}
+          {topicData.entityToTrack && (
+            <div className="space-y-2">
+              <Label>Alternative names for your entity (Optional)</Label>
+              <div className="flex space-x-2">
+                <Input 
+                  placeholder="e.g., Ogilvy & Mather, Ogilvy Agency"
+                  value={newAlias}
+                  onChange={(e) => setNewAlias(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addEntityAlias();
+                    }
+                  }}
+                  className="bg-background border-border"
+                />
+                <Button 
+                  type="button"
+                  onClick={addEntityAlias}
+                  variant="outline"
+                  size="sm"
+                  disabled={!newAlias.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {(topicData.entityAliases?.length || 0) > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {topicData.entityAliases?.map((alias) => (
+                    <Badge key={alias} variant="outline" className="flex items-center space-x-1">
+                      <span>{alias}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeEntityAlias(alias)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Optional context */}

@@ -5,6 +5,10 @@ export interface TopicAuditData {
   context_description?: string;
   known_players: string[];
   geographic_focus?: string;
+  
+  // NEW - Optional entity tracking
+  entityToTrack?: string; // e.g., "Ogilvy", "HubSpot", "Instagram"
+  entityAliases?: string[]; // e.g., ["Ogilvy & Mather", "Ogilvy Agency"]
 }
 
 export interface TopicIntelligence {
@@ -41,4 +45,15 @@ export interface TopicVisibilityAnalysis {
   competitors_mentioned: string[];
   visibility_score: number;
   analysis_type: 'topic';
+  
+  // NEW - Entity-specific analysis
+  entityAnalysis?: EntityAnalysis;
+}
+
+export interface EntityAnalysis {
+  entityMentioned: boolean;
+  mentionCount: number;
+  mentionContexts: string[]; // Sentences where entity was mentioned
+  entityPosition?: number; // Position in recommendation list (if applicable)
+  sentiment: 'positive' | 'neutral' | 'negative';
 }

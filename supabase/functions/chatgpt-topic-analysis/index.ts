@@ -19,6 +19,10 @@ interface TopicQueryRequest {
   auditRunId: string;
   organizationId: string;
   targetTopic: string;
+  
+  // NEW - Optional entity tracking
+  entityToTrack?: string;
+  entityAliases?: string[];
 }
 
 interface TopicVisibilityAnalysis {
@@ -28,6 +32,17 @@ interface TopicVisibilityAnalysis {
   relatedEntitiesMentioned: string[];
   sentimentScore: number;
   visibilityScore: number;
+  
+  // NEW - Entity-specific analysis
+  entityAnalysis?: EntityAnalysis;
+}
+
+interface EntityAnalysis {
+  entityMentioned: boolean;
+  mentionCount: number;
+  mentionContexts: string[]; // Sentences where entity was mentioned
+  entityPosition?: number; // Position in recommendation list (if applicable)
+  sentiment: 'positive' | 'neutral' | 'negative';
 }
 
 serve(async (req) => {
@@ -58,7 +73,7 @@ serve(async (req) => {
 
     // 🔍 Request Payload Validation
     const requestBody = await req.json();
-    const { queryId, queryText, auditRunId, organizationId, targetTopic }: TopicQueryRequest = requestBody;
+    const { queryId, queryText, auditRunId, organizationId, targetTopic, entityToTrack, entityAliases }: TopicQueryRequest = requestBody;
     
     console.group('🔍 Request Payload Validation');
     console.log('Raw request body:', requestBody);
@@ -67,7 +82,9 @@ serve(async (req) => {
       queryText: queryText ? `${queryText.substring(0, 50)}...` : 'MISSING',
       auditRunId: auditRunId || 'MISSING',
       organizationId: organizationId || 'MISSING',
-      targetTopic: targetTopic || 'MISSING'
+      targetTopic: targetTopic || 'MISSING',
+      entityToTrack: entityToTrack || 'NOT_PROVIDED',
+      entityAliases: entityAliases ? `${entityAliases.length} aliases` : 'NOT_PROVIDED'
     });
 
     // Validate required parameters
@@ -172,9 +189,10 @@ serve(async (req) => {
     // 🔍 Topic Visibility Analysis
     console.group('🔍 Topic Visibility Analysis');
     console.log('Analyzing response for topic:', targetTopic);
+    console.log('Entity tracking enabled:', !!entityToTrack);
     console.log('Response text length:', responseText.length);
     
-    const analysis = analyzeTopicVisibility(responseText, targetTopic);
+    const analysis = analyzeTopicVisibility(responseText, targetTopic, entityToTrack, entityAliases);
     console.log('Analysis result:', analysis);
     console.groupEnd();
 
@@ -322,7 +340,7 @@ serve(async (req) => {
   }
 });
 
-function analyzeTopicVisibility(responseText: string, targetTopic: string): TopicVisibilityAnalysis {
+function analyzeTopicVisibility(responseText: string, targetTopic: string, entityToTrack?: string, entityAliases?: string[]): TopicVisibilityAnalysis {
   const lowerResponse = responseText.toLowerCase();
   const lowerTargetTopic = targetTopic.toLowerCase();
   
@@ -388,13 +406,84 @@ function analyzeTopicVisibility(responseText: string, targetTopic: string): Topi
   
   sentimentScore = Math.max(-1, Math.min(1, sentimentScore));
   
+  // NEW - Entity analysis (only when entityToTrack is provided)
+  let entityAnalysis: EntityAnalysis | undefined;
+  if (entityToTrack) {
+    entityAnalysis = analyzeEntityMentions(responseText, entityToTrack, entityAliases || []);
+  }
+  
   return {
     topicMentioned,
     mentionPosition,
     mentionContext,
     relatedEntitiesMentioned: [...new Set(relatedEntities)].slice(0, 5),
     sentimentScore: Math.round(sentimentScore * 100) / 100,
-    visibilityScore: Math.round(visibilityScore)
+    visibilityScore: Math.round(visibilityScore),
+    entityAnalysis
+  };
+}
+
+// NEW - Analyze entity mentions specifically
+function analyzeEntityMentions(responseText: string, entityName: string, entityAliases: string[]): EntityAnalysis {
+  const lowerResponse = responseText.toLowerCase();
+  const lowerEntityName = entityName.toLowerCase();
+  const allEntityNames = [lowerEntityName, ...entityAliases.map(alias => alias.toLowerCase())];
+  
+  let mentionCount = 0;
+  const mentionContexts: string[] = [];
+  let entityPosition: number | undefined;
+  
+  // Count mentions of entity and aliases
+  allEntityNames.forEach(entityVariant => {
+    const regex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    const matches = responseText.match(regex);
+    if (matches) {
+      mentionCount += matches.length;
+    }
+  });
+  
+  // Extract mention contexts (sentences containing the entity)
+  const sentences = responseText.split(/[.!?]+/).filter(s => s.trim());
+  sentences.forEach((sentence, index) => {
+    const lowerSentence = sentence.toLowerCase();
+    const isEntityMentioned = allEntityNames.some(entityVariant => 
+      lowerSentence.includes(entityVariant)
+    );
+    
+    if (isEntityMentioned) {
+      mentionContexts.push(sentence.trim());
+      
+      // Determine position in recommendation lists (first mention = position)
+      if (entityPosition === undefined) {
+        entityPosition = index + 1;
+      }
+    }
+  });
+  
+  // Determine sentiment specifically for entity mentions
+  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+  const entityMentionText = mentionContexts.join(' ').toLowerCase();
+  
+  if (entityMentionText) {
+    const positiveIndicators = ['recommend', 'best', 'great', 'excellent', 'top', 'good', 'effective', 'reliable'];
+    const negativeIndicators = ['avoid', 'bad', 'poor', 'terrible', 'issues', 'problems', 'limited', 'difficult'];
+    
+    const positiveCount = positiveIndicators.filter(word => entityMentionText.includes(word)).length;
+    const negativeCount = negativeIndicators.filter(word => entityMentionText.includes(word)).length;
+    
+    if (positiveCount > negativeCount) {
+      sentiment = 'positive';
+    } else if (negativeCount > positiveCount) {
+      sentiment = 'negative';
+    }
+  }
+  
+  return {
+    entityMentioned: mentionCount > 0,
+    mentionCount,
+    mentionContexts: mentionContexts.slice(0, 3), // Keep top 3 contexts
+    entityPosition,
+    sentiment
   };
 }
 

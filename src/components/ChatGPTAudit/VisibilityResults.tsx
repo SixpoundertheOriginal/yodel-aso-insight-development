@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TopPerformersSection } from './TopPerformersSection';
+import { EntityInsightsPanel } from './EntityInsightsPanel';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -40,6 +41,7 @@ interface QueryResult {
   tokens_used: number;
   cost_cents: number;
   created_at: string;
+  entityAnalysis?: any; // NEW - Entity analysis data
 }
 
 interface VisibilityScore {
@@ -80,6 +82,22 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
         query_text: result.chatgpt_queries.query_text,
         query_category: result.chatgpt_queries.query_category
       })) as QueryResult[];
+    },
+    enabled: !!auditRunId
+  });
+
+  // Fetch audit run to get topic data
+  const { data: auditRun } = useQuery({
+    queryKey: ['chatgpt-audit-run', auditRunId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chatgpt_audit_runs')
+        .select('topic_data')
+        .eq('id', auditRunId)
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     enabled: !!auditRunId
   });
@@ -167,8 +185,19 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   const overallVisibilityScore = visibilityScore?.overall_score || 
     (mentionedResults.length > 0 ? Math.round(mentionedResults.reduce((sum, r) => sum + r.visibility_score, 0) / mentionedResults.length) : 0);
 
+  // Check if entity tracking is enabled - safely parse topic_data
+  const topicData = auditRun?.topic_data ? JSON.parse(JSON.stringify(auditRun.topic_data)) : null;
+  const hasEntityTracking = topicData?.entityToTrack;
+
   return (
     <div className="space-y-6">
+      {/* NEW - Entity Insights Panel (only show when entity tracking is enabled) */}
+      {hasEntityTracking && (
+        <EntityInsightsPanel
+          entityName={topicData.entityToTrack}
+          queryResults={queryResults}
+        />
+      )}
       {/* Overview Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-zinc-900/50 border-zinc-800">
