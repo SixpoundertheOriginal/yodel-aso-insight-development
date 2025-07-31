@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TopPerformersSection } from './TopPerformersSection';
 import { EntityInsightsPanel } from './EntityInsightsPanel';
+import { RankingSummaryCard } from './RankingSummaryCard';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -119,6 +120,22 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
     enabled: !!auditRunId
   });
 
+  // Fetch ranking snapshots for competitive landscape
+  const { data: rankingSnapshots } = useQuery({
+    queryKey: ['chatgpt-ranking-snapshots', auditRunId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chatgpt_ranking_snapshots')
+        .select('*')
+        .eq('audit_run_id', auditRunId)
+        .order('position', { ascending: true });
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || [];
+    },
+    enabled: !!auditRunId
+  });
+
   const toggleResultExpansion = (resultId: string) => {
     setExpandedResults(prev => {
       const newSet = new Set(prev);
@@ -202,11 +219,25 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* NEW - Entity Insights Panel (only show when entity tracking is enabled) */}
+      {/* Entity Insights Panel (only show when entity tracking is enabled) */}
       {hasEntityTracking && (
         <EntityInsightsPanel
           entityName={topicData.entityToTrack}
           queryResults={queryResults}
+        />
+      )}
+
+      {/* Ranking Summary Card - Show competitive landscape */}
+      {rankingSnapshots && rankingSnapshots.length > 0 && (
+        <RankingSummaryCard
+          entityName={hasEntityTracking ? topicData.entityToTrack : 'Target Entity'}
+          auditResults={queryResults.map(result => ({
+            id: result.id,
+            query_text: result.query_text,
+            ranking_context: result.entity_analysis?.rankingContext,
+            mention_position: result.mention_position,
+            visibility_score: result.visibility_score
+          }))}
         />
       )}
       {/* Overview Metrics */}
@@ -318,12 +349,16 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                 <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className={`w-3 h-3 rounded-full ${getEntityMentionStatus(result) ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="text-sm text-zinc-300">
+                     <span className="text-sm text-zinc-300">
                       {getEntityMentionStatus(result) ? `Mentioned (#${result.mention_position})` : 'Not Mentioned'}
                     </span>
                     {result.mention_context !== 'not_mentioned' && (
-                      <Badge variant="outline" className="text-xs">
-                        {result.mention_context}
+                      <Badge 
+                        variant={result.mention_context === 'ranked_list' ? "default" : "outline"} 
+                        className={`text-xs ${result.mention_context === 'ranked_list' ? 'bg-yellow-500 text-yellow-50 cursor-pointer hover:bg-yellow-600' : ''}`}
+                        title={result.mention_context === 'ranked_list' ? 'Click to see competitive landscape above' : ''}
+                      >
+                        {result.mention_context === 'ranked_list' ? '🏆 Ranked List' : result.mention_context}
                       </Badge>
                     )}
                   </div>

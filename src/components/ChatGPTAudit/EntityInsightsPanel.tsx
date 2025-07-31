@@ -288,13 +288,19 @@ export const EntityInsightsPanel: React.FC<EntityInsightsPanelProps> = ({
           </div>
         </div>
 
-        {/* Ranking Details */}
+        {/* Ranking Details - Enhanced Display */}
         {insights.rankingDetails.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-primary flex items-center space-x-2">
               <Medal className="h-4 w-4" />
-              <span>Ranking Performance</span>
-              <Badge variant="outline">{insights.totalRankings} rankings</Badge>
+              <span>Competitive Landscape</span>
+              <Badge variant="outline">{insights.totalRankings} rankings detected</Badge>
+              <Badge 
+                variant={insights.bestRanking && insights.bestRanking <= 3 ? "default" : "secondary"}
+                className={insights.bestRanking && insights.bestRanking <= 3 ? "bg-yellow-500 text-yellow-50" : ""}
+              >
+                Best: #{insights.bestRanking}
+              </Badge>
             </h4>
             <div className="space-y-2">
               {insights.rankingDetails.slice(0, 5).map((ranking, index) => (
