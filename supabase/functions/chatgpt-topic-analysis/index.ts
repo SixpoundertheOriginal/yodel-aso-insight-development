@@ -223,7 +223,8 @@ serve(async (req) => {
       raw_response: data,
       tokens_used: tokensUsed,
       cost_cents: costCents,
-      analysis_type: 'topic' // Flag to distinguish from app analysis
+      analysis_type: 'topic', // Flag to distinguish from app analysis
+      entity_analysis: analysis.entityAnalysis // Store enhanced entity detection results
     };
 
     console.log('Database insert payload:', {

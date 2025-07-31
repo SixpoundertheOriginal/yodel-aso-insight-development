@@ -41,7 +41,8 @@ interface QueryResult {
   tokens_used: number;
   cost_cents: number;
   created_at: string;
-  entityAnalysis?: any; // NEW - Entity analysis data
+  entityAnalysis?: any; // Frontend calculated entity analysis
+  entity_analysis?: any; // Database stored entity analysis
 }
 
 interface VisibilityScore {
@@ -183,8 +184,10 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
 
   // UNIFIED DETECTION: Use enhanced entity detection when available
   const getEntityMentionStatus = (result: QueryResult) => {
-    if (result.entityAnalysis) {
-      return result.entityAnalysis.entityMentioned;
+    // Check both possible field names for entity analysis data
+    const entityAnalysis = result.entityAnalysis || result.entity_analysis;
+    if (entityAnalysis) {
+      return entityAnalysis.entityMentioned;
     }
     return result.app_mentioned;
   };

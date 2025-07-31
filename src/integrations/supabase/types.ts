@@ -437,6 +437,7 @@ export type Database = {
           competitors_mentioned: string[] | null
           cost_cents: number | null
           created_at: string
+          entity_analysis: Json | null
           id: string
           mention_context: string | null
           mention_excerpts: Json | null
@@ -458,6 +459,7 @@ export type Database = {
           competitors_mentioned?: string[] | null
           cost_cents?: number | null
           created_at?: string
+          entity_analysis?: Json | null
           id?: string
           mention_context?: string | null
           mention_excerpts?: Json | null
@@ -479,6 +481,7 @@ export type Database = {
           competitors_mentioned?: string[] | null
           cost_cents?: number | null
           created_at?: string
+          entity_analysis?: Json | null
           id?: string
           mention_context?: string | null
           mention_excerpts?: Json | null
