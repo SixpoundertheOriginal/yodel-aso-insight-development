@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   SimplifiedBulkAuditProcessor,
-  VisibilityResults
+  VisibilityResults,
+  EnhancedAuditManager
 } from '@/components/ChatGPTAudit';
 import { TopicBulkAuditProcessor } from '@/components/ChatGPTAudit/TopicBulkAuditProcessor';
 import { AuditRunManager } from '@/components/ChatGPTAudit/AuditRunManager';
@@ -324,16 +325,16 @@ export default function ChatGPTVisibilityAudit() {
         )}
 
         {/* Audit Runs Tab */}
-        {activeTab === 'runs' && (
-          <div className="space-y-6">
-            {/* Enhanced Audit Run Manager */}
-            <AuditRunManager
-              auditRuns={auditRuns}
-              selectedAuditRun={selectedAuditRun}
-              onAuditRunSelect={setSelectedAuditRun}
-              onRefresh={handleStatusChange}
-              organizationId={organizationId}
-            />
+         {activeTab === 'runs' && (
+           <div className="space-y-6">
+             {/* Enhanced Audit Run Manager */}
+             <EnhancedAuditManager
+               auditRuns={auditRuns}
+               selectedAuditRun={selectedAuditRun}
+               onAuditRunSelect={setSelectedAuditRun}
+               onRefresh={handleStatusChange}
+               organizationId={organizationId}
+             />
 
             {/* Processor */}
             {selectedAuditRun && (

@@ -12,3 +12,4 @@ export { ModeSelector } from './ModeSelector';
 export { TopicAnalysisInterface } from './TopicAnalysisInterface';
 export { QueryReviewInterface } from './QueryReviewInterface';
 export type { QueryTemplate } from './QueryTemplateLibrary';
+export { EnhancedAuditManager } from './EnhancedAuditManager';
