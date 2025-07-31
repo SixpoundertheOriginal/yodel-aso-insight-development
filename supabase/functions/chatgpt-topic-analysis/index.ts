@@ -300,12 +300,12 @@ Respond professionally and factually to business-related queries.`
     }
 
     // Store detailed ranking snapshots if we detected rankings
-    if (isRankedList && allRankedEntities.length > 0) {
+    if (rankingData.isRankedList && rankingData.competitors && rankingData.competitors.length > 0) {
       console.log('📊 Storing ranking snapshots for detected ranking...');
       
       // Store target entity ranking if found
-      if (mentionPosition && entityToTrack) {
-        const mentionContext = `mentioned ${mentionPosition}${getOrdinalSuffix(mentionPosition)} out of ${totalEntities} entities`;
+      if (rankingData.position && entityToTrack) {
+        const mentionContext = `mentioned ${rankingData.position}${getOrdinalSuffix(rankingData.position)} out of ${rankingData.totalEntities} entities`;
         
         const { error: targetError } = await supabase
           .from('chatgpt_ranking_snapshots')
@@ -314,11 +314,11 @@ Respond professionally and factually to business-related queries.`
             audit_run_id: auditRunId,
             query_id: queryId,
             entity_name: entityToTrack,
-            position: mentionPosition,
-            total_positions: totalEntities,
+            position: rankingData.position,
+            total_positions: rankingData.totalEntities,
             ranking_type: 'ranked_list',
             ranking_context: mentionContext,
-            competitors: competitors || []
+            competitors: rankingData.competitors || []
           });
 
         if (targetError) {
@@ -327,16 +327,17 @@ Respond professionally and factually to business-related queries.`
       }
 
       // Store all ranked entities for competitive landscape
-      const allSnapshots = allRankedEntities.map(entity => ({
+      const rankedEntities = extractRankedCompetitors(responseText);
+      const allSnapshots = rankedEntities.map(entity => ({
         organization_id: organizationId,
         audit_run_id: auditRunId,
         query_id: queryId,
         entity_name: entity.name,
         position: entity.position,
-        total_positions: allRankedEntities.length,
+        total_positions: rankedEntities.length,
         ranking_type: 'ranked_list',
-        ranking_context: `mentioned ${entity.position}${getOrdinalSuffix(entity.position)} out of ${allRankedEntities.length} entities`,
-        competitors: allRankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
+        ranking_context: `mentioned ${entity.position}${getOrdinalSuffix(entity.position)} out of ${rankedEntities.length} entities`,
+        competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
       }));
 
       const { error: allSnapshotsError } = await supabase
