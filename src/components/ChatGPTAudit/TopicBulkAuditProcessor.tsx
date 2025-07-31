@@ -52,7 +52,16 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
   const testFunctionAccessibility = async () => {
     try {
       console.log('🔧 Testing Edge Function accessibility...');
-    
+      const response = await supabase.functions.invoke('chatgpt-topic-analysis', {
+        body: { test: 'accessibility_check' }
+      });
+      console.log('🔧 Accessibility test response:', response);
+      return !response.error;
+    } catch (error) {
+      console.error('🔧 Function accessibility test failed:', error);
+      return false;
+    }
+  };
 
   const processQueryWithDetailedLogging = async (query: any) => {
     // ADD THESE LOGS FIRST:
