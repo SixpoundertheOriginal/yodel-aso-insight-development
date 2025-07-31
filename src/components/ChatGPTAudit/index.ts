@@ -3,6 +3,7 @@ export { QueryTemplateLibrary, QUERY_TEMPLATE_LIBRARY, TOPIC_QUERY_TEMPLATES } f
 export { BulkAuditProcessor } from './BulkAuditProcessor';
 export { SimplifiedBulkAuditProcessor } from './SimplifiedBulkAuditProcessor';
 export { VisibilityResults } from './VisibilityResults';
+export { RankingsTabContent } from './RankingsTabContent';
 export { CompetitiveAnalytics } from './CompetitiveAnalytics';
 export { AppValidationForm } from './AppValidationForm';
 export { MetadataQueryGenerator } from './MetadataQueryGenerator';

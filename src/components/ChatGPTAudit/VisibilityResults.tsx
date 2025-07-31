@@ -10,6 +10,7 @@ import { TopPerformersSection } from './TopPerformersSection';
 import { EntityInsightsPanel } from './EntityInsightsPanel';
 import { RankingSummaryCard } from './RankingSummaryCard';
 import { RankingDetailsModal } from './RankingDetailsModal';
+import { RankingsTabContent } from './RankingsTabContent';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -323,11 +324,12 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
 
       {/* Results Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-5 bg-zinc-900 border-zinc-800">
           <TabsTrigger value="all">All Results ({queryResults.length})</TabsTrigger>
           <TabsTrigger value="mentioned">Mentioned ({mentionedResults.length})</TabsTrigger>
           <TabsTrigger value="not-mentioned">Not Mentioned ({queryResults.length - mentionedResults.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="rankings">Rankings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
@@ -586,6 +588,15 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="rankings" className="space-y-4">
+          <RankingsTabContent 
+            auditRunId={auditRunId}
+            entityName={hasEntityTracking ? topicData.entityToTrack : 'Target Entity'}
+            queryResults={queryResults}
+            rankingSnapshots={rankingSnapshots || []}
+          />
         </TabsContent>
       </Tabs>
 
