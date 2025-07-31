@@ -52,16 +52,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
   const testFunctionAccessibility = async () => {
     try {
       console.log('🔧 Testing Edge Function accessibility...');
-      const response = await supabase.functions.invoke('chatgpt-topic-analysis', {
-        body: { test: 'accessibility_check' }
-      });
-      console.log('🔧 Accessibility test response:', response);
-      return !response.error;
-    } catch (error) {
-      console.error('🔧 Function accessibility test failed:', error);
-      return false;
-    }
-  };
+    
 
   const processQueryWithDetailedLogging = async (query: any) => {
     // ADD THESE LOGS FIRST:
@@ -73,18 +64,6 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     });
     
     try {
-      console.log('🔧 About to start function accessibility test...');
-      
-      // Test function accessibility
-      const isAccessible = await testFunctionAccessibility();
-      console.log('🔧 Function accessibility result:', isAccessible);
-      
-      if (!isAccessible) {
-        console.error('❌ Function not accessible, aborting query processing');
-        return;
-      }
-      
-      console.log('✅ Function accessible, proceeding with query processing');
       
       // Continue with existing code...
       console.group(`📋 Processing Query: ${query.id}`);
