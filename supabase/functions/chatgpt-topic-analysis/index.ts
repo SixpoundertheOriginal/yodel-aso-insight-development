@@ -2,22 +2,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-// Utility function to get ordinal suffix
-function getOrdinalSuffix(num: number): string {
-  const lastDigit = num % 10;
-  const lastTwoDigits = num % 100;
-  
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
-    return `${num}th`;
-  }
-  
-  switch (lastDigit) {
-    case 1: return `${num}st`;
-    case 2: return `${num}nd`;
-    case 3: return `${num}rd`;
-    default: return `${num}th`;
-  }
-}
+// Import utility functions
+import { getOrdinalSuffix, isValidCompanyName, extractValidEntityName } from './utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -305,7 +291,7 @@ Respond professionally and factually to business-related queries.`
       
       // Store target entity ranking if found
       if (rankingData.position && entityToTrack) {
-        const mentionContext = `mentioned ${rankingData.position}${getOrdinalSuffix(rankingData.position)} out of ${rankingData.totalEntities} entities`;
+        const mentionContext = `mentioned ${getOrdinalSuffix(rankingData.position)} out of ${rankingData.totalEntities} entities`;
         
         const { error: targetError } = await supabase
           .from('chatgpt_ranking_snapshots')
@@ -336,7 +322,7 @@ Respond professionally and factually to business-related queries.`
         position: entity.position,
         total_positions: rankedEntities.length,
         ranking_type: 'ranked_list',
-        ranking_context: `mentioned ${entity.position}${getOrdinalSuffix(entity.position)} out of ${rankedEntities.length} entities`,
+        ranking_context: `mentioned ${getOrdinalSuffix(entity.position)} out of ${rankedEntities.length} entities`,
         competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
       }));
 
@@ -670,11 +656,11 @@ function getIndustryKeywords(industry: string): string[] {
 function extractRelatedEntities(responseText: string, targetTopic: string): string[] {
   const entities: string[] = [];
   
-  // Common patterns for brand/service names
+  // Enhanced patterns for actual company/brand names
   const brandPatterns = [
-    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]*)*\b/g, // Capitalized words/phrases
-    /\b\w+\.com\b/g, // Website mentions
-    /\b\w+\.ai\b/g, // AI service mentions
+    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]*){0,2}\b/g, // Capitalized company names (max 3 words)
+    /\b[A-Z]{2,}\b/g, // Acronyms/abbreviations
+    /\b\w+\.(?:com|ai|io|co|net|org)\b/g, // Website/domain mentions
   ];
   
   brandPatterns.forEach(pattern => {
@@ -682,31 +668,36 @@ function extractRelatedEntities(responseText: string, targetTopic: string): stri
     entities.push(...matches);
   });
   
-  // Filter out common words and the target topic itself
-  const commonWords = ['The', 'This', 'That', 'Here', 'There', 'When', 'Where', 'Why', 'How', 'What', 'Which', 'Who'];
-  const filtered = entities.filter(entity => 
-    !commonWords.includes(entity) &&
-    !targetTopic.toLowerCase().includes(entity.toLowerCase()) &&
-    entity.length > 2
-  );
+  // Enhanced filtering with company name validation
+  const commonWords = [
+    'The', 'This', 'That', 'Here', 'There', 'When', 'Where', 'Why', 'How', 'What', 'Which', 'Who',
+    'App', 'Store', 'Optimization', 'Mobile', 'Marketing', 'Digital', 'Agency', 'Service', 'Platform',
+    'Software', 'Tool', 'Solution', 'System', 'Technology', 'Business', 'Company', 'Known', 'They',
+    'Their', 'Part', 'Other', 'Some', 'Many', 'All', 'Most', 'Best', 'Top', 'Leading'
+  ];
   
-  return filtered;
+  const filtered = entities.filter(entity => {
+    // Basic filters
+    if (commonWords.includes(entity) ||
+        targetTopic.toLowerCase().includes(entity.toLowerCase()) ||
+        entity.length < 3) {
+      return false;
+    }
+    
+    // Use enhanced company name validation
+    return isValidCompanyName(entity);
+  });
+  
+  // Remove duplicates and limit results
+  return [...new Set(filtered)].slice(0, 8);
 }
 
-// Extract entity name from list item content
-function extractEntityName(content: string): string {
-  // Remove bold/italic formatting: **Company** or *Company*
-  let cleaned = content.replace(/\*+([^*]+)\*+/g, '$1');
-  
-  // Remove common prefixes and suffixes
-  cleaned = cleaned.replace(/^(The\s+)|(Inc\.?|LLC|Ltd\.?|Corporation|Corp\.?)$/gi, '').trim();
-  
-  // Extract company name (usually first few words before colon or dash)
-  const match = cleaned.match(/^([^:\-–—]+)/);
-  return match ? match[1].trim() : cleaned.trim();
+// Extract entity name from list item content with enhanced validation
+function extractEntityName(content: string): string | null {
+  return extractValidEntityName(content);
 }
 
-// Extract all ranked entities from response
+// Extract all ranked entities from response with enhanced validation
 function extractRankedCompetitors(responseText: string): { name: string; position: number; content: string }[] {
   const lines = responseText.split('\n').filter(line => line.trim());
   const rankedEntities: { name: string; position: number; content: string }[] = [];
@@ -721,7 +712,8 @@ function extractRankedCompetitors(responseText: string): { name: string; positio
       const content = match[2];
       const entityName = extractEntityName(content);
       
-      if (entityName && entityName.length > 1) {
+      // Only include valid company names
+      if (entityName) {
         rankedEntities.push({ name: entityName, position, content });
       }
     }
@@ -732,7 +724,7 @@ function extractRankedCompetitors(responseText: string): { name: string; positio
     return rankedEntities.sort((a, b) => a.position - b.position);
   }
   
-  // Pattern 2: Bullet points
+  // Pattern 2: Bullet points (only if no numbered list found)
   const bulletRankPattern = /^[\*\-•]\s*(.+)/;
   let bulletPosition = 0;
   
@@ -743,7 +735,8 @@ function extractRankedCompetitors(responseText: string): { name: string; positio
       const content = match[1];
       const entityName = extractEntityName(content);
       
-      if (entityName && entityName.length > 1) {
+      // Only include valid company names
+      if (entityName) {
         rankedEntities.push({ name: entityName, position: bulletPosition, content });
       }
     }
