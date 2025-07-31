@@ -91,33 +91,43 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       const hasRanking = result.mention_position && result.mention_context === 'ranked_list';
       
       if (hasRanking) {
-        // Get all ranking snapshots for this query
-        const querySnapshots = rankingSnapshots.filter(snapshot => 
-          snapshot.query_id === result.id
-        );
+        let allEntities: Array<{name: string; position: number; isTarget: boolean}> = [];
         
-        // Build the all entities list from snapshots
-        const allEntities = querySnapshots
-          .filter(snapshot => snapshot.position && snapshot.entity_name)
-          .map(snapshot => ({
-            name: snapshot.entity_name,
-            position: snapshot.position!,
-            isTarget: snapshot.entity_name.toLowerCase() === entityName.toLowerCase()
-          }))
-          .sort((a, b) => a.position - b.position);
-        
-        // Add any competitors from query results not already in snapshots
-        if (result.competitors_mentioned) {
-          result.competitors_mentioned.forEach((competitor, index) => {
-            if (!allEntities.some(entity => entity.name.toLowerCase() === competitor.toLowerCase())) {
-              allEntities.push({
-                name: competitor,
-                position: allEntities.length + index + 1,
-                isTarget: competitor.toLowerCase() === entityName.toLowerCase()
-              });
-            }
-          });
+        // Priority 1: Use structured entities from entity_analysis (most complete data)
+        if (result.entity_analysis?.structured_entities && result.entity_analysis.structured_entities.length > 0) {
+          allEntities = result.entity_analysis.structured_entities.map((entity: any, index: number) => ({
+            name: entity.name,
+            position: entity.position || index + 1,
+            isTarget: entity.name.toLowerCase() === entityName.toLowerCase()
+          }));
+        } 
+        // Priority 2: Fall back to ranking snapshots
+        else {
+          const querySnapshots = rankingSnapshots.filter(snapshot => 
+            snapshot.query_id === result.id
+          );
+          
+          allEntities = querySnapshots
+            .filter(snapshot => snapshot.position && snapshot.entity_name)
+            .map(snapshot => ({
+              name: snapshot.entity_name,
+              position: snapshot.position!,
+              isTarget: snapshot.entity_name.toLowerCase() === entityName.toLowerCase()
+            }))
+            .sort((a, b) => a.position - b.position);
+          
+          // Priority 3: Final fallback to competitors_mentioned
+          if (allEntities.length === 0 && result.competitors_mentioned) {
+            allEntities = result.competitors_mentioned.map((competitor, index) => ({
+              name: competitor,
+              position: index + 1,
+              isTarget: competitor.toLowerCase() === entityName.toLowerCase()
+            }));
+          }
         }
+        
+        // Sort by position and ensure we show top 10
+        allEntities.sort((a, b) => a.position - b.position);
         
         rankings.push({
           queryId: result.id,
