@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TopPerformersSection } from './TopPerformersSection';
 import { EntityInsightsPanel } from './EntityInsightsPanel';
 import { RankingSummaryCard } from './RankingSummaryCard';
+import { RankingDetailsModal } from './RankingDetailsModal';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -42,6 +43,7 @@ interface QueryResult {
   tokens_used: number;
   cost_cents: number;
   created_at: string;
+  total_entities_in_response?: number;
   entityAnalysis?: any; // Frontend calculated entity analysis
   entity_analysis?: any; // Database stored entity analysis
 }
@@ -62,6 +64,11 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   organizationId
 }) => {
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const [showRankingModal, setShowRankingModal] = useState(false);
+  const [selectedRankingData, setSelectedRankingData] = useState<{
+    entityName: string;
+    rankingDetails: any[];
+  } | null>(null);
 
   // Fetch query results
   const { data: queryResults, isLoading: loadingResults } = useQuery({
@@ -148,6 +155,20 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
     });
   };
 
+  const handleRankingClick = (result: QueryResult) => {
+    // Extract ranking details from the entity analysis or ranking context
+    const entityName = (auditRun?.topic_data as any)?.entityToTrack || 'Entity';
+    const rankingDetails = [{
+      position: result.mention_position || 1,
+      query: result.query_text,
+      totalEntities: result.entity_analysis?.total_entities || result.total_entities_in_response,
+      competitors: result.entity_analysis?.competitors || result.competitors_mentioned || []
+    }];
+    
+    setSelectedRankingData({ entityName, rankingDetails });
+    setShowRankingModal(true);
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-400';
     if (score >= 60) return 'text-yellow-400';
@@ -214,7 +235,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
     (mentionedResults.length > 0 ? Math.round(mentionedResults.reduce((sum, r) => sum + r.visibility_score, 0) / mentionedResults.length) : 0);
 
   // Check if entity tracking is enabled - safely parse topic_data
-  const topicData = auditRun?.topic_data ? JSON.parse(JSON.stringify(auditRun.topic_data)) : null;
+  const topicData = auditRun?.topic_data as any;
   const hasEntityTracking = topicData?.entityToTrack;
 
   return (
@@ -355,8 +376,9 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                     {result.mention_context !== 'not_mentioned' && (
                       <Badge 
                         variant={result.mention_context === 'ranked_list' ? "default" : "outline"} 
-                        className={`text-xs ${result.mention_context === 'ranked_list' ? 'bg-yellow-500 text-yellow-50 cursor-pointer hover:bg-yellow-600' : ''}`}
-                        title={result.mention_context === 'ranked_list' ? 'Click to see competitive landscape above' : ''}
+                        className={`text-xs ${result.mention_context === 'ranked_list' ? 'bg-yellow-500 text-yellow-50 cursor-pointer hover:bg-yellow-600 transition-colors' : ''}`}
+                        title={result.mention_context === 'ranked_list' ? 'Click to see competitive landscape details' : ''}
+                        onClick={result.mention_context === 'ranked_list' ? () => handleRankingClick(result) : undefined}
                       >
                         {result.mention_context === 'ranked_list' ? '🏆 Ranked List' : result.mention_context}
                       </Badge>
@@ -566,6 +588,19 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Ranking Details Modal */}
+      {selectedRankingData && (
+        <RankingDetailsModal
+          isOpen={showRankingModal}
+          onClose={() => {
+            setShowRankingModal(false);
+            setSelectedRankingData(null);
+          }}
+          entityName={selectedRankingData.entityName}
+          rankingDetails={selectedRankingData.rankingDetails}
+        />
+      )}
     </div>
   );
 };
