@@ -2,6 +2,23 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
+// Utility function to get ordinal suffix
+function getOrdinalSuffix(num: number): string {
+  const lastDigit = num % 10;
+  const lastTwoDigits = num % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+    return `${num}th`;
+  }
+  
+  switch (lastDigit) {
+    case 1: return `${num}st`;
+    case 2: return `${num}nd`;
+    case 3: return `${num}rd`;
+    default: return `${num}th`;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -282,31 +299,54 @@ Respond professionally and factually to business-related queries.`
       throw new Error(`Database insert error: ${insertError.message}`);
     }
 
-    // Store detailed ranking snapshot if we detected a ranked list
-    if (rankingData.isRankedList && rankingData.position && entityToTrack) {
-      console.log('📊 Storing ranking snapshot for detected ranking...');
+    // Store detailed ranking snapshots if we detected rankings
+    if (isRankedList && allRankedEntities.length > 0) {
+      console.log('📊 Storing ranking snapshots for detected ranking...');
       
-      const rankingSnapshot = {
+      // Store target entity ranking if found
+      if (mentionPosition && entityToTrack) {
+        const mentionContext = `mentioned ${mentionPosition}${getOrdinalSuffix(mentionPosition)} out of ${totalEntities} entities`;
+        
+        const { error: targetError } = await supabase
+          .from('chatgpt_ranking_snapshots')
+          .insert({
+            organization_id: organizationId,
+            audit_run_id: auditRunId,
+            query_id: queryId,
+            entity_name: entityToTrack,
+            position: mentionPosition,
+            total_positions: totalEntities,
+            ranking_type: 'ranked_list',
+            ranking_context: mentionContext,
+            competitors: competitors || []
+          });
+
+        if (targetError) {
+          console.error('        ❌ Error storing target ranking:', targetError);
+        }
+      }
+
+      // Store all ranked entities for competitive landscape
+      const allSnapshots = allRankedEntities.map(entity => ({
         organization_id: organizationId,
         audit_run_id: auditRunId,
         query_id: queryId,
-        entity_name: entityToTrack,
-        position: rankingData.position,
-        total_positions: rankingData.totalEntities,
-        ranking_type: 'numbered_list',
-        ranking_context: `Position ${rankingData.position} of ${rankingData.totalEntities}`,
-        competitors: rankingData.competitors || []
-      };
+        entity_name: entity.name,
+        position: entity.position,
+        total_positions: allRankedEntities.length,
+        ranking_type: 'ranked_list',
+        ranking_context: `mentioned ${entity.position}${getOrdinalSuffix(entity.position)} out of ${allRankedEntities.length} entities`,
+        competitors: allRankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
+      }));
 
-      const { error: snapshotError } = await supabase
+      const { error: allSnapshotsError } = await supabase
         .from('chatgpt_ranking_snapshots')
-        .insert(rankingSnapshot);
+        .insert(allSnapshots);
 
-      if (snapshotError) {
-        console.error('⚠️ Warning: Could not store ranking snapshot:', snapshotError);
-        // Don't throw here - this is supplementary data
+      if (allSnapshotsError) {
+        console.error('        ❌ Error storing all rankings:', allSnapshotsError);
       } else {
-        console.log('✅ Ranking snapshot stored successfully');
+        console.log('        ✅ Ranking snapshot stored successfully');
       }
     }
     
@@ -652,143 +692,129 @@ function extractRelatedEntities(responseText: string, targetTopic: string): stri
   return filtered;
 }
 
-// Enhanced ranking detection function
-function detectRankingPosition(responseText: string, targetTopic: string): { position?: number; isRankedList: boolean; totalEntities?: number; competitors?: string[] } {
+// Extract entity name from list item content
+function extractEntityName(content: string): string {
+  // Remove bold/italic formatting: **Company** or *Company*
+  let cleaned = content.replace(/\*+([^*]+)\*+/g, '$1');
+  
+  // Remove common prefixes and suffixes
+  cleaned = cleaned.replace(/^(The\s+)|(Inc\.?|LLC|Ltd\.?|Corporation|Corp\.?)$/gi, '').trim();
+  
+  // Extract company name (usually first few words before colon or dash)
+  const match = cleaned.match(/^([^:\-–—]+)/);
+  return match ? match[1].trim() : cleaned.trim();
+}
+
+// Extract all ranked entities from response
+function extractRankedCompetitors(responseText: string): { name: string; position: number; content: string }[] {
   const lines = responseText.split('\n').filter(line => line.trim());
-  const sentences = responseText.split(/[.!?]+/).filter(s => s.trim());
+  const rankedEntities: { name: string; position: number; content: string }[] = [];
   
   // Pattern 1: Numbered lists (1., 2., 3. or 1) 2) 3))
   const numberedListPattern = /^(\d+)[\.)]\s*(.+)/;
-  let numberedMatches: { position: number; content: string }[] = [];
   
   lines.forEach(line => {
     const match = line.trim().match(numberedListPattern);
     if (match) {
       const position = parseInt(match[1]);
-      const content = match[2].toLowerCase();
-      if (content.includes(targetTopic.toLowerCase()) || 
-          targetTopic.toLowerCase().split(' ').some(word => word.length > 2 && content.includes(word))) {
-        numberedMatches.push({ position, content: match[2] });
+      const content = match[2];
+      const entityName = extractEntityName(content);
+      
+      if (entityName && entityName.length > 1) {
+        rankedEntities.push({ name: entityName, position, content });
       }
     }
   });
   
-  if (numberedMatches.length > 0) {
-    const firstMatch = numberedMatches[0];
-    const allRankedItems = lines
-      .map(line => line.trim().match(numberedListPattern))
-      .filter(match => match)
-      .map(match => ({ position: parseInt(match![1]), content: match![2] }))
-      .sort((a, b) => a.position - b.position);
-    
-    const competitors = allRankedItems
-      .filter(item => item.position !== firstMatch.position)
-      .map(item => item.content.replace(/^\*+\s*/, '').trim())
-      .slice(0, 10); // Limit competitors
-    
-    return {
-      position: firstMatch.position,
-      isRankedList: true,
-      totalEntities: allRankedItems.length,
-      competitors
-    };
+  // If numbered list found, return it
+  if (rankedEntities.length > 0) {
+    return rankedEntities.sort((a, b) => a.position - b.position);
   }
   
-  // Pattern 2: Bullet points with ranking indicators
+  // Pattern 2: Bullet points
   const bulletRankPattern = /^[\*\-•]\s*(.+)/;
-  const bulletMatches: string[] = [];
-  let targetInBullets = false;
   let bulletPosition = 0;
   
-  lines.forEach((line, index) => {
+  lines.forEach(line => {
     const match = line.trim().match(bulletRankPattern);
     if (match) {
       bulletPosition++;
-      const content = match[1].toLowerCase();
-      bulletMatches.push(match[1]);
+      const content = match[1];
+      const entityName = extractEntityName(content);
       
-      if (!targetInBullets && (content.includes(targetTopic.toLowerCase()) || 
-          targetTopic.toLowerCase().split(' ').some(word => word.length > 2 && content.includes(word)))) {
-        targetInBullets = true;
+      if (entityName && entityName.length > 1) {
+        rankedEntities.push({ name: entityName, position: bulletPosition, content });
       }
     }
   });
   
-  if (targetInBullets) {
-    const targetBulletIndex = bulletMatches.findIndex(bullet => 
-      bullet.toLowerCase().includes(targetTopic.toLowerCase()) ||
-      targetTopic.toLowerCase().split(' ').some(word => word.length > 2 && bullet.toLowerCase().includes(word))
-    );
-    
-    if (targetBulletIndex !== -1) {
-      return {
-        position: targetBulletIndex + 1,
-        isRankedList: true,
-        totalEntities: bulletMatches.length,
-        competitors: bulletMatches.filter((_, i) => i !== targetBulletIndex).slice(0, 10)
-      };
-    }
-  }
+  return rankedEntities;
+}
+
+// Enhanced entity matching with aliases and variations
+function findEntityInRanking(entityToTrack: string, entityAliases: string[], rankedEntities: { name: string; position: number; content: string }[]): { position?: number; totalEntities: number; competitors: string[] } {
+  const allEntityNames = [entityToTrack, ...entityAliases];
   
-  // Pattern 3: "Top X" or "Best X" lists with ordinal indicators
-  const topListPattern = /(top|best)\s+(\d+)/i;
-  const topMatch = responseText.match(topListPattern);
-  if (topMatch) {
-    const expectedCount = parseInt(topMatch[2]);
-    
-    // Look for ordinal patterns (first, second, third, etc.)
-    const ordinalPattern = /(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d+(?:st|nd|rd|th))/i;
-    const ordinalMap: Record<string, number> = {
-      'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
-      'sixth': 6, 'seventh': 7, 'eighth': 8, 'ninth': 9, 'tenth': 10
-    };
-    
-    for (const sentence of sentences) {
-      const lowerSentence = sentence.toLowerCase();
-      if (lowerSentence.includes(targetTopic.toLowerCase()) || 
-          targetTopic.toLowerCase().split(' ').some(word => word.length > 2 && lowerSentence.includes(word))) {
-        
-        const ordinalMatch = sentence.match(ordinalPattern);
-        if (ordinalMatch) {
-          let position: number;
-          const ordinalText = ordinalMatch[1].toLowerCase();
-          
-          if (ordinalMap[ordinalText]) {
-            position = ordinalMap[ordinalText];
-          } else {
-            const numMatch = ordinalText.match(/(\d+)/);
-            position = numMatch ? parseInt(numMatch[1]) : 1;
-          }
-          
-          return {
-            position,
-            isRankedList: true,
-            totalEntities: expectedCount,
-            competitors: [] // Would need more sophisticated parsing to extract
-          };
-        }
-      }
-    }
-  }
-  
-  // Pattern 4: Sequential mentions in paragraphs (fallback)
-  const paragraphs = responseText.split(/\n\s*\n/);
-  for (let i = 0; i < paragraphs.length; i++) {
-    const paragraph = paragraphs[i].toLowerCase();
-    if (paragraph.includes(targetTopic.toLowerCase()) || 
-        targetTopic.toLowerCase().split(' ').some(word => word.length > 2 && paragraph.includes(word))) {
-      
-      // Check if this appears to be a listing paragraph
-      const hasListIndicators = /\b(first|next|another|also|additionally|furthermore)\b/i.test(paragraphs[i]);
-      if (hasListIndicators || i === 0) {
+  for (const entity of rankedEntities) {
+    for (const searchName of allEntityNames) {
+      // Exact match (case insensitive)
+      if (entity.name.toLowerCase() === searchName.toLowerCase()) {
         return {
-          position: i + 1,
-          isRankedList: false,
-          totalEntities: paragraphs.length
+          position: entity.position,
+          totalEntities: rankedEntities.length,
+          competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
+        };
+      }
+      
+      // Partial match with word boundaries
+      const searchWords = searchName.toLowerCase().split(/\s+/);
+      const entityWords = entity.name.toLowerCase().split(/\s+/);
+      
+      // If any significant word matches (>2 chars)
+      const significantMatches = searchWords.filter(word => 
+        word.length > 2 && entityWords.some(entityWord => 
+          entityWord.includes(word) || word.includes(entityWord)
+        )
+      );
+      
+      if (significantMatches.length > 0 && significantMatches.length >= Math.min(2, searchWords.length)) {
+        return {
+          position: entity.position,
+          totalEntities: rankedEntities.length,
+          competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
+        };
+      }
+      
+      // Check if entity content contains the search term
+      if (entity.content.toLowerCase().includes(searchName.toLowerCase())) {
+        return {
+          position: entity.position,
+          totalEntities: rankedEntities.length,
+          competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
         };
       }
     }
   }
   
-  return { isRankedList: false };
+  return { totalEntities: rankedEntities.length, competitors: rankedEntities.map(e => e.name) };
+}
+
+// Enhanced ranking detection function
+function detectRankingPosition(responseText: string, targetTopic: string, entityAliases: string[] = []): { position?: number; isRankedList: boolean; totalEntities?: number; competitors?: string[] } {
+  // First extract all ranked entities
+  const rankedEntities = extractRankedCompetitors(responseText);
+  
+  if (rankedEntities.length === 0) {
+    return { isRankedList: false };
+  }
+  
+  // Find the target entity in rankings
+  const result = findEntityInRanking(targetTopic, entityAliases, rankedEntities);
+  
+  return {
+    position: result.position,
+    isRankedList: true,
+    totalEntities: result.totalEntities,
+    competitors: result.competitors.slice(0, 10) // Limit to top 10 competitors
+  };
 }
