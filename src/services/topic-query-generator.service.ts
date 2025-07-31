@@ -59,7 +59,7 @@ const TOPIC_QUERY_TEMPLATES: TopicQueryTemplate[] = [
   }
 ];
 
-// NEW - Entity-specific query templates (only used when entityToTrack is provided)
+// Entity-specific query templates (only used when entityToTrack is provided)
 const ENTITY_QUERY_TEMPLATES: TopicQueryTemplate[] = [
   {
     template: "What do you think about {entity}?",
@@ -102,66 +102,114 @@ export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
-    // If entity tracking is enabled, generate a mix of topic and entity queries
-    if (topicData.entityToTrack) {
-      // Generate 60% topic queries, 40% entity-specific queries
-      const topicQueryCount = Math.ceil(count * 0.6);
-      const entityQueryCount = count - topicQueryCount;
-      
-      // Generate topic queries (existing behavior)
-      const shuffledTopicTemplates = [...TOPIC_QUERY_TEMPLATES].sort(() => Math.random() - 0.5);
-      for (let i = 0; i < Math.min(topicQueryCount, shuffledTopicTemplates.length); i++) {
-        const template = shuffledTopicTemplates[i];
-        const query = this.fillTemplate(template, topicData);
-        
-        queries.push({
-          id: crypto.randomUUID(),
-          query_text: query,
-          query_type: template.type,
-          priority: template.priority,
-          target_entity: topicData.topic
-        });
-      }
-      
-      // Generate entity-specific queries (NEW)
-      const shuffledEntityTemplates = [...ENTITY_QUERY_TEMPLATES].sort(() => Math.random() - 0.5);
-      for (let i = 0; i < Math.min(entityQueryCount, shuffledEntityTemplates.length); i++) {
-        const template = shuffledEntityTemplates[i];
-        const query = this.fillEntityTemplate(template, topicData);
-        
-        queries.push({
-          id: crypto.randomUUID(),
-          query_text: query,
-          query_type: template.type,
-          priority: template.priority,
-          target_entity: topicData.entityToTrack || topicData.topic
-        });
-      }
-    } else {
-      // Original behavior for topic-only queries
-      const shuffledTemplates = [...TOPIC_QUERY_TEMPLATES].sort(() => Math.random() - 0.5);
-      
-      for (let i = 0; i < Math.min(count, shuffledTemplates.length); i++) {
-        const template = shuffledTemplates[i];
-        const query = this.fillTemplate(template, topicData);
-        
-        queries.push({
-          id: crypto.randomUUID(),
-          query_text: query,
-          query_type: template.type,
-          priority: template.priority,
-          target_entity: topicData.topic
-        });
-      }
-      
-      // If we need more queries, add variations
-      if (count > TOPIC_QUERY_TEMPLATES.length) {
-        const additionalQueries = this.generateVariations(topicData, count - TOPIC_QUERY_TEMPLATES.length);
-        queries.push(...additionalQueries);
-      }
+    // Generate context-aware queries using industry category and target audience
+    const contextualQueries = this.generateContextualQueries(topicData, count);
+    queries.push(...contextualQueries);
+    
+    // Fill remaining slots with variations if needed
+    if (queries.length < count) {
+      const additionalQueries = this.generateVariations(topicData, count - queries.length);
+      queries.push(...additionalQueries);
     }
     
-    return queries.sort((a, b) => a.priority - b.priority);
+    return queries.slice(0, count);
+  }
+
+  private static generateContextualQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    // Base queries with target audience context
+    const baseQueries = [
+      `Best ${topicData.topic}`,
+      `Top ${topicData.topic} for ${topicData.target_audience}`,
+      `${topicData.topic} recommendations ${new Date().getFullYear()}`
+    ];
+    
+    // Industry-specific queries
+    const industryQueries = [
+      `${topicData.industry} tools for ${topicData.target_audience}`,
+      `Best ${topicData.industry} platforms`,
+      `${topicData.topic} for ${topicData.target_audience} comparison`
+    ];
+    
+    // Entity-specific queries (if entity tracking enabled)
+    const entityQueries = topicData.entityToTrack ? [
+      `${topicData.entityToTrack} vs competitors`,
+      `Is ${topicData.entityToTrack} good for ${topicData.target_audience}?`,
+      `${topicData.entityToTrack} review ${topicData.industry}`,
+      `Alternatives to ${topicData.entityToTrack}`
+    ] : [];
+    
+    // Context-specific queries (if additional context provided)
+    const contextQueries = topicData.context_description ? [
+      `${topicData.topic} ${topicData.context_description}`,
+      `Best ${topicData.industry} ${topicData.context_description}`
+    ] : [];
+    
+    // Known players queries
+    const knownPlayersQueries = topicData.known_players.length > 0 ? [
+      `${topicData.known_players.slice(0, 3).join(' vs ')} comparison`,
+      `${topicData.topic} ${topicData.known_players[0]} vs alternatives`
+    ] : [];
+    
+    // Combine all query types
+    const allQueries = [...baseQueries, ...industryQueries, ...entityQueries, ...contextQueries, ...knownPlayersQueries];
+    
+    // Convert to GeneratedTopicQuery objects with priorities
+    allQueries.forEach((queryText, index) => {
+      const priority = this.calculateQueryPriority(queryText, topicData);
+      const type = this.determineQueryType(queryText);
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: type,
+        priority,
+        target_entity: topicData.entityToTrack || topicData.topic
+      });
+    });
+    
+    // Sort by priority and return top queries
+    return queries.sort((a, b) => b.priority - a.priority).slice(0, Math.min(count, queries.length));
+  }
+
+  private static calculateQueryPriority(queryText: string, topicData: TopicAuditData): number {
+    let priority = 3; // Base priority
+    
+    // Higher priority for entity-specific queries
+    if (topicData.entityToTrack && queryText.includes(topicData.entityToTrack)) {
+      priority = 1;
+    }
+    
+    // Higher priority for target audience specific queries
+    if (queryText.includes(topicData.target_audience)) {
+      priority = Math.min(priority, 2);
+    }
+    
+    // Higher priority for industry-specific queries
+    if (queryText.includes(topicData.industry)) {
+      priority = Math.min(priority, 2);
+    }
+    
+    return priority;
+  }
+
+  private static determineQueryType(queryText: string): 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' {
+    const lowerText = queryText.toLowerCase();
+    
+    if (lowerText.includes('vs') || lowerText.includes('comparison') || lowerText.includes('compare')) {
+      return 'comparison';
+    }
+    
+    if (lowerText.includes('best') || lowerText.includes('top') || lowerText.includes('recommend')) {
+      return 'recommendation';
+    }
+    
+    if (lowerText.includes('help') || lowerText.includes('choose') || lowerText.includes('should')) {
+      return 'problem_solving';
+    }
+    
+    return 'conversational';
   }
   
   private static fillTemplate(template: TopicQueryTemplate, topicData: TopicAuditData): string {
@@ -175,7 +223,7 @@ export class TopicQueryGeneratorService {
     return query;
   }
   
-  // NEW - Fill entity-specific templates
+  // Fill entity-specific templates
   private static fillEntityTemplate(template: TopicQueryTemplate, topicData: TopicAuditData): string {
     let query = template.template;
     
@@ -188,7 +236,7 @@ export class TopicQueryGeneratorService {
     return query;
   }
   
-  // NEW - Convert topic to category for entity queries
+  // Convert topic to category for entity queries
   private static getTopicCategory(topic: string): string {
     // Convert "marketing agencies" -> "marketing"
     // Convert "productivity tools" -> "productivity" 

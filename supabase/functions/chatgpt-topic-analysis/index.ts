@@ -20,7 +20,18 @@ interface TopicQueryRequest {
   organizationId: string;
   targetTopic: string;
   
-  // NEW - Optional entity tracking
+  // Enhanced context data
+  topicData?: {
+    topic: string;
+    industry: string;
+    target_audience: string;
+    context_description?: string;
+    known_players: string[];
+    entityToTrack?: string;
+    entityAliases?: string[];
+  };
+  
+  // Legacy fields (for backward compatibility)
   entityToTrack?: string;
   entityAliases?: string[];
 }
@@ -73,7 +84,7 @@ serve(async (req) => {
 
     // 🔍 Request Payload Validation
     const requestBody = await req.json();
-    const { queryId, queryText, auditRunId, organizationId, targetTopic, entityToTrack, entityAliases }: TopicQueryRequest = requestBody;
+    const { queryId, queryText, auditRunId, organizationId, targetTopic, topicData, entityToTrack, entityAliases }: TopicQueryRequest = requestBody;
     
     console.group('🔍 Request Payload Validation');
     console.log('Raw request body:', requestBody);
@@ -406,7 +417,7 @@ function analyzeTopicVisibility(responseText: string, targetTopic: string, entit
   
   sentimentScore = Math.max(-1, Math.min(1, sentimentScore));
   
-  // NEW - Entity analysis (only when entityToTrack is provided)
+  // Enhanced entity analysis with context validation
   let entityAnalysis: EntityAnalysis | undefined;
   if (entityToTrack) {
     entityAnalysis = analyzeEntityMentions(responseText, entityToTrack, entityAliases || []);
@@ -423,17 +434,26 @@ function analyzeTopicVisibility(responseText: string, targetTopic: string, entit
   };
 }
 
-// NEW - Analyze entity mentions specifically
-function analyzeEntityMentions(responseText: string, entityName: string, entityAliases: string[]): EntityAnalysis {
+// Enhanced entity analysis with industry context validation
+function analyzeEntityMentions(
+  responseText: string, 
+  entityName: string, 
+  entityAliases: string[],
+  topicData?: any
+): EntityAnalysis {
+  console.log(`    🔍 Analyzing entity mentions for: ${entityName}`);
+  
   const lowerResponse = responseText.toLowerCase();
   const lowerEntityName = entityName.toLowerCase();
   const allEntityNames = [lowerEntityName, ...entityAliases.map(alias => alias.toLowerCase())];
+  
+  console.log(`    📋 Checking entity variations:`, allEntityNames);
   
   let mentionCount = 0;
   const mentionContexts: string[] = [];
   let entityPosition: number | undefined;
   
-  // Count mentions of entity and aliases
+  // Count mentions of entity and aliases with word boundary matching
   allEntityNames.forEach(entityVariant => {
     const regex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
     const matches = responseText.match(regex);
@@ -449,18 +469,29 @@ function analyzeEntityMentions(responseText: string, entityName: string, entityA
     const isEntityMentioned = allEntityNames.some(entityVariant => {
       const entityRegex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       return entityRegex.test(lowerSentence);
-    }
-    );
+    });
     
     if (isEntityMentioned) {
       mentionContexts.push(sentence.trim());
       
-      // Determine position in recommendation lists (first mention = position)
+      // Try to determine position if this appears to be a ranked list
       if (entityPosition === undefined) {
-        entityPosition = index + 1;
+        const positionMatch = sentence.match(/^(\d+)[\.)]/);
+        if (positionMatch) {
+          entityPosition = parseInt(positionMatch[1]);
+        } else if (index === 0) {
+          entityPosition = 1; // First mention
+        }
       }
     }
   });
+  
+  // Industry context validation if available
+  let industryRelevance = 1.0; // Default to relevant
+  if (topicData?.industry && mentionCount > 0) {
+    industryRelevance = calculateIndustryRelevance(responseText, topicData.industry);
+    console.log(`    🏢 Industry relevance for ${topicData.industry}:`, industryRelevance);
+  }
   
   // Determine sentiment specifically for entity mentions
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
@@ -480,6 +511,15 @@ function analyzeEntityMentions(responseText: string, entityName: string, entityA
     }
   }
   
+  console.log(`    📊 Entity analysis result:`, {
+    entityMentioned: mentionCount > 0,
+    mentionCount,
+    mentionContexts: mentionContexts.slice(0, 3), // Limit for logging
+    entityPosition,
+    sentiment,
+    industryRelevance
+  });
+  
   return {
     entityMentioned: mentionCount > 0,
     mentionCount,
@@ -487,6 +527,36 @@ function analyzeEntityMentions(responseText: string, entityName: string, entityA
     entityPosition,
     sentiment
   };
+}
+
+// Industry context validation
+function calculateIndustryRelevance(responseText: string, industry: string): number {
+  const lowerResponse = responseText.toLowerCase();
+  const industryKeywords = getIndustryKeywords(industry);
+  
+  let relevanceScore = 0;
+  for (const keyword of industryKeywords) {
+    if (lowerResponse.includes(keyword.toLowerCase())) {
+      relevanceScore += 1;
+    }
+  }
+  
+  // Normalize score (0-1)
+  return Math.min(relevanceScore / Math.max(industryKeywords.length, 1), 1.0);
+}
+
+function getIndustryKeywords(industry: string): string[] {
+  const industryKeywords: Record<string, string[]> = {
+    'ASO/Marketing': ['app store optimization', 'ASO', 'mobile marketing', 'app marketing', 'keyword optimization', 'app store', 'mobile app'],
+    'SaaS': ['software as a service', 'SaaS', 'cloud software', 'subscription software', 'software platform'],
+    'E-commerce': ['online store', 'e-commerce', 'retail', 'shopping platform', 'marketplace', 'ecommerce'],
+    'Enterprise Software': ['enterprise', 'business software', 'corporate', 'organization', 'business'],
+    'Mobile Apps': ['mobile app', 'iOS', 'Android', 'smartphone', 'app store', 'mobile'],
+    'Marketing': ['marketing', 'advertising', 'digital marketing', 'campaign', 'promotion'],
+    'Technology': ['technology', 'tech', 'software', 'platform', 'solution']
+  };
+  
+  return industryKeywords[industry] || industryKeywords['Technology'] || [];
 }
 
 function extractRelatedEntities(responseText: string, targetTopic: string): string[] {

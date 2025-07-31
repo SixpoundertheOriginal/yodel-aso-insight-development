@@ -90,7 +90,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         targetTopic: selectedAuditRun.topic_data.topic
       });
 
-      // Enhanced payload with optional entity tracking
+      // Enhanced payload with full context data
       const requestPayload = {
         queryId: query.id,
         queryText: query.query_text,
@@ -98,11 +98,16 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         organizationId: organizationId,
         targetTopic: selectedAuditRun.topic_data.topic,
         
-        // NEW - Include entity tracking data if available
-        ...(selectedAuditRun.topic_data.entityToTrack && {
+        // Enhanced context data for better analysis
+        topicData: {
+          topic: selectedAuditRun.topic_data.topic,
+          industry: selectedAuditRun.topic_data.industry,
+          target_audience: selectedAuditRun.topic_data.target_audience,
+          context_description: selectedAuditRun.topic_data.context_description,
+          known_players: selectedAuditRun.topic_data.known_players || [],
           entityToTrack: selectedAuditRun.topic_data.entityToTrack,
           entityAliases: selectedAuditRun.topic_data.entityAliases || []
-        })
+        }
       };
 
       console.log('Edge Function Request Payload:', requestPayload);
