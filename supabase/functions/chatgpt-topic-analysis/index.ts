@@ -131,8 +131,8 @@ serve(async (req) => {
     }
     console.groupEnd();
 
-    // 🤖 OpenAI API Call with Enhanced Logging
-    console.group('🤖 OpenAI API Call');
+    // 🤖 Phase 1: Initial OpenAI API Call
+    console.group('🤖 Phase 1: Initial OpenAI API Call');
     
     const openaiRequest = {
       model: 'gpt-4o',
@@ -213,7 +213,97 @@ Respond professionally and factually to business-related queries.`
     console.groupEnd();
 
     const responseText = data.choices[0].message.content;
-    const tokensUsed = data.usage?.total_tokens || 0;
+    let tokensUsed = data.usage?.total_tokens || 0;
+
+    // 🤖 Phase 2: Follow-up Entity Extraction Call
+    console.group('🤖 Phase 2: Follow-up Entity Extraction Call');
+    
+    const extractionRequest = {
+      model: 'gpt-4o',
+      messages: [
+        { 
+          role: 'system', 
+          content: `You are a data extraction specialist. Extract company entities from the provided text and format them as JSON.
+
+EXTRACTION RULES:
+- Only extract real company names, not generic terms
+- Include companies mentioned in any context (recommendations, comparisons, examples)
+- Provide exactly up to 10 entities maximum
+- Format as JSON array with position, name, and brief description
+- Position should reflect the order of mention (1-10)
+- Exclude generic terms like "app", "platform", "tool", "service"
+
+Return ONLY valid JSON, no other text.`
+        },
+        { 
+          role: 'user', 
+          content: `From this previous response, extract the top 10 companies mentioned and format as JSON:
+
+"${responseText}"
+
+Format as JSON array:
+[{"position": 1, "name": "Company Name", "description": "Brief description"}]` 
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 500,
+    };
+
+    console.log('Entity extraction request details:', {
+      model: extractionRequest.model,
+      messageCount: extractionRequest.messages.length,
+      maxTokens: extractionRequest.max_tokens
+    });
+
+    const extractionStartTime = Date.now();
+    const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(extractionRequest)
+    });
+
+    const extractionDuration = Date.now() - extractionStartTime;
+    console.log('Entity extraction API Response:', {
+      status: extractionResponse.status,
+      statusText: extractionResponse.statusText,
+      duration: `${extractionDuration}ms`
+    });
+
+    let structuredEntities = [];
+    if (extractionResponse.ok) {
+      const extractionData = await extractionResponse.json();
+      console.log('Entity extraction response data:', {
+        hasChoices: !!extractionData.choices?.length,
+        tokensUsed: extractionData.usage?.total_tokens,
+        model: extractionData.model
+      });
+
+      tokensUsed += extractionData.usage?.total_tokens || 0;
+
+      try {
+        const extractedText = extractionData.choices[0].message.content;
+        console.log('Raw extracted entities text:', extractedText);
+        
+        // Clean the response to extract JSON
+        const jsonMatch = extractedText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          structuredEntities = JSON.parse(jsonMatch[0]);
+          console.log('Successfully parsed structured entities:', structuredEntities);
+        } else {
+          console.warn('No JSON array found in extraction response');
+        }
+      } catch (parseError) {
+        console.error('Failed to parse extracted entities:', parseError);
+      }
+    } else {
+      console.error('Entity extraction API call failed:', await extractionResponse.text());
+    }
+    
+    console.groupEnd();
+
     const costCents = Math.round((tokensUsed / 1000) * 0.2); // Rough cost calculation
 
     // 🔍 Topic Visibility Analysis
@@ -253,7 +343,8 @@ Respond professionally and factually to business-related queries.`
         ranking_type: rankingData.isRankedList ? 'detected_ranking' : 'mention_order',
         competitors: rankingData.competitors || []
       } : null,
-      total_entities_in_response: rankingData.totalEntities || analysis.relatedEntitiesMentioned.length
+      total_entities_in_response: structuredEntities.length || rankingData.totalEntities || analysis.relatedEntitiesMentioned.length,
+      structured_entities: structuredEntities // Store the ChatGPT-extracted entities
     };
 
     console.log('Database insert payload:', {
@@ -285,9 +376,69 @@ Respond professionally and factually to business-related queries.`
       throw new Error(`Database insert error: ${insertError.message}`);
     }
 
-    // Store detailed ranking snapshots if we detected rankings
-    if (rankingData.isRankedList && rankingData.competitors && rankingData.competitors.length > 0) {
-      console.log('📊 Storing ranking snapshots for detected ranking...');
+    // Store structured entities from the two-prompt system
+    if (structuredEntities.length > 0) {
+      console.log('📊 Storing structured entities from ChatGPT extraction...');
+      
+      // Store target entity ranking if found
+      if (entityToTrack) {
+        const targetEntity = structuredEntities.find(e => 
+          e.name.toLowerCase().includes(entityToTrack.toLowerCase()) ||
+          entityToTrack.toLowerCase().includes(e.name.toLowerCase())
+        );
+        
+        if (targetEntity) {
+          const mentionContext = `mentioned ${getOrdinalSuffix(targetEntity.position)} out of ${structuredEntities.length} entities`;
+          
+          const { error: targetError } = await supabase
+            .from('chatgpt_ranking_snapshots')
+            .insert({
+              organization_id: organizationId,
+              audit_run_id: auditRunId,
+              query_id: queryId,
+              entity_name: targetEntity.name,
+              position: targetEntity.position,
+              total_positions: structuredEntities.length,
+              ranking_type: 'chatgpt_extracted',
+              ranking_context: mentionContext,
+              description: targetEntity.description,
+              competitors: structuredEntities.filter(e => e.position !== targetEntity.position).map(e => e.name)
+            });
+
+          if (targetError) {
+            console.error('        ❌ Error storing target entity ranking:', targetError);
+          }
+        }
+      }
+
+      // Store all structured entities
+      const allSnapshots = structuredEntities.map(entity => ({
+        organization_id: organizationId,
+        audit_run_id: auditRunId,
+        query_id: queryId,
+        entity_name: entity.name,
+        position: entity.position,
+        total_positions: structuredEntities.length,
+        ranking_type: 'chatgpt_extracted',
+        ranking_context: `mentioned ${getOrdinalSuffix(entity.position)} out of ${structuredEntities.length} entities`,
+        description: entity.description || null,
+        competitors: structuredEntities.filter(e => e.position !== entity.position).map(e => e.name)
+      }));
+
+      const { error: allSnapshotsError } = await supabase
+        .from('chatgpt_ranking_snapshots')
+        .insert(allSnapshots);
+
+      if (allSnapshotsError) {
+        console.error('        ❌ Error storing structured entities:', allSnapshotsError);
+      } else {
+        console.log('        ✅ Structured entity snapshots stored successfully');
+      }
+    }
+    
+    // Fallback: Store legacy ranking snapshots if no structured entities found
+    else if (rankingData.isRankedList && rankingData.competitors && rankingData.competitors.length > 0) {
+      console.log('📊 Fallback: Storing legacy ranking snapshots...');
       
       // Store target entity ranking if found
       if (rankingData.position && entityToTrack) {
@@ -302,7 +453,7 @@ Respond professionally and factually to business-related queries.`
             entity_name: entityToTrack,
             position: rankingData.position,
             total_positions: rankingData.totalEntities,
-            ranking_type: 'ranked_list',
+            ranking_type: 'legacy_extraction',
             ranking_context: mentionContext,
             competitors: rankingData.competitors || []
           });
@@ -321,7 +472,7 @@ Respond professionally and factually to business-related queries.`
         entity_name: entity.name,
         position: entity.position,
         total_positions: rankedEntities.length,
-        ranking_type: 'ranked_list',
+        ranking_type: 'legacy_extraction',
         ranking_context: `mentioned ${getOrdinalSuffix(entity.position)} out of ${rankedEntities.length} entities`,
         competitors: rankedEntities.filter(e => e.position !== entity.position).map(e => e.name)
       }));
@@ -331,9 +482,9 @@ Respond professionally and factually to business-related queries.`
         .insert(allSnapshots);
 
       if (allSnapshotsError) {
-        console.error('        ❌ Error storing all rankings:', allSnapshotsError);
+        console.error('        ❌ Error storing legacy rankings:', allSnapshotsError);
       } else {
-        console.log('        ✅ Ranking snapshot stored successfully');
+        console.log('        ✅ Legacy ranking snapshots stored successfully');
       }
     }
     
