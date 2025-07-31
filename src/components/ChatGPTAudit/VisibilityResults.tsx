@@ -181,7 +181,15 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
     );
   }
 
-  const mentionedResults = queryResults.filter(r => r.app_mentioned);
+  // UNIFIED DETECTION: Use enhanced entity detection when available
+  const getEntityMentionStatus = (result: QueryResult) => {
+    if (result.entityAnalysis) {
+      return result.entityAnalysis.entityMentioned;
+    }
+    return result.app_mentioned;
+  };
+
+  const mentionedResults = queryResults.filter(r => getEntityMentionStatus(r));
   const overallVisibilityScore = visibilityScore?.overall_score || 
     (mentionedResults.length > 0 ? Math.round(mentionedResults.reduce((sum, r) => sum + r.visibility_score, 0) / mentionedResults.length) : 0);
 
@@ -278,7 +286,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       <Badge variant="outline" className="text-xs">
                         {result.query_category}
                       </Badge>
-                      {result.app_mentioned && (
+                      {getEntityMentionStatus(result) && (
                         <Badge variant={getScoreBadgeVariant(result.visibility_score)}>
                           Score: {result.visibility_score}
                         </Badge>
@@ -306,9 +314,9 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                 {/* Quick Summary */}
                 <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-3 h-3 rounded-full ${result.app_mentioned ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${getEntityMentionStatus(result) ? 'bg-green-500' : 'bg-red-500'}`}></div>
                     <span className="text-sm text-zinc-300">
-                      {result.app_mentioned ? `Mentioned (#${result.mention_position})` : 'Not Mentioned'}
+                      {getEntityMentionStatus(result) ? `Mentioned (#${result.mention_position})` : 'Not Mentioned'}
                     </span>
                     {result.mention_context !== 'not_mentioned' && (
                       <Badge variant="outline" className="text-xs">
@@ -412,7 +420,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
         </TabsContent>
 
         <TabsContent value="not-mentioned" className="space-y-4">
-          {queryResults.filter(r => !r.app_mentioned).map(result => (
+          {queryResults.filter(r => !getEntityMentionStatus(r)).map(result => (
             <Card key={result.id} className="bg-red-900/20 border-red-700/50">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -459,7 +467,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       acc[result.query_category] = { total: 0, mentioned: 0 };
                     }
                     acc[result.query_category].total++;
-                    if (result.app_mentioned) {
+                    if (getEntityMentionStatus(result)) {
                       acc[result.query_category].mentioned++;
                     }
                     return acc;
