@@ -656,40 +656,70 @@ function getIndustryKeywords(industry: string): string[] {
 function extractRelatedEntities(responseText: string, targetTopic: string): string[] {
   const entities: string[] = [];
   
-  // Enhanced patterns for actual company/brand names
-  const brandPatterns = [
-    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]*){0,2}\b/g, // Capitalized company names (max 3 words)
-    /\b[A-Z]{2,}\b/g, // Acronyms/abbreviations
-    /\b\w+\.(?:com|ai|io|co|net|org)\b/g, // Website/domain mentions
-  ];
+  // Focus on structured content extraction - prioritize lists and bold text
+  const lines = responseText.split('\n').filter(line => line.trim());
   
-  brandPatterns.forEach(pattern => {
-    const matches = responseText.match(pattern) || [];
-    entities.push(...matches);
-  });
+  // Extract from structured lists first (numbered or bulleted)
+  const listPattern = /^(\d+[\.)]\s*|\*\s*|\-\s*|•\s*)(.+)/;
+  const structuredEntities: string[] = [];
   
-  // Enhanced filtering with company name validation
-  const commonWords = [
-    'The', 'This', 'That', 'Here', 'There', 'When', 'Where', 'Why', 'How', 'What', 'Which', 'Who',
-    'App', 'Store', 'Optimization', 'Mobile', 'Marketing', 'Digital', 'Agency', 'Service', 'Platform',
-    'Software', 'Tool', 'Solution', 'System', 'Technology', 'Business', 'Company', 'Known', 'They',
-    'Their', 'Part', 'Other', 'Some', 'Many', 'All', 'Most', 'Best', 'Top', 'Leading'
-  ];
-  
-  const filtered = entities.filter(entity => {
-    // Basic filters
-    if (commonWords.includes(entity) ||
-        targetTopic.toLowerCase().includes(entity.toLowerCase()) ||
-        entity.length < 3) {
-      return false;
+  lines.forEach(line => {
+    const match = line.trim().match(listPattern);
+    if (match) {
+      const content = match[2];
+      const entityName = extractValidEntityName(content);
+      if (entityName) {
+        structuredEntities.push(entityName);
+      }
     }
-    
-    // Use enhanced company name validation
-    return isValidCompanyName(entity);
   });
   
-  // Remove duplicates and limit results
-  return [...new Set(filtered)].slice(0, 8);
+  // If we found structured entities, prioritize them
+  if (structuredEntities.length > 0) {
+    entities.push(...structuredEntities);
+  }
+  
+  // Extract from bold text patterns throughout the response
+  const boldPattern = /\*\*([^*]{3,})\*\*/g;
+  let boldMatch;
+  while ((boldMatch = boldPattern.exec(responseText)) !== null) {
+    const entityName = extractValidEntityName(boldMatch[1]);
+    if (entityName) {
+      entities.push(entityName);
+    }
+  }
+  
+  // Extract from domain/website mentions
+  const domainPattern = /\b(\w{3,})\.(?:com|ai|io|co|net|org)\b/g;
+  let domainMatch;
+  while ((domainMatch = domainPattern.exec(responseText)) !== null) {
+    const entityName = domainMatch[1];
+    if (isValidCompanyName(entityName)) {
+      entities.push(entityName);
+    }
+  }
+  
+  // Only extract from general text if we haven't found enough structured entities
+  if (entities.length < 3) {
+    const capitalizedPattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]*){0,2})\b/g;
+    let generalMatch;
+    while ((generalMatch = capitalizedPattern.exec(responseText)) !== null) {
+      const entityName = generalMatch[1];
+      if (isValidCompanyName(entityName) && 
+          !targetTopic.toLowerCase().includes(entityName.toLowerCase())) {
+        entities.push(entityName);
+      }
+    }
+  }
+  
+  // Remove duplicates and filter by validation
+  const uniqueEntities = [...new Set(entities)].filter(entity => {
+    return isValidCompanyName(entity) && 
+           !targetTopic.toLowerCase().includes(entity.toLowerCase()) &&
+           entity.length >= 3;
+  });
+  
+  return uniqueEntities.slice(0, 8);
 }
 
 // Extract entity name from list item content with enhanced validation
@@ -697,52 +727,100 @@ function extractEntityName(content: string): string | null {
   return extractValidEntityName(content);
 }
 
-// Extract all ranked entities from response with enhanced validation
+// Extract all ranked entities from response with enhanced validation and context awareness
 function extractRankedCompetitors(responseText: string): { name: string; position: number; content: string }[] {
   const lines = responseText.split('\n').filter(line => line.trim());
   const rankedEntities: { name: string; position: number; content: string }[] = [];
   
-  // Pattern 1: Numbered lists (1., 2., 3. or 1) 2) 3))
+  // Enhanced numbered list pattern - more flexible with spacing and formatting
   const numberedListPattern = /^(\d+)[\.)]\s*(.+)/;
   
-  lines.forEach(line => {
-    const match = line.trim().match(numberedListPattern);
+  // Track if we're in a ranking context
+  let inRankingSection = false;
+  const rankingIndicators = [
+    /top\s+\d+/i, /best\s+\d+/i, /leading\s+\d+/i, /ranking/i, 
+    /position/i, /competitors?/i, /companies/i, /tools?/i, /platforms?/i
+  ];
+  
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+    
+    // Check if we're entering a ranking section
+    if (rankingIndicators.some(pattern => pattern.test(trimmedLine))) {
+      inRankingSection = true;
+    }
+    
+    // Reset ranking section if we hit a new topic or paragraph
+    if (trimmedLine === '' || /^[A-Z][^.]*:/.test(trimmedLine)) {
+      inRankingSection = false;
+    }
+    
+    const match = trimmedLine.match(numberedListPattern);
     if (match) {
       const position = parseInt(match[1]);
       const content = match[2];
-      const entityName = extractEntityName(content);
       
-      // Only include valid company names
-      if (entityName) {
-        rankedEntities.push({ name: entityName, position, content });
+      // Only process if position makes sense (1-20 range)
+      if (position >= 1 && position <= 20) {
+        const entityName = extractEntityName(content);
+        
+        // Enhanced validation - must have valid entity name and be in reasonable context
+        if (entityName && (inRankingSection || position <= 10)) {
+          rankedEntities.push({ 
+            name: entityName, 
+            position, 
+            content: content.trim()
+          });
+        }
       }
     }
   });
   
-  // If numbered list found, return it
+  // If numbered list found, validate and return
   if (rankedEntities.length > 0) {
-    return rankedEntities.sort((a, b) => a.position - b.position);
+    // Remove any entities that don't look like companies
+    const validEntities = rankedEntities.filter(entity => {
+      return isValidCompanyName(entity.name) && 
+             entity.name.length >= 3 &&
+             !entity.name.match(/^(while|now|these|those|they|them|some|many|most|all)$/i);
+    });
+    
+    return validEntities.sort((a, b) => a.position - b.position);
   }
   
   // Pattern 2: Bullet points (only if no numbered list found)
   const bulletRankPattern = /^[\*\-•]\s*(.+)/;
   let bulletPosition = 0;
+  inRankingSection = false;
   
   lines.forEach(line => {
-    const match = line.trim().match(bulletRankPattern);
-    if (match) {
+    const trimmedLine = line.trim();
+    
+    // Check ranking context for bullets too
+    if (rankingIndicators.some(pattern => pattern.test(trimmedLine))) {
+      inRankingSection = true;
+    }
+    
+    const match = trimmedLine.match(bulletRankPattern);
+    if (match && inRankingSection) {
       bulletPosition++;
       const content = match[1];
       const entityName = extractEntityName(content);
       
-      // Only include valid company names
-      if (entityName) {
-        rankedEntities.push({ name: entityName, position: bulletPosition, content });
+      // Only include valid company names with enhanced filtering
+      if (entityName && isValidCompanyName(entityName) && bulletPosition <= 15) {
+        rankedEntities.push({ 
+          name: entityName, 
+          position: bulletPosition, 
+          content: content.trim()
+        });
       }
     }
   });
   
-  return rankedEntities;
+  return rankedEntities.filter(entity => 
+    !entity.name.match(/^(while|now|these|those|they|them|some|many|most|all)$/i)
+  );
 }
 
 // Enhanced entity matching with aliases and variations
