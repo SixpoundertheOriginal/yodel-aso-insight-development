@@ -129,11 +129,15 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
         // Sort by position and ensure we show top 10
         allEntities.sort((a, b) => a.position - b.position);
         
+        // Find the actual position of the target entity in the structured data
+        const targetEntity = allEntities.find(entity => entity.isTarget);
+        const actualEntityPosition = targetEntity?.position || result.mention_position;
+        
         rankings.push({
           queryId: result.id,
           queryText: result.query_text,
           category: result.query_category,
-          entityPosition: result.mention_position,
+          entityPosition: actualEntityPosition,
           totalEntities: result.entity_analysis?.structured_entities?.length || result.total_entities_in_response || allEntities.length,
           visibilityScore: result.visibility_score,
           allEntities: allEntities.slice(0, 10) // Top 10 only
