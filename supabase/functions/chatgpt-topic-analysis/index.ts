@@ -403,9 +403,8 @@ Format as JSON array:
               position: targetEntity.position,
               total_positions: structuredEntities.length,
               ranking_type: 'chatgpt_extracted',
-              ranking_context: mentionContext,
-              description: targetEntity.description,
-              competitors: structuredEntities.filter(e => e.position !== targetEntity.position).map(e => e.name)
+             ranking_context: mentionContext,
+               competitors: structuredEntities.filter(e => e.position !== targetEntity.position).map(e => e.name)
             });
 
           if (targetError) {
@@ -424,7 +423,6 @@ Format as JSON array:
         total_positions: structuredEntities.length,
         ranking_type: 'chatgpt_extracted',
         ranking_context: `mentioned ${getOrdinalSuffix(entity.position)} out of ${structuredEntities.length} entities`,
-        description: entity.description || null,
         competitors: structuredEntities.filter(e => e.position !== entity.position).map(e => e.name)
       }));
 
