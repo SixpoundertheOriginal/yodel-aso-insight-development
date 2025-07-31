@@ -178,7 +178,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
 
   // Get unique categories for filter
   const categories = useMemo(() => {
-    const cats = new Set(queryResults.map(r => r.query_category));
+    const cats = new Set(queryResults.map(r => r.query_category).filter(Boolean));
     return Array.from(cats);
   }, [queryResults]);
 
@@ -389,7 +389,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map(category => (
                   <SelectItem key={category} value={category}>
-                    {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {category?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown'}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -450,7 +450,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
-                      {ranking.category.replace('_', ' ')}
+                      {ranking.category?.replace('_', ' ') || 'Unknown'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-zinc-300">
