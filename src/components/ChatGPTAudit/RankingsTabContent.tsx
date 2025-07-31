@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Trophy, 
   Medal, 
@@ -19,7 +20,11 @@ import {
   Crown,
   ArrowUp,
   ArrowDown,
-  Minus
+  Minus,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Hash
 } from 'lucide-react';
 
 interface QueryResult {
@@ -52,15 +57,18 @@ interface RankingsTabContentProps {
   rankingSnapshots: RankingSnapshot[];
 }
 
-interface ProcessedRanking {
+interface QueryRanking {
   queryId: string;
   queryText: string;
   category: string;
   entityPosition?: number;
   totalEntities?: number;
-  competitors: string[];
   visibilityScore: number;
-  mentionContext: string;
+  allEntities: Array<{
+    name: string;
+    position: number;
+    isTarget: boolean;
+  }>;
 }
 
 export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
@@ -72,35 +80,63 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortBy, setSortBy] = useState('position');
+  const [expandedQueries, setExpandedQueries] = useState<Set<string>>(new Set());
 
-  // Process and combine ranking data from multiple sources
-  const processedRankings = useMemo(() => {
-    const rankings: ProcessedRanking[] = [];
+  // Process query-centric rankings
+  const queryRankings = useMemo(() => {
+    const rankings: QueryRanking[] = [];
     
     queryResults.forEach(result => {
       // Check if this query has ranking data
       const hasRanking = result.mention_position && result.mention_context === 'ranked_list';
       
       if (hasRanking) {
+        // Get all ranking snapshots for this query
+        const querySnapshots = rankingSnapshots.filter(snapshot => 
+          snapshot.query_id === result.id
+        );
+        
+        // Build the all entities list from snapshots
+        const allEntities = querySnapshots
+          .filter(snapshot => snapshot.position && snapshot.entity_name)
+          .map(snapshot => ({
+            name: snapshot.entity_name,
+            position: snapshot.position!,
+            isTarget: snapshot.entity_name.toLowerCase() === entityName.toLowerCase()
+          }))
+          .sort((a, b) => a.position - b.position);
+        
+        // Add any competitors from query results not already in snapshots
+        if (result.competitors_mentioned) {
+          result.competitors_mentioned.forEach((competitor, index) => {
+            if (!allEntities.some(entity => entity.name.toLowerCase() === competitor.toLowerCase())) {
+              allEntities.push({
+                name: competitor,
+                position: allEntities.length + index + 1,
+                isTarget: competitor.toLowerCase() === entityName.toLowerCase()
+              });
+            }
+          });
+        }
+        
         rankings.push({
           queryId: result.id,
           queryText: result.query_text,
           category: result.query_category,
           entityPosition: result.mention_position,
-          totalEntities: result.entity_analysis?.total_entities || result.total_entities_in_response,
-          competitors: result.competitors_mentioned || [],
+          totalEntities: result.entity_analysis?.total_entities || result.total_entities_in_response || allEntities.length,
           visibilityScore: result.visibility_score,
-          mentionContext: result.mention_context
+          allEntities: allEntities.slice(0, 10) // Top 10 only
         });
       }
     });
     
     return rankings;
-  }, [queryResults]);
+  }, [queryResults, rankingSnapshots, entityName]);
 
   // Calculate competitive intelligence metrics
   const competitiveMetrics = useMemo(() => {
-    if (processedRankings.length === 0) {
+    if (queryRankings.length === 0) {
       return {
         totalRankings: 0,
         bestPosition: null,
@@ -116,42 +152,44 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       };
     }
 
-    const positions = processedRankings.map(r => r.entityPosition).filter(p => p) as number[];
+    const positions = queryRankings.map(r => r.entityPosition).filter(p => p) as number[];
     const bestPosition = Math.min(...positions);
     const averagePosition = positions.reduce((sum, pos) => sum + pos, 0) / positions.length;
     
     // Market share calculations
     const marketShare = {
-      top1: processedRankings.filter(r => r.entityPosition === 1).length,
-      top3: processedRankings.filter(r => r.entityPosition && r.entityPosition <= 3).length,
-      top5: processedRankings.filter(r => r.entityPosition && r.entityPosition <= 5).length,
-      top10: processedRankings.filter(r => r.entityPosition && r.entityPosition <= 10).length,
+      top1: queryRankings.filter(r => r.entityPosition === 1).length,
+      top3: queryRankings.filter(r => r.entityPosition && r.entityPosition <= 3).length,
+      top5: queryRankings.filter(r => r.entityPosition && r.entityPosition <= 5).length,
+      top10: queryRankings.filter(r => r.entityPosition && r.entityPosition <= 10).length,
     };
 
     // Competitor frequency analysis
     const competitorFrequency = new Map<string, number>();
-    processedRankings.forEach(ranking => {
-      ranking.competitors.forEach(competitor => {
-        const count = competitorFrequency.get(competitor) || 0;
-        competitorFrequency.set(competitor, count + 1);
+    queryRankings.forEach(ranking => {
+      ranking.allEntities.forEach(entity => {
+        if (!entity.isTarget) {
+          const count = competitorFrequency.get(entity.name) || 0;
+          competitorFrequency.set(entity.name, count + 1);
+        }
       });
     });
 
     return {
-      totalRankings: processedRankings.length,
+      totalRankings: queryRankings.length,
       bestPosition,
       averagePosition,
       marketShare,
       competitorFrequency,
       totalCompetitors: competitorFrequency.size
     };
-  }, [processedRankings]);
+  }, [queryRankings]);
 
   // Filter and sort rankings
   const filteredRankings = useMemo(() => {
-    let filtered = processedRankings.filter(ranking => {
+    let filtered = queryRankings.filter(ranking => {
       const matchesSearch = ranking.queryText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ranking.competitors.some(comp => comp.toLowerCase().includes(searchTerm.toLowerCase()));
+                           ranking.allEntities.some(entity => entity.name.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = categoryFilter === 'all' || ranking.category === categoryFilter;
       
       return matchesSearch && matchesCategory;
@@ -165,7 +203,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
         case 'visibility':
           return b.visibilityScore - a.visibilityScore;
         case 'competitors':
-          return b.competitors.length - a.competitors.length;
+          return b.allEntities.length - a.allEntities.length;
         case 'query':
           return a.queryText.localeCompare(b.queryText);
         default:
@@ -174,7 +212,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
     });
 
     return filtered;
-  }, [processedRankings, searchTerm, categoryFilter, sortBy]);
+  }, [queryRankings, searchTerm, categoryFilter, sortBy]);
 
   // Get unique categories for filter
   const categories = useMemo(() => {
@@ -203,7 +241,17 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
     return <Trophy className="h-4 w-4 text-blue-500" />;
   };
 
-  if (processedRankings.length === 0) {
+  const toggleQueryExpansion = (queryId: string) => {
+    const newExpanded = new Set(expandedQueries);
+    if (newExpanded.has(queryId)) {
+      newExpanded.delete(queryId);
+    } else {
+      newExpanded.add(queryId);
+    }
+    setExpandedQueries(newExpanded);
+  };
+
+  if (queryRankings.length === 0) {
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardContent className="text-center py-12">
@@ -410,76 +458,142 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
         </CardContent>
       </Card>
 
-      {/* Rankings Table */}
+      {/* Query Rankings Table */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-white flex items-center space-x-2">
             <Trophy className="h-5 w-5" />
-            <span>Detailed Rankings</span>
+            <span>Query Rankings</span>
             <Badge variant="secondary">{filteredRankings.length} queries</Badge>
           </CardTitle>
-          <CardDescription>Query-by-query competitive landscape analysis</CardDescription>
+          <CardDescription>Click on any query to see the full top 10 entities</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-zinc-800">
-                <TableHead className="text-zinc-300">Position</TableHead>
-                <TableHead className="text-zinc-300">Query</TableHead>
-                <TableHead className="text-zinc-300">Category</TableHead>
-                <TableHead className="text-zinc-300">Total Entities</TableHead>
-                <TableHead className="text-zinc-300">Visibility Score</TableHead>
-                <TableHead className="text-zinc-300">Top Competitors</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRankings.map((ranking) => (
-                <TableRow key={ranking.queryId} className="border-zinc-800">
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getPositionIcon(ranking.entityPosition)}
-                      <Badge variant={getPositionBadgeVariant(ranking.entityPosition)}>
-                        #{ranking.entityPosition || 'N/A'}
-                      </Badge>
+          <div className="space-y-2">
+            {filteredRankings.map((ranking) => (
+              <Collapsible 
+                key={ranking.queryId} 
+                open={expandedQueries.has(ranking.queryId)}
+                onOpenChange={() => toggleQueryExpansion(ranking.queryId)}
+              >
+                <CollapsibleTrigger asChild>
+                  <div className="w-full p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800/70 transition-colors cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="flex items-center space-x-2">
+                          {expandedQueries.has(ranking.queryId) ? 
+                            <ChevronDown className="h-4 w-4 text-zinc-400" /> : 
+                            <ChevronRight className="h-4 w-4 text-zinc-400" />
+                          }
+                          {getPositionIcon(ranking.entityPosition)}
+                          <Badge variant={getPositionBadgeVariant(ranking.entityPosition)} className="min-w-12">
+                            #{ranking.entityPosition || 'N/A'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-medium truncate" title={ranking.queryText}>
+                            {ranking.queryText}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {ranking.category?.replace('_', ' ') || 'Unknown'}
+                            </Badge>
+                            <span className="text-xs text-zinc-400">
+                              {ranking.totalEntities} entities
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Eye className="h-4 w-4 text-zinc-400" />
+                          <div className="w-16 bg-zinc-700 rounded-full h-2">
+                            <div 
+                              className="bg-blue-500 h-2 rounded-full" 
+                              style={{ width: `${Math.min(ranking.visibilityScore * 100, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-zinc-400 min-w-10">
+                            {(ranking.visibilityScore * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        
+                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
+                          View Top 10
+                        </Button>
+                      </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="max-w-md">
-                    <p className="text-sm text-white font-medium truncate" title={ranking.queryText}>
-                      {ranking.queryText}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {ranking.category?.replace('_', ' ') || 'Unknown'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-zinc-300">
-                    {ranking.totalEntities || 'Unknown'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-white">{ranking.visibilityScore}</span>
-                      <Progress value={ranking.visibilityScore} className="w-16 h-2" />
+                  </div>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="mt-2 p-4 bg-zinc-900/70 border border-zinc-700 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Hash className="h-4 w-4 text-zinc-400" />
+                      <span className="text-sm font-medium text-white">Top 10 Entities</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-xs">
-                      {ranking.competitors.slice(0, 3).map((competitor, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {competitor}
-                        </Badge>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {ranking.allEntities.map((entity, index) => (
+                        <div 
+                          key={`${entity.name}-${entity.position}`}
+                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                            entity.isTarget 
+                              ? 'bg-blue-900/30 border-blue-700/50' 
+                              : 'bg-zinc-800/50 border-zinc-600/50'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
+                              entity.position === 1 ? 'bg-yellow-500 text-black' :
+                              entity.position <= 3 ? 'bg-orange-500 text-white' :
+                              entity.position <= 5 ? 'bg-blue-500 text-white' :
+                              'bg-zinc-600 text-zinc-200'
+                            }`}>
+                              {entity.position}
+                            </div>
+                            <span className={`text-sm font-medium ${
+                              entity.isTarget ? 'text-blue-300' : 'text-white'
+                            }`}>
+                              {entity.name}
+                              {entity.isTarget && (
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                  You
+                                </Badge>
+                              )}
+                            </span>
+                          </div>
+                          
+                          {entity.position <= 3 && (
+                            <div className="flex items-center">
+                              {entity.position === 1 && <Crown className="h-4 w-4 text-yellow-500" />}
+                              {entity.position === 2 && <Medal className="h-4 w-4 text-orange-500" />}
+                              {entity.position === 3 && <Award className="h-4 w-4 text-orange-600" />}
+                            </div>
+                          )}
+                        </div>
                       ))}
-                      {ranking.competitors.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{ranking.competitors.length - 3}
-                        </Badge>
-                      )}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    
+                    {ranking.allEntities.length === 0 && (
+                      <p className="text-center text-zinc-400 py-4">
+                        No detailed entity data available for this query
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
+            
+            {filteredRankings.length === 0 && (
+              <div className="text-center py-8">
+                <Search className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
+                <p className="text-zinc-400">No queries match your current filters</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
