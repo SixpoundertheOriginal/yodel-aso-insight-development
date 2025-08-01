@@ -213,30 +213,37 @@ serve(async (req) => {
       messages: [
         { 
           role: 'system', 
-          content: `You are a data extraction specialist. Extract company entities from the provided text and format them as JSON.
+          content: `You are an expert entity extraction specialist. Your job is to identify companies, brands, and organizations mentioned in conversational text and format them as JSON.
 
-EXTRACTION RULES:
-- Only extract real company names, not generic terms
-- Include companies mentioned in any context (recommendations, comparisons, examples)
-- Provide exactly up to 10 entities maximum
-- Format as JSON array with position, name, and brief description
-- Position should reflect the order of mention (1-10)
-- Exclude generic terms like "app", "platform", "tool", "service"
+ENHANCED EXTRACTION RULES:
+- Extract ALL company names mentioned in ANY format (conversational, lists, sentences, etc.)
+- Look for entities in natural conversations, not just structured lists
+- Include companies mentioned as recommendations, comparisons, examples, or references
+- Handle various mention formats: "I'd recommend Company X", "Company Y is great", "tools like Company Z"
+- Extract up to 10 most relevant entities
+- Assign positions based on importance/prominence of mention, not just order
+- Include brief context about how each entity was mentioned
 
-Return ONLY valid JSON, no other text.`
+ENTITY VALIDATION:
+- Only real company/brand names, not generic terms
+- Exclude: "app", "platform", "tool", "service", "software", "solution"
+- Include: Actual brand names like "Google", "Microsoft", "Slack", etc.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON array, no other text. Format:
+[{"position": 1, "name": "Company Name", "description": "Brief description of mention context"}]`
         },
         { 
           role: 'user', 
-          content: `From this previous response, extract the top 10 companies mentioned and format as JSON:
+          content: `Extract companies/brands from this conversational response. Look for ANY mention format - direct recommendations, comparisons, examples, or casual references:
 
 "${responseText}"
 
-Format as JSON array:
-[{"position": 1, "name": "Company Name", "description": "Brief description"}]` 
+Return JSON array of entities found:` 
         }
       ],
       temperature: 0.1,
-      max_tokens: 800,
+      max_tokens: 1000,
     };
 
     console.log('Entity extraction request details:', {
@@ -277,16 +284,40 @@ Format as JSON array:
         const extractedText = extractionData.choices[0].message.content;
         console.log('Raw extracted entities text:', extractedText);
         
-        // Clean the response to extract JSON
-        const jsonMatch = extractedText.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          structuredEntities = JSON.parse(jsonMatch[0]);
+        // Enhanced JSON extraction with multiple patterns
+        let jsonArray = null;
+        
+        // Try direct JSON parsing first
+        try {
+          jsonArray = JSON.parse(extractedText);
+        } catch {
+          // Try extracting JSON from markdown code blocks
+          const codeBlockMatch = extractedText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/i);
+          if (codeBlockMatch) {
+            jsonArray = JSON.parse(codeBlockMatch[1]);
+          } else {
+            // Try extracting JSON array pattern
+            const jsonMatch = extractedText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+              jsonArray = JSON.parse(jsonMatch[0]);
+            }
+          }
+        }
+        
+        if (jsonArray && Array.isArray(jsonArray)) {
+          structuredEntities = jsonArray;
           console.log('Successfully parsed structured entities:', structuredEntities);
         } else {
-          console.warn('No JSON array found in extraction response');
+          console.warn('No valid JSON array found, attempting fallback extraction');
+          // Fallback: Extract entities using natural language patterns
+          structuredEntities = extractEntitiesFromNaturalText(responseText);
+          console.log('Fallback extraction result:', structuredEntities);
         }
       } catch (parseError) {
         console.error('Failed to parse extracted entities:', parseError);
+        // Fallback extraction
+        structuredEntities = extractEntitiesFromNaturalText(responseText);
+        console.log('Emergency fallback extraction result:', structuredEntities);
       }
     } else {
       console.error('Entity extraction API call failed:', await extractionResponse.text());
@@ -670,53 +701,91 @@ function analyzeTopicVisibility(responseText: string, targetTopic: string, entit
   };
 }
 
-// Enhanced entity analysis with industry context validation
+// Enhanced entity analysis with flexible matching patterns
 function analyzeEntityMentions(
   responseText: string, 
   entityName: string, 
   entityAliases: string[],
   topicData?: any
 ): EntityAnalysis {
-  console.log(`    🔍 Analyzing entity mentions for: ${entityName}`);
+  console.log(`            🔍 Analyzing entity mentions for: ${entityName}`);
   
   const lowerResponse = responseText.toLowerCase();
   const lowerEntityName = entityName.toLowerCase();
   const allEntityNames = [lowerEntityName, ...entityAliases.map(alias => alias.toLowerCase())];
   
-  console.log(`    📋 Checking entity variations:`, allEntityNames);
+  console.log(`            📋 Checking entity variations:`, allEntityNames);
   
   let mentionCount = 0;
   const mentionContexts: string[] = [];
   let entityPosition: number | undefined;
   
-  // Count mentions of entity and aliases with word boundary matching
+  // Enhanced mention detection with multiple patterns
   allEntityNames.forEach(entityVariant => {
-    const regex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    const matches = responseText.match(regex);
-    if (matches) {
-      mentionCount += matches.length;
+    // Pattern 1: Word boundary matching (strict)
+    const wordBoundaryRegex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    const strictMatches = responseText.match(wordBoundaryRegex);
+    if (strictMatches) {
+      mentionCount += strictMatches.length;
+    }
+    
+    // Pattern 2: Partial matching for compound names (flexible)
+    if (entityVariant.includes(' ')) {
+      const parts = entityVariant.split(' ');
+      const allPartsPresent = parts.every(part => 
+        part.length > 2 && lowerResponse.includes(part.toLowerCase())
+      );
+      if (allPartsPresent && !strictMatches) {
+        mentionCount += 1; // Count as one flexible match
+      }
+    }
+    
+    // Pattern 3: Substring matching for single-word entities
+    if (!entityVariant.includes(' ') && entityVariant.length > 3) {
+      const substringMatches = lowerResponse.split(/\W+/).filter(word => 
+        word.includes(entityVariant.toLowerCase()) && 
+        Math.abs(word.length - entityVariant.length) <= 2
+      );
+      if (substringMatches.length > 0 && !strictMatches) {
+        mentionCount += substringMatches.length * 0.5; // Half weight for fuzzy matches
+      }
     }
   });
   
-  // Extract mention contexts (sentences containing the entity)
+  // Round mention count and ensure it's at least 1 if any matches found
+  mentionCount = Math.round(mentionCount);
+  
+  // Extract mention contexts with enhanced detection
   const sentences = responseText.split(/[.!?]+/).filter(s => s.trim());
   sentences.forEach((sentence, index) => {
     const lowerSentence = sentence.toLowerCase();
     const isEntityMentioned = allEntityNames.some(entityVariant => {
-      const entityRegex = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-      return entityRegex.test(lowerSentence);
+      // Try multiple matching strategies
+      const exactMatch = new RegExp(`\\b${entityVariant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(sentence);
+      const fuzzyMatch = entityVariant.split(' ').every(part => 
+        part.length > 2 && lowerSentence.includes(part.toLowerCase())
+      );
+      return exactMatch || fuzzyMatch;
     });
     
     if (isEntityMentioned) {
       mentionContexts.push(sentence.trim());
       
-      // Try to determine position if this appears to be a ranked list
+      // Enhanced position detection
       if (entityPosition === undefined) {
+        // Look for explicit numbering
         const positionMatch = sentence.match(/^(\d+)[\.)]/);
         if (positionMatch) {
           entityPosition = parseInt(positionMatch[1]);
-        } else if (index === 0) {
-          entityPosition = 1; // First mention
+        } else {
+          // Look for ordinal indicators in the sentence
+          const ordinalMatch = sentence.match(/\b(first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)\b/i);
+          if (ordinalMatch) {
+            const ordinals = ['first', '1st', 'second', '2nd', 'third', '3rd', 'fourth', '4th', 'fifth', '5th'];
+            entityPosition = Math.floor(ordinals.indexOf(ordinalMatch[1].toLowerCase()) / 2) + 1;
+          } else if (index < 3) {
+            entityPosition = index + 1; // Position based on mention order
+          }
         }
       }
     }
@@ -726,16 +795,16 @@ function analyzeEntityMentions(
   let industryRelevance = 1.0; // Default to relevant
   if (topicData?.industry && mentionCount > 0) {
     industryRelevance = calculateIndustryRelevance(responseText, topicData.industry);
-    console.log(`    🏢 Industry relevance for ${topicData.industry}:`, industryRelevance);
+    console.log(`            🏢 Industry relevance for ${topicData.industry}:`, industryRelevance);
   }
   
-  // Determine sentiment specifically for entity mentions
+  // Enhanced sentiment analysis for entity mentions
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
   const entityMentionText = mentionContexts.join(' ').toLowerCase();
   
   if (entityMentionText) {
-    const positiveIndicators = ['recommend', 'best', 'great', 'excellent', 'top', 'good', 'effective', 'reliable'];
-    const negativeIndicators = ['avoid', 'bad', 'poor', 'terrible', 'issues', 'problems', 'limited', 'difficult'];
+    const positiveIndicators = ['recommend', 'best', 'great', 'excellent', 'top', 'good', 'effective', 'reliable', 'leading', 'premier', 'outstanding'];
+    const negativeIndicators = ['avoid', 'bad', 'poor', 'terrible', 'issues', 'problems', 'limited', 'difficult', 'worst', 'disappointing'];
     
     const positiveCount = positiveIndicators.filter(word => entityMentionText.includes(word)).length;
     const negativeCount = negativeIndicators.filter(word => entityMentionText.includes(word)).length;
@@ -747,7 +816,7 @@ function analyzeEntityMentions(
     }
   }
   
-  console.log(`    📊 Entity analysis result:`, {
+  console.log(`            📊 Entity analysis result:`, {
     entityMentioned: mentionCount > 0,
     mentionCount,
     mentionContexts: mentionContexts.slice(0, 3), // Limit for logging
@@ -963,6 +1032,78 @@ function extractRankedCompetitors(responseText: string): { name: string; positio
   return rankedEntities.filter(entity => 
     !entity.name.match(/^(while|now|these|those|they|them|some|many|most|all)$/i)
   );
+}
+
+// Fallback entity extraction from natural text when JSON parsing fails
+function extractEntitiesFromNaturalText(responseText: string): Array<{position: number, name: string, description: string}> {
+  console.log('        🔧 Running fallback entity extraction...');
+  
+  const entities: Array<{position: number, name: string, description: string}> = [];
+  const lines = responseText.split('\n').filter(line => line.trim());
+  
+  // Pattern 1: Look for numbered lists
+  const numberedPattern = /^(\d+)[\.)]\s*(.+)/;
+  lines.forEach(line => {
+    const match = line.trim().match(numberedPattern);
+    if (match) {
+      const position = parseInt(match[1]);
+      const content = match[2];
+      
+      // Extract company name from the content
+      const nameMatch = content.match(/^([A-Z][a-zA-Z\s&]+?)(?:\s*[-–—]\s*|\s*:\s*|$)/);
+      if (nameMatch && position <= 10) {
+        const name = nameMatch[1].trim();
+        if (isValidCompanyName(name)) {
+          entities.push({
+            position,
+            name,
+            description: content.substring(name.length).trim() || 'Mentioned in response'
+          });
+        }
+      }
+    }
+  });
+  
+  // Pattern 2: Look for bold text entities if no numbered list found
+  if (entities.length === 0) {
+    const boldPattern = /\*\*([^*]{3,}?)\*\*/g;
+    let match;
+    let position = 1;
+    
+    while ((match = boldPattern.exec(responseText)) !== null && position <= 10) {
+      const name = match[1].trim();
+      if (isValidCompanyName(name)) {
+        entities.push({
+          position: position++,
+          name,
+          description: 'Highlighted in response'
+        });
+      }
+    }
+  }
+  
+  // Pattern 3: Look for capitalized company names if still no entities
+  if (entities.length === 0) {
+    const capitalizedPattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]*){0,2})\b/g;
+    let match;
+    let position = 1;
+    const foundNames = new Set();
+    
+    while ((match = capitalizedPattern.exec(responseText)) !== null && position <= 10) {
+      const name = match[1].trim();
+      if (isValidCompanyName(name) && !foundNames.has(name.toLowerCase())) {
+        foundNames.add(name.toLowerCase());
+        entities.push({
+          position: position++,
+          name,
+          description: 'Mentioned in response'
+        });
+      }
+    }
+  }
+  
+  console.log(`        🔧 Fallback extraction found ${entities.length} entities`);
+  return entities.slice(0, 10);
 }
 
 // Enhanced entity matching with aliases and variations
