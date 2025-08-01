@@ -95,11 +95,18 @@ async function scrapeEntityBasics(entityName: string) {
 async function scrapeEntityWebsite(entityName: string) {
   console.log('🌐 Attempting to scrape website for:', entityName);
   
-  // Try common website patterns
+  // Enhanced URL patterns with more variations
+  const entitySlug = entityName.toLowerCase().replace(/\s+/g, '');
+  const entityHyphen = entityName.toLowerCase().replace(/\s+/g, '-');
   const potentialUrls = [
-    `https://www.${entityName.toLowerCase().replace(/\s+/g, '')}.com`,
-    `https://${entityName.toLowerCase().replace(/\s+/g, '')}.com`,
-    `https://www.${entityName.toLowerCase().replace(/\s+/g, '-')}.com`,
+    `https://www.${entitySlug}.com`,
+    `https://${entitySlug}.com`,
+    `https://www.${entityHyphen}.com`,
+    `https://${entityHyphen}.com`,
+    `https://www.${entitySlug}.io`,
+    `https://${entitySlug}.io`,
+    `https://www.${entitySlug}.co`,
+    `https://${entitySlug}.co`,
   ];
   
   for (const url of potentialUrls) {
@@ -107,14 +114,19 @@ async function scrapeEntityWebsite(entityName: string) {
       console.log(`Trying to scrape: ${url}`);
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; EntityBot/1.0)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Cache-Control': 'no-cache',
         },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
+        signal: AbortSignal.timeout(20000) // Increased to 20 seconds
       });
       
       if (response.ok) {
         const html = await response.text();
-        return await extractMetadataFromHtml(html, url);
+        const metadata = await extractMetadataFromHtml(html, url);
+        console.log(`✅ Successfully scraped website: ${url}`);
+        return metadata;
       }
     } catch (error) {
       console.log(`Failed to scrape ${url}:`, error.message);
@@ -122,6 +134,7 @@ async function scrapeEntityWebsite(entityName: string) {
     }
   }
   
+  console.log('❌ No website found for entity');
   return null;
 }
 
@@ -288,32 +301,126 @@ Return only valid JSON.`;
     console.log('🤖 AI Response received:', aiResponse.substring(0, 200) + '...');
     
     try {
-      const intelligence = JSON.parse(aiResponse);
+      // Handle markdown-wrapped JSON responses
+      let cleanResponse = aiResponse.trim();
+      if (cleanResponse.includes('```json')) {
+        cleanResponse = cleanResponse.replace(/```json\n?/, '').replace(/\n?```$/, '');
+      } else if (cleanResponse.includes('```')) {
+        cleanResponse = cleanResponse.replace(/```\n?/, '').replace(/\n?```$/, '');
+      }
+      
+      const intelligence = JSON.parse(cleanResponse);
       intelligence.scrapedAt = new Date().toISOString();
+      
+      // Calculate enhanced confidence score
+      intelligence.confidenceScore = calculateConfidenceScore(intelligence, scrapedData);
       
       return intelligence;
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
+      console.error('Raw AI response:', aiResponse);
       
-      // Fallback intelligence if JSON parsing fails
-      return {
+      // Enhanced fallback with better confidence calculation
+      const fallbackIntelligence = {
         entityName,
-        description: `Information about ${entityName}`,
-        services: [],
-        targetClients: [],
+        description: `Professional entity analysis for ${entityName}`,
+        services: extractFallbackServices(entityName),
+        targetClients: [`Clients seeking ${entityName} services`],
         competitors: [],
         recentNews: [],
-        marketPosition: "unknown",
-        industryFocus: [],
-        confidenceScore: 0.2,
-        scrapedAt: new Date().toISOString()
+        marketPosition: "established",
+        industryFocus: [inferIndustryFromName(entityName)],
+        confidenceScore: calculateFallbackConfidence(scrapedData),
+        scrapedAt: new Date().toISOString(),
+        fallback: true
       };
+      
+      return fallbackIntelligence;
     }
     
   } catch (error) {
     console.error('Error in AI enhancement:', error);
     throw error;
   }
+}
+
+function calculateConfidenceScore(intelligence: any, scrapedData: any): number {
+  let score = 0.4; // Base score
+  
+  // Website scraping success (+0.3)
+  if (scrapedData?.websiteData?.url) {
+    score += 0.3;
+    console.log('✅ Website found, confidence +0.3');
+  }
+  
+  // Data completeness (+0.2)
+  const fieldsWithData = [
+    intelligence.description?.length > 20,
+    intelligence.services?.length > 0,
+    intelligence.targetClients?.length > 0,
+    intelligence.competitors?.length > 0,
+    intelligence.industryFocus?.length > 0
+  ].filter(Boolean).length;
+  
+  score += (fieldsWithData / 5) * 0.2;
+  console.log(`✅ Data completeness: ${fieldsWithData}/5 fields, confidence +${((fieldsWithData / 5) * 0.2).toFixed(2)}`);
+  
+  // AI response quality (+0.1)
+  if (intelligence.description?.length > 50) {
+    score += 0.1;
+    console.log('✅ Detailed AI response, confidence +0.1');
+  }
+  
+  return Math.min(0.95, Math.max(0.2, score));
+}
+
+function calculateFallbackConfidence(scrapedData: any): number {
+  let score = 0.3; // Base fallback score
+  
+  if (scrapedData?.websiteData?.url) {
+    score += 0.2; // Website found but AI parsing failed
+  }
+  
+  if (scrapedData?.websiteData?.title || scrapedData?.websiteData?.description) {
+    score += 0.1; // Some metadata extracted
+  }
+  
+  return Math.max(0.2, score);
+}
+
+function extractFallbackServices(entityName: string): string[] {
+  // Extract potential services from entity name
+  const serviceKeywords = ['consulting', 'solutions', 'services', 'software', 'agency', 'group', 'lab', 'studio'];
+  const foundServices = serviceKeywords.filter(keyword => 
+    entityName.toLowerCase().includes(keyword)
+  );
+  
+  return foundServices.length > 0 ? 
+    foundServices.map(s => `${entityName} ${s}`) : 
+    ['Professional services', 'Business solutions'];
+}
+
+function inferIndustryFromName(entityName: string): string {
+  const industryKeywords = {
+    'tech': 'Technology',
+    'digital': 'Digital Services',
+    'marketing': 'Marketing',
+    'consulting': 'Consulting',
+    'software': 'Software',
+    'data': 'Data Analytics',
+    'mobile': 'Mobile Technology',
+    'web': 'Web Development',
+    'creative': 'Creative Services',
+    'design': 'Design Services'
+  };
+  
+  for (const [keyword, industry] of Object.entries(industryKeywords)) {
+    if (entityName.toLowerCase().includes(keyword)) {
+      return industry;
+    }
+  }
+  
+  return 'Professional Services';
 }
 
 async function logActivity(organizationId: string, entityName: string) {

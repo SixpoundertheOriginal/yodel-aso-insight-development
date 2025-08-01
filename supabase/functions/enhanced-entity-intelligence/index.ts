@@ -231,10 +231,8 @@ function validateAndEnhanceEntityResponse(response: any): EnhancedEntityIntellig
     throw new Error('Invalid AI response structure');
   }
 
-  // Ensure confidence score
-  if (!response.confidence_score) {
-    response.confidence_score = 0.8;
-  }
+  // Calculate confidence score based on data completeness
+  response.confidence_score = calculateEnhancedConfidenceScore(response);
 
   // Ensure all personas have typical_queries
   if (Array.isArray(response.target_personas)) {
@@ -290,6 +288,37 @@ async function cacheAnalysis(cacheKey: string, analysis: EnhancedEntityIntellige
       expires_at: expiresAt.toISOString(),
       created_at: new Date().toISOString()
     });
+}
+
+function calculateEnhancedConfidenceScore(response: any): number {
+  let score = 0.5; // Base score for enhanced analysis
+  
+  // Data completeness factors
+  const completenessFactors = [
+    response.description?.length > 50,
+    response.services?.length > 0,
+    response.targetClients?.length > 0,
+    response.competitors?.length > 0,
+    response.target_personas?.length > 0,
+    response.authentic_use_cases?.length > 0,
+    response.pain_points_solved?.length > 0,
+    response.industryFocus?.length > 0
+  ];
+  
+  const completenessScore = completenessFactors.filter(Boolean).length / completenessFactors.length;
+  score += completenessScore * 0.3;
+  
+  // Quality indicators
+  if (response.description?.length > 100) score += 0.1;
+  if (response.specific_category && response.specific_category !== 'Unknown') score += 0.05;
+  if (response.website && response.website.startsWith('http')) score += 0.05;
+  
+  // Persona quality
+  if (response.target_personas?.some((p: any) => p.typical_queries?.length > 0)) {
+    score += 0.1;
+  }
+  
+  return Math.min(0.95, Math.max(0.4, score));
 }
 
 function isStale(cached: any): boolean {
