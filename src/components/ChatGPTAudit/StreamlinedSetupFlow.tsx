@@ -21,6 +21,7 @@ import {
   MessageSquare, 
   Settings, 
   ChevronRight, 
+  ChevronLeft,
   Edit3,
   CheckCircle,
   Plus,
@@ -92,20 +93,60 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     const index = steps.findIndex(step => step.id === stepId);
     return index < getCurrentStepIndex();
   };
+  const canGoBack = () => getCurrentStepIndex() > 0;
+  const canGoForward = () => {
+    const index = getCurrentStepIndex();
+    if (index === 0) return auditMode !== null; // Mode step
+    if (index === 1) return auditMode === 'app' ? selectedApp !== null : topicData !== null; // Entity step
+    if (index === 2) return generatedQueries.length > 0; // Queries step
+    return false;
+  };
+
+  const goToPreviousStep = () => {
+    const currentIndex = getCurrentStepIndex();
+    if (currentIndex > 0) {
+      const previousStep = steps[currentIndex - 1];
+      setCurrentStep(previousStep.id as any);
+      
+      // Reset state when going back to avoid inconsistencies
+      if (previousStep.id === 'mode') {
+        // Don't reset mode, just go back
+      } else if (previousStep.id === 'entity') {
+        setGeneratedQueries([]);
+        setShowEntityAnalyzer(false);
+        setEnhancedEntityIntelligence(null);
+      } else if (previousStep.id === 'queries') {
+        // Keep queries but allow editing
+      }
+    }
+  };
+
+  const goToNextStep = () => {
+    const currentIndex = getCurrentStepIndex();
+    if (currentIndex < steps.length - 1 && canGoForward()) {
+      const nextStep = steps[currentIndex + 1];
+      setCurrentStep(nextStep.id as any);
+    }
+  };
 
   const handleModeChange = (mode: AuditMode) => {
     onModeChange(mode);
-    setSelectedApp(null);
-    setTopicData(null);
-    setGeneratedQueries([]);
-    setAppIntelligence(null);
-    setCurrentStep('entity');
+    if (mode !== auditMode) {
+      // Reset subsequent steps when mode changes
+      setSelectedApp(null);
+      setTopicData(null);
+      setGeneratedQueries([]);
+      setAppIntelligence(null);
+      setEntityIntelligence(null);
+      setEnhancedEntityIntelligence(null);
+      setShowEntityAnalyzer(false);
+    }
   };
 
-  const handleAppSelection = (app: App) => {
+  const handleAppSelect = (app: App) => {
     setSelectedApp(app);
     setAuditName(`${app.app_name} Visibility Audit - ${new Date().toLocaleDateString()}`);
-    setCurrentStep('queries');
+    setAuditDescription(`ChatGPT visibility analysis for ${app.app_name} to identify optimization opportunities.`);
   };
 
   const handleTopicAnalysis = async (topic: TopicAuditData) => {
@@ -335,11 +376,11 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                     </Alert>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {apps.map(app => (
-                        <div
-                          key={app.id}
-                          onClick={() => handleAppSelection(app)}
-                          className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                       {apps.map(app => (
+                         <div
+                           key={app.id}
+                           onClick={() => handleAppSelect(app)}
+                           className={`p-4 rounded-lg border cursor-pointer transition-colors ${
                             selectedApp?.id === app.id
                               ? 'border-blue-500 bg-blue-500/10'
                               : 'border-border bg-background/50 hover:border-zinc-600'
@@ -417,15 +458,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                       />
                     </div>
                   )}
-                </>
-              )}
-              
-              {canProceedToQueries() && (
-                <Button onClick={() => setCurrentStep('queries')} className="w-full">
-                  Continue to Query Generation
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-              )}
+                 </>
+               )}
             </div>
           )}
 
@@ -688,22 +722,29 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
           )}
         </div>
 
-        {/* Navigation */}
-        {currentStep !== 'mode' && currentStep !== 'review' && (
-          <div className="flex justify-between">
+        {/* Navigation Controls */}
+        <div className="flex justify-between pt-4 border-t border-border">
+          <Button 
+            variant="outline" 
+            onClick={goToPreviousStep}
+            disabled={!canGoBack()}
+            className="flex items-center gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+
+          {currentStep !== 'review' && (
             <Button 
-              variant="outline" 
-              onClick={() => {
-                const currentIndex = getCurrentStepIndex();
-                if (currentIndex > 0) {
-                  setCurrentStep(steps[currentIndex - 1].id as any);
-                }
-              }}
+              onClick={goToNextStep}
+              disabled={!canGoForward()}
+              className="flex items-center gap-2"
             >
-              Back
+              Continue
+              <ChevronRight className="h-4 w-4" />
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
