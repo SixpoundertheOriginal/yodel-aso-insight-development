@@ -8,6 +8,90 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+// Helper function to create user personas based on target audience and context
+function createUserPersonas(topicData: any, entityIntelligence: any) {
+  const personas = [];
+  
+  // Base persona from target audience
+  const mainAudience = topicData.target_audience || 'business professionals';
+  personas.push({
+    name: `Primary ${mainAudience}`,
+    description: `${mainAudience} in ${topicData.industry} looking for solutions`,
+    searchBehavior: 'Problem-focused, solution-oriented searches'
+  });
+
+  // Context-specific persona
+  if (topicData.context_description) {
+    personas.push({
+      name: 'Context-driven User',
+      description: `Someone dealing with: ${topicData.context_description}`,
+      searchBehavior: 'Specific problem searches with urgency'
+    });
+  }
+
+  // Industry persona
+  personas.push({
+    name: `${topicData.industry} Professional`,
+    description: `Industry expert needing specialized ${topicData.industry} solutions`,
+    searchBehavior: 'Technical terminology, comparison-focused'
+  });
+
+  // Entity target client persona
+  if (entityIntelligence?.targetClients?.length > 0) {
+    personas.push({
+      name: entityIntelligence.targetClients[0],
+      description: `${entityIntelligence.targetClients[0]} seeking professional services`,
+      searchBehavior: 'Service-specific, quality-focused searches'
+    });
+  }
+
+  return personas;
+}
+
+// Helper function to extract problem contexts from data
+function extractProblemContexts(topicData: any, entityIntelligence: any) {
+  const contexts = [];
+
+  // Service-based problems
+  if (entityIntelligence?.services?.length > 0) {
+    entityIntelligence.services.slice(0, 3).forEach((service: string) => {
+      contexts.push({
+        problem: `Need for ${service.toLowerCase()}`,
+        searchIntent: `How to get help with ${service.toLowerCase()}`
+      });
+    });
+  }
+
+  // Industry-specific problems
+  const industryProblems = {
+    'marketing': ['low conversion rates', 'poor brand visibility', 'ineffective campaigns'],
+    'technology': ['system integration issues', 'scalability problems', 'technical debt'],
+    'healthcare': ['patient engagement', 'compliance requirements', 'operational efficiency'],
+    'finance': ['risk management', 'regulatory compliance', 'cost optimization'],
+    'education': ['student engagement', 'learning outcomes', 'administrative efficiency'],
+    'retail': ['customer acquisition', 'inventory management', 'online presence'],
+    'default': ['operational efficiency', 'cost reduction', 'performance improvement']
+  };
+
+  const relevantProblems = industryProblems[topicData.industry.toLowerCase()] || industryProblems.default;
+  relevantProblems.slice(0, 2).forEach(problem => {
+    contexts.push({
+      problem: `${problem} in ${topicData.industry}`,
+      searchIntent: `Solutions for ${problem}`
+    });
+  });
+
+  // Context-specific problems
+  if (topicData.context_description) {
+    contexts.push({
+      problem: topicData.context_description,
+      searchIntent: `Help with ${topicData.context_description.toLowerCase()}`
+    });
+  }
+
+  return contexts;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,42 +107,63 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Generate ${queryCount} realistic search queries that potential clients would use to find ${entityIntelligence?.entityName || topicData.entityToTrack}.
+    // Create persona-driven prompt based on target audience and context
+    const userPersonas = createUserPersonas(topicData, entityIntelligence);
+    const problemContexts = extractProblemContexts(topicData, entityIntelligence);
+    
+    const prompt = `You are simulating search behavior of real people looking for solutions in the ${topicData.industry} industry. 
 
-Context:
-- Entity: ${entityIntelligence?.entityName || topicData.entityToTrack}
+**TARGET AUDIENCE PERSONAS:**
+${userPersonas.map(persona => `- ${persona.name}: ${persona.description} (Search behavior: ${persona.searchBehavior})`).join('\n')}
+
+**ENTITY BEING ANALYZED:**
+- Name: ${entityIntelligence?.entityName || topicData.entityToTrack}
+- Services: ${entityIntelligence?.services?.join(', ') || 'Business services'}
+- Target Clients: ${entityIntelligence?.targetClients?.join(', ') || topicData.target_audience}
+- Market Position: ${entityIntelligence?.marketPosition || 'Industry provider'}
+
+**USER CONTEXT:**
 - Industry: ${topicData.industry}
-- Target Audience: ${topicData.target_audience}
 - Geographic Focus: ${topicData.geographic_focus || 'Global'}
-- Context: ${topicData.context_description || 'General business inquiry'}
-- Known Competitors: ${topicData.known_players?.join(', ') || 'Various industry players'}
+- Specific Context: ${topicData.context_description || 'General business needs'}
+- Known Players: ${topicData.known_players?.join(', ') || 'Various providers'}
 
-Entity Services: ${entityIntelligence?.services?.join(', ') || 'Not specified'}
-Target Clients: ${entityIntelligence?.targetClients?.join(', ') || 'Not specified'}
-Market Position: ${entityIntelligence?.marketPosition || 'Not specified'}
-Industry Focus: ${entityIntelligence?.industryFocus?.join(', ') || 'Not specified'}
+**PROBLEM CONTEXTS TO ADDRESS:**
+${problemContexts.map(context => `- ${context.problem}: ${context.searchIntent}`).join('\n')}
 
-Generate natural, varied search queries in these categories:
-1. Service-specific queries (how clients search for specific services)
-2. Problem-solving queries (pain points clients have)
-3. Comparison queries (comparing options in the market)
-4. Industry-specific queries (using industry terminology)
-5. Geographic queries (location-based searches if relevant)
+Generate ${queryCount} realistic search queries from the perspective of your target personas experiencing real problems that the entity can solve.
 
-Make queries realistic - how real people actually search, not marketing speak. Include:
-- Natural language variations
-- Different search intents (research, comparison, hiring)
-- Various query lengths (short and long-tail)
-- Industry-specific terminology
-- Geographic modifiers when relevant
+**QUERY CATEGORIES TO COVER:**
+1. **Problem-solving** (40%): People experiencing specific issues
+2. **Research** (25%): People learning about solutions  
+3. **Comparison** (20%): People evaluating options
+4. **Service-specific** (10%): People looking for specific services
+5. **Industry-specific** (5%): Using industry terminology
 
-Return ONLY a JSON array of query objects with this format:
+**QUERY CHARACTERISTICS:**
+- Natural language (how real people search, not marketing copy)
+- Various intents: immediate need, research, comparison, education
+- Different specificity levels: broad problems to specific solutions
+- Include long-tail variations and conversational queries
+- Add geographic modifiers when relevant
+- Use industry-specific pain points and terminology
+
+**EXAMPLES OF GOOD QUERIES:**
+- "Why is my [relevant item] not working as expected"
+- "How to solve [specific problem] for [target audience type]" 
+- "[Entity service] vs doing it myself"
+- "Best practices for [relevant industry process]"
+- "[Geographic area] [service type] recommendations"
+
+Return ONLY a JSON array with this format:
 [
   {
     "query_text": "actual search query",
-    "query_type": "service_specific|problem_solving|comparison|industry_specific|geographic",
+    "query_type": "problem_solving|research|comparison|service_specific|industry_specific",
     "priority": 1-10,
-    "reasoning": "brief explanation of why this query is relevant"
+    "persona": "which target persona would search this",
+    "search_intent": "immediate_need|research|comparison|education",
+    "reasoning": "why this persona would search this"
   }
 ]`;
 
@@ -111,6 +216,8 @@ Return ONLY a JSON array of query objects with this format:
       priority: query.priority || 5,
       target_entity: entityIntelligence?.entityName || topicData.entityToTrack,
       reasoning: query.reasoning || 'AI generated query',
+      persona: query.persona || 'General user',
+      search_intent: query.search_intent || 'research',
       source: 'openai_enhanced'
     }));
 
