@@ -85,6 +85,8 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [showRerunDialog, setShowRerunDialog] = useState(false);
   const [showQueueDialog, setShowQueueDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   
   // Filter runs based on search and filters
   const filteredRuns = auditRuns.filter(run => {
@@ -470,6 +472,80 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
     setProcessingQueue(prev => prev.filter(item => item.id !== itemId));
   };
 
+  // Delete single audit run
+  const deleteAuditRun = async (runId: string) => {
+    try {
+      // Delete related data first
+      await supabase
+        .from('chatgpt_query_results')
+        .delete()
+        .eq('audit_run_id', runId)
+        .eq('organization_id', organizationId);
+
+      await supabase
+        .from('chatgpt_ranking_snapshots')
+        .delete()
+        .eq('audit_run_id', runId)
+        .eq('organization_id', organizationId);
+
+      await supabase
+        .from('chatgpt_queries')
+        .delete()
+        .eq('audit_run_id', runId)
+        .eq('organization_id', organizationId);
+
+      // Delete the audit run itself
+      const { error } = await supabase
+        .from('chatgpt_audit_runs')
+        .delete()
+        .eq('id', runId)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Audit Deleted',
+        description: 'Audit run and all related data have been deleted.',
+      });
+
+      onRefresh();
+    } catch (error) {
+      console.error('Error deleting audit run:', error);
+      toast({
+        title: 'Delete Failed',
+        description: 'Failed to delete audit run.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Bulk delete selected audits
+  const handleBulkDelete = async () => {
+    try {
+      const selectedRunIds = Array.from(selectedRuns);
+      
+      for (const runId of selectedRunIds) {
+        await deleteAuditRun(runId);
+      }
+
+      setSelectedRuns(new Set());
+      setShowBulkDeleteDialog(false);
+
+      toast({
+        title: 'Audits Deleted',
+        description: `${selectedRunIds.length} audit runs have been deleted.`,
+      });
+
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast({
+        title: 'Bulk Delete Failed',
+        description: 'Failed to delete some audit runs.',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -648,6 +724,33 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
             <div className="flex items-center space-x-2">
               {selectedRuns.size > 0 && (
                 <>
+                  <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-400 hover:text-red-300">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Selected Audits</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete {selectedRuns.size} selected audit runs? 
+                          This will permanently delete all audit data, queries, and results. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleBulkDelete}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete {selectedRuns.size} Audits
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
                   <Dialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -830,21 +933,53 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
                         </span>
                         
                         {/* Quick Actions */}
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToQueue([run.id]);
-                            toast({
-                              title: 'Added to Queue',
-                              description: `${run.name} has been added to the processing queue.`,
-                            });
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToQueue([run.id]);
+                              toast({
+                                title: 'Added to Queue',
+                                description: `${run.name} has been added to the processing queue.`,
+                              });
+                            }}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                onClick={(e) => e.stopPropagation()}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Audit Run</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{run.name}"? 
+                                  This will permanently delete all audit data, queries, and results. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => deleteAuditRun(run.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete Audit
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                     
