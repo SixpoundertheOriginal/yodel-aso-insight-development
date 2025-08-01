@@ -120,64 +120,70 @@ async function analyzeResponseWithAI(
   responseText: string, 
   appName: string
 ): Promise<EnhancedResponseAnalysis> {
-const prompt = `You are an expert at analyzing text for brand mentions and competitive positioning. Analyze this ChatGPT response for precise app mentions and rankings.
+const systemPrompt = `You are a structured data extraction AI. Your ONLY job is to analyze text and return valid JSON data about app mentions. 
 
-TARGET APP: "${appName}"
-RESPONSE TEXT:
-${responseText}
+CRITICAL RULES:
+1. RETURN ONLY VALID JSON - NO other text, explanations, or commentary
+2. Use EXACT field names and types as specified
+3. Be extremely precise about app detection - verify the exact app name exists
+4. Only extract actual app/brand names, never generic terms
+5. If unsure about any field, use conservative values
 
-Perform a detailed analysis and extract:
-
-1. APP_MENTIONED: Is "${appName}" mentioned ANYWHERE in the response? 
-   - Check for exact matches: "${appName}", **${appName}**, *${appName}*
-   - Check for variations in spacing, capitalization, or punctuation
-   - Look in numbered lists, bullet points, and formatted text
-   
-2. MENTION_COUNT: Count ALL occurrences of "${appName}" in any format
-
-3. RANKING_POSITION: What position is "${appName}" in?
-   - Look for numbered lists (1., 2., 3.) or (1), (2), (3)
-   - Check for ordinal positions (first, second, third)
-   - If no explicit numbering, estimate based on order of appearance
-   
-4. SENTIMENT: How is "${appName}" portrayed?
-   - positive: recommended, praised, described favorably
-   - negative: criticized, warned against, described unfavorably  
-   - neutral: mentioned factually without strong opinion
-   
-5. COMPETITORS: List ONLY actual app/service names mentioned (not generic words)
-   - Include: Duolingo, Babbel, Rosetta Stone, etc.
-   - Exclude: "app", "application", "software", "tool", "platform", "this", "that", etc.
-   - Focus on proper nouns that are clearly app/service names
-   
-6. RECOMMENDATION_STRENGTH: Rate 0-10 how strongly "${appName}" is recommended
-   - 10: Top recommendation, first choice, highly endorsed
-   - 7-9: Strongly recommended, among top choices
-   - 4-6: Mentioned positively but not emphasized
-   - 1-3: Mentioned but not particularly recommended
-   - 0: Not mentioned or mentioned negatively
-   
-7. SPECIFIC_CONTEXTS: What use cases or scenarios is "${appName}" recommended for?
-
-8. MENTION_EXCERPTS: Extract the EXACT sentences/phrases where "${appName}" appears
-
-CRITICAL INSTRUCTIONS:
-- Be extremely precise about detecting "${appName}" - false negatives are worse than false positives
-- Only list actual app/brand names as competitors, never generic terms
-- If apps are in a numbered list, capture the exact position number
-- Look for formatting like **bold** or *italic* that might indicate recommendations
-
-Return only valid JSON:
+RESPONSE FORMAT - Copy this structure EXACTLY:
 {
   "app_mentioned": boolean,
   "mention_count": number,
   "ranking_position": number | null,
-  "sentiment": "positive" | "neutral" | "negative",
-  "competitors_mentioned": ["ActualAppName1", "ActualAppName2"],
+  "sentiment": "positive" | "neutral" | "negative", 
+  "competitors_mentioned": ["App1", "App2"],
   "recommendation_strength": number,
-  "specific_contexts": ["context1", "context2"],
-  "mention_excerpts": ["exact sentence 1", "exact sentence 2"]
+  "specific_contexts": ["context1"],
+  "mention_excerpts": ["exact quote"]
 }`;
+
+const userPrompt = `TARGET APP: "${appName}"
+
+TEXT TO ANALYZE:
+${responseText}
+
+EXTRACTION TASKS:
+
+1. APP_MENTIONED: Does the EXACT text "${appName}" appear in the response?
+   - Search for: "${appName}", **${appName}**, *${appName}*, "${appName}", '${appName}'
+   - Must be exact match with correct spelling/capitalization
+   - Return true ONLY if found, false otherwise
+
+2. MENTION_COUNT: Count exact occurrences of "${appName}"
+
+3. RANKING_POSITION: If "${appName}" appears in a numbered list, what's its position?
+   - Look for: "1. ${appName}", "2) ${appName}", "#3 ${appName}"
+   - Return the number, or null if not in a ranked list
+
+4. SENTIMENT: If mentioned, how is "${appName}" described?
+   - "positive": recommended, praised, benefits highlighted
+   - "negative": criticized, drawbacks mentioned, not recommended
+   - "neutral": factual mention without strong opinion
+
+5. COMPETITORS_MENTIONED: List OTHER app names (not "${appName}") mentioned in text
+   - Only include proper nouns that are clearly app/service names
+   - Examples: "Duolingo", "Babbel", "Google Translate"
+   - Exclude: "app", "software", "tool", "platform", "service"
+
+6. RECOMMENDATION_STRENGTH: Rate 0-10 how strongly "${appName}" is recommended
+   - 0: Not mentioned or negative
+   - 1-3: Mentioned but weak/lukewarm
+   - 4-6: Positive but not emphasized
+   - 7-9: Strongly recommended, highlighted
+   - 10: Top choice, highest praise
+
+7. SPECIFIC_CONTEXTS: What specific use cases is "${appName}" mentioned for?
+   - Examples: ["vocabulary building", "conversation practice"]
+
+8. MENTION_EXCERPTS: EXACT sentences containing "${appName}"
+   - Copy the complete sentence word-for-word
+   - Include surrounding context if needed
+
+RESPOND WITH VALID JSON ONLY:`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -187,9 +193,13 @@ Return only valid JSON:
     },
     body: JSON.stringify({
       model: 'gpt-4.1-2025-04-14',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
       temperature: 0.1, // Low temperature for consistent analysis
-      max_tokens: 1200
+      max_tokens: 1500,
+      response_format: { type: "json_object" } // Force JSON response
     }),
   });
 
@@ -200,10 +210,20 @@ Return only valid JSON:
   const data = await response.json();
   const content = data.choices[0].message.content;
   
+  console.log(`[Enhanced Analysis] AI Response for ${appName}:`, content);
+  
   try {
-    return JSON.parse(content) as EnhancedResponseAnalysis;
+    const parsed = JSON.parse(content) as EnhancedResponseAnalysis;
+    
+    // Validate the response structure
+    if (typeof parsed.app_mentioned !== 'boolean') {
+      throw new Error('Invalid app_mentioned field');
+    }
+    
+    console.log(`[Enhanced Analysis] Parsed result - App mentioned: ${parsed.app_mentioned}, Position: ${parsed.ranking_position}`);
+    return parsed;
   } catch (parseError) {
-    console.error('Failed to parse AI response:', content);
+    console.error('Failed to parse AI response:', content, 'Error:', parseError);
     // Fallback to enhanced regex analysis
     return fallbackAnalysis(responseText, appName);
   }

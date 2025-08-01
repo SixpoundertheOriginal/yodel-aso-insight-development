@@ -138,38 +138,42 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
           }
         }
         
-        // If target entity not found in structured data, ensure it's included with mention_position
-        if (!targetEntityPosition && result.mention_position) {
-          targetEntityPosition = result.mention_position;
+        // Only include target entity if it was actually found in the analysis data
+        // Don't add it artificially just because mention_position exists
+        if (!targetEntityPosition && result.mention_position && result.mention_context !== 'not_mentioned') {
+          // Verify that the target entity was actually mentioned before adding it
+          const wasActuallyMentioned = result.entity_analysis?.app_mentioned === true;
           
-          // Add target entity to the list if not already there
-          const targetExists = allEntities.some(entity => entity.isTarget);
-          if (!targetExists) {
-            allEntities.push({
-              name: entityName,
-              position: result.mention_position,
-              isTarget: true
-            });
+          if (wasActuallyMentioned) {
+            targetEntityPosition = result.mention_position;
+            
+            // Add target entity to the list if not already there
+            const targetExists = allEntities.some(entity => entity.isTarget);
+            if (!targetExists) {
+              allEntities.push({
+                name: entityName,
+                position: result.mention_position,
+                isTarget: true
+              });
+            }
           }
         }
         
-        // Sort by position and ensure target entity is prioritized in display
-        allEntities.sort((a, b) => {
-          // Target entity always comes first when expanded
-          if (a.isTarget && !b.isTarget) return -1;
-          if (!a.isTarget && b.isTarget) return 1;
-          return a.position - b.position;
-        });
+        // Sort entities by position
+        allEntities.sort((a, b) => a.position - b.position);
         
-        rankings.push({
-          queryId: result.id,
-          queryText: result.query_text,
-          category: result.query_category,
-          entityPosition: targetEntityPosition,
-          totalEntities: result.entity_analysis?.structured_entities?.length || result.total_entities_in_response || allEntities.length,
-          visibilityScore: result.visibility_score,
-          allEntities: allEntities.slice(0, 10) // Top 10 only
-        });
+        // Only create ranking if we have entities OR if target was actually mentioned
+        if (allEntities.length > 0 || (result.mention_position && result.entity_analysis?.app_mentioned)) {
+          rankings.push({
+            queryId: result.id,
+            queryText: result.query_text,
+            category: result.query_category,
+            entityPosition: targetEntityPosition,
+            totalEntities: result.entity_analysis?.structured_entities?.length || result.total_entities_in_response || allEntities.length,
+            visibilityScore: result.visibility_score,
+            allEntities: allEntities.slice(0, 10) // Top 10 only
+          });
+        }
       }
     });
     
