@@ -17,7 +17,8 @@ import {
   Brain,
   FileEdit,
   Star,
-  Zap
+  Zap,
+  Palette
 } from "lucide-react";
 import {
   Sidebar,
@@ -98,6 +99,11 @@ const aiCopilotsItems = [
     title: "Feature Maximizer",
     url: "/featuring-toolkit",
     icon: Star,
+  },
+  {
+    title: "Creative Analysis",
+    url: "/creative-analysis",
+    icon: Palette,
   },
 ];
 
