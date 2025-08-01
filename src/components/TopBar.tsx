@@ -45,10 +45,24 @@ const TopBar: React.FC = React.memo(() => {
   const analyticsPages = ['/dashboard', '/overview', '/conversion-analysis'];
   const isAnalyticsPage = analyticsPages.includes(location.pathname);
   
-  // AI Copilots pages use manual apps
+  // Growth Accelerator pages don't need app selector (they work independently)
+  const growthAcceleratorPages = [
+    '/aso-knowledge-engine',
+    '/metadata-copilot', 
+    '/growth-gap-copilot',
+    '/cpp-strategy-copilot',
+    '/featuring-toolkit',
+    '/creative-analysis',
+    '/aso-ai-hub',
+    '/chatgpt-visibility-audit',
+    '/apps'
+  ];
+  const isGrowthAcceleratorPage = growthAcceleratorPages.includes(location.pathname);
+  
+  // Auth and system pages
   const authPages = ['/auth/sign-in', '/auth/sign-up', '/'];
   const systemPages = ['/profile', '/settings', '/admin'];
-  const showManualAppSelector = !isAnalyticsPage && !authPages.includes(location.pathname) && !systemPages.includes(location.pathname);
+  const showManualAppSelector = !isAnalyticsPage && !isGrowthAcceleratorPage && !authPages.includes(location.pathname) && !systemPages.includes(location.pathname);
 
   return (
     <div className="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-900/80 backdrop-blur-sm">
