@@ -219,13 +219,13 @@ export const RankingSummaryCard: React.FC<RankingSummaryCardProps> = ({
               
               {summary.bestRanking && summary.bestRanking <= 3 && (
                 <p className="text-green-600">
-                  🏆 Secured a top-3 position with #{summary.bestRanking} ranking
+                  Secured a top-3 position with #{summary.bestRanking} ranking
                 </p>
               )}
               
               {summary.topThreeCount > 0 && (
                 <p className="text-blue-600">
-                  📈 Appeared in top 3 positions {summary.topThreeCount} time{summary.topThreeCount !== 1 ? 's' : ''}
+                  Appeared in top 3 positions {summary.topThreeCount} time{summary.topThreeCount !== 1 ? 's' : ''}
                 </p>
               )}
               

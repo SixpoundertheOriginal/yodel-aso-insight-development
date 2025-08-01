@@ -73,7 +73,7 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
       <CardHeader>
         <CardTitle className="text-primary flex items-center space-x-2">
           <Target className="h-5 w-5" />
-          <span>🎯 Topic Visibility Analysis</span>
+          <span>Topic Visibility Analysis</span>
         </CardTitle>
         <CardDescription>
           Analyze how any topic, brand, or service appears in ChatGPT responses
