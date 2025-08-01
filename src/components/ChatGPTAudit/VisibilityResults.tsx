@@ -240,65 +240,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* Overview Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5 text-yodel-orange" />
-              <div>
-                <p className="text-sm text-zinc-400">Overall Score</p>
-                <p className={`text-2xl font-bold ${getScoreColor(overallVisibilityScore)}`}>
-                  {overallVisibilityScore}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-blue-400" />
-              <div>
-                <p className="text-sm text-zinc-400">Mention Rate</p>
-                <p className="text-2xl font-bold text-white">
-                  {Math.round((mentionedResults.length / queryResults.length) * 100)}%
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-green-400" />
-              <div>
-                <p className="text-sm text-zinc-400">Avg Position</p>
-                <p className="text-2xl font-bold text-white">
-                  {mentionedResults.length > 0 
-                    ? Math.round(mentionedResults.reduce((sum, r) => sum + (r.mention_position || 0), 0) / mentionedResults.length)
-                    : 'N/A'
-                  }
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-purple-400" />
-              <div>
-                <p className="text-sm text-zinc-400">Total Queries</p>
-                <p className="text-2xl font-bold text-white">{queryResults.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Results Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
