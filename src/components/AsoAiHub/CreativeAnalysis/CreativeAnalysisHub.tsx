@@ -18,17 +18,36 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'keyword' | 'appid'>('keyword');
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!keyword.trim()) return;
 
     setLoading(true);
+    setAiAnalysis(null);
+    setCurrentSessionId(null);
+    
     try {
       const result = searchType === 'keyword' 
         ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword)
         : await CreativeAnalysisService.analyzeCreativesByAppId(keyword);
       
       setResults(result);
+      
+      // Create a new session if search was successful
+      if (result.success && result.apps.length > 0) {
+        try {
+          const sessionId = await CreativeAnalysisService.createAnalysisSession(
+            keyword.trim(),
+            searchType,
+            result.apps.length
+          );
+          setCurrentSessionId(sessionId);
+        } catch (sessionError) {
+          console.error('Failed to create session:', sessionError);
+          // Don't fail the search if session creation fails
+        }
+      }
     } catch (error) {
       console.error('Search error:', error);
       setResults({
@@ -58,7 +77,11 @@ export const CreativeAnalysisHub: React.FC = () => {
     
     try {
       const appsToAnalyze = app ? [app] : results.apps;
-      const analysis = await CreativeAnalysisService.analyzeCreativesWithAI(appsToAnalyze);
+      const analysis = await CreativeAnalysisService.analyzeCreativesWithAI(
+        appsToAnalyze, 
+        keyword, 
+        currentSessionId || undefined
+      );
       setAiAnalysis(analysis);
     } catch (error) {
       console.error('AI analysis failed:', error);

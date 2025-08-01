@@ -934,6 +934,42 @@ export type Database = {
         }
         Relationships: []
       }
+      creative_analysis_sessions: {
+        Row: {
+          analysis_status: string
+          created_at: string
+          created_by: string | null
+          id: string
+          keyword: string
+          organization_id: string
+          search_type: string
+          total_apps: number
+          updated_at: string
+        }
+        Insert: {
+          analysis_status?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          keyword: string
+          organization_id: string
+          search_type: string
+          total_apps?: number
+          updated_at?: string
+        }
+        Update: {
+          analysis_status?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          keyword?: string
+          organization_id?: string
+          search_type?: string
+          total_apps?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_cache: {
         Row: {
           cache_key: string
@@ -1685,6 +1721,41 @@ export type Database = {
         }
         Relationships: []
       }
+      pattern_analyses: {
+        Row: {
+          created_at: string
+          id: string
+          insights: string[] | null
+          organization_id: string
+          patterns_data: Json
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insights?: string[] | null
+          organization_id: string
+          patterns_data?: Json
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insights?: string[] | null
+          organization_id?: string
+          patterns_data?: Json
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pattern_analyses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "creative_analysis_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           created_at: string
@@ -1878,6 +1949,50 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      screenshot_analyses: {
+        Row: {
+          analysis_data: Json
+          app_id: string
+          app_name: string
+          confidence_score: number | null
+          created_at: string
+          id: string
+          organization_id: string
+          screenshot_url: string
+          session_id: string
+        }
+        Insert: {
+          analysis_data?: Json
+          app_id: string
+          app_name: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          screenshot_url: string
+          session_id: string
+        }
+        Update: {
+          analysis_data?: Json
+          app_id?: string
+          app_name?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          screenshot_url?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "screenshot_analyses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "creative_analysis_sessions"
             referencedColumns: ["id"]
           },
         ]
