@@ -128,8 +128,11 @@ Return a JSON response with the following structure:
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // Parse JSON response
-    const analysisResult = JSON.parse(content);
+    // Clean and parse JSON response (remove markdown wrapper if present)
+    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    console.log('Cleaned content:', cleanContent.substring(0, 200) + '...');
+    
+    const analysisResult = JSON.parse(cleanContent);
     
     return {
       appId: screenshot.appId,
@@ -139,6 +142,7 @@ Return a JSON response with the following structure:
     };
   } catch (error) {
     console.error('Vision analysis error:', error);
+    console.error('Raw OpenAI response content:', data?.choices?.[0]?.message?.content);
     throw new Error(`Failed to analyze screenshot: ${error.message}`);
   }
 };

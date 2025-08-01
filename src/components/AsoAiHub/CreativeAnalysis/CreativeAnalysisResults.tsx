@@ -18,11 +18,14 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
 }) => {
   if (!analysis.success || analysis.individual.length === 0) {
     return (
-      <Card className="border-zinc-800 bg-zinc-900">
+      <Card className="border-destructive bg-destructive/10">
         <CardContent className="p-6">
-          <p className="text-zinc-400">
-            {analysis.error || 'No analysis results available'}
-          </p>
+          <div className="flex items-center gap-3">
+            <Badge variant="destructive">Failed</Badge>
+            <p className="text-foreground">
+              {analysis.error || 'No analysis results available'}
+            </p>
+          </div>
         </CardContent>
       </Card>
     );

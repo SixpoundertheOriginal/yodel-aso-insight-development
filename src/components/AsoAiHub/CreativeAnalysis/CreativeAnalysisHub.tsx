@@ -16,6 +16,7 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [aiAnalysis, setAiAnalysis] = useState<CreativeAnalysisWithAI | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'keyword' | 'appid'>('keyword');
 
   const handleSearch = async () => {
@@ -53,6 +54,7 @@ export const CreativeAnalysisHub: React.FC = () => {
     
     setAiLoading(true);
     setAiAnalysis(null);
+    setAiError(null);
     
     try {
       const appsToAnalyze = app ? [app] : results.apps;
@@ -60,13 +62,16 @@ export const CreativeAnalysisHub: React.FC = () => {
       setAiAnalysis(analysis);
     } catch (error) {
       console.error('AI analysis failed:', error);
-      setAiAnalysis({
-        success: false,
-        individual: [],
-        error: 'Failed to analyze screenshots with AI'
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to analyze screenshots with AI';
+      setAiError(errorMessage);
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleRetryAnalysis = () => {
+    if (results?.apps) {
+      handleAnalyzeWithAI();
     }
   };
 
@@ -207,6 +212,27 @@ export const CreativeAnalysisHub: React.FC = () => {
               isAnalyzing={aiLoading}
             />
           ))}
+
+          {/* AI Analysis Error */}
+          {aiError && (
+            <Card className="border-red-800 bg-red-900/20 mt-8">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-400 mb-2">AI Analysis Failed</h3>
+                    <p className="text-red-300">{aiError}</p>
+                  </div>
+                  <Button 
+                    onClick={handleRetryAnalysis}
+                    variant="outline"
+                    className="border-red-600 text-red-400 hover:bg-red-900/30"
+                  >
+                    Retry Analysis
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* AI Analysis Results */}
           {aiAnalysis && (
