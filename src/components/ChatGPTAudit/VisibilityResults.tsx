@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TopPerformersSection } from './TopPerformersSection';
-import { RankingSummaryCard } from './RankingSummaryCard';
 import { RankingDetailsModal } from './RankingDetailsModal';
 import { RankingsTabContent } from './RankingsTabContent';
 import { 
@@ -241,19 +240,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* Ranking Summary Card - Show competitive landscape */}
-      {rankingSnapshots && rankingSnapshots.length > 0 && (
-        <RankingSummaryCard
-          entityName={hasEntityTracking ? topicData.entityToTrack : 'Target Entity'}
-          auditResults={queryResults.map(result => ({
-            id: result.id,
-            query_text: result.query_text,
-            ranking_context: result.entity_analysis?.rankingContext,
-            mention_position: result.mention_position,
-            visibility_score: result.visibility_score
-          }))}
-        />
-      )}
       {/* Overview Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-zinc-900/50 border-zinc-800">
