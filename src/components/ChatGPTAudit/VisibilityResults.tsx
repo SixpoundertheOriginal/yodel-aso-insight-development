@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TopPerformersSection } from './TopPerformersSection';
-import { EntityInsightsPanel } from './EntityInsightsPanel';
 import { RankingSummaryCard } from './RankingSummaryCard';
 import { RankingDetailsModal } from './RankingDetailsModal';
 import { RankingsTabContent } from './RankingsTabContent';
@@ -241,13 +240,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Entity Insights Panel (only show when entity tracking is enabled) */}
-      {hasEntityTracking && (
-        <EntityInsightsPanel
-          entityName={topicData.entityToTrack}
-          queryResults={queryResults}
-        />
-      )}
 
       {/* Ranking Summary Card - Show competitive landscape */}
       {rankingSnapshots && rankingSnapshots.length > 0 && (
