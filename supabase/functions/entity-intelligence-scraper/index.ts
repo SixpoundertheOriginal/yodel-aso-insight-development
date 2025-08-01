@@ -55,33 +55,165 @@ serve(async (req) => {
 async function scrapeEntityBasics(entityName: string) {
   console.log('🌐 Scraping basic information for:', entityName);
   
-  // In a real implementation, you would:
-  // 1. Search Google for the entity
-  // 2. Visit their website
-  // 3. Extract structured data
-  // 4. Search for news and recent mentions
+  try {
+    // Try to find and scrape the entity's website
+    const websiteData = await scrapeEntityWebsite(entityName);
+    
+    // Get search results for the entity
+    const searchData = await getEntitySearchData(entityName);
+    
+    return {
+      entityName,
+      websiteData,
+      searchData,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error scraping entity basics:', error);
+    
+    // Fallback to basic search queries
+    const searchQueries = [
+      `${entityName} company website`,
+      `${entityName} services products`,
+      `${entityName} clients customers`,
+      `${entityName} competitors alternatives`,
+      `${entityName} news 2024`,
+      `about ${entityName} company`
+    ];
+
+    return {
+      entityName,
+      searchResults: searchQueries.map(query => ({
+        query,
+        results: [`Result for ${query}`, `Another result for ${query}`]
+      })),
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+async function scrapeEntityWebsite(entityName: string) {
+  console.log('🌐 Attempting to scrape website for:', entityName);
   
-  // For now, we'll simulate this with search queries and return structured data
-  const searchQueries = [
-    `${entityName} company website`,
-    `${entityName} services products`,
-    `${entityName} clients customers`,
-    `${entityName} competitors alternatives`,
-    `${entityName} news 2024`,
-    `about ${entityName} company`
+  // Try common website patterns
+  const potentialUrls = [
+    `https://www.${entityName.toLowerCase().replace(/\s+/g, '')}.com`,
+    `https://${entityName.toLowerCase().replace(/\s+/g, '')}.com`,
+    `https://www.${entityName.toLowerCase().replace(/\s+/g, '-')}.com`,
   ];
+  
+  for (const url of potentialUrls) {
+    try {
+      console.log(`Trying to scrape: ${url}`);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; EntityBot/1.0)',
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      
+      if (response.ok) {
+        const html = await response.text();
+        return await extractMetadataFromHtml(html, url);
+      }
+    } catch (error) {
+      console.log(`Failed to scrape ${url}:`, error.message);
+      continue;
+    }
+  }
+  
+  return null;
+}
 
-  const scrapedData = {
-    entityName,
-    searchResults: searchQueries.map(query => ({
-      query,
-      // Simulated results - in real implementation, this would be actual web scraping
-      results: [`Result for ${query}`, `Another result for ${query}`]
-    })),
-    timestamp: new Date().toISOString()
+async function extractMetadataFromHtml(html: string, url: string) {
+  console.log('📄 Extracting metadata from HTML');
+  
+  const metadata: any = {
+    url,
+    title: '',
+    description: '',
+    services: [],
+    aboutText: '',
+    contactInfo: {},
+    structured_data: {}
   };
+  
+  try {
+    // Extract title
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      metadata.title = titleMatch[1].trim();
+    }
+    
+    // Extract meta description
+    const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+    if (descMatch) {
+      metadata.description = descMatch[1];
+    }
+    
+    // Extract Open Graph data
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+    const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+    
+    if (ogTitleMatch) metadata.og_title = ogTitleMatch[1];
+    if (ogDescMatch) metadata.og_description = ogDescMatch[1];
+    
+    // Extract JSON-LD structured data
+    const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gi);
+    if (jsonLdMatches) {
+      jsonLdMatches.forEach((match, index) => {
+        try {
+          const jsonContent = match.replace(/<script[^>]*>/, '').replace(/<\/script>/, '');
+          const parsed = JSON.parse(jsonContent);
+          metadata.structured_data[`jsonld_${index}`] = parsed;
+        } catch (e) {
+          console.log('Failed to parse JSON-LD:', e);
+        }
+      });
+    }
+    
+    // Extract potential service keywords
+    const serviceKeywords = [
+      'services', 'solutions', 'products', 'offerings', 'consulting',
+      'development', 'design', 'marketing', 'strategy', 'support'
+    ];
+    
+    serviceKeywords.forEach(keyword => {
+      const regex = new RegExp(`${keyword}[^<]*`, 'gi');
+      const matches = html.match(regex);
+      if (matches) {
+        metadata.services.push(...matches.slice(0, 3));
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error extracting metadata:', error);
+  }
+  
+  return metadata;
+}
 
-  return scrapedData;
+async function getEntitySearchData(entityName: string) {
+  console.log('🔍 Getting search data for:', entityName);
+  
+  // Simulate search data - in real implementation, you would use a search API
+  return {
+    searchQueries: [
+      `${entityName} company overview`,
+      `${entityName} services and solutions`,
+      `${entityName} client testimonials`,
+      `${entityName} competitors and alternatives`,
+      `${entityName} recent news and updates`,
+      `${entityName} company culture and values`
+    ],
+    searchVolume: Math.floor(Math.random() * 1000) + 100,
+    relatedTerms: [
+      `${entityName} reviews`,
+      `${entityName} pricing`,
+      `${entityName} contact`,
+      `${entityName} careers`
+    ]
+  };
 }
 
 async function enhanceWithAI(entityName: string, scrapedData: any) {

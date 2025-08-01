@@ -64,6 +64,21 @@ verify_jwt = true
 [functions.entity-intelligence-scraper]
 verify_jwt = true
 
+[functions.enhanced-entity-intelligence]
+verify_jwt = true
+
+[functions.enhanced-app-intelligence]
+verify_jwt = true
+
+[functions.query-enhancer]
+verify_jwt = true
+
+[functions.enhanced-response-analysis]
+verify_jwt = true
+
+[functions.competitive-intelligence]
+verify_jwt = true
+
 [functions.create-platform-admin]
 verify_jwt = false
 

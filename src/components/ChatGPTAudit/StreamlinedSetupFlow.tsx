@@ -10,6 +10,7 @@ import { ModeSelector } from './ModeSelector';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { EntityAnalysisPreview } from './EntityAnalysisPreview';
+import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
 import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
@@ -69,6 +70,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedTopicQuery[]>([]);
   const [appIntelligence, setAppIntelligence] = useState<any>(null);
+  const [entityIntelligence, setEntityIntelligence] = useState<any>(null);
+  const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
+  const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
   
   // Form state
   const [auditName, setAuditName] = useState('');
@@ -109,49 +113,27 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setAuditName(`${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
     
     try {
-      // Fetch entity intelligence first
-      const entityIntelligence = await EntityIntelligenceService.getEntityIntelligence(
+      // Fetch basic entity intelligence first
+      console.log('🔍 Fetching basic entity intelligence for:', topic.entityToTrack);
+      const intelligence = await EntityIntelligenceService.getEntityIntelligence(
         topic.entityToTrack,
         'default-org'
       );
 
-      // Update topic data with entity intelligence
-      const enhancedTopicData = {
-        ...topic,
-        entityIntelligence
-      };
-      setTopicData(enhancedTopicData);
-
-      // Try AI-enhanced query generation first
-      try {
-        const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
-          body: {
-            topicData: enhancedTopicData,
-            entityIntelligence,
-            queryCount: 20
-          }
-        });
+      if (intelligence) {
+        setEntityIntelligence(intelligence);
+        console.log('🧠 Entity intelligence received:', intelligence);
         
-        if (aiResponse?.queries?.length) {
-          setGeneratedQueries(aiResponse.queries);
-        } else {
-          // Fallback to template-based generation
-          const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 15);
-          setGeneratedQueries(queries);
-        }
-      } catch (aiError) {
-        console.warn('AI query generation failed, using templates:', aiError);
-        const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 15);
-        setGeneratedQueries(queries);
+        // Show the enhanced entity analyzer for deeper analysis
+        setShowEntityAnalyzer(true);
+      } else {
+        console.warn('⚠️ No entity intelligence received, falling back to template generation');
+        await generateTemplateQueries();
       }
     } catch (error) {
       console.error('Error in topic analysis:', error);
-      // Fallback without entity intelligence
-      const queries = TopicQueryGeneratorService.generateQueries(topic, 15);
-      setGeneratedQueries(queries);
+      await generateTemplateQueries();
     }
-    
-    setCurrentStep('queries');
   };
 
   const handleRegenerateQueries = (count: number = 10) => {
@@ -202,6 +184,53 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     
     setGeneratedQueries(prev => [...prev, newQuery]);
     setNewQueryText('');
+  };
+
+  const generateQueriesFromEnhancedEntity = async (entityIntelligence: any) => {
+    try {
+      console.log('🚀 Generating queries from enhanced entity intelligence:', entityIntelligence);
+      
+      // Try AI-enhanced query generation with enhanced intelligence
+      const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
+        body: {
+          topicData: topicData,
+          entityIntelligence: {
+            entityName: entityIntelligence.entityName,
+            description: entityIntelligence.description,
+            services: entityIntelligence.services,
+            targetClients: entityIntelligence.targetClients,
+            competitors: entityIntelligence.competitors.map((comp: any) => comp.name),
+            marketPosition: entityIntelligence.marketPosition,
+            industryFocus: entityIntelligence.industryFocus,
+            recentNews: entityIntelligence.recentNews,
+            confidenceScore: entityIntelligence.confidence_score,
+            scrapedAt: entityIntelligence.scrapedAt
+          },
+          queryCount: 25
+        }
+      });
+      
+      if (aiResponse?.queries?.length) {
+        console.log('✅ Enhanced AI queries generated:', aiResponse.queries.length);
+        setGeneratedQueries(aiResponse.queries);
+      } else {
+        console.warn('⚠️ Enhanced AI query generation failed, using fallback');
+        await generateTemplateQueries();
+      }
+    } catch (error) {
+      console.error('❌ Enhanced query generation error:', error);
+      await generateTemplateQueries();
+    }
+    
+    setCurrentStep('queries');
+  };
+
+  const generateTemplateQueries = async () => {
+    if (!topicData) return;
+    
+    console.log('🔄 Generating template queries for topic:', topicData.topic);
+    const queries = TopicQueryGeneratorService.generateQueries(topicData, 15);
+    setGeneratedQueries(queries);
   };
 
   const handleCreateAudit = () => {
@@ -359,9 +388,33 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                   <TopicAnalysisInterface onTopicAnalysisGenerated={handleTopicAnalysis} />
                   
                   {/* Entity Intelligence Preview */}
-                  {topicData?.entityIntelligence && (
-                    <div className="mt-4">
-                      <EntityAnalysisPreview entityIntelligence={topicData.entityIntelligence} />
+                  {entityIntelligence && !showEntityAnalyzer && (
+                    <div className="mt-6">
+                      <EntityAnalysisPreview entityIntelligence={entityIntelligence} />
+                    </div>
+                  )}
+
+                  {/* Enhanced Entity Intelligence Analyzer */}
+                  {showEntityAnalyzer && (
+                    <div className="mt-6">
+                      <EntityIntelligenceAnalyzer
+                        entityData={{
+                          entityName: topicData?.entityToTrack || '',
+                          context: topicData?.context_description,
+                        }}
+                        onIntelligenceGenerated={(intelligence) => {
+                          setEnhancedEntityIntelligence(intelligence);
+                          console.log('🚀 Enhanced entity intelligence:', intelligence);
+                        }}
+                        onAnalysisComplete={async () => {
+                          setShowEntityAnalyzer(false);
+                          if (enhancedEntityIntelligence) {
+                            await generateQueriesFromEnhancedEntity(enhancedEntityIntelligence);
+                          } else {
+                            await generateTemplateQueries();
+                          }
+                        }}
+                      />
                     </div>
                   )}
                 </>
