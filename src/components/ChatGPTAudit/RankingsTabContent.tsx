@@ -92,6 +92,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       
       if (hasRanking) {
         let allEntities: Array<{name: string; position: number; isTarget: boolean}> = [];
+        let targetEntityPosition: number | undefined;
         
         // Priority 1: Use structured entities from entity_analysis (most complete data)
         if (result.entity_analysis?.structured_entities && result.entity_analysis.structured_entities.length > 0) {
@@ -100,6 +101,10 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
             position: entity.position || index + 1,
             isTarget: entity.name.toLowerCase() === entityName.toLowerCase()
           }));
+          
+          // Find target entity position from structured data
+          const targetEntity = allEntities.find(entity => entity.isTarget);
+          targetEntityPosition = targetEntity?.position;
         } 
         // Priority 2: Fall back to ranking snapshots
         else {
@@ -116,6 +121,10 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
             }))
             .sort((a, b) => a.position - b.position);
           
+          // Find target entity position from snapshots
+          const targetSnapshot = allEntities.find(entity => entity.isTarget);
+          targetEntityPosition = targetSnapshot?.position;
+          
           // Priority 3: Final fallback to competitors_mentioned
           if (allEntities.length === 0 && result.competitors_mentioned) {
             allEntities = result.competitors_mentioned.map((competitor, index) => ({
@@ -123,21 +132,40 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
               position: index + 1,
               isTarget: competitor.toLowerCase() === entityName.toLowerCase()
             }));
+            
+            const targetFromCompetitors = allEntities.find(entity => entity.isTarget);
+            targetEntityPosition = targetFromCompetitors?.position;
           }
         }
         
-        // Sort by position and ensure we show top 10
-        allEntities.sort((a, b) => a.position - b.position);
+        // If target entity not found in structured data, ensure it's included with mention_position
+        if (!targetEntityPosition && result.mention_position) {
+          targetEntityPosition = result.mention_position;
+          
+          // Add target entity to the list if not already there
+          const targetExists = allEntities.some(entity => entity.isTarget);
+          if (!targetExists) {
+            allEntities.push({
+              name: entityName,
+              position: result.mention_position,
+              isTarget: true
+            });
+          }
+        }
         
-        // Find the actual position of the target entity in the structured data
-        const targetEntity = allEntities.find(entity => entity.isTarget);
-        const actualEntityPosition = targetEntity?.position || result.mention_position;
+        // Sort by position and ensure target entity is prioritized in display
+        allEntities.sort((a, b) => {
+          // Target entity always comes first when expanded
+          if (a.isTarget && !b.isTarget) return -1;
+          if (!a.isTarget && b.isTarget) return 1;
+          return a.position - b.position;
+        });
         
         rankings.push({
           queryId: result.id,
           queryText: result.query_text,
           category: result.query_category,
-          entityPosition: actualEntityPosition,
+          entityPosition: targetEntityPosition,
           totalEntities: result.entity_analysis?.structured_entities?.length || result.total_entities_in_response || allEntities.length,
           visibilityScore: result.visibility_score,
           allEntities: allEntities.slice(0, 10) // Top 10 only
@@ -526,11 +554,11 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                           <div className="w-16 bg-zinc-700 rounded-full h-2">
                             <div 
                               className="bg-blue-500 h-2 rounded-full" 
-                              style={{ width: `${Math.min(ranking.visibilityScore * 100, 100)}%` }}
+                              style={{ width: `${Math.min(ranking.visibilityScore, 100)}%` }}
                             />
                           </div>
                           <span className="text-xs text-zinc-400 min-w-10">
-                            {(ranking.visibilityScore * 100).toFixed(0)}%
+                            {ranking.visibilityScore.toFixed(0)}%
                           </span>
                         </div>
                         
@@ -580,7 +608,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                             </span>
                           </div>
                           
-                          {entity.position <= 3 && (
+                          {entity.isTarget && entity.position <= 3 && (
                             <div className="flex items-center">
                               {entity.position === 1 && <Crown className="h-4 w-4 text-yellow-500" />}
                               {entity.position === 2 && <Medal className="h-4 w-4 text-orange-500" />}
