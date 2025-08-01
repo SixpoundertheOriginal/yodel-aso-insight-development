@@ -3,16 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Palette, Search, Image, Loader2, AlertCircle } from 'lucide-react';
+import { Palette, Search, Image, Loader2, AlertCircle, Brain } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CreativeAnalysisService, type AppInfo, type CreativeAnalysisResult } from '@/services/creative-analysis.service';
+import { CreativeAnalysisService, type AppInfo, type CreativeAnalysisResult, type CreativeAnalysisWithAI } from '@/services/creative-analysis.service';
 import { ScreenshotGallery } from './ScreenshotGallery';
 import { AppComparisonCard } from './AppComparisonCard';
+import { CreativeAnalysisResults } from './CreativeAnalysisResults';
 
 export const CreativeAnalysisHub: React.FC = () => {
   const [keyword, setKeyword] = useState('fitness');
   const [results, setResults] = useState<CreativeAnalysisResult | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<CreativeAnalysisWithAI | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [searchType, setSearchType] = useState<'keyword' | 'appid'>('keyword');
 
   const handleSearch = async () => {
@@ -42,6 +45,28 @@ export const CreativeAnalysisHub: React.FC = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  const handleAnalyzeWithAI = async (app?: AppInfo) => {
+    if (!results?.apps) return;
+    
+    setAiLoading(true);
+    setAiAnalysis(null);
+    
+    try {
+      const appsToAnalyze = app ? [app] : results.apps;
+      const analysis = await CreativeAnalysisService.analyzeCreativesWithAI(appsToAnalyze);
+      setAiAnalysis(analysis);
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setAiAnalysis({
+        success: false,
+        individual: [],
+        error: 'Failed to analyze screenshots with AI'
+      });
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -148,13 +173,50 @@ export const CreativeAnalysisHub: React.FC = () => {
             {/* App Results */}
             {results.apps.length > 0 ? (
               <div className="space-y-8">
-                {results.apps.map((app, index) => (
-                  <AppComparisonCard
-                    key={app.appId}
-                    app={app}
-                    rank={index + 1}
-                  />
-                ))}
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-zinc-100">
+              Analysis Results
+            </h3>
+            {results.apps.some(app => app.screenshots.length > 0) && (
+              <Button
+                onClick={() => handleAnalyzeWithAI()}
+                disabled={aiLoading}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing All...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2" />
+                    Analyze All with AI
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {results.apps.map((app, index) => (
+            <AppComparisonCard 
+              key={app.appId} 
+              app={app} 
+              rank={index + 1}
+              onAnalyzeWithAI={handleAnalyzeWithAI}
+              isAnalyzing={aiLoading}
+            />
+          ))}
+
+          {/* AI Analysis Results */}
+          {aiAnalysis && (
+            <div className="mt-8">
+              <CreativeAnalysisResults 
+                analysis={aiAnalysis} 
+                keyword={keyword}
+              />
+            </div>
+          )}
               </div>
             ) : (
               <Card className="bg-zinc-900 border-zinc-800">

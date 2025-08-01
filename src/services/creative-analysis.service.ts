@@ -15,6 +15,52 @@ interface CreativeAnalysisResult {
   error?: string;
 }
 
+export interface ColorPalette {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  text: string;
+}
+
+export interface MessageAnalysis {
+  primaryMessage: string;
+  messageType: 'feature' | 'benefit' | 'social_proof' | 'emotional' | 'functional';
+  confidence: number;
+  keywords: string[];
+}
+
+export interface VisualHierarchy {
+  focal_point: string;
+  visual_flow: string[];
+  ui_elements: string[];
+  layout_type: string;
+}
+
+export interface ScreenshotAnalysis {
+  appId: string;
+  appName: string;
+  screenshotUrl: string;
+  colorPalette: ColorPalette;
+  messageAnalysis: MessageAnalysis;
+  visualHierarchy: VisualHierarchy;
+  textContent: string[];
+  designPatterns: string[];
+  confidence: number;
+}
+
+export interface CreativeAnalysisWithAI {
+  success: boolean;
+  individual: ScreenshotAnalysis[];
+  patterns?: {
+    commonMessageTypes: Array<{ item: string; count: number; percentage: number }>;
+    commonDesignPatterns: Array<{ item: string; count: number; percentage: number }>;
+    commonLayoutTypes: Array<{ item: string; count: number; percentage: number }>;
+    insights: string[];
+  };
+  error?: string;
+}
+
 export class CreativeAnalysisService {
   private static async fetchAppScreenshots(keyword: string): Promise<AppInfo[]> {
     const encodedKeyword = encodeURIComponent(keyword);
@@ -111,6 +157,53 @@ export class CreativeAnalysisService {
         apps: [],
         totalResults: 0,
         keyword: appId,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  static async analyzeCreativesWithAI(apps: AppInfo[]): Promise<CreativeAnalysisWithAI> {
+    try {
+      if (!apps || apps.length === 0) {
+        throw new Error('No apps provided for analysis');
+      }
+
+      // Prepare screenshots for analysis (max 3 screenshots per app)
+      const screenshots = apps.flatMap(app => 
+        app.screenshots.slice(0, 3).map((url, index) => ({
+          url,
+          appName: app.title,
+          appId: app.appId
+        }))
+      );
+
+      if (screenshots.length === 0) {
+        throw new Error('No screenshots found to analyze');
+      }
+
+      // Call the edge function
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('creative-vision-analyzer', {
+        body: {
+          screenshots,
+          analysisType: screenshots.length > 1 ? 'batch' : 'individual'
+        }
+      });
+
+      if (error) {
+        throw new Error(`Analysis failed: ${error.message}`);
+      }
+
+      return {
+        success: true,
+        individual: data.individual || [],
+        patterns: data.patterns,
+      };
+    } catch (error) {
+      console.error('AI creative analysis error:', error);
+      return {
+        success: false,
+        individual: [],
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }

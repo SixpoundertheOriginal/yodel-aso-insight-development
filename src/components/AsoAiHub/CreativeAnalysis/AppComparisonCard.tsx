@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, User, Image as ImageIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Star, User, Image as ImageIcon, Brain, Loader2 } from 'lucide-react';
 import { type AppInfo } from '@/services/creative-analysis.service';
 import { ScreenshotGallery } from './ScreenshotGallery';
 
 interface AppComparisonCardProps {
   app: AppInfo;
   rank: number;
+  onAnalyzeWithAI?: (app: AppInfo) => void;
+  isAnalyzing?: boolean;
 }
 
-export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({ app, rank }) => {
+export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
+  app,
+  rank,
+  onAnalyzeWithAI,
+  isAnalyzing = false
+}) => {
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardHeader className="pb-4">
@@ -72,6 +80,30 @@ export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({ app, rank 
           <div className="py-8 text-center">
             <ImageIcon className="h-8 w-8 mx-auto mb-2 text-zinc-500" />
             <p className="text-zinc-400 text-sm">No screenshots available</p>
+          </div>
+        )}
+
+        {/* AI Analysis Button */}
+        {onAnalyzeWithAI && app.screenshots && app.screenshots.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-zinc-800">
+            <Button
+              onClick={() => onAnalyzeWithAI(app)}
+              disabled={isAnalyzing}
+              variant="outline"
+              className="w-full bg-zinc-800 border-zinc-700 hover:bg-zinc-750 text-zinc-300"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analyzing with AI...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4 mr-2" />
+                  Analyze with AI Vision
+                </>
+              )}
+            </Button>
           </div>
         )}
       </CardContent>
