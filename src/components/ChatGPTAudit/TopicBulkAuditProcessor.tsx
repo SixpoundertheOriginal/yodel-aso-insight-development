@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
+import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
 import { TopicAuditData } from '@/types/topic-audit.types';
 import { Play, Pause, Square, Target, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -218,8 +219,28 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
       if (!existingQueries.data || existingQueries.data.length === 0) {
         console.log('TopicBulkAuditProcessor: No existing queries found, generating new ones');
         
-        // Generate queries using the topic data
-        const queries = TopicQueryGeneratorService.generateQueries(selectedAuditRun.topic_data, 10);
+        // Fetch entity intelligence first if entity is specified
+        let enhancedTopicData = selectedAuditRun.topic_data;
+        if (selectedAuditRun.topic_data.entityToTrack) {
+          console.log('TopicBulkAuditProcessor: Fetching entity intelligence for:', selectedAuditRun.topic_data.entityToTrack);
+          const entityIntelligence = await EntityIntelligenceService.getEntityIntelligence(
+            selectedAuditRun.topic_data.entityToTrack,
+            organizationId
+          );
+          
+          if (entityIntelligence) {
+            enhancedTopicData = {
+              ...selectedAuditRun.topic_data,
+              entityIntelligence
+            };
+            console.log('TopicBulkAuditProcessor: Entity intelligence fetched successfully');
+          } else {
+            console.log('TopicBulkAuditProcessor: Failed to fetch entity intelligence, proceeding without');
+          }
+        }
+        
+        // Generate queries using the enhanced topic data
+        const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 10);
         console.log('TopicBulkAuditProcessor: Generated queries:', queries.length);
         
         const queryInserts = queries.map(query => ({

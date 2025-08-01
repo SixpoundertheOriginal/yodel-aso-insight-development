@@ -66,7 +66,7 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
     onTopicAnalysisGenerated(topicData);
   };
 
-  const isFormValid = topicData.topic.trim() && topicData.industry && topicData.target_audience.trim();
+  const isFormValid = topicData.topic.trim() && topicData.industry && topicData.target_audience.trim() && topicData.entityToTrack?.trim();
 
   return (
     <Card className="bg-card border-border">
@@ -131,14 +131,14 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
           />
         </div>
 
-        {/* NEW - Entity Tracking Section */}
+        {/* Entity Tracking Section - REQUIRED */}
         <div className="space-y-4 p-4 bg-background/50 rounded-lg border border-border">
           <div className="flex items-center space-x-2">
             <Target className="h-4 w-4 text-blue-400" />
-            <Label className="text-sm font-medium">Entity Tracking (Optional)</Label>
+            <Label className="text-sm font-medium">Entity Tracking (Required) <span className="text-red-500">*</span></Label>
           </div>
           <p className="text-xs text-muted-foreground">
-            Track how often a specific company/service is mentioned in responses
+            Track how often a specific company/service is mentioned in responses. This is required for accurate topic analysis.
           </p>
           
           {/* Entity to track */}

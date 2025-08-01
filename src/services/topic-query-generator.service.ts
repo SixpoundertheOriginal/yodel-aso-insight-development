@@ -102,9 +102,18 @@ export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
+    // Enhanced query generation with entity intelligence
+    if (topicData.entityIntelligence) {
+      const intelligenceQueries = this.generateIntelligenceBasedQueries(topicData, Math.ceil(count * 0.6));
+      queries.push(...intelligenceQueries);
+    }
+    
     // Generate context-aware queries using industry category and target audience
-    const contextualQueries = this.generateContextualQueries(topicData, count);
-    queries.push(...contextualQueries);
+    const remaining = count - queries.length;
+    if (remaining > 0) {
+      const contextualQueries = this.generateContextualQueries(topicData, remaining);
+      queries.push(...contextualQueries);
+    }
     
     // Fill remaining slots with variations if needed
     if (queries.length < count) {
@@ -269,6 +278,81 @@ export class TopicQueryGeneratorService {
     return contextMap[audience.toLowerCase()] || audience;
   }
   
+  private static generateIntelligenceBasedQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    const intelligence = topicData.entityIntelligence!;
+    
+    // Service-specific queries
+    intelligence.services.forEach(service => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `Best ${service} for ${topicData.target_audience}`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `Who provides ${service} for ${topicData.target_audience}?`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+    });
+
+    // Client-specific realistic scenarios
+    intelligence.targetClients.forEach(clientType => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${topicData.topic} for ${clientType} - recommendations`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+    });
+
+    // Competitive queries
+    intelligence.competitors.slice(0, 3).forEach(competitor => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${topicData.entityToTrack} vs ${competitor}`,
+        query_type: 'comparison',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `Alternatives to ${competitor}`,
+        query_type: 'comparison',
+        priority: 2,
+        target_entity: topicData.entityToTrack
+      });
+    });
+
+    // Market position based queries
+    const positionQueries = [
+      `Top ${intelligence.marketPosition} ${topicData.topic}`,
+      `Leading ${topicData.topic} providers`,
+      `Best ${topicData.topic} companies`
+    ];
+    
+    positionQueries.forEach(queryText => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: 'recommendation',
+        priority: 2,
+        target_entity: topicData.entityToTrack
+      });
+    });
+
+    // Shuffle and return top queries
+    const shuffled = queries.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  }
+
   private static generateVariations(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
     const variations: GeneratedTopicQuery[] = [];
     const baseQueries = [
@@ -285,7 +369,7 @@ export class TopicQueryGeneratorService {
         query_text: baseQueries[i],
         query_type: 'recommendation',
         priority: 4,
-        target_entity: topicData.topic
+        target_entity: topicData.entityToTrack
       });
     }
     

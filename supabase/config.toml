@@ -61,6 +61,9 @@ verify_jwt = true
 [functions.chatgpt-topic-analysis]
 verify_jwt = true
 
+[functions.entity-intelligence-scraper]
+verify_jwt = true
+
 [functions.create-platform-admin]
 verify_jwt = false
 
