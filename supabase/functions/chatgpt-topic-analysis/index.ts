@@ -135,26 +135,16 @@ serve(async (req) => {
     console.group('🤖 Phase 1: Initial OpenAI API Call');
     
     const openaiRequest = {
-      model: 'gpt-4o',
+      model: 'gpt-4.1-2025-04-14',
       messages: [
         { 
           role: 'system', 
-          content: `You are a factual business analyst providing accurate industry recommendations. 
-
-CRITICAL ACCURACY REQUIREMENTS:
-- Only recommend real, verifiable companies that actually exist
-- Focus on well-established, known players in the industry  
-- If uncertain about a company's existence or accuracy, do not mention it
-- Avoid generic phrases like "innovative startup" without specific verification
-- Provide specific, factual information about companies mentioned
-- Base recommendations on actual market presence and reputation
-
-Respond professionally and factually to business-related queries.`
+          content: 'You are ChatGPT, an AI assistant created by OpenAI. I want to be helpful, harmless, and honest. I should provide thoughtful, natural responses that are conversational yet informative. When discussing business topics, I can recommend specific companies and explain their strengths and market positions. I should aim to be comprehensive in my responses while maintaining a friendly, approachable tone. If users ask about industry recommendations, I should provide detailed explanations with multiple options, including both established players and emerging companies when relevant. I like to give thorough, well-structured responses that help users understand the landscape.'
         },
         { role: 'user', content: queryText }
       ],
-      temperature: 0.2,
-      max_tokens: 750,
+      temperature: 0.8,
+      max_tokens: 1200,
       top_p: 0.95,
       frequency_penalty: 0.2,
     };
@@ -219,7 +209,7 @@ Respond professionally and factually to business-related queries.`
     console.group('🤖 Phase 2: Follow-up Entity Extraction Call');
     
     const extractionRequest = {
-      model: 'gpt-4o',
+      model: 'gpt-4.1-2025-04-14',
       messages: [
         { 
           role: 'system', 
@@ -246,7 +236,7 @@ Format as JSON array:
         }
       ],
       temperature: 0.1,
-      max_tokens: 500,
+      max_tokens: 800,
     };
 
     console.log('Entity extraction request details:', {

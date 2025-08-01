@@ -80,7 +80,7 @@ export function extractCompetitors(responseText: string, targetApp: string): str
     }
   }
   
-  return Array.from(competitors).slice(0, 5); // Limit to top 5
+  return Array.from(competitors).slice(0, 10); // Limit to top 10
 }
 
 // Enhanced ranking position detection

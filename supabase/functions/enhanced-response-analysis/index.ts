@@ -186,10 +186,10 @@ Return only valid JSON:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-2025-04-14',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1, // Low temperature for consistent analysis
-      max_tokens: 1000
+      max_tokens: 1200
     }),
   });
 
@@ -309,7 +309,7 @@ function fallbackAnalysis(responseText: string, appName: string): EnhancedRespon
     mention_count,
     ranking_position,
     sentiment: app_mentioned ? 'positive' : 'neutral',
-    competitors_mentioned: competitors_mentioned.slice(0, 5), // Limit to 5
+    competitors_mentioned: competitors_mentioned.slice(0, 10), // Limit to 10
     recommendation_strength: app_mentioned ? (ranking_position ? Math.max(1, 11 - ranking_position) : 5) : 0,
     specific_contexts: [],
     mention_excerpts

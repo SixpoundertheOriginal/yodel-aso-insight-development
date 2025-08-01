@@ -62,16 +62,16 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { 
             role: 'system', 
-            content: 'You are a helpful assistant that provides app recommendations. Be specific and mention actual app names when possible. Provide clear, concise recommendations.' 
+            content: 'You are ChatGPT, an AI assistant created by OpenAI. I want to be helpful, harmless, and honest. I should provide thoughtful, natural responses that are conversational yet informative. When discussing apps or software, I can recommend specific options and explain their strengths and differences. I should aim to be comprehensive in my responses while maintaining a friendly, approachable tone. If users ask about recommendations, I should provide detailed explanations with multiple options when possible.' 
           },
           { role: 'user', content: queryText }
         ],
-        temperature: 0.7,
-        max_tokens: 500,
+        temperature: 0.9,
+        max_tokens: 1200,
       }),
     });
 
@@ -261,7 +261,7 @@ function analyzeVisibility(responseText: string, targetApp: string): VisibilityA
     appMentioned,
     mentionPosition,
     mentionContext,
-    competitorsMentioned: [...new Set(competitorsMentioned)].slice(0, 5), // Remove duplicates, limit to 5
+    competitorsMentioned: [...new Set(competitorsMentioned)].slice(0, 10), // Remove duplicates, limit to 10
     sentimentScore: Math.round(sentimentScore * 100) / 100,
     visibilityScore: Math.round(visibilityScore)
   };
