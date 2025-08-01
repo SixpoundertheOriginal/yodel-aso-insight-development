@@ -11,6 +11,8 @@ import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
+import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Target, 
   Brain, 
@@ -101,15 +103,53 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setCurrentStep('queries');
   };
 
-  const handleTopicAnalysis = (topic: TopicAuditData) => {
+  const handleTopicAnalysis = async (topic: TopicAuditData) => {
     setTopicData(topic);
     setAuditName(`${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
     
-    // Generate queries immediately with consistent count
-    console.log('StreamlinedSetupFlow: Generating 10 queries for topic:', topic.topic);
-    const queries = TopicQueryGeneratorService.generateQueries(topic, 10);
-    console.log('StreamlinedSetupFlow: Generated queries:', queries.length);
-    setGeneratedQueries(queries);
+    try {
+      // Fetch entity intelligence first
+      const entityIntelligence = await EntityIntelligenceService.getEntityIntelligence(
+        topic.entityToTrack,
+        'default-org'
+      );
+
+      // Update topic data with entity intelligence
+      const enhancedTopicData = {
+        ...topic,
+        entityIntelligence
+      };
+      setTopicData(enhancedTopicData);
+
+      // Try AI-enhanced query generation first
+      try {
+        const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
+          body: {
+            topicData: enhancedTopicData,
+            entityIntelligence,
+            queryCount: 20
+          }
+        });
+        
+        if (aiResponse?.queries?.length) {
+          setGeneratedQueries(aiResponse.queries);
+        } else {
+          // Fallback to template-based generation
+          const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 15);
+          setGeneratedQueries(queries);
+        }
+      } catch (aiError) {
+        console.warn('AI query generation failed, using templates:', aiError);
+        const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 15);
+        setGeneratedQueries(queries);
+      }
+    } catch (error) {
+      console.error('Error in topic analysis:', error);
+      // Fallback without entity intelligence
+      const queries = TopicQueryGeneratorService.generateQueries(topic, 15);
+      setGeneratedQueries(queries);
+    }
+    
     setCurrentStep('queries');
   };
 

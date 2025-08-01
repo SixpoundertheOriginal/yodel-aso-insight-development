@@ -111,7 +111,7 @@ export class TopicQueryGeneratorService {
     // Generate context-aware queries using industry category and target audience
     const remaining = count - queries.length;
     if (remaining > 0) {
-      const contextualQueries = this.generateContextualQueries(topicData, remaining);
+      const contextualQueries = this.generateUserContextQueries(topicData, remaining);
       queries.push(...contextualQueries);
     }
     
@@ -124,7 +124,7 @@ export class TopicQueryGeneratorService {
     return queries.slice(0, count);
   }
 
-  private static generateContextualQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+  private static generateUserContextQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
     // Base queries with target audience context
