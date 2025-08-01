@@ -177,6 +177,8 @@ export class CreativeAnalysisService {
         }))
       );
 
+      console.log('Preparing AI analysis for screenshots:', screenshots.length, screenshots);
+
       if (screenshots.length === 0) {
         throw new Error('No screenshots found to analyze');
       }
@@ -190,8 +192,19 @@ export class CreativeAnalysisService {
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
-        throw new Error(`Analysis failed: ${error.message}`);
+        console.error('Supabase function error:', error);
+        throw new Error(`Analysis failed: ${error.message || 'Failed to send a request to the Edge Function'}`);
+      }
+
+      if (!data) {
+        throw new Error('Analysis failed: No data returned from AI analysis');
+      }
+
+      if (data.error) {
+        throw new Error(`AI Analysis failed: ${data.error}`);
       }
 
       return {
@@ -201,10 +214,25 @@ export class CreativeAnalysisService {
       };
     } catch (error) {
       console.error('AI creative analysis error:', error);
+      
+      // More specific error messages
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = 'Network error: Unable to connect to AI analysis service';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Analysis timed out: Please try again with fewer screenshots';
+        } else if (error.message.includes('OpenAI')) {
+          errorMessage = `AI service error: ${error.message}`;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       return {
         success: false,
         individual: [],
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: errorMessage
       };
     }
   }

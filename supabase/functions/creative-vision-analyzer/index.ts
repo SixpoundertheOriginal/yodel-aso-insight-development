@@ -56,6 +56,11 @@ const analyzeScreenshotWithVision = async (screenshot: any): Promise<ScreenshotA
     throw new Error('OpenAI API key not configured');
   }
 
+  // Validate image URL
+  if (!screenshot.url || !screenshot.url.startsWith('http')) {
+    throw new Error(`Invalid screenshot URL: ${screenshot.url}`);
+  }
+
   const prompt = `Analyze this app screenshot by following these steps:
 
 1. COLOR PALETTE: Identify the dominant colors used
@@ -72,7 +77,7 @@ Also identify:
 - UI elements (buttons, cards, navigation, etc.)
 - Layout type (grid, list, hero, onboarding, etc.)
 
-Return a JSON response with the following structure:
+Return ONLY a valid JSON response with this exact structure:
 {
   "colorPalette": {
     "primary": "color description",
@@ -98,6 +103,9 @@ Return a JSON response with the following structure:
   "confidence": 0.9
 }`;
 
+  console.log(`Starting analysis for ${screenshot.appName} - ${screenshot.url}`);
+  
+  let openAIResponse;
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -106,7 +114,7 @@ Return a JSON response with the following structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini', // Using faster, cheaper model
         messages: [
           {
             role: 'user',
@@ -116,34 +124,75 @@ Return a JSON response with the following structure:
             ]
           }
         ],
-        max_tokens: 1000,
+        max_tokens: 1500,
         temperature: 0.1,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`OpenAI API error ${response.status}:`, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
+    openAIResponse = await response.json();
+    const content = openAIResponse.choices?.[0]?.message?.content;
     
-    // Clean and parse JSON response (remove markdown wrapper if present)
-    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    console.log('Cleaned content:', cleanContent.substring(0, 200) + '...');
+    if (!content) {
+      console.error('No content in OpenAI response:', openAIResponse);
+      throw new Error('No content received from OpenAI');
+    }
     
-    const analysisResult = JSON.parse(cleanContent);
+    console.log(`Raw OpenAI response for ${screenshot.appName}:`, content.substring(0, 300) + '...');
     
+    // Multiple JSON cleaning patterns
+    let cleanContent = content;
+    
+    // Remove markdown code blocks
+    cleanContent = cleanContent.replace(/```json\s*|\s*```/g, '');
+    
+    // Remove any text before first {
+    const firstBrace = cleanContent.indexOf('{');
+    if (firstBrace > 0) {
+      cleanContent = cleanContent.substring(firstBrace);
+    }
+    
+    // Remove any text after last }
+    const lastBrace = cleanContent.lastIndexOf('}');
+    if (lastBrace > 0) {
+      cleanContent = cleanContent.substring(0, lastBrace + 1);
+    }
+    
+    cleanContent = cleanContent.trim();
+    console.log(`Cleaned content for ${screenshot.appName}:`, cleanContent.substring(0, 200) + '...');
+    
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(cleanContent);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Failed to parse content:', cleanContent);
+      throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
+    }
+    
+    // Validate required fields
+    if (!analysisResult.colorPalette || !analysisResult.messageAnalysis || !analysisResult.visualHierarchy) {
+      console.error('Missing required fields in analysis result:', analysisResult);
+      throw new Error('Incomplete analysis result from OpenAI');
+    }
+    
+    console.log(`Successfully analyzed ${screenshot.appName}`);
     return {
       appId: screenshot.appId,
       appName: screenshot.appName,
       screenshotUrl: screenshot.url,
       ...analysisResult
     };
+    
   } catch (error) {
-    console.error('Vision analysis error:', error);
-    console.error('Raw OpenAI response content:', data?.choices?.[0]?.message?.content);
-    throw new Error(`Failed to analyze screenshot: ${error.message}`);
+    console.error(`Vision analysis error for ${screenshot.appName}:`, error);
+    console.error('OpenAI response:', openAIResponse);
+    throw new Error(`Failed to analyze screenshot for ${screenshot.appName}: ${error.message}`);
   }
 };
 
