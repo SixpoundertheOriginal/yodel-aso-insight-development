@@ -199,12 +199,23 @@ Return ONLY a JSON array with this format:
     const data = await response.json();
     const generatedContent = data.choices[0].message.content;
 
-    // Parse the JSON response
+    // Parse the JSON response (handle markdown code blocks)
     let enhancedQueries;
     try {
-      enhancedQueries = JSON.parse(generatedContent);
+      let jsonContent = generatedContent.trim();
+      
+      // Remove markdown code blocks if present
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      enhancedQueries = JSON.parse(jsonContent);
+      console.log(`Successfully parsed ${enhancedQueries.length} queries from OpenAI`);
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', generatedContent);
+      console.error('Parse error:', parseError);
       throw new Error('Invalid JSON response from OpenAI');
     }
 

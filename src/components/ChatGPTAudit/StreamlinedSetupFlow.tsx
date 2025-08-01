@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ModeSelector } from './ModeSelector';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
+import { EntityAnalysisPreview } from './EntityAnalysisPreview';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
 import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
@@ -356,6 +357,13 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 <>
                   <h3 className="text-lg font-semibold text-primary">Topic Analysis Setup</h3>
                   <TopicAnalysisInterface onTopicAnalysisGenerated={handleTopicAnalysis} />
+                  
+                  {/* Entity Intelligence Preview */}
+                  {topicData?.entityIntelligence && (
+                    <div className="mt-4">
+                      <EntityAnalysisPreview entityIntelligence={topicData.entityIntelligence} />
+                    </div>
+                  )}
                 </>
               )}
               
@@ -421,9 +429,21 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 {topicData?.entityIntelligence && (
                   <Badge variant="secondary" className="flex items-center">
                     <Brain className="h-3 w-3 mr-1" />
-                    Entity-Enhanced Queries
+                    Entity-Enhanced Queries (AI Generated)
                   </Badge>
                 )}
+                
+                <div className="flex items-center text-xs text-muted-foreground">
+                  {generatedQueries.length > 0 && generatedQueries[0]?.source === 'openai_enhanced' ? (
+                    <Badge variant="outline" className="text-green-600 border-green-200">
+                      AI Generated
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-200">
+                      Template Generated
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {/* Query List */}
@@ -460,13 +480,30 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         ) : (
                           <>
                             <p className="text-sm text-foreground mb-2">{query.query_text}</p>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">
-                                {query.query_type}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs">
-                                Priority: {query.priority}
-                              </Badge>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {query.query_type}
+                                </Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Priority: {query.priority}
+                                </Badge>
+                                {query.source && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {query.source === 'openai_enhanced' ? 'AI' : 'Template'}
+                                  </Badge>
+                                )}
+                              </div>
+                              {query.persona && (
+                                <div className="text-xs">
+                                  Persona: <span className="font-medium">{query.persona}</span>
+                                </div>
+                              )}
+                              {query.reasoning && (
+                                <div className="text-xs italic">
+                                  {query.reasoning}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}

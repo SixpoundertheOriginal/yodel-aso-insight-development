@@ -33,10 +33,14 @@ export interface TopicIntelligence {
 export interface GeneratedTopicQuery {
   id: string;
   query_text: string;
-  query_type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational';
+  query_type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' | 'research' | 'service_specific' | 'industry_specific';
   priority: number;
   target_entity: string;
   personas?: string[];
+  reasoning?: string;
+  persona?: string;
+  search_intent?: string;
+  source?: 'openai_enhanced' | 'template';
 }
 
 export type AuditMode = 'app' | 'topic';
