@@ -282,11 +282,12 @@ export class TopicQueryGeneratorService {
     const queries: GeneratedTopicQuery[] = [];
     const intelligence = topicData.entityIntelligence!;
     
-    // Service-specific queries
+    // Service-specific client search queries
     intelligence.services.forEach(service => {
+      // How real clients would search for these services
       queries.push({
         id: crypto.randomUUID(),
-        query_text: `Best ${service} for ${topicData.target_audience}`,
+        query_text: `${service} agency for ${topicData.target_audience}`,
         query_type: 'recommendation',
         priority: 1,
         target_entity: topicData.entityToTrack
@@ -294,48 +295,113 @@ export class TopicQueryGeneratorService {
       
       queries.push({
         id: crypto.randomUUID(),
-        query_text: `Who provides ${service} for ${topicData.target_audience}?`,
+        query_text: `Best ${service} company`,
         query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${service} services for mobile apps`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `Who does ${service} for ${topicData.target_audience}?`,
+        query_type: 'conversational',
         priority: 1,
         target_entity: topicData.entityToTrack
       });
     });
 
-    // Client-specific realistic scenarios
+    // Client pain point queries based on services
+    intelligence.services.forEach(service => {
+      const painPointQueries = [
+        `Need help with ${service} for my app`,
+        `${service} consultant recommendations`,
+        `Outsource ${service} to agency`,
+        `${service} expert for ${topicData.target_audience}`
+      ];
+
+      painPointQueries.forEach(queryText => {
+        queries.push({
+          id: crypto.randomUUID(),
+          query_text: queryText,
+          query_type: 'problem_solving',
+          priority: 1,
+          target_entity: topicData.entityToTrack
+        });
+      });
+    });
+
+    // Target client realistic scenarios
     intelligence.targetClients.forEach(clientType => {
       queries.push({
         id: crypto.randomUUID(),
-        query_text: `${topicData.topic} for ${clientType} - recommendations`,
+        query_text: `${topicData.topic} specialized for ${clientType}`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${clientType} app marketing solutions`,
         query_type: 'recommendation',
         priority: 1,
         target_entity: topicData.entityToTrack
       });
     });
 
-    // Competitive queries
+    // Competitive landscape queries
     intelligence.competitors.slice(0, 3).forEach(competitor => {
       queries.push({
         id: crypto.randomUUID(),
-        query_text: `${topicData.entityToTrack} vs ${competitor}`,
-        query_type: 'comparison',
-        priority: 1,
-        target_entity: topicData.entityToTrack
-      });
-      
-      queries.push({
-        id: crypto.randomUUID(),
-        query_text: `Alternatives to ${competitor}`,
+        query_text: `${competitor} alternatives`,
         query_type: 'comparison',
         priority: 2,
         target_entity: topicData.entityToTrack
       });
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${topicData.entityToTrack} vs ${competitor} comparison`,
+        query_type: 'comparison',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
     });
 
-    // Market position based queries
+    // Industry focus based queries
+    intelligence.industryFocus.forEach(industry => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `${industry} app marketing agency`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: `Best ${topicData.topic} for ${industry} companies`,
+        query_type: 'recommendation',
+        priority: 1,
+        target_entity: topicData.entityToTrack
+      });
+    });
+
+    // Market position enhanced queries
     const positionQueries = [
-      `Top ${intelligence.marketPosition} ${topicData.topic}`,
-      `Leading ${topicData.topic} providers`,
-      `Best ${topicData.topic} companies`
+      `Top performing ${topicData.topic}`,
+      `Leading ${intelligence.marketPosition} ${topicData.topic}`,
+      `Most recommended ${topicData.topic} agencies`,
+      `Proven ${topicData.topic} with results`,
+      `Enterprise ${topicData.topic} providers`
     ];
     
     positionQueries.forEach(queryText => {
@@ -348,8 +414,10 @@ export class TopicQueryGeneratorService {
       });
     });
 
-    // Shuffle and return top queries
-    const shuffled = queries.sort(() => 0.5 - Math.random());
+    // Shuffle and return top queries prioritizing entity-specific ones
+    const shuffled = queries
+      .sort((a, b) => a.priority - b.priority)
+      .sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
   }
 

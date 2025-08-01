@@ -113,6 +113,23 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setCurrentStep('queries');
   };
 
+  const handleRegenerateQueries = (count: number = 10) => {
+    if (!topicData) return;
+    
+    console.log('StreamlinedSetupFlow: Regenerating', count, 'queries for topic:', topicData.topic);
+    const newQueries = TopicQueryGeneratorService.generateQueries(topicData, count);
+    console.log('StreamlinedSetupFlow: Generated new queries:', newQueries.length);
+    setGeneratedQueries(newQueries);
+  };
+
+  const handleGenerateMoreQueries = (additionalCount: number = 10) => {
+    if (!topicData) return;
+    
+    console.log('StreamlinedSetupFlow: Generating', additionalCount, 'additional queries');
+    const newQueries = TopicQueryGeneratorService.generateQueries(topicData, additionalCount);
+    setGeneratedQueries(prev => [...prev, ...newQueries]);
+  };
+
   const handleIntelligenceGenerated = (intelligence: any) => {
     setAppIntelligence(intelligence);
   };
@@ -318,15 +335,55 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 <h3 className="text-lg font-semibold text-primary">
                   Generated Queries ({generatedQueries.length})
                 </h3>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentStep('review')}
+                    disabled={generatedQueries.length === 0}
+                  >
+                    Review & Create
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Query Management Actions */}
+              <div className="flex flex-wrap gap-2 p-4 bg-background/30 rounded-lg border border-border">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentStep('review')}
-                  disabled={generatedQueries.length === 0}
+                  onClick={() => handleRegenerateQueries(10)}
+                  disabled={!topicData}
                 >
-                  Review & Create
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  <Zap className="h-4 w-4 mr-2" />
+                  Regenerate Queries
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateMoreQueries(10)}
+                  disabled={!topicData}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Generate 10 More
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateMoreQueries(20)}
+                  disabled={!topicData}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Generate 20 More
+                </Button>
+
+                {topicData?.entityIntelligence && (
+                  <Badge variant="secondary" className="flex items-center">
+                    <Brain className="h-3 w-3 mr-1" />
+                    Entity-Enhanced Queries
+                  </Badge>
+                )}
               </div>
 
               {/* Query List */}
