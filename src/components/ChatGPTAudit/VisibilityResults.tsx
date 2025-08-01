@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TopPerformersSection } from './TopPerformersSection';
+
 import { RankingDetailsModal } from './RankingDetailsModal';
 import { RankingsTabContent } from './RankingsTabContent';
 import { 
@@ -243,11 +243,10 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
 
       {/* Results Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-4 bg-zinc-900 border-zinc-800">
           <TabsTrigger value="all">All Results ({queryResults.length})</TabsTrigger>
           <TabsTrigger value="mentioned">Mentioned ({mentionedResults.length})</TabsTrigger>
           <TabsTrigger value="not-mentioned">Not Mentioned ({queryResults.length - mentionedResults.length})</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="rankings">Rankings</TabsTrigger>
         </TabsList>
 
@@ -416,83 +415,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
           ))}
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-4">
-          {/* Import and use TopPerformersSection */}
-          <TopPerformersSection auditRunId={auditRunId} organizationId={organizationId} />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Category Breakdown */}
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white">Performance by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {Object.entries(
-                  queryResults.reduce((acc, result) => {
-                    if (!acc[result.query_category]) {
-                      acc[result.query_category] = { total: 0, mentioned: 0 };
-                    }
-                    acc[result.query_category].total++;
-                    if (getEntityMentionStatus(result)) {
-                      acc[result.query_category].mentioned++;
-                    }
-                    return acc;
-                  }, {} as Record<string, { total: number; mentioned: number }>)
-                ).map(([category, stats]) => {
-                  const rate = Math.round((stats.mentioned / stats.total) * 100);
-                  return (
-                    <div key={category} className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-zinc-300 capitalize">
-                          {category.replace('_', ' ')}
-                        </span>
-                        <span className="text-sm text-zinc-400">
-                          {stats.mentioned}/{stats.total} ({rate}%)
-                        </span>
-                      </div>
-                      <Progress value={rate} className="h-2" />
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Cost Analytics */}
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white">Cost Analysis</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-zinc-400">Total Cost</p>
-                    <p className="text-lg font-bold text-white">
-                      ${(queryResults.reduce((sum, r) => sum + r.cost_cents, 0) / 100).toFixed(3)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Avg per Query</p>
-                    <p className="text-lg font-bold text-white">
-                      ${(queryResults.reduce((sum, r) => sum + r.cost_cents, 0) / queryResults.length / 100).toFixed(4)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Total Tokens</p>
-                    <p className="text-lg font-bold text-white">
-                      {queryResults.reduce((sum, r) => sum + r.tokens_used, 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Avg Tokens</p>
-                    <p className="text-lg font-bold text-white">
-                      {Math.round(queryResults.reduce((sum, r) => sum + r.tokens_used, 0) / queryResults.length)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         <TabsContent value="rankings" className="space-y-4">
           <RankingsTabContent 
