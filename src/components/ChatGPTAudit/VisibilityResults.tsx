@@ -262,11 +262,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       <Badge variant="outline" className="text-xs">
                         {result.query_category}
                       </Badge>
-                      {getEntityMentionStatus(result) && (
-                        <Badge variant={getScoreBadgeVariant(result.visibility_score)}>
-                          Score: {result.visibility_score}
-                        </Badge>
-                      )}
                     </div>
                     <CardTitle className="text-sm font-medium text-white">
                       {result.query_text}
@@ -292,18 +287,8 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                   <div className="flex items-center space-x-4">
                     <div className={`w-3 h-3 rounded-full ${getEntityMentionStatus(result) ? 'bg-green-500' : 'bg-red-500'}`}></div>
                      <span className="text-sm text-zinc-300">
-                      {getEntityMentionStatus(result) ? `Mentioned (#${result.mention_position})` : 'Not Mentioned'}
+                      {getEntityMentionStatus(result) ? 'Mentioned' : 'Not Mentioned'}
                     </span>
-                    {result.mention_context !== 'not_mentioned' && (
-                      <Badge 
-                        variant={result.mention_context === 'ranked_list' ? "default" : "outline"} 
-                        className={`text-xs ${result.mention_context === 'ranked_list' ? 'bg-yellow-500 text-yellow-50 cursor-pointer hover:bg-yellow-600 transition-colors' : ''}`}
-                        title={result.mention_context === 'ranked_list' ? 'Click to see competitive landscape details' : ''}
-                        onClick={result.mention_context === 'ranked_list' ? () => handleRankingClick(result) : undefined}
-                      >
-                        {result.mention_context === 'ranked_list' ? '🏆 Ranked List' : result.mention_context}
-                      </Badge>
-                    )}
                   </div>
                   <div className="text-xs text-zinc-500">
                     {result.tokens_used} tokens • ${(result.cost_cents / 100).toFixed(3)}
