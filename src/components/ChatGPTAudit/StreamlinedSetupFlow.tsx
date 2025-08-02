@@ -9,8 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ModeSelector } from './ModeSelector';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
-import { EntityAnalysisPreview } from './EntityAnalysisPreview';
-import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
+import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
 import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
@@ -66,7 +65,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   onAuditCreate
 }) => {
   // Setup state
-  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'queries' | 'review'>('mode');
+  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'confirmation' | 'queries' | 'review'>('mode');
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedTopicQuery[]>([]);
@@ -84,6 +83,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const steps = [
     { id: 'mode', label: 'Analysis Type', icon: Settings },
     { id: 'entity', label: auditMode === 'app' ? 'Select App' : 'Topic Setup', icon: Target },
+    { id: 'confirmation', label: 'Confirmation', icon: Brain },
     { id: 'queries', label: 'Query Generation', icon: MessageSquare },
     { id: 'review', label: 'Review & Create', icon: CheckCircle }
   ];
@@ -98,7 +98,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     const index = getCurrentStepIndex();
     if (index === 0) return auditMode !== null; // Mode step
     if (index === 1) return auditMode === 'app' ? selectedApp !== null : topicData !== null; // Entity step
-    if (index === 2) return generatedQueries.length > 0; // Queries step
+    if (index === 2) return auditMode === 'app' ? selectedApp !== null : topicData !== null; // Confirmation step
+    if (index === 3) return generatedQueries.length > 0; // Queries step
     return false;
   };
 
@@ -115,6 +116,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         setGeneratedQueries([]);
         setShowEntityAnalyzer(false);
         setEnhancedEntityIntelligence(null);
+      } else if (previousStep.id === 'confirmation') {
+        setGeneratedQueries([]);
       } else if (previousStep.id === 'queries') {
         // Keep queries but allow editing
       }
@@ -164,16 +167,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       if (intelligence) {
         setEntityIntelligence(intelligence);
         console.log('🧠 Entity intelligence received:', intelligence);
-        
-        // Show the enhanced entity analyzer for deeper analysis
-        setShowEntityAnalyzer(true);
-      } else {
-        console.warn('⚠️ No entity intelligence received, falling back to template generation');
-        await generateTemplateQueries();
       }
     } catch (error) {
       console.error('Error in topic analysis:', error);
-      await generateTemplateQueries();
     }
   };
 
@@ -262,8 +258,6 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       console.error('❌ Enhanced query generation error:', error);
       await generateTemplateQueries();
     }
-    
-    setCurrentStep('queries');
   };
 
   const generateTemplateQueries = async () => {
@@ -285,6 +279,20 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     };
     
     onAuditCreate(auditData);
+  };
+
+  const handleConfirmation = async (confirmedData: any) => {
+    console.log('🔄 Proceeding with confirmed data:', confirmedData);
+    
+    // Update state with confirmed data
+    if (confirmedData.entityIntelligence) {
+      setEnhancedEntityIntelligence(confirmedData.entityIntelligence);
+      await generateQueriesFromEnhancedEntity(confirmedData.entityIntelligence);
+    } else {
+      await generateTemplateQueries();
+    }
+    
+    setCurrentStep('queries');
   };
 
   const canProceedToQueries = () => {
@@ -427,43 +435,33 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 <>
                   <h3 className="text-lg font-semibold text-primary">Topic Analysis Setup</h3>
                   <TopicAnalysisInterface onTopicAnalysisGenerated={handleTopicAnalysis} />
-                  
-                  {/* Entity Intelligence Preview */}
-                  {entityIntelligence && !showEntityAnalyzer && (
-                    <div className="mt-6">
-                      <EntityAnalysisPreview entityIntelligence={entityIntelligence} />
-                    </div>
-                  )}
-
-                  {/* Enhanced Entity Intelligence Analyzer */}
-                  {showEntityAnalyzer && (
-                    <div className="mt-6">
-                      <EntityIntelligenceAnalyzer
-                        entityData={{
-                          entityName: topicData?.entityToTrack || '',
-                          context: topicData?.context_description,
-                        }}
-                        onIntelligenceGenerated={(intelligence) => {
-                          setEnhancedEntityIntelligence(intelligence);
-                          console.log('🚀 Enhanced entity intelligence:', intelligence);
-                        }}
-                        onAnalysisComplete={async () => {
-                          setShowEntityAnalyzer(false);
-                          if (enhancedEntityIntelligence) {
-                            await generateQueriesFromEnhancedEntity(enhancedEntityIntelligence);
-                          } else {
-                            await generateTemplateQueries();
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
                  </>
                )}
             </div>
           )}
 
-          {/* Step 3: Query Generation/Review */}
+          {/* Step 3: Topic & Entity Confirmation */}
+          {currentStep === 'confirmation' && (
+            <div className="space-y-4">
+              {auditMode === 'topic' && topicData ? (
+                <TopicEntityConfirmation
+                  topicData={topicData}
+                  entityIntelligence={entityIntelligence}
+                  onConfirm={handleConfirmation}
+                  onEdit={() => setCurrentStep('entity')}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">App mode confirmation coming soon...</p>
+                  <Button onClick={() => setCurrentStep('queries')} className="mt-4">
+                    Continue to Query Generation
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Query Generation */}
           {currentStep === 'queries' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -639,7 +637,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             </div>
           )}
 
-          {/* Step 4: Review & Create */}
+          {/* Step 5: Review & Create */}
           {currentStep === 'review' && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-primary">Review & Create Audit</h3>
