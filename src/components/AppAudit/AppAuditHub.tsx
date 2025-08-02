@@ -13,6 +13,7 @@ import { KeywordTrendsTable } from '../KeywordIntelligence/KeywordTrendsTable';
 import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
 import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
 import { SearchDominationTab } from '../AsoAiHub/SearchDominationTab';
+import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
@@ -297,51 +298,11 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RankDistributionChart 
-              data={auditData?.rankDistribution} 
-              isLoading={isLoading}
-            />
-            <KeywordClustersPanel
-              clusters={auditData?.keywordClusters || []}
-              isLoading={isLoading}
-              detailed={true}
-            />
-          </div>
-          
-          {/* Enhanced Audit Summary */}
-          {auditData?.metadataAnalysis && (
-            <Card className="bg-zinc-900 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white">Audit Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Character Usage</h4>
-                    <div className="text-2xl font-bold text-blue-400">
-                      {auditData.metadataAnalysis.scores.breakdown.characterUsage}%
-                    </div>
-                    <p className="text-sm text-zinc-400">Title & Subtitle efficiency</p>
-                  </div>
-                  <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Keyword Density</h4>
-                    <div className="text-2xl font-bold text-green-400">
-                      {auditData.metadataAnalysis.scores.breakdown.keywordDensity}%
-                    </div>
-                    <p className="text-sm text-zinc-400">Optimization level</p>
-                  </div>
-                  <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Uniqueness</h4>
-                    <div className="text-2xl font-bold text-purple-400">
-                      {auditData.metadataAnalysis.scores.breakdown.uniqueness}%
-                    </div>
-                    <p className="text-sm text-zinc-400">vs Competitors</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <EnhancedOverviewTab
+            metadata={importedMetadata}
+            competitorData={auditData?.competitorAnalysis}
+            isLoading={isLoading}
+          />
         </TabsContent>
 
         <TabsContent value="search-domination" className="space-y-6">
