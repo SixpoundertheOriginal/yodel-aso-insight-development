@@ -54,7 +54,7 @@ interface App {
   developer_name?: string;
 }
 
-export default function ChatGPTVisibilityAudit() {
+function ChatGPTVisibilityAudit() {
   const { toast } = useToast();
   const [apps, setApps] = useState<App[]>([]);
   const [auditRuns, setAuditRuns] = useState<AuditRun[]>([]);
@@ -388,3 +388,5 @@ export default function ChatGPTVisibilityAudit() {
     </MainLayout>
   );
 }
+
+export default ChatGPTVisibilityAudit;
