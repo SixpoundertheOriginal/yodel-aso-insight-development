@@ -125,7 +125,7 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
         />
         <ScreenshotAnalysisCard 
           analysis={analysis.screenshots} 
-          screenshotUrls={[]} 
+          screenshotUrls={metadata.screenshots || (metadata.screenshot ? [metadata.screenshot] : [])} 
         />
         <IconAnalysisCard 
           analysis={analysis.icon} 

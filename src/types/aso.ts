@@ -14,6 +14,8 @@ export interface ScrapedMetadata {
   rating?: number;
   reviews?: number;
   price?: string;
+  screenshots?: string[];
+  screenshot?: string;
   
   // Enhanced ASO Intelligence Fields
   searchContext?: {
