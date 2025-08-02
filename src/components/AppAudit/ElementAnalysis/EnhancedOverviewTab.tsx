@@ -4,8 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 import { AppElementAnalysisService, ComprehensiveElementAnalysis } from '@/services/app-element-analysis.service';
-import { AppNameAnalysisCard } from './AppNameAnalysisCard';
-import { TitleAnalysisCard } from './TitleAnalysisCard';
+import { UnifiedNameTitleAnalysisCard } from './UnifiedNameTitleAnalysisCard';
 import { SubtitleAnalysisCard } from './SubtitleAnalysisCard';
 import { DescriptionAnalysisCard } from './DescriptionAnalysisCard';
 import { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
@@ -110,13 +109,11 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
 
       {/* Element Analysis Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AppNameAnalysisCard 
-          analysis={analysis.appName} 
+        <UnifiedNameTitleAnalysisCard 
+          appNameAnalysis={analysis.appName}
+          titleAnalysis={analysis.title}
           appName={metadata.name} 
-        />
-        <TitleAnalysisCard 
-          analysis={analysis.title} 
-          title={metadata.title} 
+          title={metadata.title}
         />
         <SubtitleAnalysisCard 
           analysis={analysis.subtitle} 
