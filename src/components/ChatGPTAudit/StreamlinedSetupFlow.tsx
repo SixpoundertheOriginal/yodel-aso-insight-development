@@ -80,6 +80,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
   const [isGeneratingQueries, setIsGeneratingQueries] = useState(false);
   const [isCreatingAudit, setIsCreatingAudit] = useState(false);
+  const [queryGenerationProgress, setQueryGenerationProgress] = useState({ current: 0, total: 0, stage: '' });
   
   // Form state
   const [auditName, setAuditName] = useState('');
@@ -339,6 +340,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
   const handleConfirmation = async (confirmedData: any) => {
     setIsGeneratingQueries(true);
+    setQueryGenerationProgress({ current: 0, total: 25, stage: 'Analyzing context...' });
     
     try {
       console.log('🔄 Proceeding with confirmed data:', confirmedData);
@@ -348,17 +350,24 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         description: "Creating optimized search queries...",
       });
       
+      // Simulate progress stages
+      setQueryGenerationProgress({ current: 5, total: 25, stage: 'Processing entity intelligence...' });
+      
       // Update state with confirmed data
       if (confirmedData.entityIntelligence) {
+        setQueryGenerationProgress({ current: 10, total: 25, stage: 'Generating AI-enhanced queries...' });
         setEnhancedEntityIntelligence(confirmedData.entityIntelligence);
         await generateQueriesFromEnhancedEntity(confirmedData.entityIntelligence);
       } else {
+        setQueryGenerationProgress({ current: 10, total: 25, stage: 'Generating template queries...' });
         await generateTemplateQueries();
       }
       
+      setQueryGenerationProgress({ current: 25, total: 25, stage: 'Complete!' });
+      
       toast({
-        title: "Queries Generated",
-        description: "Search queries created successfully!",
+        title: "Queries Generated", 
+        description: `Successfully created ${generatedQueries.length} search queries!`,
       });
       
       setCurrentStep('queries');
@@ -371,6 +380,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       });
     } finally {
       setIsGeneratingQueries(false);
+      setQueryGenerationProgress({ current: 0, total: 0, stage: '' });
     }
   };
 

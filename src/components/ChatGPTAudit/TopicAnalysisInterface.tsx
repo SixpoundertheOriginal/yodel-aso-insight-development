@@ -81,82 +81,103 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Primary topic input */}
-        <div className="space-y-2">
-          <Label htmlFor="topic">Topic to Analyze</Label>
-          <Input 
-            id="topic"
-            placeholder="e.g., marketing agencies, productivity tools, language learning platforms"
-            value={topicData.topic}
-            onChange={(e) => setTopicData({...topicData, topic: e.target.value})}
-            className="bg-background border-border"
-          />
-          <p className="text-xs text-muted-foreground">
-            What topic, service category, or market do you want to analyze?
-          </p>
-        </div>
+        {/* Core Setup - Required Fields */}
+        <div className="space-y-6 p-6 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border-2 border-primary/10">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold text-primary">Core Setup</h3>
+            <p className="text-sm text-muted-foreground">Essential information for your analysis</p>
+          </div>
 
-        {/* Industry context */}
-        <div className="space-y-2">
-          <Label>Industry Category</Label>
-          <Select 
-            value={topicData.industry} 
-            onValueChange={(value) => setTopicData({...topicData, industry: value})}
-          >
-            <SelectTrigger className="bg-background border-border">
-              <SelectValue placeholder="Select industry category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="business-services">Business Services</SelectItem>
-              <SelectItem value="software-tech">Software & Technology</SelectItem>
-              <SelectItem value="education-training">Education & Training</SelectItem>
-              <SelectItem value="health-wellness">Health & Wellness</SelectItem>
-              <SelectItem value="finance-banking">Finance & Banking</SelectItem>
-              <SelectItem value="marketing-advertising">Marketing & Advertising</SelectItem>
-              <SelectItem value="ecommerce-retail">E-commerce & Retail</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          {/* Primary topic input */}
+          <div className="space-y-3">
+            <Label htmlFor="topic" className="text-sm font-semibold flex items-center gap-2">
+              Topic to Analyze <span className="text-red-500 text-lg">*</span>
+            </Label>
+            <Input 
+              id="topic"
+              placeholder="e.g., marketing agencies, productivity tools, language learning platforms"
+              value={topicData.topic}
+              onChange={(e) => setTopicData({...topicData, topic: e.target.value})}
+              className="bg-background/80 border-border h-11 text-base"
+            />
+            <p className="text-xs text-muted-foreground">
+              What topic, service category, or market do you want to analyze?
+            </p>
+          </div>
 
-        {/* Target audience */}
-        <div className="space-y-2">
-          <Label htmlFor="audience">Target Audience</Label>
-          <Input 
-            id="audience"
-            placeholder="e.g., small businesses, enterprise companies, individual consumers"
-            value={topicData.target_audience}
-            onChange={(e) => setTopicData({...topicData, target_audience: e.target.value})}
-            className="bg-background border-border"
-          />
+          {/* Industry context */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              Industry Category <span className="text-red-500 text-lg">*</span>
+            </Label>
+            <Select 
+              value={topicData.industry} 
+              onValueChange={(value) => setTopicData({...topicData, industry: value})}
+            >
+              <SelectTrigger className="bg-background/80 border-border h-11">
+                <SelectValue placeholder="Select industry category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="business-services">Business Services</SelectItem>
+                <SelectItem value="software-tech">Software & Technology</SelectItem>
+                <SelectItem value="education-training">Education & Training</SelectItem>
+                <SelectItem value="health-wellness">Health & Wellness</SelectItem>
+                <SelectItem value="finance-banking">Finance & Banking</SelectItem>
+                <SelectItem value="marketing-advertising">Marketing & Advertising</SelectItem>
+                <SelectItem value="ecommerce-retail">E-commerce & Retail</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target audience */}
+          <div className="space-y-3">
+            <Label htmlFor="audience" className="text-sm font-semibold flex items-center gap-2">
+              Target Audience <span className="text-red-500 text-lg">*</span>
+            </Label>
+            <Input 
+              id="audience"
+              placeholder="e.g., small businesses, enterprise companies, individual consumers"
+              value={topicData.target_audience}
+              onChange={(e) => setTopicData({...topicData, target_audience: e.target.value})}
+              className="bg-background/80 border-border h-11 text-base"
+            />
+          </div>
         </div>
 
         {/* Entity Tracking Section - REQUIRED */}
-        <div className="space-y-4 p-4 bg-background/50 rounded-lg border border-border">
-          <div className="flex items-center space-x-2">
-            <Target className="h-4 w-4 text-blue-400" />
-            <Label className="text-sm font-medium">Entity Tracking (Required) <span className="text-red-500">*</span></Label>
+        <div className="space-y-6 p-6 bg-gradient-to-br from-orange-500/5 to-amber-500/5 rounded-lg border-2 border-orange-200/20">
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Target className="h-5 w-5 text-orange-500" />
+              <h3 className="text-lg font-semibold text-primary">Entity Tracking</h3>
+              <span className="text-red-500 text-xl">*</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Track how often a specific company/service is mentioned in responses
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Track how often a specific company/service is mentioned in responses. This is required for accurate topic analysis.
-          </p>
           
           {/* Entity to track */}
-          <div className="space-y-2">
-            <Label htmlFor="entityToTrack">What company/service do you want to track?</Label>
+          <div className="space-y-3">
+            <Label htmlFor="entityToTrack" className="text-sm font-semibold flex items-center gap-2">
+              Company/Service to Track <span className="text-red-500 text-lg">*</span>
+            </Label>
             <Input 
               id="entityToTrack"
               placeholder="e.g., Ogilvy, HubSpot, your company name"
               value={topicData.entityToTrack || ''}
               onChange={(e) => setTopicData({...topicData, entityToTrack: e.target.value})}
-              className="bg-background border-border"
+              className="bg-background/80 border-border h-11 text-base"
             />
           </div>
           
           {/* Entity aliases */}
           {topicData.entityToTrack && (
-            <div className="space-y-2">
-              <Label>Alternative names for your entity (Optional)</Label>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-muted-foreground">
+                Alternative Names (Optional)
+              </Label>
               <div className="flex space-x-2">
                 <Input 
                   placeholder="e.g., Ogilvy & Mather, Ogilvy Agency"
@@ -168,7 +189,7 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
                       addEntityAlias();
                     }
                   }}
-                  className="bg-background border-border"
+                  className="bg-background/60 border-border"
                 />
                 <Button 
                   type="button"
@@ -201,7 +222,14 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
           )}
         </div>
 
-        {/* Optional context */}
+        {/* Optional Fields - Expandable */}
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-base font-medium text-muted-foreground">Optional Enhancements</h3>
+            <p className="text-xs text-muted-foreground">Add more context for better query generation</p>
+          </div>
+
+          {/* Optional context */}
         <div className="space-y-2">
           <Label htmlFor="context">Additional Context (Optional)</Label>
           <Textarea 
@@ -263,22 +291,23 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
           </p>
         </div>
 
-        {/* Action button */}
-        <Button
-          onClick={handleSubmit}
-          disabled={!isFormValid}
-          className="w-full"
-        >
-          <Brain className="h-4 w-4 mr-2" />
-          Generate Topic Analysis
-          <Sparkles className="h-4 w-4 ml-2" />
-        </Button>
-        
-        {!isFormValid && (
-          <p className="text-xs text-muted-foreground text-center">
-            Please fill in the required fields to continue
-          </p>
-        )}
+          {/* Action button */}
+          <Button
+            onClick={handleSubmit}
+            disabled={!isFormValid}
+            className="w-full"
+          >
+            <Brain className="h-4 w-4 mr-2" />
+            Generate Topic Analysis
+            <Sparkles className="h-4 w-4 ml-2" />
+          </Button>
+          
+          {!isFormValid && (
+            <p className="text-xs text-muted-foreground text-center">
+              Please fill in the required fields to continue
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

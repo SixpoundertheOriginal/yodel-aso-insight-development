@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { EntityAnalysisPreview } from './EntityAnalysisPreview';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
+import { EditableEntityDetails } from './EditableEntityDetails';
 import { TopicAuditData, EntityIntelligence } from '@/types/topic-audit.types';
 import { 
   Target, 
@@ -38,6 +39,8 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
 }) => {
   const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
   const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
+  const [isEditingEntity, setIsEditingEntity] = useState(false);
+  const [editedEntityData, setEditedEntityData] = useState<any>(null);
 
   const handleEnhanceAnalysis = () => {
     setShowEntityAnalyzer(true);
@@ -50,9 +53,39 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
   const handleConfirm = () => {
     const confirmedData = {
       topicData,
-      entityIntelligence: enhancedEntityIntelligence || entityIntelligence
+      entityIntelligence: editedEntityData || enhancedEntityIntelligence || entityIntelligence
     };
     onConfirm(confirmedData);
+  };
+
+  const handleEditEntity = () => {
+    setIsEditingEntity(true);
+    // Initialize with existing data
+    const currentData = enhancedEntityIntelligence || entityIntelligence;
+    if (currentData) {
+      setEditedEntityData({
+        entityName: currentData.entityName || topicData.entityToTrack,
+        description: currentData.description || '',
+        services: currentData.services || [],
+        competitors: currentData.competitors || [],
+        targetClients: currentData.targetClients || [],
+        confidence: currentData.confidence_score || 0.5
+      });
+    } else {
+      setEditedEntityData({
+        entityName: topicData.entityToTrack,
+        description: '',
+        services: [],
+        competitors: [],
+        targetClients: [],
+        confidence: 0.5
+      });
+    }
+  };
+
+  const handleSaveEntityEdits = (updatedData: any) => {
+    setEditedEntityData(updatedData);
+    setIsEditingEntity(false);
   };
 
   const getDataQualityScore = () => {
@@ -249,11 +282,44 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
             </Alert>
           )}
 
+          {/* Editable Entity Details */}
+          {isEditingEntity && (
+            <EditableEntityDetails
+              entityData={editedEntityData}
+              onSave={handleSaveEntityEdits}
+              onCancel={() => setIsEditingEntity(false)}
+            />
+          )}
+
           {/* Basic Entity Intelligence Preview */}
-          {entityIntelligence && !enhancedEntityIntelligence && !showEntityAnalyzer && (
+          {entityIntelligence && !enhancedEntityIntelligence && !showEntityAnalyzer && !isEditingEntity && (
             <div className="space-y-3">
-              <Badge variant="secondary" className="mb-2">Basic Analysis</Badge>
+              <div className="flex items-center justify-between">
+                <Badge variant="secondary" className="mb-2">Basic Analysis</Badge>
+                <Button variant="outline" size="sm" onClick={handleEditEntity}>
+                  <Edit3 className="h-4 w-4 mr-1" />
+                  Edit Details
+                </Button>
+              </div>
               <EntityAnalysisPreview entityIntelligence={entityIntelligence} />
+            </div>
+          )}
+
+          {/* Show edited entity data */}
+          {editedEntityData && !isEditingEntity && !showEntityAnalyzer && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Badge variant="default" className="mb-2">User Edited</Badge>
+                <Button variant="outline" size="sm" onClick={handleEditEntity}>
+                  <Edit3 className="h-4 w-4 mr-1" />
+                  Edit Details
+                </Button>
+              </div>
+              <EditableEntityDetails
+                entityData={editedEntityData}
+                onSave={handleSaveEntityEdits}
+                onCancel={() => {}}
+              />
             </div>
           )}
 
@@ -275,13 +341,19 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
           )}
 
           {/* Enhanced Intelligence Display */}
-          {enhancedEntityIntelligence && !showEntityAnalyzer && (
+          {enhancedEntityIntelligence && !showEntityAnalyzer && !isEditingEntity && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="default">Enhanced Analysis Complete</Badge>
-                <Badge variant="outline">
-                  {Math.round(enhancedEntityIntelligence.confidence_score * 100)}% Confidence
-                </Badge>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Enhanced Analysis Complete</Badge>
+                  <Badge variant="outline">
+                    {Math.round(enhancedEntityIntelligence.confidence_score * 100)}% Confidence
+                  </Badge>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleEditEntity}>
+                  <Edit3 className="h-4 w-4 mr-1" />
+                  Edit Details
+                </Button>
               </div>
               <div className="p-4 bg-muted/30 rounded-lg">
                 <p className="text-sm text-muted-foreground mb-3">
@@ -334,7 +406,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
         <Button 
           onClick={handleConfirm} 
           className="flex-1"
-          disabled={showEntityAnalyzer}
+          disabled={showEntityAnalyzer || isEditingEntity}
         >
           <ArrowRight className="h-4 w-4 mr-2" />
           Proceed to Query Generation
