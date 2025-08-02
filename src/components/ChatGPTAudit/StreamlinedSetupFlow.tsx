@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import { ModeSelector } from './ModeSelector';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
@@ -25,7 +26,8 @@ import {
   CheckCircle,
   Plus,
   Zap,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 
 interface App {
@@ -74,11 +76,18 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
   const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
   
+  // Loading states
+  const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
+  const [isGeneratingQueries, setIsGeneratingQueries] = useState(false);
+  const [isCreatingAudit, setIsCreatingAudit] = useState(false);
+  
   // Form state
   const [auditName, setAuditName] = useState('');
   const [auditDescription, setAuditDescription] = useState('');
   const [editingQueryId, setEditingQueryId] = useState<string | null>(null);
   const [newQueryText, setNewQueryText] = useState('');
+
+  const { toast } = useToast();
 
   const steps = [
     { id: 'mode', label: 'Analysis Type', icon: Settings },
@@ -156,10 +165,17 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   };
 
   const handleTopicAnalysis = async (topic: TopicAuditData) => {
-    setTopicData(topic);
-    setAuditName(`${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
+    setIsGeneratingTopicAnalysis(true);
     
     try {
+      setTopicData(topic);
+      setAuditName(`${topic.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
+      
+      toast({
+        title: "Analyzing Topic",
+        description: "Generating entity intelligence...",
+      });
+      
       // Fetch basic entity intelligence first
       console.log('🔍 Fetching basic entity intelligence for:', topic.entityToTrack);
       const intelligence = await EntityIntelligenceService.getEntityIntelligence(
@@ -170,13 +186,24 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       if (intelligence) {
         setEntityIntelligence(intelligence);
         console.log('🧠 Entity intelligence received:', intelligence);
+        toast({
+          title: "Analysis Complete",
+          description: "Entity intelligence generated successfully!",
+        });
       }
+      
+      // Automatically proceed to confirmation step
+      setCurrentStep('confirmation');
     } catch (error) {
       console.error('Error in topic analysis:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "There was an error generating entity intelligence. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingTopicAnalysis(false);
     }
-    
-    // Automatically proceed to confirmation step
-    setCurrentStep('confirmation');
   };
 
   const handleRegenerateQueries = (count: number = 10) => {
@@ -274,31 +301,77 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setGeneratedQueries(queries);
   };
 
-  const handleCreateAudit = () => {
-    const auditData = {
-      name: auditName,
-      description: auditDescription,
-      mode: auditMode,
-      app: selectedApp || undefined,
-      topicData: topicData || undefined,
-      queries: generatedQueries.length > 0 ? generatedQueries : undefined
-    };
+  const handleCreateAudit = async () => {
+    setIsCreatingAudit(true);
     
-    onAuditCreate(auditData);
+    try {
+      toast({
+        title: "Creating Audit",
+        description: "Setting up your visibility audit...",
+      });
+      
+      const auditData = {
+        name: auditName,
+        description: auditDescription,
+        mode: auditMode,
+        app: selectedApp || undefined,
+        topicData: topicData || undefined,
+        queries: generatedQueries.length > 0 ? generatedQueries : undefined
+      };
+      
+      await onAuditCreate(auditData);
+      
+      toast({
+        title: "Audit Created",
+        description: "Your visibility audit has been created successfully!",
+      });
+    } catch (error) {
+      console.error('Error creating audit:', error);
+      toast({
+        title: "Creation Failed",
+        description: "There was an error creating the audit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingAudit(false);
+    }
   };
 
   const handleConfirmation = async (confirmedData: any) => {
-    console.log('🔄 Proceeding with confirmed data:', confirmedData);
+    setIsGeneratingQueries(true);
     
-    // Update state with confirmed data
-    if (confirmedData.entityIntelligence) {
-      setEnhancedEntityIntelligence(confirmedData.entityIntelligence);
-      await generateQueriesFromEnhancedEntity(confirmedData.entityIntelligence);
-    } else {
-      await generateTemplateQueries();
+    try {
+      console.log('🔄 Proceeding with confirmed data:', confirmedData);
+      
+      toast({
+        title: "Generating Queries",
+        description: "Creating optimized search queries...",
+      });
+      
+      // Update state with confirmed data
+      if (confirmedData.entityIntelligence) {
+        setEnhancedEntityIntelligence(confirmedData.entityIntelligence);
+        await generateQueriesFromEnhancedEntity(confirmedData.entityIntelligence);
+      } else {
+        await generateTemplateQueries();
+      }
+      
+      toast({
+        title: "Queries Generated",
+        description: "Search queries created successfully!",
+      });
+      
+      setCurrentStep('queries');
+    } catch (error) {
+      console.error('Error generating queries:', error);
+      toast({
+        title: "Generation Failed",
+        description: "There was an error generating queries. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingQueries(false);
     }
-    
-    setCurrentStep('queries');
   };
 
   const canProceedToQueries = () => {
@@ -439,8 +512,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-semibold text-primary">Topic Analysis Setup</h3>
-                  <TopicAnalysisInterface onTopicAnalysisGenerated={handleTopicAnalysis} />
+                   <h3 className="text-lg font-semibold text-primary">Topic Analysis Setup</h3>
+                   <TopicAnalysisInterface 
+                     onTopicAnalysisGenerated={handleTopicAnalysis}
+                   />
                  </>
                )}
             </div>
@@ -450,12 +525,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
           {currentStep === 'confirmation' && (
             <div className="space-y-4">
               {auditMode === 'topic' && topicData ? (
-                <TopicEntityConfirmation
-                  topicData={topicData}
-                  entityIntelligence={entityIntelligence}
-                  onConfirm={handleConfirmation}
-                  onEdit={() => setCurrentStep('entity')}
-                />
+                 <TopicEntityConfirmation
+                   topicData={topicData}
+                   entityIntelligence={entityIntelligence}
+                   onConfirm={handleConfirmation}
+                   onEdit={() => setCurrentStep('entity')}
+                 />
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">App mode confirmation coming soon...</p>
@@ -715,12 +790,21 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
               {/* Create Button */}
               <Button 
                 onClick={handleCreateAudit}
-                disabled={!canCreateAudit()}
+                disabled={!canCreateAudit() || isCreatingAudit}
                 className="w-full"
                 size="lg"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                Create Audit Run
+                {isCreatingAudit ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating Audit...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Create Audit Run
+                  </>
+                )}
               </Button>
             </div>
           )}
