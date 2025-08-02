@@ -97,8 +97,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const canGoForward = () => {
     const index = getCurrentStepIndex();
     if (index === 0) return auditMode !== null; // Mode step
-    if (index === 1) return auditMode === 'app' ? selectedApp !== null : topicData !== null; // Entity step
-    if (index === 2) return auditMode === 'app' ? selectedApp !== null : topicData !== null; // Confirmation step
+    // Skip generic continue for entity and confirmation steps - they have specific action buttons
+    if (index === 1) return false; // Entity step - handled by specific buttons
+    if (index === 2) return false; // Confirmation step - handled by specific buttons  
     if (index === 3) return generatedQueries.length > 0; // Queries step
     return false;
   };
@@ -150,6 +151,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setSelectedApp(app);
     setAuditName(`${app.app_name} Visibility Audit - ${new Date().toLocaleDateString()}`);
     setAuditDescription(`ChatGPT visibility analysis for ${app.app_name} to identify optimization opportunities.`);
+    // Auto-proceed to confirmation for app mode
+    setCurrentStep('confirmation');
   };
 
   const handleTopicAnalysis = async (topic: TopicAuditData) => {
@@ -171,6 +174,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     } catch (error) {
       console.error('Error in topic analysis:', error);
     }
+    
+    // Automatically proceed to confirmation step
+    setCurrentStep('confirmation');
   };
 
   const handleRegenerateQueries = (count: number = 10) => {
@@ -732,10 +738,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             Back
           </Button>
 
-          {currentStep !== 'review' && (
+          {/* Only show Continue button for steps that don't have specific action buttons */}
+          {currentStep !== 'review' && canGoForward() && (
             <Button 
               onClick={goToNextStep}
-              disabled={!canGoForward()}
               className="flex items-center gap-2"
             >
               Continue
