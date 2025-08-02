@@ -389,10 +389,12 @@ export type Database = {
           id: string
           organization_id: string
           priority: number | null
+          processed_at: string | null
           query_category: string | null
           query_text: string
           query_type: string | null
           status: string
+          updated_at: string | null
           variables: Json | null
         }
         Insert: {
@@ -401,10 +403,12 @@ export type Database = {
           id?: string
           organization_id: string
           priority?: number | null
+          processed_at?: string | null
           query_category?: string | null
           query_text: string
           query_type?: string | null
           status?: string
+          updated_at?: string | null
           variables?: Json | null
         }
         Update: {
@@ -413,10 +417,12 @@ export type Database = {
           id?: string
           organization_id?: string
           priority?: number | null
+          processed_at?: string | null
           query_category?: string | null
           query_text?: string
           query_type?: string | null
           status?: string
+          updated_at?: string | null
           variables?: Json | null
         }
         Relationships: [
