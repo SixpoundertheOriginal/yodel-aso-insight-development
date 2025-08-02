@@ -13,6 +13,7 @@ import {
 import { TopicBulkAuditProcessor } from '@/components/ChatGPTAudit/TopicBulkAuditProcessor';
 import { AuditRunManager } from '@/components/ChatGPTAudit/AuditRunManager';
 import { StreamlinedSetupFlow } from '@/components/ChatGPTAudit/StreamlinedSetupFlow';
+import { AuditRunIdentifier } from '@/components/ChatGPTAudit/AuditRunIdentifier';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { 
   MessageSquare, 
@@ -69,6 +70,45 @@ function ChatGPTVisibilityAudit() {
   useEffect(() => {
     initializeData();
   }, []);
+
+  // Real-time updates for audit runs and queries
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const channel = supabase
+      .channel('audit-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chatgpt_audit_runs',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        (payload) => {
+          console.log('🔄 Real-time audit run update:', payload);
+          loadAuditRuns(organizationId);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chatgpt_queries',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        (payload) => {
+          console.log('🔄 Real-time query update:', payload);
+          loadAuditRuns(organizationId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organizationId]);
 
   const initializeData = async () => {
     try {
@@ -154,6 +194,21 @@ function ChatGPTVisibilityAudit() {
           completed_queries: run.completed_queries || 0
         }));
         setAuditRuns(typedRuns);
+        
+        // Fix: Auto-select the most recent RUNNING audit run if one exists, otherwise the most recent one
+        if (!selectedAuditRun && typedRuns.length > 0) {
+          const runningAudit = typedRuns.find(run => run.status === 'running');
+          setSelectedAuditRun(runningAudit || typedRuns[0]);
+        }
+        
+        // Fix: Update selected audit run if it exists in the new data to sync progress
+        if (selectedAuditRun && typedRuns.length > 0) {
+          const updatedSelectedRun = typedRuns.find(run => run.id === selectedAuditRun.id);
+          if (updatedSelectedRun && updatedSelectedRun.completed_queries !== selectedAuditRun.completed_queries) {
+            console.log(`🔄 Syncing audit run progress: ${updatedSelectedRun.completed_queries}/${updatedSelectedRun.total_queries}`);
+            setSelectedAuditRun(updatedSelectedRun);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading audit runs:', error);
@@ -170,6 +225,21 @@ function ChatGPTVisibilityAudit() {
   }) => {
     try {
       console.log('ChatGPTVisibilityAudit: Creating audit with data:', auditData);
+      
+      // Fix: Check for duplicate audit names to prevent confusion
+      const existingAudit = auditRuns.find(run => 
+        run.name.toLowerCase().trim() === auditData.name.toLowerCase().trim() &&
+        run.audit_type === auditData.mode
+      );
+      
+      if (existingAudit) {
+        toast({
+          title: 'Duplicate Audit Name',
+          description: `An audit with name "${auditData.name}" already exists. Please choose a different name.`,
+          variant: 'destructive'
+        });
+        return;
+      }
       
       const insertData: any = {
         organization_id: organizationId,
@@ -327,6 +397,18 @@ function ChatGPTVisibilityAudit() {
         {/* Audit Runs Tab */}
          {activeTab === 'runs' && (
            <div className="space-y-6">
+             {/* Currently Selected Audit Run */}
+             {selectedAuditRun && (
+               <div className="space-y-4">
+                 <div className="text-sm font-medium text-muted-foreground">Currently Selected:</div>
+                 <AuditRunIdentifier 
+                   auditRun={selectedAuditRun} 
+                   isSelected={true}
+                   showDetails={true}
+                 />
+               </div>
+             )}
+
              {/* Enhanced Audit Run Manager */}
              <EnhancedAuditManager
                auditRuns={auditRuns}

@@ -50,6 +50,37 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     selectedAuditRun.audit_type === 'topic' && 
     selectedAuditRun.status === 'running';
 
+  // Real-time query count tracking
+  useEffect(() => {
+    const fetchQueryCount = async () => {
+      if (!selectedAuditRun) return;
+
+      const { data, error } = await supabase
+        .from('chatgpt_queries')
+        .select('id, status, processed_at', { count: 'exact' })
+        .eq('audit_run_id', selectedAuditRun.id);
+
+      if (!error && data) {
+        // Fix: Use processed_at to determine completion more accurately
+        const completed = data.filter(q => q.processed_at !== null).length;
+        const failed = data.filter(q => q.status === 'failed').length;
+        
+        setProcessingStats(prev => ({
+          ...prev,
+          total: data.length,
+          completed,
+          failed
+        }));
+        
+        console.log(`🔄 Updated query stats for audit ${selectedAuditRun.id}: ${completed}/${data.length} completed`);
+      }
+    };
+
+    fetchQueryCount();
+    const interval = setInterval(fetchQueryCount, 2000);
+    return () => clearInterval(interval);
+  }, [selectedAuditRun]);
+
   const testFunctionAccessibility = async () => {
     try {
       console.log('🔧 Testing Edge Function accessibility...');
