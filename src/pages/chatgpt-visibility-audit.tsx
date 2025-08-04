@@ -87,6 +87,12 @@ function ChatGPTVisibilityAudit() {
         },
         (payload) => {
           console.log('🔄 Real-time audit run update:', payload);
+          
+          // Auto-navigate to results when audit completes
+          if (payload.new.status === 'completed' && selectedAuditRun?.id === payload.new.id) {
+            setActiveTab('results');
+          }
+          
           loadAuditRuns(organizationId);
         }
       )
@@ -108,7 +114,7 @@ function ChatGPTVisibilityAudit() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [organizationId]);
+  }, [organizationId, selectedAuditRun]);
 
   const initializeData = async () => {
     try {
@@ -308,6 +314,7 @@ function ChatGPTVisibilityAudit() {
         completed_queries: data.completed_queries || 0
       });
       
+      // Auto-navigate to runs tab after audit creation
       setActiveTab('runs');
       await loadAuditRuns(organizationId);
 
