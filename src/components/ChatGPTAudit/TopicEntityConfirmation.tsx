@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { EntityAnalysisPreview } from './EntityAnalysisPreview';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { EditableEntityDetails } from './EditableEntityDetails';
 import { TopicAuditData, EntityIntelligence } from '@/types/topic-audit.types';
@@ -17,7 +16,7 @@ import {
   Building2, 
   MapPin,
   AlertCircle,
-  Zap,
+  
   ArrowRight
 } from 'lucide-react';
 
@@ -37,7 +36,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
   onConfirm,
   onEdit
 }) => {
-  const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
+  const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(true); // Always start with enhanced analysis
   const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
   const [isEditingEntity, setIsEditingEntity] = useState(false);
   const [editedEntityData, setEditedEntityData] = useState<any>(null);
@@ -255,12 +254,6 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
               <Brain className="h-5 w-5" />
               Entity Intelligence
             </span>
-            {entityIntelligence && !enhancedEntityIntelligence && (
-              <Button variant="outline" size="sm" onClick={handleEnhanceAnalysis}>
-                <Zap className="h-4 w-4 mr-1" />
-                Enhance Analysis
-              </Button>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -291,19 +284,6 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
             />
           )}
 
-          {/* Basic Entity Intelligence Preview */}
-          {entityIntelligence && !enhancedEntityIntelligence && !showEntityAnalyzer && !isEditingEntity && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="mb-2">Basic Analysis</Badge>
-                <Button variant="outline" size="sm" onClick={handleEditEntity}>
-                  <Edit3 className="h-4 w-4 mr-1" />
-                  Edit Details
-                </Button>
-              </div>
-              <EntityAnalysisPreview entityIntelligence={entityIntelligence} />
-            </div>
-          )}
 
           {/* Show edited entity data */}
           {editedEntityData && !isEditingEntity && !showEntityAnalyzer && (
