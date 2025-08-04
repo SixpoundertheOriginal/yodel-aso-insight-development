@@ -66,7 +66,9 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
         entityName: currentData.entityName || topicData.entityToTrack,
         description: currentData.description || '',
         services: currentData.services || [],
-        competitors: currentData.competitors || [],
+        competitors: currentData.competitors ? currentData.competitors.map((comp: any) => 
+          typeof comp === 'string' ? comp : comp.name
+        ) : [],
         targetClients: currentData.targetClients || [],
         confidence: currentData.confidence_score || 0.5
       });
