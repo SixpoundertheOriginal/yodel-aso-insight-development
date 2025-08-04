@@ -314,8 +314,6 @@ function ChatGPTVisibilityAudit() {
         completed_queries: data.completed_queries || 0
       });
       
-      // Auto-navigate to runs tab after audit creation
-      setActiveTab('runs');
       await loadAuditRuns(organizationId);
 
       const entityName = auditData.mode === 'app' 
@@ -326,6 +324,11 @@ function ChatGPTVisibilityAudit() {
         title: 'Audit Created',
         description: `Created ${auditData.mode} audit "${data.name}" for ${entityName}`,
       });
+
+      // Auto-navigate to runs tab after all operations complete
+      setTimeout(() => {
+        setActiveTab('runs');
+      }, 100);
     } catch (error) {
       console.error('Error creating audit run:', error);
       toast({
