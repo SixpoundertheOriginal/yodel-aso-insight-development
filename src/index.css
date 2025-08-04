@@ -39,6 +39,17 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 24 100% 53%;
 
+    /* Branding and navigation defaults */
+    --logo-background: 240 10% 3.9%;
+    --logo-foreground: 0 0% 98%;
+    --brand-text: 0 0% 98%;
+    --footer-background: 240 10% 3.9%;
+    --footer-foreground: 240 5% 64.9%;
+    --footer-border: 240 3.7% 15.9%;
+    --nav-text: 0 0% 98%;
+    --nav-text-secondary: 240 5% 64.9%;
+    --nav-icon: 240 5% 64.9%;
+
     /* Light mode variables */
     --background-light: 0 0% 100%;
     --foreground-light: 240 10% 3.9%;
@@ -69,6 +80,17 @@
     --sidebar-accent-foreground-light: 240 5.9% 10%;
     --sidebar-border-light: 240 5.9% 90%;
     --sidebar-ring-light: 24 100% 53%;
+
+    /* Branding and navigation light mode variables */
+    --logo-background-light: 0 0% 100%;
+    --logo-foreground-light: 222.2 47.4% 11.2%;
+    --brand-text-light: 222.2 47.4% 11.2%;
+    --footer-background-light: 210 40% 98%;
+    --footer-foreground-light: 215 25% 34%;
+    --footer-border-light: 210 36% 96%;
+    --nav-text-light: 222.2 47.4% 11.2%;
+    --nav-text-secondary-light: 215 25% 34%;
+    --nav-icon-light: 215 25% 34%;
   }
 
   .light {
@@ -101,6 +123,17 @@
     --sidebar-accent-foreground: var(--sidebar-accent-foreground-light);
     --sidebar-border: var(--sidebar-border-light);
     --sidebar-ring: var(--sidebar-ring-light);
+
+    /* Branding and navigation */
+    --logo-background: var(--logo-background-light);
+    --logo-foreground: var(--logo-foreground-light);
+    --brand-text: var(--brand-text-light);
+    --footer-background: var(--footer-background-light);
+    --footer-foreground: var(--footer-foreground-light);
+    --footer-border: var(--footer-border-light);
+    --nav-text: var(--nav-text-light);
+    --nav-text-secondary: var(--nav-text-secondary-light);
+    --nav-icon: var(--nav-icon-light);
   }
 }
 
@@ -117,6 +150,14 @@
     -webkit-overflow-scrolling: touch;
     /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
+  }
+
+  .light .theme-toggle {
+    color: hsl(222.2 47.4% 11.2%);
+  }
+
+  .dark .theme-toggle {
+    color: hsl(0 0% 98%);
   }
 
   /* Mobile-first responsive typography */
