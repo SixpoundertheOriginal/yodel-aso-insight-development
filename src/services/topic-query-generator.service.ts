@@ -315,6 +315,84 @@ const CLIENT_SCENARIO_TEMPLATES: TopicQueryTemplate[] = [
 
 export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
+    console.log('🎯 TopicQueryGenerator: Generating queries for:', topicData.topic);
+    console.log('🔍 Entity to track (NEVER in queries):', topicData.entityToTrack);
+    
+    // CRITICAL FIX: Check if this is simple mode and generate generic queries
+    if (this.isSimpleMode(topicData)) {
+      console.log('⚡ Simple Mode: Generating GENERIC queries');
+      return this.generateSimpleModeQueries(topicData, count);
+    } else {
+      console.log('🧠 Advanced Mode: Using existing logic');
+      return this.generateAdvancedModeQueries(topicData, count);
+    }
+  }
+
+  // Detect if this is simple mode (entity-first setup)
+  private static isSimpleMode(topicData: TopicAuditData): boolean {
+    // Simple mode indicators:
+    // - Topic ends with "services" 
+    // - EntityIntelligence has low confidence (0.8)
+    // - Industry focus array has one item
+    return (
+      topicData.topic.endsWith(' services') && 
+      topicData.entityIntelligence?.confidenceScore === 0.8
+    );
+  }
+
+  // NEW: Simple mode query generation - NO entity names in queries EVER
+  private static generateSimpleModeQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    // Extract service type from topic (e.g., "ASO agency services" -> "ASO agency")
+    const serviceType = topicData.topic.replace(' services', '');
+    const targetMarket = topicData.target_audience || 'businesses';
+    
+    // Core discovery queries - NEVER include entity name
+    const coreQueries = [
+      `best ${serviceType}`,
+      `top ${serviceType}`, 
+      `leading ${serviceType}`,
+      `${serviceType} recommendations`,
+      `which ${serviceType} should I choose`,
+      `${serviceType} comparison`,
+      `top rated ${serviceType}`,
+      `best ${serviceType} for ${targetMarket}`,
+      `${serviceType} reviews`,
+      `recommended ${serviceType}`,
+      `need help with ${serviceType.toLowerCase()}`,
+      `looking for ${serviceType.toLowerCase()}`,
+      `help finding ${serviceType.toLowerCase()}`,
+      `${serviceType.toLowerCase()} services`,
+      `professional ${serviceType.toLowerCase()}`,
+      `expert ${serviceType.toLowerCase()}`,
+      `${serviceType} vs`,
+      `compare ${serviceType}`,
+      `${serviceType} alternatives`,
+      `affordable ${serviceType}`
+    ];
+
+    // Convert to GeneratedTopicQuery format
+    coreQueries.slice(0, count).forEach((queryText, index) => {
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: index < 5 ? 'high_intent' : index < 15 ? 'medium_intent' : 'low_intent',
+        priority: index < 3 ? 1 : index < 10 ? 2 : 3,
+        target_entity: topicData.entityToTrack, // For tracking ONLY - not in query text
+        search_intent: index < 10 ? 'purchase_intent' : 'research',
+        source: 'template'
+      });
+    });
+
+    console.log(`✅ Generated ${queries.length} GENERIC queries (entity name NOT included)`);
+    console.log('📝 Sample queries:', queries.slice(0, 3).map(q => q.query_text));
+    
+    return queries;
+  }
+
+  // Advanced mode query generation (existing logic)
+  private static generateAdvancedModeQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
     // Apply universal enhancements FIRST

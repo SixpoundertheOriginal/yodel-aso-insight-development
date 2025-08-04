@@ -70,101 +70,115 @@ interface StreamlinedSetupFlowProps {
   }) => void;
 }
 
-// Simple mode options data
-const INDUSTRY_OPTIONS = [
+// Simple mode options data - FIXED TO SEPARATE SERVICE TYPES FROM ENTITY TRACKING
+const SERVICE_TYPE_OPTIONS = [
   {
-    value: 'aso',
-    label: 'App Store Optimization',
-    description: 'Services focused on improving app visibility in app stores',
-    services: ['ASO audits', 'Keyword optimization', 'Listing optimization'],
-    explainer: 'Includes ASO agencies, consultants, and optimization services'
+    value: 'aso-agency',
+    label: 'ASO Agency',
+    description: 'App Store Optimization services',
+    queryBase: 'ASO agency',
+    services: ['App store optimization', 'Keyword optimization', 'Listing optimization'],
+    explainer: 'Tests generic ASO agency queries (NOT your specific company)'
   },
   {
-    value: 'user-acquisition', 
-    label: 'User Acquisition & Mobile Marketing',
+    value: 'mobile-marketing-agency', 
+    label: 'Mobile Marketing Agency',
     description: 'Paid advertising and growth services for mobile apps',
-    services: ['Facebook ads', 'Google campaigns', 'Influencer marketing'],
-    explainer: 'Includes UA agencies, mobile ad networks, and growth services'
+    queryBase: 'mobile marketing agency',
+    services: ['Facebook ads', 'Google campaigns', 'User acquisition'],
+    explainer: 'Tests generic mobile marketing queries'
   },
   {
-    value: 'app-development',
-    label: 'App Development',
+    value: 'app-development-agency',
+    label: 'App Development Agency',
     description: 'Mobile app creation and development services',
+    queryBase: 'app development agency',
     services: ['iOS development', 'Android development', 'Cross-platform apps'],
-    explainer: 'App development agencies, freelance developers, and dev studios'
+    explainer: 'Tests generic app development queries'
   },
   {
-    value: 'analytics',
-    label: 'Mobile Analytics',
+    value: 'mobile-analytics-platform',
+    label: 'Mobile Analytics Platform',
     description: 'App performance tracking and analytics tools',
+    queryBase: 'mobile analytics platform',
     services: ['Performance monitoring', 'User analytics', 'Revenue tracking'],
-    explainer: 'Analytics platforms, BI tools, and performance services'
+    explainer: 'Tests generic analytics platform queries'
+  },
+  {
+    value: 'fitness-app',
+    label: 'Fitness App',
+    description: 'Health and fitness mobile applications',
+    queryBase: 'fitness app',
+    services: ['Workout tracking', 'Health monitoring', 'Fitness coaching'],
+    explainer: 'Tests generic fitness app recommendation queries'
+  },
+  {
+    value: 'custom',
+    label: 'Custom Service Type',
+    description: 'Enter your own service type',
+    queryBase: '',
+    services: [],
+    explainer: 'Specify your exact service type for testing'
   }
 ];
 
-const AUDIENCE_OPTIONS = [
+const TARGET_MARKET_OPTIONS = [
+  {
+    value: 'mobile-apps',
+    label: 'Mobile Apps',
+    description: 'General mobile app market',
+    explainer: 'Creates queries like "best ASO agency for mobile apps"'
+  },
+  {
+    value: 'startups',
+    label: 'Startups', 
+    description: 'Early-stage companies',
+    explainer: 'Creates queries like "ASO agency for startups"'
+  },
+  {
+    value: 'enterprise',
+    label: 'Enterprise',
+    description: 'Large corporations',
+    explainer: 'Creates queries like "enterprise mobile marketing solutions"'
+  },
   {
     value: 'gaming',
     label: 'Gaming Apps',
     description: 'Mobile games and gaming platforms',
-    explainer: 'Casual games, RPG, puzzle games, etc.'
-  },
-  {
-    value: 'startups',
-    label: 'Tech Startups', 
-    description: 'Early-stage technology companies',
-    explainer: 'B2B SaaS, productivity apps, social platforms'
-  },
-  {
-    value: 'enterprise',
-    label: 'Enterprise Companies',
-    description: 'Large corporations and established businesses',
-    explainer: 'Fortune 500, large-scale mobile apps'
+    explainer: 'Creates queries specific to gaming industry'
   },
   {
     value: 'ecommerce',
-    label: 'E-commerce Apps',
-    description: 'Shopping and retail mobile applications',
-    explainer: 'Online stores, marketplace apps, shopping platforms'
-  },
-  {
-    value: 'healthcare',
-    label: 'Healthcare Apps',
-    description: 'Health and medical mobile applications',
-    explainer: 'Fitness apps, medical tools, wellness platforms'
+    label: 'E-commerce',
+    description: 'Shopping and retail applications',
+    explainer: 'Creates queries for e-commerce app services'
   }
 ];
 
-const PAIN_POINT_OPTIONS = [
+const BUSINESS_CONTEXT_OPTIONS = [
   {
-    value: 'declining-downloads',
-    label: 'Declining Downloads',
-    description: 'App downloads are dropping',
-    explainer: 'Creates queries like "help with declining app downloads"'
+    value: 'need-help',
+    label: 'Need Help',
+    description: 'Problem-focused queries',
+    explainer: 'Creates queries like "need help with ASO"'
   },
   {
-    value: 'poor-conversion',
-    label: 'Poor App Store Conversion',
-    description: 'Low conversion from views to installs', 
-    explainer: 'Creates queries like "improve app store conversion rate"'
+    value: 'recommendations',
+    label: 'Seeking Recommendations',
+    description: 'Recommendation-seeking queries',
+    explainer: 'Creates queries like "ASO agency recommendations"'
   },
   {
-    value: 'keyword-ranking',
-    label: 'Poor Keyword Rankings',
-    description: 'App not ranking for important keywords',
-    explainer: 'Creates queries like "improve app store keyword rankings"'
+    value: 'comparison',
+    label: 'Comparing Options',
+    description: 'Comparison-focused queries',
+    explainer: 'Creates queries like "top ASO agencies comparison"'
   },
   {
-    value: 'competitor-outranking',
-    label: 'Competitors Outranking',
-    description: 'Competitors appearing higher in search results',
-    explainer: 'Creates queries like "beat competitors in app store search"'
-  },
-  {
-    value: 'low-visibility',
-    label: 'Low App Store Visibility',
-    description: 'App is hard to find in app stores',
-    explainer: 'Creates queries like "increase app store visibility"'
+    value: 'budget-conscious',
+    label: 'Budget-Conscious',
+    description: 'Cost-focused queries',
+    explainer: 'Creates queries like "affordable ASO services"'
   }
 ];
 
@@ -177,12 +191,13 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   // Setup mode state
   const [setupMode, setSetupMode] = useState<'simple' | 'advanced'>('simple');
   
-  // Simple mode state
+  // Simple mode state - FIXED TO SEPARATE TRACKING FROM QUERY GENERATION
   const [simpleInputs, setSimpleInputs] = useState({
-    industry: null as typeof INDUSTRY_OPTIONS[0] | null,
-    audiences: [] as typeof AUDIENCE_OPTIONS,
-    painPoints: [] as typeof PAIN_POINT_OPTIONS,
-    entityToTrack: ''
+    entityToTrack: '', // ONLY for tracking in responses - NEVER in queries
+    serviceType: null as typeof SERVICE_TYPE_OPTIONS[0] | null, // For query generation
+    customServiceType: '', // When user selects "custom"
+    targetMarket: null as typeof TARGET_MARKET_OPTIONS[0] | null,
+    businessContext: [] as typeof BUSINESS_CONTEXT_OPTIONS
   });
   
   // Setup state
@@ -222,24 +237,28 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   // Data mapping function for simple mode
   const getTopicAuditData = (): TopicAuditData => {
     if (setupMode === 'simple') {
-      return {
-        // ✅ Entity is PRIMARY and REQUIRED
-        entityToTrack: simpleInputs.entityToTrack, // Required field
+      const serviceType = simpleInputs.serviceType?.value === 'custom' 
+        ? simpleInputs.customServiceType 
+        : simpleInputs.serviceType?.queryBase || 'service';
         
-        // Context builds around the entity
-        topic: `${simpleInputs.industry?.label} for ${simpleInputs.entityToTrack}`,
-        industry: simpleInputs.industry?.value || 'Technology',
-        target_audience: simpleInputs.audiences.map(a => a.label).join(', ') || 'General users',
+      return {
+        // ✅ Entity is ONLY for tracking - NEVER in query generation
+        entityToTrack: simpleInputs.entityToTrack,
+        
+        // Context builds around SERVICE TYPE (not entity)
+        topic: `${serviceType} services`,
+        industry: simpleInputs.serviceType?.value || 'technology',
+        target_audience: simpleInputs.targetMarket?.label || 'general users',
         known_players: [],
         entityIntelligence: {
-          entityName: simpleInputs.entityToTrack, // ✅ Required for tracking
-          description: `Provider of ${simpleInputs.industry?.label || 'technology'} services`,
-          services: simpleInputs.industry?.services || [],
-          targetClients: simpleInputs.audiences.map(a => a.label),
+          entityName: simpleInputs.entityToTrack, // ✅ Only for tracking
+          description: `Provider of ${serviceType} services`,
+          services: simpleInputs.serviceType?.services || [],
+          targetClients: [simpleInputs.targetMarket?.label || 'general users'],
           competitors: [],
           recentNews: [],
           marketPosition: 'unknown',
-          industryFocus: [simpleInputs.industry?.label || 'Technology'],
+          industryFocus: [serviceType],
           confidenceScore: 0.8,
           scrapedAt: new Date().toISOString()
         }
@@ -255,11 +274,14 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     }
   };
 
-  // Validation for simple inputs
+  // Validation for simple inputs - CRITICAL: entity and service type required
   const validateSimpleInputs = () => {
     const errors = [];
     if (!simpleInputs.entityToTrack.trim()) errors.push('Entity to track is required');
-    if (!simpleInputs.industry) errors.push('Industry is required');
+    if (!simpleInputs.serviceType) errors.push('Service type is required');
+    if (simpleInputs.serviceType?.value === 'custom' && !simpleInputs.customServiceType.trim()) {
+      errors.push('Custom service type description is required');
+    }
     return errors;
   };
 
@@ -855,10 +877,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                     </p>
                   </div>
 
-                  {/* STEP 2: Industry Context - To Generate Relevant Queries */}
+                  {/* STEP 2: Service Type - For Query Generation (NOT entity) */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor="industry">Industry Focus</Label>
+                      <Label htmlFor="serviceType">Service Type</Label>
                       <span className="text-red-500">*</span>
                       <TooltipProvider>
                         <Tooltip>
@@ -867,30 +889,89 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
                             <div className="space-y-2">
-                              <p className="font-medium">What industry context should we test your entity in?</p>
-                              <p className="text-sm">Like selecting keyword categories in SEO tools, this determines what types of business queries we'll test your entity against.</p>
+                              <p className="font-medium">What service type should we test queries for?</p>
+                              <p className="text-sm">This determines what types of generic queries we'll test (WITHOUT your entity name).</p>
                               <div className="text-sm">
                                 <p className="font-medium">Examples:</p>
-                                <p>• ASO: Tests queries like "best ASO agency", "app store optimization help"</p>
-                                <p>• Mobile Marketing: Tests "mobile marketing agency", "user acquisition services"</p>
+                                <p>• "ASO agency" creates queries like "best ASO agency"</p>
+                                <p>• "fitness app" creates queries like "top fitness apps"</p>
                               </div>
+                              <p className="text-xs font-medium text-orange-600">⚠️ Your entity name is NEVER included in queries</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     <Select 
-                      value={simpleInputs.industry?.value || ''} 
+                      value={simpleInputs.serviceType?.value || ''} 
                       onValueChange={(value) => {
-                        const industry = INDUSTRY_OPTIONS.find(opt => opt.value === value);
-                        setSimpleInputs({...simpleInputs, industry: industry || null});
+                        const serviceType = SERVICE_TYPE_OPTIONS.find(opt => opt.value === value);
+                        setSimpleInputs({...simpleInputs, serviceType: serviceType || null});
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="What industry should we test your entity in?" />
+                        <SelectValue placeholder="What service type should we test?" />
                       </SelectTrigger>
                       <SelectContent>
-                        {INDUSTRY_OPTIONS.map((option) => (
+                        {SERVICE_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div>
+                              <div className="font-medium">{option.label}</div>
+                              <div className="text-sm text-muted-foreground">{option.description}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Custom Service Type Input */}
+                    {simpleInputs.serviceType?.value === 'custom' && (
+                      <div className="mt-2">
+                        <Input
+                          value={simpleInputs.customServiceType}
+                          onChange={(e) => setSimpleInputs({...simpleInputs, customServiceType: e.target.value})}
+                          placeholder="e.g., fitness app, travel booking platform, meditation app"
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter the service type for query generation (without your entity name)
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                      Creates queries like "best {simpleInputs.serviceType?.queryBase || 'service'}" - then tracks if your entity appears
+                    </p>
+                  </div>
+
+                  {/* STEP 3: Target Market - For Query Context */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label>Target Market</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="font-medium">What market context should we add to queries?</p>
+                            <p className="text-sm">Adds context like "for startups" or "for mobile apps" to make queries more specific.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Select 
+                      value={simpleInputs.targetMarket?.value || ''} 
+                      onValueChange={(value) => {
+                        const targetMarket = TARGET_MARKET_OPTIONS.find(opt => opt.value === value);
+                        setSimpleInputs({...simpleInputs, targetMarket: targetMarket || null});
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select target market (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TARGET_MARKET_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             <div>
                               <div className="font-medium">{option.label}</div>
@@ -901,100 +982,52 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Determines 100% of query types - this is your "keyword category"
+                      Adds context to queries (e.g., "ASO agency for startups")
                     </p>
                   </div>
 
-                  {/* STEP 3: Target Audience - For Query Targeting */}
+                  {/* STEP 4: Business Context - For Query Variety */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Label>Target Audience</Label>
+                      <Label>Query Context</Label>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
                             <HelpCircle className="h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="font-medium">Who searches for entities like yours?</p>
-                            <p className="text-sm">Creates audience-specific queries to test your visibility. Select up to 3.</p>
+                            <p className="font-medium">What types of queries should we create?</p>
+                            <p className="text-sm">Creates different query styles like "need help with..." or "recommendations for..."</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {AUDIENCE_OPTIONS.map((option) => (
+                      {BUSINESS_CONTEXT_OPTIONS.map((option) => (
                         <div key={option.value} className="flex items-center space-x-2">
                           <Checkbox
                             id={option.value}
-                            checked={simpleInputs.audiences.some(a => a.value === option.value)}
+                            checked={simpleInputs.businessContext.some(c => c.value === option.value)}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                if (simpleInputs.audiences.length < 3) {
-                                  setSimpleInputs({
-                                    ...simpleInputs, 
-                                    audiences: [...simpleInputs.audiences, option]
-                                  });
-                                }
+                                setSimpleInputs({
+                                  ...simpleInputs, 
+                                  businessContext: [...simpleInputs.businessContext, option]
+                                });
                               } else {
                                 setSimpleInputs({
                                   ...simpleInputs,
-                                  audiences: simpleInputs.audiences.filter(a => a.value !== option.value)
+                                  businessContext: simpleInputs.businessContext.filter(c => c.value !== option.value)
                                 });
                               }
                             }}
-                            disabled={!simpleInputs.audiences.some(a => a.value === option.value) && simpleInputs.audiences.length >= 3}
                           />
                           <Label htmlFor={option.value} className="text-sm">{option.label}</Label>
                         </div>
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Creates audience-specific queries to test your visibility
-                    </p>
-                  </div>
-
-                  {/* STEP 4: Pain Points - For High-Intent Queries */}
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Label>Common Pain Points</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <p className="font-medium">What problems do your prospects have?</p>
-                            <p className="text-sm">Creates problem-focused queries where prospects actively search for solutions.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <div className="space-y-2">
-                      {PAIN_POINT_OPTIONS.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={option.value}
-                            checked={simpleInputs.painPoints.some(p => p.value === option.value)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSimpleInputs({
-                                  ...simpleInputs, 
-                                  painPoints: [...simpleInputs.painPoints, option]
-                                });
-                              } else {
-                                setSimpleInputs({
-                                  ...simpleInputs,
-                                  painPoints: simpleInputs.painPoints.filter(p => p.value !== option.value)
-                                });
-                              }
-                            }}
-                          />
-                          <Label htmlFor={option.value} className="text-sm font-medium">{option.label}</Label>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Creates problem-focused queries where prospects actively search for solutions
+                      Creates different query styles for comprehensive testing
                     </p>
                   </div>
 
@@ -1018,14 +1051,14 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                       if (errors.length === 0) {
                         const simpleTopicData = getTopicAuditData();
                         setTopicData(simpleTopicData);
-                        setAuditName(`${simpleTopicData.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
+                        setAuditName(`${simpleTopicData.entityToTrack} ChatGPT Visibility Audit - ${new Date().toLocaleDateString()}`);
                         setCurrentStep('queries');
-                        // Generate queries immediately for simple mode
+                        // Generate queries immediately for simple mode - WITHOUT entity name in queries
                         const queries = TopicQueryGeneratorService.generateQueries(simpleTopicData, 20);
                         setGeneratedQueries(queries);
                         toast({ 
                           title: "Setup Complete", 
-                          description: `Generated ${queries.length} queries for your audit` 
+                          description: `Generated ${queries.length} generic queries to test ${simpleTopicData.entityToTrack} visibility` 
                         });
                       }
                     }}
@@ -1033,7 +1066,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                     disabled={validateSimpleInputs().length > 0}
                   >
                     <Zap className="h-4 w-4 mr-2" />
-                    Generate Queries
+                    Generate Tracking Queries
                   </Button>
                 </div>
               ) : (
