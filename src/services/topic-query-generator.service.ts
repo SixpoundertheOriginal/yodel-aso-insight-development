@@ -179,7 +179,7 @@ const ENTITY_QUERY_TEMPLATES: TopicQueryTemplate[] = [
   }
 ];
 
-// Intent-based query templates for competitive discovery
+  // Intent-based query templates for competitive discovery (Enhanced)
 const INTENT_BASED_TEMPLATES: TopicQueryTemplate[] = [
   // High-Intent Queries (Direct Product Discovery)
   {
@@ -205,6 +205,29 @@ const INTENT_BASED_TEMPLATES: TopicQueryTemplate[] = [
   },
   {
     template: "{topic} pricing and services comparison",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  // Geographic-specific templates
+  {
+    template: "Best {topic} in {geographic_focus}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Top-rated {topic} near me",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  // Industry-specific templates
+  {
+    template: "Best {topic} for {industry_subvertical}",
     type: "high_intent",
     priority: 1,
     intentLevel: "high",
@@ -409,7 +432,7 @@ export class TopicQueryGeneratorService {
     return queries.slice(0, count);
   }
 
-  // Step 5: Smart variable population (Universal)
+  // Step 5: Smart variable population (Universal) - Enhanced with geographic support
   private static populateUniversalVariables(template: string, context: TopicAuditData): string {
     const actionVerb = context.topic.includes('agency') ? 'hire' : 'find';
     const painPoint = this.generatePainPoints(context.industry);
@@ -421,6 +444,8 @@ export class TopicQueryGeneratorService {
     const useCase = `${context.target_audience} use cases`;
     const deadlineContext = 'urgent project needs';
     const projectType = `${context.industry} projects`;
+    const geographicFocus = context.geographic_focus || 'globally';
+    const industrySubvertical = context.industrySubVertical || context.industry;
     
     return template
       .replace(/{topic}/g, context.topic)
@@ -434,7 +459,9 @@ export class TopicQueryGeneratorService {
       .replace(/{competitor_b}/g, competitors[1] || 'alternatives')
       .replace(/{use_case}/g, useCase)
       .replace(/{deadline_context}/g, deadlineContext)
-      .replace(/{project_type}/g, projectType);
+      .replace(/{project_type}/g, projectType)
+      .replace(/{geographic_focus}/g, geographicFocus)
+      .replace(/{industry_subvertical}/g, industrySubvertical);
   }
 
   // NEW: Extract primary solution from solutions offered

@@ -80,6 +80,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [autoPopulatedData, setAutoPopulatedData] = useState<TopicAuditData | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [entityInput, setEntityInput] = useState('');
+  const [entityAliases, setEntityAliases] = useState<string[]>([]);
+  const [newAlias, setNewAlias] = useState('');
   const [isAnalyzingEntity, setIsAnalyzingEntity] = useState(false);
   
   // Loading states

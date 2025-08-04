@@ -87,9 +87,19 @@ serve(async (req) => {
     console.log(`[ChatGPT Query] Response received: ${responseText.substring(0, 200)}...`);
 
     // Store basic results first (will be enhanced by analysis)
-    const basicAnalysis = analyzeVisibility(responseText, actualAppName);
+    // Get query data for entity aliases
+    const { data: queryData } = await supabase
+      .from('chatgpt_queries')
+      .select('entity_aliases')
+      .eq('id', queryId)
+      .single();
+    
+    const entityAliases = queryData?.entity_aliases || [];
+    console.log('Entity aliases for analysis:', entityAliases);
 
-    console.log(`[ChatGPT Query] Basic visibility analysis: App mentioned: ${basicAnalysis.appMentioned}, Position: ${basicAnalysis.mentionPosition}, Score: ${basicAnalysis.visibilityScore}`);
+    const basicAnalysis = analyzeVisibility(responseText, actualAppName, entityAliases);
+
+    console.log(`[ChatGPT Query] Enhanced visibility analysis: App mentioned: ${basicAnalysis.appMentioned}, Position: ${basicAnalysis.mentionPosition}, Score: ${basicAnalysis.visibilityScore}`);
 
     // Store results in database
     const { error: insertError } = await supabase
@@ -203,66 +213,104 @@ serve(async (req) => {
   }
 });
 
-function analyzeVisibility(responseText: string, targetApp: string): VisibilityAnalysis {
-  const lowerResponse = responseText.toLowerCase();
-  const lowerTargetApp = targetApp.toLowerCase();
+function analyzeVisibility(responseText: string, targetApp: string, aliases?: string[]): VisibilityAnalysis {
+  // Import enhanced analysis functions
+  const { checkAppMention, extractRankingPosition, extractCompetitors, analyzeEntityMention } = require('./brand-recognition.ts');
   
-  // Enhanced app mention detection with multiple patterns
-  const appMentioned = checkAppMention(responseText, targetApp);
+  // Use enhanced entity analysis with alias support
+  const entityAnalysis = analyzeEntityMention(responseText, targetApp, aliases);
+  const competitorsMentioned = extractCompetitors(responseText, targetApp, aliases);
   
-  let mentionPosition: number | undefined;
   let mentionContext = 'not_mentioned';
   let visibilityScore = 0;
   
-  if (appMentioned) {
-    // Enhanced ranking position detection
-    mentionPosition = extractRankingPosition(responseText, targetApp) || 1;
+  if (entityAnalysis.mentioned) {
+    // Enhanced context detection
+    const contextAnalysis = analyzeContext(responseText, entityAnalysis.mentionContexts);
+    mentionContext = contextAnalysis.context;
     
-    // Determine context
-    if (lowerResponse.includes('recommend') || lowerResponse.includes('suggest')) {
-      mentionContext = 'recommended';
-      visibilityScore = 85;
-    } else if (lowerResponse.includes('compare') || lowerResponse.includes('alternative')) {
-      mentionContext = 'compared';
-      visibilityScore = 70;
-    } else {
-      mentionContext = 'mentioned';
-      visibilityScore = 50;
+    // Base score with confidence weighting
+    visibilityScore = Math.round(50 * entityAnalysis.confidence);
+    
+    // Context-based scoring
+    switch (contextAnalysis.context) {
+      case 'recommended':
+        visibilityScore += 35;
+        break;
+      case 'compared':
+        visibilityScore += 25;
+        break;
+      case 'mentioned':
+        visibilityScore += 15;
+        break;
     }
     
-    // Adjust score based on position
-    if (mentionPosition === 1) {
-      visibilityScore += 15;
-    } else if (mentionPosition === 2) {
-      visibilityScore += 5;
+    // Position-based scoring
+    if (entityAnalysis.position) {
+      if (entityAnalysis.position === 1) visibilityScore += 15;
+      else if (entityAnalysis.position === 2) visibilityScore += 10;
+      else if (entityAnalysis.position <= 5) visibilityScore += 5;
+    }
+    
+    // Multiple mentions bonus
+    if (entityAnalysis.mentionCount > 1) {
+      visibilityScore += Math.min(10, entityAnalysis.mentionCount * 2);
     }
     
     visibilityScore = Math.min(100, visibilityScore);
   }
   
-  // Enhanced competitor detection
-  const competitorsMentioned = extractCompetitors(responseText, targetApp);
-  
-  // Calculate sentiment score (simplified)
-  const positiveWords = ['best', 'great', 'excellent', 'recommend', 'top', 'reliable', 'popular'];
-  const negativeWords = ['bad', 'poor', 'avoid', 'terrible', 'issues', 'problems'];
-  
+  // Enhanced sentiment analysis focused on entity contexts
   let sentimentScore = 0;
-  positiveWords.forEach(word => {
-    if (lowerResponse.includes(word)) sentimentScore += 0.2;
-  });
-  negativeWords.forEach(word => {
-    if (lowerResponse.includes(word)) sentimentScore -= 0.3;
+  const positiveWords = ['best', 'great', 'excellent', 'recommend', 'top', 'reliable', 'popular', 'outstanding', 'leading'];
+  const negativeWords = ['bad', 'poor', 'avoid', 'terrible', 'issues', 'problems', 'disappointing', 'unreliable'];
+  
+  // Analyze sentiment in entity-specific contexts
+  entityAnalysis.mentionContexts.forEach(context => {
+    const lowerContext = context.toLowerCase();
+    positiveWords.forEach(word => {
+      if (lowerContext.includes(word)) sentimentScore += 0.15;
+    });
+    negativeWords.forEach(word => {
+      if (lowerContext.includes(word)) sentimentScore -= 0.25;
+    });
   });
   
   sentimentScore = Math.max(-1, Math.min(1, sentimentScore));
   
   return {
-    appMentioned,
-    mentionPosition,
+    appMentioned: entityAnalysis.mentioned,
+    mentionPosition: entityAnalysis.position,
     mentionContext,
-    competitorsMentioned: [...new Set(competitorsMentioned)].slice(0, 10), // Remove duplicates, limit to 10
+    competitorsMentioned: [...new Set(competitorsMentioned)].slice(0, 15),
     sentimentScore: Math.round(sentimentScore * 100) / 100,
-    visibilityScore: Math.round(visibilityScore)
+    visibilityScore: Math.round(visibilityScore),
+    confidence: entityAnalysis.confidence,
+    mentionCount: entityAnalysis.mentionCount,
+    matchedAlias: entityAnalysis.matchedAlias
   };
+}
+
+// Enhanced context analysis
+function analyzeContext(responseText: string, mentionContexts: string[]): { context: string; strength: number } {
+  const lowerResponse = responseText.toLowerCase();
+  const contextText = mentionContexts.join(' ').toLowerCase();
+  
+  // Priority-based context detection
+  if (contextText.includes('recommend') || contextText.includes('suggest') || 
+      lowerResponse.includes('i recommend') || lowerResponse.includes('i suggest')) {
+    return { context: 'recommended', strength: 0.9 };
+  }
+  
+  if (contextText.includes('compare') || contextText.includes('versus') || 
+      contextText.includes('vs') || contextText.includes('alternative')) {
+    return { context: 'compared', strength: 0.7 };
+  }
+  
+  if (contextText.includes('consider') || contextText.includes('try') || 
+      contextText.includes('option') || contextText.includes('choice')) {
+    return { context: 'considered', strength: 0.6 };
+  }
+  
+  return { context: 'mentioned', strength: 0.4 };
 }
