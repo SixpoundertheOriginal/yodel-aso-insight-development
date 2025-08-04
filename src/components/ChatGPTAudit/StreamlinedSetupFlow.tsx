@@ -438,6 +438,36 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       return "businesses"; // Default
     };
 
+    const mapSolutionsFromServices = (services: string[]): string[] => {
+      return services.map(service => service.includes('services') ? service : `${service} services`);
+    };
+
+    const mapQueryStrategy = (services: string[]): 'competitive_discovery' | 'market_research' | 'mixed' => {
+      if (!services || services.length === 0) return 'market_research';
+      
+      const hasServiceKeywords = services.some(service => 
+        service.toLowerCase().includes('consulting') || 
+        service.toLowerCase().includes('agency') || 
+        service.toLowerCase().includes('marketing') ||
+        service.toLowerCase().includes('development')
+      );
+      
+      return hasServiceKeywords ? 'competitive_discovery' : 'market_research';
+    };
+
+    const mapSubVertical = (services: string[], industry: string): string => {
+      if (!services || services.length === 0) return '';
+      
+      const service = services[0].toLowerCase();
+      if (service.includes('aso')) return 'App Store Optimization';
+      if (service.includes('fitness')) return 'Fitness & Wellness Apps';
+      if (service.includes('language')) return 'Language Learning';
+      if (service.includes('marketing')) return 'Digital Marketing';
+      if (service.includes('fintech')) return 'Financial Technology';
+      
+      return '';
+    };
+
     const autoPopulated: TopicAuditData = {
       topic: mapTopicFromServices(intelligence.services || []),
       industry: mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || []),
@@ -449,9 +479,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       geographic_focus: '',
       entityToTrack: intelligence.entityName,
       entityAliases: [],
-      queryStrategy: 'market_research',
+      queryStrategy: mapQueryStrategy(intelligence.services || []),
       competitorFocus: true,
-      intentLevel: 'medium',
+      intentLevel: 'high', // Default to high for competitive discovery
+      solutionsOffered: mapSolutionsFromServices(intelligence.services || []),
+      analysisDepth: 'standard', // Default to 20 queries
+      industrySubVertical: mapSubVertical(intelligence.services || [], mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || [])),
       entityIntelligence: intelligence
     };
 
@@ -809,6 +842,183 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         <p className="text-sm bg-background/50 border rounded-lg p-3">{autoPopulatedData.context_description}</p>
                       )}
                     </div>
+
+                    {/* NEW STRATEGIC FIELDS */}
+                    
+                    {/* Solutions Offered */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Solutions Offered</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'solutions' ? null : 'solutions')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'solutions' ? (
+                        <Textarea
+                          value={autoPopulatedData.solutionsOffered?.join(', ') || ''}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, solutionsOffered: e.target.value.split(',').map(s => s.trim()).filter(Boolean)} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          placeholder="Enter solutions separated by commas"
+                          className="w-full min-h-[80px]"
+                        />
+                      ) : (
+                        <div className="bg-background/50 border rounded-lg p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {autoPopulatedData.solutionsOffered?.map((solution, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {solution}
+                              </Badge>
+                            )) || <span className="text-muted-foreground text-sm">No solutions specified</span>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Query Strategy */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Query Strategy</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'queryStrategy' ? null : 'queryStrategy')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'queryStrategy' ? (
+                        <select
+                          value={autoPopulatedData.queryStrategy || 'market_research'}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, queryStrategy: e.target.value as any} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full p-2 bg-background border border-border rounded-lg text-sm"
+                        >
+                          <option value="competitive_discovery">Product Discovery Focus</option>
+                          <option value="market_research">Market Research Focus</option>
+                          <option value="mixed">Balanced Analysis</option>
+                        </select>
+                      ) : (
+                        <div className="bg-background/50 border rounded-lg p-3">
+                          <span className="text-sm capitalize">
+                            {autoPopulatedData.queryStrategy?.replace('_', ' ') || 'market research'}
+                          </span>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {autoPopulatedData.queryStrategy === 'competitive_discovery' && 'Focuses on competitive positioning queries'}
+                            {autoPopulatedData.queryStrategy === 'market_research' && 'Focuses on market and industry analysis'}
+                            {autoPopulatedData.queryStrategy === 'mixed' && 'Balanced mix of discovery and research queries'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Intent Level */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Intent Level</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'intentLevel' ? null : 'intentLevel')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'intentLevel' ? (
+                        <select
+                          value={autoPopulatedData.intentLevel || 'high'}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, intentLevel: e.target.value as any} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full p-2 bg-background border border-border rounded-lg text-sm"
+                        >
+                          <option value="high">High Intent</option>
+                          <option value="medium">Medium Intent</option>
+                          <option value="low">Low Intent</option>
+                        </select>
+                      ) : (
+                        <div className="bg-background/50 border rounded-lg p-3">
+                          <span className="text-sm capitalize">{autoPopulatedData.intentLevel || 'high'} Intent</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Analysis Depth */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Analysis Depth</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'analysisDepth' ? null : 'analysisDepth')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'analysisDepth' ? (
+                        <select
+                          value={autoPopulatedData.analysisDepth || 'standard'}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, analysisDepth: e.target.value as any} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full p-2 bg-background border border-border rounded-lg text-sm"
+                        >
+                          <option value="standard">Standard (20 queries)</option>
+                          <option value="comprehensive">Comprehensive (50 queries)</option>
+                          <option value="deep">Deep Analysis (100 queries)</option>
+                        </select>
+                      ) : (
+                        <div className="bg-background/50 border rounded-lg p-3 flex items-center justify-between">
+                          <div>
+                            <span className="text-sm capitalize">{autoPopulatedData.analysisDepth || 'standard'}</span>
+                            <p className="text-xs text-muted-foreground">
+                              {autoPopulatedData.analysisDepth === 'standard' && '20 queries - Good for initial insights'}
+                              {autoPopulatedData.analysisDepth === 'comprehensive' && '50 queries - Detailed competitive analysis'}
+                              {autoPopulatedData.analysisDepth === 'deep' && '100 queries - Exhaustive market research'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {autoPopulatedData.analysisDepth === 'comprehensive' ? 'Pro' : autoPopulatedData.analysisDepth === 'deep' ? 'Enterprise' : 'Free'}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Industry Sub-Vertical */}
+                    {autoPopulatedData.industrySubVertical && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Industry Sub-Vertical</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingField(editingField === 'subVertical' ? null : 'subVertical')}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {editingField === 'subVertical' ? (
+                          <Input
+                            value={autoPopulatedData.industrySubVertical || ''}
+                            onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, industrySubVertical: e.target.value} : null)}
+                            onBlur={() => setEditingField(null)}
+                            autoFocus
+                            placeholder="e.g., App Store Optimization, Language Learning"
+                            className="w-full"
+                          />
+                        ) : (
+                          <div className="bg-background/50 border rounded-lg p-3">
+                            <span className="text-sm">{autoPopulatedData.industrySubVertical}</span>
+                            <p className="text-xs text-muted-foreground mt-1">Precision targeting for better query relevance</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex space-x-3 pt-4">

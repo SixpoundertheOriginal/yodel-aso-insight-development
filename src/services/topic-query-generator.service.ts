@@ -215,64 +215,147 @@ export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
+    // Use analysis depth to determine actual query count
+    const targetCount = this.getQueryCountFromDepth(topicData.analysisDepth || 'standard', count);
+    
     // Determine query strategy
     const strategy = topicData.queryStrategy || 'mixed';
     const intentLevel = topicData.intentLevel || 'medium';
     
+    // 🆕 Generate solution-specific queries based on solutions offered
+    if (topicData.solutionsOffered && topicData.solutionsOffered.length > 0) {
+      const solutionQueries = this.generateSolutionBasedQueries(topicData, Math.ceil(targetCount * 0.4));
+      queries.push(...solutionQueries);
+    }
+    
     // Generate intent-driven queries based on strategy
     if (strategy === 'competitive_discovery' || strategy === 'mixed') {
-      const intentQueries = this.generateIntentDrivenQueries(topicData, Math.ceil(count * 0.5));
+      const remaining = targetCount - queries.length;
+      const intentQueries = this.generateIntentDrivenQueries(topicData, Math.ceil(remaining * 0.4));
       queries.push(...intentQueries);
     }
     
     // Enhanced query generation with entity intelligence
     if (topicData.entityIntelligence) {
-      const remaining = count - queries.length;
+      const remaining = targetCount - queries.length;
       const intelligenceQueries = this.generateIntelligenceBasedQueries(topicData, Math.ceil(remaining * 0.6));
       queries.push(...intelligenceQueries);
     }
     
     // Generate context-aware queries using industry category and target audience
-    const remaining = count - queries.length;
+    const remaining = targetCount - queries.length;
     if (remaining > 0) {
       const contextualQueries = this.generateUserContextQueries(topicData, remaining);
       queries.push(...contextualQueries);
     }
     
     // Fill remaining slots with variations if needed
-    if (queries.length < count) {
-      const additionalQueries = this.generateVariations(topicData, count - queries.length);
+    if (queries.length < targetCount) {
+      const additionalQueries = this.generateVariations(topicData, targetCount - queries.length);
       queries.push(...additionalQueries);
     }
+    
+    return queries.slice(0, targetCount);
+  }
+
+  private static getQueryCountFromDepth(depth: 'standard' | 'comprehensive' | 'deep', requestedCount: number): number {
+    switch (depth) {
+      case 'comprehensive': return Math.max(requestedCount, 50);
+      case 'deep': return Math.max(requestedCount, 100);
+      default: return Math.max(requestedCount, 20);
+    }
+  }
+
+  // 🆕 NEW: Generate solution-specific discovery queries
+  private static generateSolutionBasedQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    if (!topicData.solutionsOffered || topicData.solutionsOffered.length === 0) return queries;
+    
+    const discoveryTemplates = [
+      "Best {solution} for {audience}",
+      "Top {solution} with proven results",
+      "Which {solution} should I choose for {subVertical}",
+      "Leading {solution} providers {year}",
+      "{solution} comparison for {audience}",
+      "Recommended {solution} for {industry}",
+      "{solution} pricing and reviews",
+      "Top-rated {solution} agencies",
+      "{solution} vs in-house solutions",
+      "Best {solution} agencies with case studies"
+    ];
+    
+    const year = new Date().getFullYear();
+    
+    topicData.solutionsOffered.forEach((solution, solutionIndex) => {
+      if (queries.length >= count) return;
+      
+      discoveryTemplates.slice(0, Math.ceil(count / topicData.solutionsOffered.length)).forEach(template => {
+        if (queries.length >= count) return;
+        
+        let queryText = template
+          .replace(/{solution}/g, solution)
+          .replace(/{audience}/g, topicData.target_audience)
+          .replace(/{subVertical}/g, topicData.industrySubVertical || topicData.industry)
+          .replace(/{industry}/g, topicData.industry)
+          .replace(/{year}/g, year.toString());
+        
+        queries.push({
+          id: crypto.randomUUID(),
+          query_text: queryText,
+          query_type: 'high_intent',
+          priority: 1,
+          target_entity: topicData.entityToTrack,
+          search_intent: 'purchase_intent',
+          purchase_intent: 'high',
+          source: 'solution_based'
+        });
+      });
+    });
     
     return queries.slice(0, count);
   }
 
   private static generateUserContextQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
+    const year = new Date().getFullYear();
     
-    // Base queries with target audience context
+    // 🆕 Enhanced base queries with sub-vertical integration
     const baseQueries = [
       `Best ${topicData.topic}`,
       `Top ${topicData.topic} for ${topicData.target_audience}`,
-      `${topicData.topic} recommendations ${new Date().getFullYear()}`
+      `${topicData.topic} recommendations ${year}`
     ];
     
-    // Industry-specific queries
+    // 🆕 Sub-vertical specific queries (high precision targeting)
+    const subVerticalQueries = topicData.industrySubVertical ? [
+      `Best ${topicData.industrySubVertical} for ${topicData.target_audience}`,
+      `Top ${topicData.industrySubVertical} specialists`,
+      `Leading ${topicData.industrySubVertical} providers ${year}`,
+      `${topicData.industrySubVertical} vs competitors`,
+      `${topicData.industrySubVertical} agencies with proven results`
+    ] : [];
+    
+    // 🆕 Solution-enhanced industry queries
     const industryQueries = [
       `${topicData.industry} tools for ${topicData.target_audience}`,
       `Best ${topicData.industry} platforms`,
       `${topicData.topic} for ${topicData.target_audience} comparison`
     ];
     
-    // Client-discovery queries (realistic client scenarios)
-    const discoveryQueries = [
-      `Best ${topicData.topic} for ${topicData.target_audience}`,
-      `Top ${topicData.topic} recommendations ${new Date().getFullYear()}`, 
-      `${topicData.industry} providers for ${topicData.target_audience}`,
-      `Leading ${topicData.topic} with proven results`,
+    // 🆕 Enhanced discovery queries with intent focus
+    const discoveryQueries = topicData.queryStrategy === 'competitive_discovery' ? [
+      `Which ${topicData.topic} should I choose for ${topicData.target_audience}`,
+      `Best ${topicData.topic} agencies with case studies`,
+      `Top-rated ${topicData.topic} with proven ROI`,
       `${topicData.topic} comparison for ${topicData.target_audience}`,
-      `Recommended ${topicData.topic} platforms`
+      `Recommended ${topicData.topic} providers ${year}`,
+      `${topicData.industrySubVertical || topicData.industry} specialists comparison`
+    ] : [
+      `${topicData.industry} market trends ${year}`,
+      `${topicData.topic} industry analysis`,
+      `${topicData.target_audience} behavior patterns`,
+      `${topicData.industry} best practices`
     ];
     
     // Context-specific queries (if additional context provided)
@@ -281,32 +364,126 @@ export class TopicQueryGeneratorService {
       `Best ${topicData.industry} ${topicData.context_description}`
     ] : [];
     
-    // Known players queries
+    // 🆕 Enhanced known players queries with competitive focus
     const knownPlayersQueries = topicData.known_players.length > 0 ? [
       `${topicData.known_players.slice(0, 3).join(' vs ')} comparison`,
-      `${topicData.topic} ${topicData.known_players[0]} vs alternatives`
+      `${topicData.known_players[0]} vs alternatives for ${topicData.target_audience}`,
+      `Is ${topicData.known_players[0]} the best choice for ${topicData.industrySubVertical || topicData.topic}?`,
+      `Alternatives to ${topicData.known_players[0]} for ${topicData.target_audience}`
     ] : [];
     
-    // Combine all query types
-    const allQueries = [...baseQueries, ...industryQueries, ...discoveryQueries, ...contextQueries, ...knownPlayersQueries];
+    // Combine all query types with priority to sub-vertical and discovery queries
+    const allQueries = [...subVerticalQueries, ...discoveryQueries, ...baseQueries, ...industryQueries, ...contextQueries, ...knownPlayersQueries];
     
-    // Convert to GeneratedTopicQuery objects with priorities
+    // Convert to GeneratedTopicQuery objects with enhanced priorities
     allQueries.forEach((queryText, index) => {
-      const priority = this.calculateQueryPriority(queryText, topicData);
+      const priority = this.calculateEnhancedQueryPriority(queryText, topicData);
       const type = this.determineQueryType(queryText);
+      const searchIntent = this.classifySearchIntent(queryText, topicData);
       
       queries.push({
         id: crypto.randomUUID(),
         query_text: queryText,
         query_type: type,
         priority,
-        target_entity: topicData.entityToTrack || topicData.topic
+        target_entity: topicData.entityToTrack || topicData.topic,
+        search_intent: searchIntent,
+        purchase_intent: this.classifyPurchaseIntent(queryText),
+        source: 'template'
       });
     });
     
     // Sort by priority and return top queries
     return queries.sort((a, b) => b.priority - a.priority).slice(0, Math.min(count, queries.length));
   }
+
+  // 🆕 Enhanced priority calculation considering new strategic fields
+  private static calculateEnhancedQueryPriority(queryText: string, topicData: TopicAuditData): number {
+    let priority = 3; // Base priority
+    
+    // Higher priority for sub-vertical specific queries
+    if (topicData.industrySubVertical && queryText.toLowerCase().includes(topicData.industrySubVertical.toLowerCase())) {
+      priority = 1;
+    }
+    
+    // Higher priority for solution-specific queries
+    if (topicData.solutionsOffered?.some(solution => queryText.toLowerCase().includes(solution.toLowerCase()))) {
+      priority = Math.min(priority, 1);
+    }
+    
+    // Higher priority for entity-specific queries
+    if (topicData.entityToTrack && queryText.includes(topicData.entityToTrack)) {
+      priority = Math.min(priority, 1);
+    }
+    
+    // Higher priority for discovery-focused queries when strategy is competitive_discovery
+    if (topicData.queryStrategy === 'competitive_discovery') {
+      const discoveryKeywords = ['best', 'top', 'which', 'should i choose', 'recommend'];
+      if (discoveryKeywords.some(keyword => queryText.toLowerCase().includes(keyword))) {
+        priority = Math.min(priority, 1);
+      }
+    }
+    
+    // Higher priority for target audience specific queries
+    if (queryText.includes(topicData.target_audience)) {
+      priority = Math.min(priority, 2);
+    }
+    
+    // Higher priority for industry-specific queries
+    if (queryText.includes(topicData.industry)) {
+      priority = Math.min(priority, 2);
+    }
+    
+    return priority;
+  }
+
+  // 🆕 Enhanced search intent classification
+  private static classifySearchIntent(queryText: string, topicData: TopicAuditData): 'immediate_need' | 'research' | 'comparison' | 'education' | 'purchase_intent' {
+    const lowerText = queryText.toLowerCase();
+    
+    // High purchase intent indicators
+    const purchaseKeywords = ['best', 'top', 'which should i', 'recommend', 'choose', 'hire'];
+    if (purchaseKeywords.some(keyword => lowerText.includes(keyword))) {
+      return 'purchase_intent';
+    }
+    
+    // Comparison intent
+    if (lowerText.includes('vs') || lowerText.includes('comparison') || lowerText.includes('compare')) {
+      return 'comparison';
+    }
+    
+    // Immediate need indicators
+    if (lowerText.includes('need') || lowerText.includes('looking for') || lowerText.includes('urgent')) {
+      return 'immediate_need';
+    }
+    
+    // Research indicators
+    if (lowerText.includes('trends') || lowerText.includes('analysis') || lowerText.includes('market')) {
+      return 'research';
+    }
+    
+    return 'education';
+  }
+
+  // 🆕 Enhanced purchase intent classification
+  private static classifyPurchaseIntent(queryText: string): 'high' | 'medium' | 'low' {
+    const lowerText = queryText.toLowerCase();
+    
+    // High intent indicators
+    const highIntentKeywords = ['hire', 'pricing', 'cost', 'buy', 'purchase', 'which should i', 'best for my'];
+    if (highIntentKeywords.some(keyword => lowerText.includes(keyword))) {
+      return 'high';
+    }
+    
+    // Medium intent indicators  
+    const mediumIntentKeywords = ['compare', 'vs', 'alternatives', 'review', 'recommend'];
+    if (mediumIntentKeywords.some(keyword => lowerText.includes(keyword))) {
+      return 'medium';
+    }
+    
+    return 'low';
+  }
+
 
   private static calculateQueryPriority(queryText: string, topicData: TopicAuditData): number {
     let priority = 3; // Base priority

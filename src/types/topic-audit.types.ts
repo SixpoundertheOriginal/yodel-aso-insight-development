@@ -15,6 +15,11 @@ export interface TopicAuditData {
   competitorFocus?: boolean;
   intentLevel?: 'high' | 'medium' | 'low';
   
+  // Strategic enhancement fields
+  solutionsOffered?: string[]; // Auto-populated from entity.services
+  analysisDepth?: 'standard' | 'comprehensive' | 'deep'; // Controls query count (20/50/100)
+  industrySubVertical?: string; // Precision targeting field
+  
   // Entity Intelligence Data (populated automatically)
   entityIntelligence?: EntityIntelligence;
 }
@@ -47,7 +52,7 @@ export interface GeneratedTopicQuery {
   search_intent?: 'immediate_need' | 'research' | 'comparison' | 'education' | 'purchase_intent';
   purchase_intent?: 'high' | 'medium' | 'low';
   client_scenario?: string;
-  source?: 'openai_enhanced' | 'template' | 'intent_based';
+  source?: 'openai_enhanced' | 'template' | 'intent_based' | 'solution_based';
 }
 
 export type AuditMode = 'app' | 'topic';
