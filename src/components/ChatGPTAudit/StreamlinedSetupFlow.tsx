@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { ModeSelector } from './ModeSelector';
+
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
@@ -67,7 +67,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   onAuditCreate
 }) => {
   // Setup state
-  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'auto-populate' | 'queries' | 'review'>('mode');
+  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'auto-populate' | 'queries' | 'review'>('entity');
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedTopicQuery[]>([]);
@@ -96,9 +96,15 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
   const { toast } = useToast();
 
+  // Automatically set mode to 'topic' on mount
+  useEffect(() => {
+    if (auditMode !== 'topic') {
+      onModeChange('topic');
+    }
+  }, [auditMode, onModeChange]);
+
   const steps = [
-    { id: 'mode', label: 'Analysis Type', icon: Settings },
-    { id: 'entity', label: auditMode === 'app' ? 'Select App' : 'Entity Input', icon: Target },
+    { id: 'entity', label: 'Entity Input', icon: Target },
     { id: 'auto-populate', label: 'Review & Edit', icon: Brain },
     { id: 'queries', label: 'Query Generation', icon: MessageSquare },
     { id: 'review', label: 'Review & Create', icon: CheckCircle }
@@ -112,11 +118,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const canGoBack = () => getCurrentStepIndex() > 0;
   const canGoForward = () => {
     const index = getCurrentStepIndex();
-    if (index === 0) return auditMode !== null; // Mode step
     // Skip generic continue for entity and confirmation steps - they have specific action buttons
-    if (index === 1) return false; // Entity step - handled by specific buttons
-    if (index === 2) return false; // Confirmation step - handled by specific buttons  
-    if (index === 3) return generatedQueries.length > 0; // Queries step
+    if (index === 0) return false; // Entity step - handled by specific buttons
+    if (index === 1) return false; // Confirmation step - handled by specific buttons  
+    if (index === 2) return generatedQueries.length > 0; // Queries step
     return false;
   };
 
@@ -127,9 +132,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       setCurrentStep(previousStep.id as any);
       
       // Reset state when going back to avoid inconsistencies
-      if (previousStep.id === 'mode') {
-        // Don't reset mode, just go back
-      } else if (previousStep.id === 'entity') {
+      if (previousStep.id === 'entity') {
         setGeneratedQueries([]);
         setShowEntityAnalyzer(false);
         setEnhancedEntityIntelligence(null);
@@ -149,19 +152,6 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     }
   };
 
-  const handleModeChange = (mode: AuditMode) => {
-    onModeChange(mode);
-    if (mode !== auditMode) {
-      // Reset subsequent steps when mode changes
-      setSelectedApp(null);
-      setTopicData(null);
-      setGeneratedQueries([]);
-      setAppIntelligence(null);
-      setEntityIntelligence(null);
-      setEnhancedEntityIntelligence(null);
-      setShowEntityAnalyzer(false);
-    }
-  };
 
   const handleAppSelect = (app: App) => {
     setSelectedApp(app);
@@ -555,142 +545,72 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
         {/* Step Content */}
         <div className="min-h-[400px]">
-          {/* Step 1: Mode Selection */}
-          {currentStep === 'mode' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary">Choose Analysis Type</h3>
-              <ModeSelector mode={auditMode} onModeChange={handleModeChange} />
-            </div>
-          )}
-
-          {/* Step 2: Entity Selection */}
+          {/* Step 1: Entity Selection */}
           {currentStep === 'entity' && (
             <div className="space-y-4">
-              {auditMode === 'app' ? (
-                <>
-                  <h3 className="text-lg font-semibold text-primary">Select App to Analyze</h3>
-                  {apps.length === 0 ? (
-                    <Alert>
-                      <AlertDescription>
-                        No apps found. Please add an app to continue.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       {apps.map(app => (
-                         <div
-                           key={app.id}
-                           onClick={() => handleAppSelect(app)}
-                           className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                            selectedApp?.id === app.id
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-border bg-background/50 hover:border-zinc-600'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            {app.app_icon_url && (
-                              <img 
-                                src={app.app_icon_url} 
-                                alt={app.app_name}
-                                className="h-10 w-10 rounded-lg"
-                              />
-                            )}
-                            <div className="flex-1">
-                              <h4 className="font-medium text-primary">{app.app_name}</h4>
-                              <p className="text-sm text-muted-foreground">{app.platform}</p>
-                              {app.app_store_category && (
-                                <Badge variant="outline" className="text-xs">
-                                  {app.app_store_category}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {selectedApp && (
-                    <AppIntelligenceAnalyzer
-                      appData={{
-                        app_name: selectedApp.app_name,
-                        description: selectedApp.app_description || '',
-                        category: selectedApp.app_store_category || selectedApp.category || '',
-                        developer: selectedApp.developer_name || '',
-                        bundle_id: selectedApp.bundle_id || selectedApp.app_store_id || ''
-                      }}
-                      onIntelligenceGenerated={handleIntelligenceGenerated}
-                      onAnalysisComplete={() => {}}
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                   <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
-                   <div className="space-y-4">
-                     <div className="space-y-2">
-                       <Label htmlFor="entityInput">Entity to Analyze</Label>
-                       <Input
-                         id="entityInput"
-                         value={entityInput}
-                         onChange={(e) => setEntityInput(e.target.value)}
-                         placeholder="Enter entity name (e.g., 'Ogilvy', 'HubSpot', 'Instagram')"
-                         className="w-full"
-                       />
-                       <p className="text-xs text-muted-foreground">
-                         Enter the business, brand, or entity you want to analyze for ChatGPT visibility
-                       </p>
-                     </div>
-                     
-                     {entityInput.trim() && !isAnalyzingEntity && (
-                       <Button 
-                         onClick={() => {
-                           setIsAnalyzingEntity(true);
-                           // Start entity analysis which will auto-populate fields
-                         }}
-                         className="w-full"
-                       >
-                         <Brain className="h-4 w-4 mr-2" />
-                         Analyze Entity
-                       </Button>
-                     )}
-                     
-                     {isAnalyzingEntity && entityInput.trim() && (
-                       <EntityIntelligenceAnalyzer
-                         entityData={{
-                           entityName: entityInput.trim(),
-                           context: 'topic audit analysis',
-                           auditContext: {
-                             industry: '',
-                             topic: '',
-                             target_audience: '',
-                             known_competitors: [],
-                             queryStrategy: 'market_research'
-                           }
-                         }}
-                         onIntelligenceGenerated={(intelligence) => {
-                           setEnhancedEntityIntelligence(intelligence);
-                           // Auto-populate fields from entity intelligence
-                           autoPopulateFromEntity(intelligence);
-                         }}
-                         onAnalysisComplete={() => {
-                           setIsAnalyzingEntity(false);
-                           if (autoPopulatedData) {
-                             setCurrentStep('auto-populate');
-                           }
-                         }}
-                       />
-                     )}
-                   </div>
-                 </>
-               )}
+              <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="entityInput">Entity to Analyze</Label>
+                  <Input
+                    id="entityInput"
+                    value={entityInput}
+                    onChange={(e) => setEntityInput(e.target.value)}
+                    placeholder="Enter entity name (e.g., 'Ogilvy', 'HubSpot', 'Instagram')"
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the business, brand, or entity you want to analyze for ChatGPT visibility
+                  </p>
+                </div>
+                
+                {entityInput.trim() && !isAnalyzingEntity && (
+                  <Button 
+                    onClick={() => {
+                      setIsAnalyzingEntity(true);
+                      // Start entity analysis which will auto-populate fields
+                    }}
+                    className="w-full"
+                  >
+                    <Brain className="h-4 w-4 mr-2" />
+                    Analyze Entity
+                  </Button>
+                )}
+                
+                {isAnalyzingEntity && entityInput.trim() && (
+                  <EntityIntelligenceAnalyzer
+                    entityData={{
+                      entityName: entityInput.trim(),
+                      context: 'topic audit analysis',
+                      auditContext: {
+                        industry: '',
+                        topic: '',
+                        target_audience: '',
+                        known_competitors: [],
+                        queryStrategy: 'market_research'
+                      }
+                    }}
+                    onIntelligenceGenerated={(intelligence) => {
+                      setEnhancedEntityIntelligence(intelligence);
+                      // Auto-populate fields from entity intelligence
+                      autoPopulateFromEntity(intelligence);
+                    }}
+                    onAnalysisComplete={() => {
+                      setIsAnalyzingEntity(false);
+                      if (autoPopulatedData) {
+                        setCurrentStep('auto-populate');
+                      }
+                    }}
+                  />
+                )}
+              </div>
             </div>
           )}
 
-          {/* Step 3: Auto-Populate & Edit */}
+          {/* Step 2: Auto-Populate & Edit */}
           {currentStep === 'auto-populate' && (
             <div className="space-y-4">
-              {auditMode === 'topic' && autoPopulatedData ? (
+              {autoPopulatedData ? (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-primary">Review Auto-Populated Fields</h3>
