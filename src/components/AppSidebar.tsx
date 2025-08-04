@@ -311,7 +311,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-footer-border/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/30 p-4">
         <div className="text-xs font-medium text-nav-text-secondary group-data-[collapsible=icon]:hidden">
-          © 2025 Yodel Mobile by NP Digital
+          © 2025 Yodel Mobile
         </div>
       </SidebarFooter>
 
