@@ -98,6 +98,9 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  // Count running audits properly
+  const runningAudits = auditRuns.filter(run => run.status === 'running');
+
   // Queue monitoring effect
   useEffect(() => {
     if (isQueueRunning && processingQueue.length > 0) {
@@ -842,7 +845,7 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
+                <SelectItem value="running">Running ({runningAudits.length})</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="error">Error</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>

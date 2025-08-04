@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
 import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
 import { TopicAuditData } from '@/types/topic-audit.types';
-import { Play, Pause, Square, Target, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Play, Pause, Square, Target, Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface AuditRun {
@@ -386,7 +386,34 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
       });
     } finally {
       setIsProcessing(false);
+      isProcessingRef.current = false;
       setProcessingStats(prev => ({ ...prev, currentQuery: '' }));
+      
+      // Update audit status to completed if all queries are done
+      const { data: finalQueryCheck } = await supabase
+        .from('chatgpt_queries')
+        .select('status', { count: 'exact' })
+        .eq('audit_run_id', selectedAuditRun.id);
+      
+      if (finalQueryCheck) {
+        const pendingCount = finalQueryCheck.filter(q => q.status === 'pending').length;
+        if (pendingCount === 0) {
+          await supabase
+            .from('chatgpt_audit_runs')
+            .update({ 
+              status: 'completed',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', selectedAuditRun.id);
+        } else {
+          // Still has pending queries, set to paused
+          await supabase
+            .from('chatgpt_audit_runs')
+            .update({ status: 'paused' })
+            .eq('id', selectedAuditRun.id);
+        }
+      }
+      
       onStatusChange();
     }
   };
@@ -580,56 +607,65 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2">
-          {canProcess && (
-            <Button 
-              onClick={startProcessing}
-              disabled={isProcessing}
-              className="flex items-center space-x-2"
-            >
-              <Play className="h-4 w-4" />
-              <span>Start Processing</span>
-            </Button>
-          )}
-          
-          {canPause && isProcessing && (
-            <Button 
-              onClick={pauseProcessing}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <Pause className="h-4 w-4" />
-              <span>Pause</span>
-            </Button>
-          )}
-          
-          {isProcessing && (
-            <Button 
-              onClick={stopProcessing}
-              variant="destructive"
-              className="flex items-center space-x-2"
-            >
-              <Square className="h-4 w-4" />
-              <span>Stop Audit</span>
-            </Button>
-          )}
+        <div className="flex flex-wrap gap-3">
+          <div className="flex gap-2">
+            {canProcess && (
+              <Button 
+                onClick={startProcessing}
+                variant="default"
+                disabled={isProcessing}
+                className="flex items-center space-x-2"
+              >
+                <Play className="h-4 w-4" />
+                <span>Start Processing</span>
+              </Button>
+            )}
+
+            {canPause && !isProcessing && selectedAuditRun.status === 'running' && (
+              <Button 
+                onClick={pauseProcessing}
+                variant="secondary"
+                className="flex items-center space-x-2"
+              >
+                <Pause className="h-4 w-4" />
+                <span>Pause</span>
+              </Button>
+            )}
+
+            {(isProcessing || selectedAuditRun.status === 'running') && (
+              <Button 
+                onClick={stopProcessing}
+                variant="destructive"
+                className="flex items-center space-x-2"
+              >
+                <Square className="h-4 w-4" />
+                <span>Stop Audit</span>
+              </Button>
+            )}
+          </div>
 
           {/* Delete Button - Always visible but disabled during processing */}
           <Button 
             onClick={deleteAudit}
-            variant="destructive"
-            disabled={selectedAuditRun.status === 'running'}
-            className="flex items-center space-x-2 ml-auto"
+            variant="outline"
+            disabled={selectedAuditRun.status === 'running' || isProcessing}
+            className="flex items-center space-x-2 ml-auto text-destructive hover:text-destructive-foreground hover:bg-destructive"
           >
-            Delete Audit
+            <Trash2 className="h-4 w-4" />
+            <span>Delete Audit</span>
           </Button>
-          
-          {!isProcessing && processingStats.total > 0 && (
-            <div className="text-sm text-muted-foreground flex items-center w-full">
-              Processing query {processingStats.completed + processingStats.failed + 1} of {processingStats.total}
-            </div>
-          )}
         </div>
+        
+        {/* Processing Status */}
+        {(isProcessing || processingStats.total > 0) && (
+          <div className="text-sm text-muted-foreground">
+            {isProcessing ? (
+              <>Processing query {processingStats.completed + processingStats.failed + 1} of {processingStats.total}</>
+            ) : (
+              <>Progress: {processingStats.completed} completed, {processingStats.failed} failed of {processingStats.total} total</>
+            )}
+          </div>
+        )}
 
         {/* Status Messages */}
         {selectedAuditRun.status === 'completed' && (
