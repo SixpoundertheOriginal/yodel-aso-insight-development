@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
@@ -27,7 +29,11 @@ import {
   Plus,
   Zap,
   Eye,
-  Loader2
+  Loader2,
+  Search,
+  Trash2,
+  Copy,
+  MoreVertical
 } from 'lucide-react';
 
 interface App {
@@ -95,6 +101,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [auditDescription, setAuditDescription] = useState('');
   const [editingQueryId, setEditingQueryId] = useState<string | null>(null);
   const [newQueryText, setNewQueryText] = useState('');
+  const [selectedQueries, setSelectedQueries] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { toast } = useToast();
 
@@ -228,22 +236,83 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
   const handleDeleteQuery = (queryId: string) => {
     setGeneratedQueries(prev => prev.filter(query => query.id !== queryId));
+    setSelectedQueries(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(queryId);
+      return newSet;
+    });
   };
+
+  const toggleQuerySelection = (queryId: string) => {
+    setSelectedQueries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(queryId)) {
+        newSet.delete(queryId);
+      } else {
+        newSet.add(queryId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllQueries = () => {
+    setSelectedQueries(new Set(filteredQueries.map(q => q.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedQueries(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    setGeneratedQueries(prev => prev.filter(q => !selectedQueries.has(q.id)));
+    setSelectedQueries(new Set());
+    toast({ 
+      title: "Queries deleted", 
+      description: `${selectedQueries.size} queries removed` 
+    });
+  };
+
+  const handleDuplicateQuery = (query: GeneratedTopicQuery) => {
+    const duplicatedQuery: GeneratedTopicQuery = {
+      ...query,
+      id: crypto.randomUUID(),
+      query_text: query.query_text + " (copy)"
+    };
+    setGeneratedQueries(prev => [...prev, duplicatedQuery]);
+    toast({ 
+      title: "Query duplicated", 
+      description: "A copy has been added to your list" 
+    });
+  };
+
+  // Filtered queries for search
+  const filteredQueries = useMemo(() => {
+    return generatedQueries.filter(query => 
+      query.query_text.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [generatedQueries, searchTerm]);
 
   const handleAddQuery = () => {
     if (!newQueryText.trim()) return;
     
-    const newQuery: GeneratedTopicQuery = {
+    // Handle multiple queries (one per line)
+    const queries = newQueryText.split('\n').filter(q => q.trim());
+    const newQueries: GeneratedTopicQuery[] = queries.map((queryText, index) => ({
       id: crypto.randomUUID(),
-      query_text: newQueryText.trim(),
+      query_text: queryText.trim(),
       query_type: 'conversational',
       priority: 5,
       target_entity: auditMode === 'app' ? selectedApp?.app_name || '' : topicData?.topic || '',
       personas: []
-    };
+    }));
     
-    setGeneratedQueries(prev => [...prev, newQuery]);
+    setGeneratedQueries(prev => [...prev, ...newQueries]);
     setNewQueryText('');
+    
+    toast({ 
+      title: "Queries added", 
+      description: `${newQueries.length} custom queries added` 
+    });
   };
 
   const generateQueriesFromEnhancedEntity = async (entityIntelligence: any) => {
@@ -1004,6 +1073,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-primary">
                   Generated Queries ({generatedQueries.length})
+                  {selectedQueries.size > 0 && ` • ${selectedQueries.size} selected`}
                 </h3>
                 <div className="flex space-x-2">
                   <Button
@@ -1016,6 +1086,57 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
+              </div>
+
+              {/* Search and Bulk Actions */}
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search queries..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {generatedQueries.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedQueries.size === filteredQueries.length && filteredQueries.length > 0}
+                        onCheckedChange={(checked) => checked ? selectAllQueries() : clearSelection()}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        Select all visible
+                      </span>
+                      {selectedQueries.size > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearSelection}
+                          className="text-muted-foreground"
+                        >
+                          Clear selection
+                        </Button>
+                      )}
+                    </div>
+
+                    {selectedQueries.size > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleBulkDelete}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Selected ({selectedQueries.size})
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Query Management Actions */}
@@ -1070,10 +1191,16 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
               {/* Query List */}
               <div className="space-y-3 max-h-80 overflow-y-auto">
-                {generatedQueries.map(query => (
-                  <div key={query.id} className="p-4 border border-border rounded-lg bg-background/50">
+                {filteredQueries.map(query => (
+                  <div key={query.id} className={`p-4 border border-border rounded-lg bg-background/50 transition-all ${selectedQueries.has(query.id) ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}>
                     <div className="flex items-start justify-between space-x-3">
-                      <div className="flex-1">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          checked={selectedQueries.has(query.id)}
+                          onCheckedChange={() => toggleQuerySelection(query.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
                         {editingQueryId === query.id ? (
                           <div className="space-y-2">
                             <Textarea
@@ -1140,34 +1267,80 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                           >
                             <Edit3 className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteQuery(query.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleDuplicateQuery(query)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteQuery(query.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Add New Query */}
-              <div className="space-y-2">
-                <Label htmlFor="newQuery">Add Custom Query</Label>
-                <div className="flex space-x-2">
-                  <Textarea
-                    id="newQuery"
-                    placeholder="Enter a custom query to test..."
-                    value={newQueryText}
-                    onChange={(e) => setNewQueryText(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleAddQuery} disabled={!newQueryText.trim()}>
-                    <Plus className="h-4 w-4" />
+              {filteredQueries.length === 0 && generatedQueries.length > 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No queries match your search</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                    className="mt-2"
+                  >
+                    Clear search
+                  </Button>
+                </div>
+              )}
+
+              {/* Enhanced Add New Query */}
+              <div className="space-y-4 p-4 border border-border rounded-lg bg-background/30">
+                <div className="flex items-center space-x-2">
+                  <Plus className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="newQuery" className="text-sm font-medium text-muted-foreground">
+                    Add Custom Queries
+                  </Label>
+                </div>
+                
+                <Textarea
+                  id="newQuery"
+                  placeholder="Add one or more custom queries (one per line)&#10;&#10;Example:&#10;Best ASO agency for mobile apps&#10;Affordable app store optimization services&#10;Top mobile app marketing companies"
+                  value={newQueryText}
+                  onChange={(e) => setNewQueryText(e.target.value)}
+                  className="min-h-[120px]"
+                  rows={6}
+                />
+                
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    {newQueryText.split('\n').filter(q => q.trim()).length} queries ready to add
+                  </div>
+                  <Button
+                    onClick={handleAddQuery}
+                    disabled={!newQueryText.trim()}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Queries
                   </Button>
                 </div>
               </div>
