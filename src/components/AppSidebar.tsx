@@ -91,11 +91,6 @@ const aiCopilotsItems = [
     icon: TrendingUp,
   },
   {
-    title: "Campaign Intelligence",
-    url: "/cpp-strategy-copilot",
-    icon: Target,
-  },
-  {
     title: "Feature Maximizer",
     url: "/featuring-toolkit",
     icon: Star,

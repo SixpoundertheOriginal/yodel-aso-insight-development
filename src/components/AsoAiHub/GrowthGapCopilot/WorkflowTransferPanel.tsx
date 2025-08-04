@@ -42,17 +42,6 @@ export const WorkflowTransferPanel: React.FC<WorkflowTransferPanelProps> = ({
         positioning_insights: analysisResults?.positioningOpportunities || [],
         competitive_advantages: analysisResults?.uniqueStrengths || []
       }
-    },
-    {
-      id: 'cpp-strategy-copilot',
-      name: 'CPP Strategy',
-      description: 'Design Custom Product Pages targeting missed opportunities',
-      icon: '🎯',
-      color: 'bg-green-500',
-      dataMapping: {
-        target_segments: analysisResults?.audienceGaps || [],
-        conversion_opportunities: analysisResults?.conversionGaps || []
-      }
     }
   ];
 
