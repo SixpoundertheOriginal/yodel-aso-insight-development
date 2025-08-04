@@ -65,18 +65,18 @@ const TopBar: React.FC = React.memo(() => {
   const showManualAppSelector = !isAnalyticsPage && !isGrowthAcceleratorPage && !authPages.includes(location.pathname) && !systemPages.includes(location.pathname);
 
   return (
-    <div className="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-900/80 backdrop-blur-sm">
+      <div className="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-900/80 backdrop-blur-sm text-nav-text-secondary">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">
-          <SidebarTrigger className="h-8 w-8 text-zinc-400 hover:text-white" />
+            <SidebarTrigger className="h-8 w-8 text-nav-icon hover:text-nav-text" />
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-yodel-orange"></div>
-            <Heading3 className="text-lg font-semibold text-white sm:text-2xl">
+              <Heading3 className="text-lg font-semibold text-nav-text sm:text-2xl">
               {getPageTitle()}
             </Heading3>
             {isAnalyticsPage && (
               <div className="hidden sm:flex items-center gap-2 ml-4">
-                <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-400">
+                <div className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-nav-text-secondary">
                   Data Source: BigQuery
                 </div>
               </div>

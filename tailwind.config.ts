@@ -82,6 +82,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        footer: {
+          DEFAULT: "hsl(var(--footer-background))",
+          foreground: "hsl(var(--footer-foreground))",
+          border: "hsl(var(--footer-border))",
+        },
+        nav: {
+          text: "hsl(var(--nav-text))",
+          "text-secondary": "hsl(var(--nav-text-secondary))",
+          icon: "hsl(var(--nav-icon))",
+        },
         // Yodel Mobile brand colors - Enhanced Palette
         yodel: {
           orange: {
