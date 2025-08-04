@@ -442,3 +442,18 @@
     transition-duration: 0.01ms !important;
   }
 }
+.theme-toggle-container button {
+  @apply text-foreground hover:bg-muted;
+}
+.theme-toggle-container button svg {
+  @apply text-foreground;
+}
+.header-nav {
+  @apply bg-background border-border;
+}
+.header-text {
+  @apply text-foreground;
+}
+.header-secondary-text {
+  @apply text-muted-foreground;
+}
