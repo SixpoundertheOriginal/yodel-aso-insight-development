@@ -65,25 +65,25 @@ const TopBar: React.FC = React.memo(() => {
   const showManualAppSelector = !isAnalyticsPage && !isGrowthAcceleratorPage && !authPages.includes(location.pathname) && !systemPages.includes(location.pathname);
 
   return (
-      <div className="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-900/80 backdrop-blur-sm text-nav-text-secondary">
+      <div className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm text-muted-foreground">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">
-            <SidebarTrigger className="h-8 w-8 text-nav-icon hover:text-nav-text" />
+            <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground" />
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-yodel-orange"></div>
-              <Heading3 className="text-lg font-semibold text-nav-text sm:text-2xl">
+              <Heading3 className="text-lg font-semibold text-foreground sm:text-2xl">
               {getPageTitle()}
             </Heading3>
             {isAnalyticsPage && (
               <div className="hidden sm:flex items-center gap-2 ml-4">
-                <div className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-nav-text-secondary">
+                <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
                   Data Source: BigQuery
                 </div>
               </div>
             )}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
           {/* BigQuery App Selector for Analytics pages */}
           {isAnalyticsPage && !profileLoading && (
@@ -111,13 +111,17 @@ const TopBar: React.FC = React.memo(() => {
               <ResetButton />
             </div>
           )}
-          <ThemeToggle />
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <div className="theme-toggle-container">
+              <ThemeToggle />
+            </div>
+            <UserMenu />
+          </div>
         </div>
       </div>
-      
+
       {/* Mobile controls - show below header on mobile when needed */}
-      <div className="border-t border-zinc-800 px-4 py-3 md:hidden">
+      <div className="border-t border-border bg-background px-4 py-3 md:hidden">
         <div className="flex items-center justify-between">
           {isAnalyticsPage && !profileLoading && (
             <BigQueryAppSelector
