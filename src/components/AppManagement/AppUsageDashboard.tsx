@@ -77,7 +77,7 @@ export const AppUsageDashboard: React.FC<AppUsageDashboardProps> = ({ onAddApp }
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-foreground flex items-center gap-2">
                 <Smartphone className="h-5 w-5 text-yodel-orange" />
                 App Usage
               </CardTitle>
@@ -107,7 +107,7 @@ export const AppUsageDashboard: React.FC<AppUsageDashboardProps> = ({ onAddApp }
 
           <div className="grid grid-cols-3 gap-4 pt-2">
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">{orgUsage.active_apps}</div>
+              <div className="text-2xl font-bold text-foreground">{orgUsage.active_apps}</div>
               <div className="text-xs text-zinc-400">Active Apps</div>
             </div>
             <div className="text-center">
@@ -139,7 +139,7 @@ export const AppUsageDashboard: React.FC<AppUsageDashboardProps> = ({ onAddApp }
       {/* Quick Actions */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader className="pb-3">
-          <CardTitle className="text-white text-lg">Quick Actions</CardTitle>
+          <CardTitle className="text-foreground text-lg">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button 

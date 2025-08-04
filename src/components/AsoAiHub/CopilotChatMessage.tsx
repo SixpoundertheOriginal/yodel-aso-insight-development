@@ -21,7 +21,7 @@ export const CopilotChatMessage: React.FC<CopilotChatMessageProps> = ({ message 
       <div className={`flex items-start space-x-3 max-w-3xl ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
           isUser 
-            ? 'bg-yodel-orange text-white' 
+            ? 'bg-yodel-orange text-foreground' 
             : 'bg-zinc-700 text-zinc-300'
         }`}>
           {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -29,7 +29,7 @@ export const CopilotChatMessage: React.FC<CopilotChatMessageProps> = ({ message 
         
         <div className={`px-4 py-3 rounded-lg ${
           isUser 
-            ? 'bg-yodel-orange text-white rounded-br-sm' 
+            ? 'bg-yodel-orange text-foreground rounded-br-sm' 
             : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
         }`}>
           <div className="text-sm leading-relaxed whitespace-pre-wrap">

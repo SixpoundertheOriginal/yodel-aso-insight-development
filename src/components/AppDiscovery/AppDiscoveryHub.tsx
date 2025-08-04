@@ -35,7 +35,7 @@ export const AppDiscoveryHub: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <X className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Access Denied</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Access Denied</h2>
           <p className="text-zinc-400">You don't have permission to access app discovery.</p>
         </div>
       </div>
@@ -47,7 +47,7 @@ export const AppDiscoveryHub: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">App Discovery</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">App Discovery</h1>
           <p className="text-zinc-400">
             Discover apps from your BigQuery data and approve them for dashboard access
           </p>
@@ -80,7 +80,7 @@ export const AppDiscoveryHub: React.FC = () => {
                 <Clock className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{pendingApps.length}</p>
+                <p className="text-2xl font-bold text-foreground">{pendingApps.length}</p>
                 <p className="text-sm text-zinc-400">Pending Approval</p>
               </div>
             </div>
@@ -94,7 +94,7 @@ export const AppDiscoveryHub: React.FC = () => {
                 <CheckCircle className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{approvedApps.length}</p>
+                <p className="text-2xl font-bold text-foreground">{approvedApps.length}</p>
                 <p className="text-sm text-zinc-400">Approved Apps</p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export const AppDiscoveryHub: React.FC = () => {
                 <Database className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{pendingApps.length + approvedApps.length}</p>
+                <p className="text-2xl font-bold text-foreground">{pendingApps.length + approvedApps.length}</p>
                 <p className="text-sm text-zinc-400">Total Discovered</p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export const AppDiscoveryHub: React.FC = () => {
         {/* Pending Apps */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-400" />
               Pending Apps
               {pendingApps.length > 0 && (
@@ -160,7 +160,7 @@ export const AppDiscoveryHub: React.FC = () => {
         {/* Approved Apps */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-400" />
               Approved Apps
               {approvedApps.length > 0 && (

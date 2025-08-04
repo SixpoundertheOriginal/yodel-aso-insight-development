@@ -66,7 +66,7 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
               <Target className="h-4 w-4 text-blue-400" />
               <span className="text-sm text-zinc-400">Competitors Tracked</span>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {competitors.length}
             </div>
           </CardContent>
@@ -106,7 +106,7 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
         <TabsContent value="gaps" className="space-y-4">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Missing Keywords</CardTitle>
+              <CardTitle className="text-foreground">Missing Keywords</CardTitle>
               <p className="text-zinc-400 text-sm">
                 Keywords your competitors rank for but you don't target
               </p>
@@ -115,7 +115,7 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
               <div className="grid gap-2">
                 {keywordGaps.slice(0, 20).map((keyword, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
-                    <span className="text-white">{keyword}</span>
+                    <span className="text-foreground">{keyword}</span>
                     <Badge variant="outline" className="text-orange-400 border-orange-500">
                       Gap
                     </Badge>
@@ -129,7 +129,7 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
         <TabsContent value="opportunities" className="space-y-4">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">High-Opportunity Keywords</CardTitle>
+              <CardTitle className="text-foreground">High-Opportunity Keywords</CardTitle>
               <p className="text-zinc-400 text-sm">
                 Keywords with moderate competition and good potential
               </p>
@@ -138,7 +138,7 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
               <div className="grid gap-2">
                 {opportunities.slice(0, 15).map((keyword, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
-                    <span className="text-white">{keyword}</span>
+                    <span className="text-foreground">{keyword}</span>
                     <Badge variant="outline" className="text-green-400 border-green-500">
                       Opportunity
                     </Badge>
@@ -155,13 +155,13 @@ export const CompetitiveKeywordAnalysis: React.FC<CompetitiveKeywordAnalysisProp
               <Card key={index} className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-white">{competitor.appName}</CardTitle>
+                    <CardTitle className="text-foreground">{competitor.appName}</CardTitle>
                     <div className="flex items-center space-x-4">
                       <div className="text-sm text-zinc-400">
-                        Avg Rank: <span className="text-white">{competitor.avgRank}</span>
+                        Avg Rank: <span className="text-foreground">{competitor.avgRank}</span>
                       </div>
                       <div className="text-sm text-zinc-400">
-                        Visibility: <span className="text-white">{competitor.visibility}%</span>
+                        Visibility: <span className="text-foreground">{competitor.visibility}%</span>
                       </div>
                     </div>
                   </div>

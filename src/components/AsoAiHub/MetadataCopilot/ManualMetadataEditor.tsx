@@ -83,7 +83,7 @@ export const ManualMetadataEditor: React.FC<ManualMetadataEditorProps> = ({
     <div className="space-y-6">
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <span>Manual Metadata Editor</span>
           </CardTitle>
         </CardHeader>
@@ -108,7 +108,7 @@ export const ManualMetadataEditor: React.FC<ManualMetadataEditorProps> = ({
               value={metadata.title}
               onChange={(e) => handleFieldChange('title', e.target.value)}
               placeholder="Enter your app title..."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
             />
             <CharacterCounter
               current={metadata.title.length}
@@ -140,7 +140,7 @@ export const ManualMetadataEditor: React.FC<ManualMetadataEditorProps> = ({
               value={metadata.subtitle}
               onChange={(e) => handleFieldChange('subtitle', e.target.value)}
               placeholder="Enter your subtitle..."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
             />
             <CharacterCounter
               current={metadata.subtitle.length}
@@ -172,7 +172,7 @@ export const ManualMetadataEditor: React.FC<ManualMetadataEditorProps> = ({
               value={metadata.keywords}
               onChange={(e) => handleFieldChange('keywords', e.target.value)}
               placeholder="keyword1,keyword2,keyword3..."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 min-h-20"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400 min-h-20"
             />
             <CharacterCounter
               current={metadata.keywords.length}
@@ -187,7 +187,7 @@ export const ManualMetadataEditor: React.FC<ManualMetadataEditorProps> = ({
           <Button
             onClick={handleSave}
             disabled={isSaving || validationErrors.length > 0}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-green-600 hover:bg-green-700 text-foreground"
           >
             <Save className="w-4 h-4 mr-2" />
             {isSaving ? 'Saving...' : 'Save Metadata'}

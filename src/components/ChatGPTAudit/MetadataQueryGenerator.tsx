@@ -267,7 +267,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
       {appIntelligence && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <Brain className="h-5 w-5 text-green-400" />
               <span>App Intelligence Applied</span>
               <Badge variant="default" className="bg-green-600">
@@ -282,15 +282,15 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-zinc-400">Category:</span>
-                <span className="text-white ml-2">{appIntelligence.refined_category.replace('_', ' ')}</span>
+                <span className="text-foreground ml-2">{appIntelligence.refined_category.replace('_', ' ')}</span>
               </div>
               <div>
                 <span className="text-zinc-400">Audience:</span>
-                <span className="text-white ml-2">{appIntelligence.target_audience.slice(0, 2).join(', ')}</span>
+                <span className="text-foreground ml-2">{appIntelligence.target_audience.slice(0, 2).join(', ')}</span>
               </div>
               <div>
                 <span className="text-zinc-400">Competitors:</span>
-                <span className="text-white ml-2">{appIntelligence.competitors.slice(0, 2).join(', ')}</span>
+                <span className="text-foreground ml-2">{appIntelligence.competitors.slice(0, 2).join(', ')}</span>
               </div>
               <div>
                 <span className="text-zinc-400">Queries:</span>
@@ -313,7 +313,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
       {/* Custom Variables Override */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Settings className="h-5 w-5" />
             <span>Smart Variables</span>
             {appIntelligence && (
@@ -345,7 +345,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
                   placeholder={defaultValue}
                   value={customVariables[key] || ''}
                   onChange={(e) => handleCustomVariableChange(key, e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white text-sm h-8"
+                  className="bg-zinc-800 border-zinc-700 text-foreground text-sm h-8"
                 />
               </div>
             ))}
@@ -368,7 +368,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
       {/* Generated Queries */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Brain className="h-5 w-5 text-blue-400" />
             <span>
               {appIntelligence ? 'Intelligent Query Library' : 'Generated Query Library'}
@@ -407,7 +407,7 @@ export const MetadataQueryGenerator: React.FC<MetadataQueryGeneratorProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           {query.icon}
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-medium text-foreground">
                             {query.generated_from}
                           </span>
                           <Badge variant="outline" className="text-xs">

@@ -39,7 +39,7 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                     <Database className="h-6 w-6 text-zinc-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{app.app_identifier}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{app.app_identifier}</h3>
                     <p className="text-sm text-zinc-400">Active in Dashboard</p>
                   </div>
                   <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
@@ -55,7 +55,7 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                       <div className="flex items-center gap-2 text-sm">
                         <BarChart3 className="h-4 w-4 text-zinc-400" />
                         <span className="text-zinc-400">Records:</span>
-                        <span className="text-white font-medium">
+                        <span className="text-foreground font-medium">
                           {formatNumber(app.app_metadata.record_count)}
                         </span>
                       </div>
@@ -65,14 +65,14 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-zinc-400" />
                         <span className="text-zinc-400">Days:</span>
-                        <span className="text-white font-medium">{app.app_metadata.days_with_data}</span>
+                        <span className="text-foreground font-medium">{app.app_metadata.days_with_data}</span>
                       </div>
                     )}
 
                     {app.app_metadata.first_seen && (
                       <div className="text-sm">
                         <span className="text-zinc-400">First seen:</span>
-                        <span className="text-white font-medium ml-2">
+                        <span className="text-foreground font-medium ml-2">
                           {format(new Date(app.app_metadata.first_seen), 'MMM dd, yyyy')}
                         </span>
                       </div>
@@ -81,7 +81,7 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                     {app.app_metadata.last_seen && (
                       <div className="text-sm">
                         <span className="text-zinc-400">Last seen:</span>
-                        <span className="text-white font-medium ml-2">
+                        <span className="text-foreground font-medium ml-2">
                           {format(new Date(app.app_metadata.last_seen), 'MMM dd, yyyy')}
                         </span>
                       </div>

@@ -55,12 +55,12 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
               
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-200 flex items-center justify-center">
-                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <ZoomIn className="h-6 w-6 text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               </div>
               
               {/* Screenshot Number */}
               <div className="absolute top-2 left-2">
-                <Badge variant="secondary" className="text-xs bg-black/70 text-white border-0">
+                <Badge variant="secondary" className="text-xs bg-black/70 text-foreground border-0">
                   {index + 1}
                 </Badge>
               </div>
@@ -80,10 +80,10 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
             {/* Header */}
             <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="bg-black/70 text-white border-0">
+                <Badge variant="secondary" className="bg-black/70 text-foreground border-0">
                   {selectedIndex + 1} of {screenshots.length}
                 </Badge>
-                <span className="text-sm text-white bg-black/70 px-2 py-1 rounded">
+                <span className="text-sm text-foreground bg-black/70 px-2 py-1 rounded">
                   {appTitle}
                 </span>
               </div>
@@ -95,7 +95,7 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-foreground"
                   onClick={handlePrevious}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -104,7 +104,7 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-foreground"
                   onClick={handleNext}
                 >
                   <ChevronRight className="h-4 w-4" />

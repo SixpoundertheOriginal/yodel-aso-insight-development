@@ -106,7 +106,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
       {/* Header with refresh button */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Keyword Intelligence</h2>
+          <h2 className="text-xl font-bold text-foreground">Keyword Intelligence</h2>
           {selectedApp && (
             <p className="text-zinc-400 text-sm">
               Analyzing keywords for <span className="text-yodel-orange">{selectedApp.app_name}</span>
@@ -133,7 +133,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
               <Search className="w-5 h-5 text-blue-400" />
               <div>
                 <p className="text-sm text-zinc-400">Total Keywords</p>
-                <p className="text-2xl font-bold text-white">{stats.totalKeywords}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.totalKeywords}</p>
               </div>
             </div>
           </CardContent>
@@ -145,7 +145,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
               <Target className="w-5 h-5 text-green-400" />
               <div>
                 <p className="text-sm text-zinc-400">High Opportunity</p>
-                <p className="text-2xl font-bold text-white">{stats.highOpportunityKeywords}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.highOpportunityKeywords}</p>
               </div>
             </div>
           </CardContent>
@@ -157,7 +157,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
               <BarChart3 className="w-5 h-5 text-orange-400" />
               <div>
                 <p className="text-sm text-zinc-400">Avg Difficulty</p>
-                <p className="text-2xl font-bold text-white">{stats.avgDifficulty.toFixed(1)}/10</p>
+                <p className="text-2xl font-bold text-foreground">{stats.avgDifficulty.toFixed(1)}/10</p>
               </div>
             </div>
           </CardContent>
@@ -169,7 +169,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
               <TrendingUp className="w-5 h-5 text-purple-400" />
               <div>
                 <p className="text-sm text-zinc-400">Total Volume</p>
-                <p className="text-2xl font-bold text-white">{(stats.totalSearchVolume / 1000).toFixed(0)}K</p>
+                <p className="text-2xl font-bold text-foreground">{(stats.totalSearchVolume / 1000).toFixed(0)}K</p>
               </div>
             </div>
           </CardContent>
@@ -187,7 +187,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
           {/* Filters */}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
+              <CardTitle className="text-foreground flex items-center space-x-2">
                 <Filter className="w-5 h-5" />
                 <span>Filters</span>
               </CardTitle>
@@ -258,7 +258,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
           {/* Keywords Table */}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">
+              <CardTitle className="text-foreground">
                 Keywords Analysis
                 {selectedApp && (
                   <span className="text-sm font-normal text-zinc-400 ml-2">
@@ -294,7 +294,7 @@ export const AdvancedKeywordIntelligence: React.FC<AdvancedKeywordIntelligencePr
                       {keywordData.map((keyword, index) => (
                         <tr key={`${keyword.keyword}-${selectedApp?.id}-${index}`} className="border-b border-zinc-800 hover:bg-zinc-800/50">
                           <td className="py-3 px-4">
-                            <span className="text-white font-medium">{keyword.keyword}</span>
+                            <span className="text-foreground font-medium">{keyword.keyword}</span>
                           </td>
                           <td className="py-3 px-4 text-right">
                             <span className={`${keyword.rank && keyword.rank <= 10 ? 'text-green-400' : 

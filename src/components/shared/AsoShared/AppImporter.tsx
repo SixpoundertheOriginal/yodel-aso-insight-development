@@ -74,7 +74,7 @@ export const AppImporter: React.FC<AppImporterProps> = ({
     <>
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Brain className="h-6 w-6 text-yodel-orange" />
             <span>Import App for Analysis</span>
           </CardTitle>
@@ -87,7 +87,7 @@ export const AppImporter: React.FC<AppImporterProps> = ({
                 value={searchTerm}
                 onChange={handleInputChange}
                 placeholder="Enter app name or App Store URL..."
-                className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+                className="pl-10 bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
                 disabled={isSearching}
               />
               {isSearching && (

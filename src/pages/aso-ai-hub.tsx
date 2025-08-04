@@ -41,7 +41,7 @@ const AsoAiHubPage: React.FC = () => {
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center space-x-3 mb-4">
                 <Brain className="h-12 w-12 text-yodel-orange" />
-                <h1 className="text-4xl font-bold text-white">ASO AI Audit</h1>
+                <h1 className="text-4xl font-bold text-foreground">ASO AI Audit</h1>
               </div>
               <p className="text-zinc-400 text-lg max-w-4xl mx-auto leading-relaxed">
                 Comprehensive ASO analysis in minutes. Import your app to get actionable insights, 
@@ -62,7 +62,7 @@ const AsoAiHubPage: React.FC = () => {
             ) : (
               <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">
                 <Brain className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Authentication Required</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Authentication Required</h3>
                 <p className="text-zinc-400">Please sign in to access the ASO AI Audit features</p>
               </div>
             )}

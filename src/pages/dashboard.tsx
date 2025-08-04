@@ -111,7 +111,7 @@ const Dashboard: React.FC = () => {
             <AlertCircle className="h-8 w-8 text-orange-400" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-white">No Data Found</h3>
+            <h3 className="text-lg font-semibold text-foreground">No Data Found</h3>
             <p className="text-zinc-400 max-w-md">
               No data available for the selected time period and filters.
               {filters.trafficSources.length > 0 && (
@@ -189,7 +189,7 @@ const Dashboard: React.FC = () => {
             onClick={() => navigate('/smoke-test')}
             variant="outline"
             size="sm"
-            className="border-zinc-700 text-zinc-400 hover:text-white"
+            className="border-zinc-700 text-zinc-400 hover:text-foreground"
           >
             <TestTube className="h-3 w-3 mr-1" />
             Test BigQuery

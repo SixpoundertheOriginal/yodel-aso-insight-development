@@ -56,7 +56,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
       <Card className="bg-zinc-900 border-zinc-800">
         <CardContent className="p-8 text-center">
           <Brain className="mx-auto h-16 w-16 text-zinc-600 mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">
+          <h3 className="text-xl font-semibold text-foreground mb-2">
             Unified Keyword Intelligence
           </h3>
           <p className="text-zinc-400 mb-6">
@@ -140,7 +140,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
       {/* Header with Status */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             Unified Keyword Intelligence
             {fallbackMode && (
               <Badge variant="outline" className="text-orange-400 border-orange-500">
@@ -199,7 +199,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                 <Target className="h-4 w-4 text-blue-400" />
                 <span className="text-sm text-zinc-400">Total Keywords</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {keywordData.length || stats.totalKeywords}
               </div>
             </CardContent>
@@ -221,7 +221,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                 <TrendingUp className="h-4 w-4 text-purple-400" />
                 <span className="text-sm text-zinc-400">Avg Difficulty</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {stats.avgDifficulty.toFixed(1)}
               </div>
             </CardContent>
@@ -232,7 +232,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                 <Brain className="h-4 w-4 text-orange-400" />
                 <span className="text-sm text-zinc-400">Search Volume</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {(keywordData.reduce((sum, kw) => sum + (kw.searchVolume || 0), 0) / 1000).toFixed(0) || (stats.totalSearchVolume / 1000).toFixed(0)}K
               </div>
             </CardContent>
@@ -243,7 +243,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                 <Eye className="h-4 w-4 text-cyan-400" />
                 <span className="text-sm text-zinc-400">Visibility Score</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {appVisibilityMetrics?.totalVisibility || 0}
               </div>
             </CardContent>
@@ -254,7 +254,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                 <Search className="h-4 w-4 text-pink-400" />
                 <span className="text-sm text-zinc-400">Data Source</span>
               </div>
-              <div className="text-sm font-bold text-white">
+              <div className="text-sm font-bold text-foreground">
                 {selectedPool ? 'Pool' : fallbackMode ? 'Fallback' : 'Live'}
               </div>
             </CardContent>
@@ -307,7 +307,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
           {/* Current Keywords Display */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Discovered Keywords</CardTitle>
+              <CardTitle className="text-foreground">Discovered Keywords</CardTitle>
               <CardDescription>
                 Keywords from progressive discovery and smart suggestions
               </CardDescription>
@@ -318,7 +318,7 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
                   {keywordData.slice(0, 15).map((keyword, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                       <div>
-                        <h4 className="font-medium text-white">{keyword.keyword}</h4>
+                        <h4 className="font-medium text-foreground">{keyword.keyword}</h4>
                         <p className="text-sm text-zinc-400">
                           Rank: {keyword.rank || 'N/A'} • Volume: {keyword.searchVolume?.toLocaleString() || 'N/A'}
                           {keyword.visibility && (

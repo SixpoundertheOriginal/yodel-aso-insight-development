@@ -209,7 +209,7 @@ export const ProgressiveKeywordLoader: React.FC<ProgressiveKeywordLoaderProps> =
   return (
     <Card className="bg-zinc-900 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
+        <CardTitle className="text-foreground flex items-center gap-2">
           {getStageIcon(loadingStage)}
           Progressive Keyword Loading
         </CardTitle>
@@ -222,7 +222,7 @@ export const ProgressiveKeywordLoader: React.FC<ProgressiveKeywordLoaderProps> =
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-zinc-400">Overall Progress</span>
-            <span className="text-white">{Math.round(totalProgress)}%</span>
+            <span className="text-foreground">{Math.round(totalProgress)}%</span>
           </div>
           <Progress value={totalProgress} className="h-2" />
         </div>
@@ -230,7 +230,7 @@ export const ProgressiveKeywordLoader: React.FC<ProgressiveKeywordLoaderProps> =
         {/* Discovery Jobs */}
         {discoveryJobs.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-white">Discovery Jobs</h4>
+            <h4 className="text-sm font-medium text-foreground">Discovery Jobs</h4>
             {discoveryJobs.map((job) => (
               <div key={job.id} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -239,7 +239,7 @@ export const ProgressiveKeywordLoader: React.FC<ProgressiveKeywordLoaderProps> =
                   {job.status === 'failed' && <AlertCircle className="h-3 w-3 text-red-400" />}
                   
                   <div>
-                    <p className="text-sm text-white">{job.type}</p>
+                    <p className="text-sm text-foreground">{job.type}</p>
                     <p className="text-xs text-zinc-400">
                       {job.status === 'completed' ? `Found ${job.keywordsFound} keywords` : `${Math.round(job.progress)}% complete`}
                     </p>
@@ -264,7 +264,7 @@ export const ProgressiveKeywordLoader: React.FC<ProgressiveKeywordLoaderProps> =
               onClick={startProgressiveLoading} 
               variant="outline" 
               size="sm"
-              className="text-white border-zinc-700"
+              className="text-foreground border-zinc-700"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Discovery

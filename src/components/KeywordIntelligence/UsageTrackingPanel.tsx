@@ -190,7 +190,7 @@ export const UsageTrackingPanel: React.FC<UsageTrackingPanelProps> = ({
           <div className="border border-zinc-700 rounded-lg p-4 bg-zinc-800/50">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-white">Need more keywords?</h4>
+                <h4 className="font-medium text-foreground">Need more keywords?</h4>
                 <p className="text-sm text-zinc-400">
                   Upgrade your plan to process more keywords per month
                 </p>

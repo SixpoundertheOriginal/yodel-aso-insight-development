@@ -65,8 +65,8 @@ const AppsPage: React.FC = () => {
       <MainLayout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Apps</h1>
-            <p className="text-zinc-400">Loading your apps...</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Apps</h1>
+            <p className="text-muted-foreground">Loading your apps...</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => (
@@ -86,8 +86,8 @@ const AppsPage: React.FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Apps</h1>
-          <p className="text-zinc-400">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Apps</h1>
+          <p className="text-muted-foreground">
             Manage and analyze your apps with enterprise-grade controls and monitoring.
           </p>
         </div>
@@ -101,9 +101,9 @@ const AppsPage: React.FC = () => {
             {apps.length === 0 ? (
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardContent className="p-12 text-center">
-                  <Smartphone className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-white mb-2">No Apps Found</h3>
-                  <p className="text-zinc-400 mb-4">
+                  <Smartphone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Apps Found</h3>
+                  <p className="text-muted-foreground mb-4">
                     You don't have any apps in your organization yet.
                   </p>
                   <Button 
@@ -137,12 +137,12 @@ const AppsPage: React.FC = () => {
                             />
                           ) : (
                             <div className="h-12 w-12 bg-zinc-700 rounded-xl flex items-center justify-center flex-shrink-0">
-                              <Smartphone className="h-6 w-6 text-zinc-400" />
+                              <Smartphone className="h-6 w-6 text-muted-foreground" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <CardTitle className="text-white text-lg truncate">{app.app_name}</CardTitle>
-                            <CardDescription className="text-zinc-400 truncate">
+                            <CardTitle className="text-foreground text-lg truncate">{app.app_name}</CardTitle>
+                            <CardDescription className="text-muted-foreground truncate">
                               {app.developer_name || 'Unknown Developer'}
                             </CardDescription>
                           </div>
@@ -150,10 +150,10 @@ const AppsPage: React.FC = () => {
                         
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {selectedApp?.id === app.id && (
-                            <Badge className="bg-yodel-orange text-white">Selected</Badge>
+                            <Badge className="bg-yodel-orange text-foreground">Selected</Badge>
                           )}
                           {!app.is_active && (
-                            <Badge variant="secondary" className="bg-zinc-700 text-zinc-400">
+                          <Badge variant="secondary" className="bg-muted text-muted-foreground">
                               Inactive
                             </Badge>
                           )}
@@ -164,7 +164,7 @@ const AppsPage: React.FC = () => {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700">
+                            <DropdownMenuContent align="end" className="bg-zinc-800 border-border">
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditApp(app);
@@ -188,7 +188,7 @@ const AppsPage: React.FC = () => {
                                   </>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-zinc-700" />
+                              <DropdownMenuSeparator className="bg-border" />
                               <DropdownMenuItem 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -207,11 +207,11 @@ const AppsPage: React.FC = () => {
                     
                     <CardContent className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-zinc-800 text-zinc-300">
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
                           {app.platform}
                         </Badge>
                         {app.category && (
-                          <Badge variant="outline" className="border-zinc-700 text-zinc-400">
+                          <Badge variant="outline" className="border-border text-muted-foreground">
                             {app.category}
                           </Badge>
                         )}
@@ -219,15 +219,15 @@ const AppsPage: React.FC = () => {
 
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="p-2 bg-zinc-800/50 rounded">
-                          <div className="text-xs text-zinc-400">Rank</div>
-                          <div className="text-sm font-semibold text-white">#47</div>
+                          <div className="text-xs text-muted-foreground">Rank</div>
+                          <div className="text-sm font-semibold text-foreground">#47</div>
                         </div>
                         <div className="p-2 bg-zinc-800/50 rounded">
-                          <div className="text-xs text-zinc-400">Keywords</div>
-                          <div className="text-sm font-semibold text-white">156</div>
+                          <div className="text-xs text-muted-foreground">Keywords</div>
+                          <div className="text-sm font-semibold text-foreground">156</div>
                         </div>
                         <div className="p-2 bg-zinc-800/50 rounded">
-                          <div className="text-xs text-zinc-400">Trend</div>
+                          <div className="text-xs text-muted-foreground">Trend</div>
                           <div className="text-sm font-semibold text-green-400">↗ +12%</div>
                         </div>
                       </div>
@@ -251,7 +251,7 @@ const AppsPage: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="w-full text-zinc-400 hover:text-white"
+                          className="w-full text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             const url = app.platform === 'iOS' 

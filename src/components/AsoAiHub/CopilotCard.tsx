@@ -77,7 +77,7 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
               {copilot.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className={`text-white leading-tight ${
+              <CardTitle className={`text-foreground leading-tight ${
                 isFeatured ? 'text-lg' : 'text-base'
               }`}>
                 {copilot.name}
@@ -128,7 +128,7 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
           className={`w-full transition-all duration-300 mt-auto ${
             isActive
               ? 'bg-yodel-orange/20 text-yodel-orange border border-yodel-orange hover:bg-yodel-orange/30'
-              : 'bg-yodel-orange hover:bg-yodel-orange/90 text-white'
+              : 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground'
           } ${isFeatured ? 'h-10' : 'h-9'}`}
           variant={isActive ? "outline" : "default"}
         >

@@ -37,7 +37,7 @@ export const TitleAnalysisCard: React.FC<TitleAnalysisCardProps> = ({
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-white">
+        <CardTitle className="flex items-center justify-between text-foreground">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-green-400" />
             <span>App Title Analysis</span>
@@ -52,7 +52,7 @@ export const TitleAnalysisCard: React.FC<TitleAnalysisCardProps> = ({
         {/* Title Display */}
         <div className="p-3 bg-zinc-800/50 rounded-lg">
           <div className="text-sm text-zinc-400 mb-1">Current Title</div>
-          <div className="text-lg font-semibold text-white">{title}</div>
+          <div className="text-lg font-semibold text-foreground">{title}</div>
           <div className="text-xs text-zinc-500 mt-1">
             <span className={getCharacterUsageColor()}>
               {analysis.characterUsage}/{analysis.maxCharacters} characters

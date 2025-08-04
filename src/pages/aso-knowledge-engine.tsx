@@ -29,7 +29,7 @@ const AsoKnowledgeEnginePage: React.FC = () => {
     return (
       <MainLayout>
         <div className="text-center py-12">
-          <h3 className="text-xl font-semibold text-white mb-2">Authentication Required</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-2">Authentication Required</h3>
           <p className="text-zinc-400">Please sign in to access the ASO Knowledge Engine</p>
         </div>
       </MainLayout>

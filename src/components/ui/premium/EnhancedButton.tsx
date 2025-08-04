@@ -27,12 +27,12 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
   const baseClasses = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
   
   const variants = {
-    primary: "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white focus:ring-orange-500/50 shadow-sm hover:shadow-lg hover:shadow-orange-500/25",
-    secondary: "bg-zinc-700 hover:bg-zinc-600 text-white focus:ring-zinc-500 shadow-sm hover:shadow-md",
-    outline: "border border-zinc-600 hover:border-zinc-500 text-zinc-300 hover:text-white hover:bg-zinc-800 focus:ring-zinc-500",
-    ghost: "text-zinc-400 hover:text-white hover:bg-zinc-800/50 focus:ring-zinc-500",
-    gradient: "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white focus:ring-blue-500/50 shadow-sm hover:shadow-lg hover:shadow-blue-500/25",
-    glow: "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white focus:ring-orange-500/50 shadow-lg hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105"
+    primary: "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-foreground focus:ring-orange-500/50 shadow-sm hover:shadow-lg hover:shadow-orange-500/25",
+    secondary: "bg-zinc-700 hover:bg-zinc-600 text-foreground focus:ring-zinc-500 shadow-sm hover:shadow-md",
+    outline: "border border-zinc-600 hover:border-zinc-500 text-zinc-300 hover:text-foreground hover:bg-zinc-800 focus:ring-zinc-500",
+    ghost: "text-zinc-400 hover:text-foreground hover:bg-zinc-800/50 focus:ring-zinc-500",
+    gradient: "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-foreground focus:ring-blue-500/50 shadow-sm hover:shadow-lg hover:shadow-blue-500/25",
+    glow: "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-foreground focus:ring-orange-500/50 shadow-lg hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105"
   };
 
   const sizes = {

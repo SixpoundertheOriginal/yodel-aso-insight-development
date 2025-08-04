@@ -83,7 +83,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">App Audit Hub</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-4">App Audit Hub</h1>
           <p className="text-zinc-400 text-lg max-w-3xl mx-auto">
             Comprehensive ASO analysis combining metadata optimization and keyword intelligence. 
             Import your app to get started with competitor analysis, keyword gaps, and optimization recommendations.
@@ -92,7 +92,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
 
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <Brain className="h-6 w-6 text-yodel-orange" />
               <span>Import App for Audit</span>
             </CardTitle>
@@ -109,7 +109,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           <Card className="bg-zinc-900/30 border-zinc-800">
             <CardContent className="p-6 text-center">
               <Target className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Keyword Analysis</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Keyword Analysis</h3>
               <p className="text-zinc-400 text-sm">
                 Discover ranking opportunities, analyze competitor keywords, and identify gaps in your strategy.
               </p>
@@ -118,7 +118,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           <Card className="bg-zinc-900/30 border-zinc-800">
             <CardContent className="p-6 text-center">
               <FileText className="h-12 w-12 text-green-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Metadata Optimization</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Metadata Optimization</h3>
               <p className="text-zinc-400 text-sm">
                 Optimize your app title, subtitle, and keywords with AI-powered suggestions and competitor insights.
               </p>
@@ -127,7 +127,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           <Card className="bg-zinc-900/30 border-zinc-800">
             <CardContent className="p-6 text-center">
               <Palette className="h-12 w-12 text-pink-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Creative Analysis</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Creative Analysis</h3>
               <p className="text-zinc-400 text-sm">
                 AI-powered visual analysis of app icons, screenshots, and in-app events for optimization insights.
               </p>
@@ -136,7 +136,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           <Card className="bg-zinc-900/30 border-zinc-800">
             <CardContent className="p-6 text-center">
               <TrendingUp className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Competitive Intelligence</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Competitive Intelligence</h3>
               <p className="text-zinc-400 text-sm">
                 Track competitor performance, monitor metadata changes, and stay ahead of market trends.
               </p>
@@ -160,7 +160,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
             />
           )}
           <div>
-            <h1 className="text-2xl font-bold text-white">{importedMetadata.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{importedMetadata.name}</h1>
             <p className="text-zinc-400">
               {importedMetadata.applicationCategory} • {importedMetadata.locale}
               {lastUpdated && (
@@ -202,7 +202,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <Brain className="h-4 w-4 text-yodel-orange" />
                 <span className="text-sm text-zinc-400">Overall Score</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {auditData.overallScore}/100
               </div>
               <div className="text-xs text-zinc-500 mt-1">
@@ -218,7 +218,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <FileText className="h-4 w-4 text-green-400" />
                 <span className="text-sm text-zinc-400">Metadata</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {auditData.metadataScore}/100
               </div>
               <div className="text-xs text-zinc-500 mt-1">
@@ -232,7 +232,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <Target className="h-4 w-4 text-blue-400" />
                 <span className="text-sm text-zinc-400">Keywords</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {auditData.keywordScore}/100
               </div>
               <div className="text-xs text-zinc-500 mt-1">
@@ -246,7 +246,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <Palette className="h-4 w-4 text-pink-400" />
                 <span className="text-sm text-zinc-400">Creative</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 75/100
               </div>
               <div className="text-xs text-zinc-500 mt-1">
@@ -260,7 +260,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <Users className="h-4 w-4 text-purple-400" />
                 <span className="text-sm text-zinc-400">Competitive</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {auditData.competitorScore}/100
               </div>
               <div className="text-xs text-zinc-500 mt-1">
@@ -347,7 +347,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
         <TabsContent value="recommendations" className="space-y-6">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
+              <CardTitle className="text-foreground flex items-center space-x-2">
                 <AlertTriangle className="h-5 w-5 text-yodel-orange" />
                 <span>Priority Recommendations</span>
               </CardTitle>
@@ -367,7 +367,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                   </Badge>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-white">{rec.title}</h4>
+                      <h4 className="font-medium text-foreground">{rec.title}</h4>
                       <Badge variant="outline" className="text-zinc-400 border-zinc-600">
                         {rec.category}
                       </Badge>

@@ -85,7 +85,7 @@ export const GrowthGapInsights: React.FC<GrowthGapInsightsProps> = ({
   return (
     <Card className="border-none shadow-none bg-transparent h-full">
       <CardHeader className="p-4">
-        <CardTitle className="text-lg text-white">Insight Modules</CardTitle>
+        <CardTitle className="text-lg text-foreground">Insight Modules</CardTitle>
       </CardHeader>
       
       <CardContent className="p-4 pt-0 grid grid-cols-1 gap-4">

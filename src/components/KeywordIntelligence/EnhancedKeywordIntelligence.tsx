@@ -138,7 +138,7 @@ export const EnhancedKeywordIntelligence: React.FC<EnhancedKeywordIntelligencePr
       <Card className="bg-zinc-900 border-zinc-800">
         <CardContent className="p-8 text-center">
           <Brain className="mx-auto h-16 w-16 text-zinc-600 mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">
+          <h3 className="text-xl font-semibold text-foreground mb-2">
             Enhanced Keyword Intelligence
           </h3>
           <p className="text-zinc-400 mb-6">
@@ -170,7 +170,7 @@ export const EnhancedKeywordIntelligence: React.FC<EnhancedKeywordIntelligencePr
       {/* Header with Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Enhanced Keyword Intelligence</h2>
+          <h2 className="text-2xl font-bold text-foreground">Enhanced Keyword Intelligence</h2>
           <p className="text-zinc-400">
             Advanced analytics and historical insights for your keyword performance
           </p>
@@ -205,7 +205,7 @@ export const EnhancedKeywordIntelligence: React.FC<EnhancedKeywordIntelligencePr
                 <Target className="h-4 w-4 text-green-400" />
                 <span className="text-sm text-zinc-400">Top 10 Keywords</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {analytics.rankingInsights.topPerformers}
               </div>
             </CardContent>
@@ -216,7 +216,7 @@ export const EnhancedKeywordIntelligence: React.FC<EnhancedKeywordIntelligencePr
                 <TrendingUp className="h-4 w-4 text-blue-400" />
                 <span className="text-sm text-zinc-400">Visibility Score</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {analytics.rankingInsights.visibilityScore?.toFixed(1)}
               </div>
             </CardContent>
@@ -238,7 +238,7 @@ export const EnhancedKeywordIntelligence: React.FC<EnhancedKeywordIntelligencePr
                 <Database className="h-4 w-4 text-purple-400" />
                 <span className="text-sm text-zinc-400">Usage Rate</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold text-foreground">
                 {analytics.usageInsights?.utilizationRate || 0}%
               </div>
             </CardContent>

@@ -86,7 +86,7 @@ const KeywordRankingMonitor: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Keyword Ranking Monitor</h2>
+          <h2 className="text-2xl font-bold text-foreground">Keyword Ranking Monitor</h2>
           <p className="text-zinc-400">Real-time monitoring and performance analytics</p>
         </div>
         <Button 
@@ -120,7 +120,7 @@ const KeywordRankingMonitor: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Cache Hit Rate</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-foreground">
                   {monitoringData.cacheStats?.hitRate?.toFixed(1) || '0'}%
                 </p>
               </div>
@@ -134,7 +134,7 @@ const KeywordRankingMonitor: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Cache Entries</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-foreground">
                   {monitoringData.cacheStats?.totalEntries || 0}
                 </p>
               </div>
@@ -171,7 +171,7 @@ const KeywordRankingMonitor: React.FC = () => {
         <TabsContent value="jobs">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Recent Background Jobs</CardTitle>
+              <CardTitle className="text-foreground">Recent Background Jobs</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -211,7 +211,7 @@ const KeywordRankingMonitor: React.FC = () => {
         <TabsContent value="metrics">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Performance Metrics (Last 6 Hours)</CardTitle>
+              <CardTitle className="text-foreground">Performance Metrics (Last 6 Hours)</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -248,7 +248,7 @@ const KeywordRankingMonitor: React.FC = () => {
         <TabsContent value="circuit">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Circuit Breaker Status</CardTitle>
+              <CardTitle className="text-foreground">Circuit Breaker Status</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -262,7 +262,7 @@ const KeywordRankingMonitor: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm text-zinc-400">Failure Count</p>
-                  <p className="text-lg font-bold text-white">
+                  <p className="text-lg font-bold text-foreground">
                     {monitoringData.healthStatus?.circuitBreaker?.failures || 0}
                   </p>
                 </div>

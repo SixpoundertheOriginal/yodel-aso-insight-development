@@ -450,7 +450,7 @@ Example: AI-powered language learning with conversation practice, grammar exerci
                         variant={settings.selectedKeywords.includes(keyword) ? "default" : "outline"}
                         className={`cursor-pointer ${
                           settings.selectedKeywords.includes(keyword)
-                            ? 'bg-yodel-orange text-white'
+                            ? 'bg-yodel-orange text-foreground'
                             : 'border-zinc-700 text-zinc-300 hover:bg-zinc-700'
                         }`}
                         onClick={() => handleKeywordToggle(keyword)}
@@ -668,7 +668,7 @@ Example: AI-powered language learning with conversation practice, grammar exerci
             <Button 
               onClick={generateDescription} 
               disabled={isGenerating || !settings.features.trim()}
-              className="bg-yodel-orange hover:bg-yodel-orange/90 text-white px-8"
+              className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground px-8"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               {isGenerating ? 'Generating Description...' : 'Generate Description'}

@@ -135,7 +135,7 @@ Featuring Strategy Toolkit
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Download className="w-5 h-5 text-yodel-orange" />
             <span>Export Submission</span>
           </CardTitle>
@@ -201,7 +201,7 @@ Featuring Strategy Toolkit
             </DialogTrigger>
             <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl">
               <DialogHeader>
-                <DialogTitle className="text-white">Apple Editor Preview</DialogTitle>
+                <DialogTitle className="text-foreground">Apple Editor Preview</DialogTitle>
               </DialogHeader>
               <div className="bg-white text-black p-6 rounded-lg max-h-96 overflow-y-auto">
                 <div className="space-y-4">
@@ -226,7 +226,7 @@ Featuring Strategy Toolkit
               value={emailAddress}
               onChange={(e) => setEmailAddress(e.target.value)}
               placeholder="Email to team/client..."
-              className="bg-zinc-800 border-zinc-700 text-white"
+              className="bg-zinc-800 border-zinc-700 text-foreground"
             />
             <Button
               onClick={sendEmail}

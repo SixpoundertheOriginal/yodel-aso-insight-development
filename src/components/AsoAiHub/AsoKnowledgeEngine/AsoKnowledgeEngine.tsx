@@ -175,10 +175,10 @@ Use the quick action buttons below or ask me anything about ASO!`,
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
+              <Brain className="w-6 h-6 text-foreground" />
             </div>
             <div>
-              <CardTitle className="text-white flex items-center space-x-2">
+              <CardTitle className="text-foreground flex items-center space-x-2">
                 <span>ASO Knowledge Engine</span>
                 <Badge variant="secondary" className="bg-purple-500/20 text-purple-300">
                   AI Expert
@@ -195,7 +195,7 @@ Use the quick action buttons below or ask me anything about ASO!`,
               variant="ghost"
               size="sm"
               onClick={() => setShowContext(!showContext)}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-400 hover:text-foreground"
             >
               <BarChart className="w-4 h-4 mr-2" />
               Context
@@ -234,13 +234,13 @@ Use the quick action buttons below or ask me anything about ASO!`,
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Ask anything about ASO strategy, keywords, competition..."
-                    className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+                    className="flex-1 bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
                     disabled={isLoading}
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-purple-600 hover:bg-purple-700 text-foreground"
                   >
                     <Send className="w-4 h-4" />
                   </Button>

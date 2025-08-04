@@ -40,7 +40,7 @@ const ComparisonChart: React.FC<ComparisonChartProps> = ({
               <TrendingDown className="h-8 w-8 text-zinc-600" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold text-white">{title}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
               <p className="text-zinc-400">
                 No comparison data available for the selected period.
               </p>
@@ -99,7 +99,7 @@ const ComparisonChart: React.FC<ComparisonChartProps> = ({
               <TrendingDown className="h-8 w-8 text-zinc-600" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold text-white">{title}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
               <p className="text-zinc-400">
                 No meaningful data to compare for the selected metric: <span className="capitalize">{metric.replace('_', ' ')}</span>
               </p>

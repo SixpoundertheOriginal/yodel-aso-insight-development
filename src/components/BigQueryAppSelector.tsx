@@ -88,20 +88,20 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
         value={selectedApps.length === bigQueryApps.length || selectedApps.length === 0 ? 'all' : selectedApps[0]}
         onValueChange={handleSelectionChange}
       >
-        <SelectTrigger className="w-[180px] h-8 bg-zinc-800 border-zinc-700 text-white">
+        <SelectTrigger className="w-[180px] h-8 bg-zinc-800 border-zinc-700 text-foreground">
           <SelectValue>
             <span className="text-sm">{getDisplayValue()}</span>
           </SelectValue>
         </SelectTrigger>
         <SelectContent className="bg-zinc-800 border-zinc-700">
-          <SelectItem value="all" className="text-white hover:bg-zinc-700">
+          <SelectItem value="all" className="text-foreground hover:bg-zinc-700">
             All Apps ({bigQueryApps.length})
           </SelectItem>
           {bigQueryApps.map((app) => (
             <SelectItem 
               key={app.id} 
               value={app.app_identifier}
-              className="text-white hover:bg-zinc-700"
+              className="text-foreground hover:bg-zinc-700"
             >
               {app.app_name || app.app_identifier}
             </SelectItem>

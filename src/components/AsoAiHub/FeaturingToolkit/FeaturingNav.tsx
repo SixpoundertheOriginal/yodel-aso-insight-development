@@ -39,7 +39,7 @@ export const FeaturingNav: React.FC<FeaturingNavProps> = ({
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2">
               <div className="text-2xl">⭐</div>
-              <h1 className="text-lg font-bold text-white">Featuring Strategy Toolkit</h1>
+              <h1 className="text-lg font-bold text-foreground">Featuring Strategy Toolkit</h1>
             </div>
             
             <nav className="flex space-x-1">
@@ -51,8 +51,8 @@ export const FeaturingNav: React.FC<FeaturingNavProps> = ({
                   onClick={() => onTabChange(tab.id)}
                   className={`flex items-center space-x-2 ${
                     activeTab === tab.id 
-                      ? 'bg-yodel-orange text-white' 
-                      : 'text-zinc-400 hover:text-white'
+                      ? 'bg-yodel-orange text-foreground' 
+                      : 'text-zinc-400 hover:text-foreground'
                   }`}
                 >
                   <span>{tab.icon}</span>

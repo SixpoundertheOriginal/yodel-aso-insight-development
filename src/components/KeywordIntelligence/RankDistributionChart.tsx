@@ -99,7 +99,7 @@ export const RankDistributionChart: React.FC<RankDistributionChartProps> = ({
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
               <Eye className="h-4 w-4" />
-              <Badge variant="outline" className={`${getVisibilityColor(data.visibility_score)} text-white`}>
+              <Badge variant="outline" className={`${getVisibilityColor(data.visibility_score)} text-foreground`}>
                 {data.visibility_score?.toFixed(1)}
               </Badge>
             </div>

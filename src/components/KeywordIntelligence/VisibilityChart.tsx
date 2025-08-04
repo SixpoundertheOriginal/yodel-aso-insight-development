@@ -108,10 +108,10 @@ export const VisibilityChart: React.FC<VisibilityChartProps> = ({
           {appVisibility && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold text-foreground">
                   {appVisibility.totalVisibility.toLocaleString()}
                 </span>
-                <Badge className={`${getGradeColor(appVisibility.visibilityGrade)} text-white`}>
+                <Badge className={`${getGradeColor(appVisibility.visibilityGrade)} text-foreground`}>
                   Grade {appVisibility.visibilityGrade}
                 </Badge>
               </div>
@@ -119,11 +119,11 @@ export const VisibilityChart: React.FC<VisibilityChartProps> = ({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-zinc-400">Avg Rank</p>
-                  <p className="font-semibold text-white">{appVisibility.averageRank}</p>
+                  <p className="font-semibold text-foreground">{appVisibility.averageRank}</p>
                 </div>
                 <div>
                   <p className="text-zinc-400">Top 10 Keywords</p>
-                  <p className="font-semibold text-white">{appVisibility.topKeywordContribution}</p>
+                  <p className="font-semibold text-foreground">{appVisibility.topKeywordContribution}</p>
                 </div>
               </div>
 

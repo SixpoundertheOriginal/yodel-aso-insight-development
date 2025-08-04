@@ -44,13 +44,13 @@ export const AppSearchResultsModal: React.FC<AppSearchResultsModalProps> = React
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-zinc-900 border-zinc-800">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center justify-between">
+          <DialogTitle className="text-foreground flex items-center justify-between">
             <span>Choose an app for "{searchTerm}"</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={onCancel}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-400 hover:text-foreground"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -79,7 +79,7 @@ export const AppSearchResultsModal: React.FC<AppSearchResultsModalProps> = React
                         />
                       ) : (
                         <div className="w-16 h-16 bg-gradient-to-br from-yodel-orange to-orange-600 rounded-xl flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">
+                          <span className="text-foreground font-bold text-lg">
                             {app.name?.charAt(0).toUpperCase() || '?'}
                           </span>
                         </div>
@@ -87,7 +87,7 @@ export const AppSearchResultsModal: React.FC<AppSearchResultsModalProps> = React
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-semibold text-sm leading-tight mb-1 truncate">
+                      <h3 className="text-foreground font-semibold text-sm leading-tight mb-1 truncate">
                         {app.name || 'Unknown App'}
                       </h3>
                       <p className="text-zinc-400 text-xs mb-1 truncate">
@@ -115,7 +115,7 @@ export const AppSearchResultsModal: React.FC<AppSearchResultsModalProps> = React
                       <Button
                         onClick={() => onSelect(app)}
                         size="sm"
-                        className="w-full bg-yodel-orange hover:bg-orange-600 text-white text-xs"
+                        className="w-full bg-yodel-orange hover:bg-orange-600 text-foreground text-xs"
                       >
                         Select This App
                       </Button>

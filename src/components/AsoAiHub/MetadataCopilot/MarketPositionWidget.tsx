@@ -84,7 +84,7 @@ export const MarketPositionWidget: React.FC<MarketPositionWidgetProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">Market Saturation</span>
-                <span className="text-white">{Math.round(marketSaturation)}%</span>
+                <span className="text-foreground">{Math.round(marketSaturation)}%</span>
               </div>
               <Progress value={marketSaturation} className="h-2" />
             </div>
@@ -92,7 +92,7 @@ export const MarketPositionWidget: React.FC<MarketPositionWidgetProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-zinc-400">Opportunity Score</span>
-                <span className="text-white">{Math.round(opportunityScore)}%</span>
+                <span className="text-foreground">{Math.round(opportunityScore)}%</span>
               </div>
               <Progress value={opportunityScore} className="h-2" />
             </div>
@@ -100,15 +100,15 @@ export const MarketPositionWidget: React.FC<MarketPositionWidgetProps> = ({
           
           <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-zinc-800">
             <div className="text-center">
-              <div className="text-xl font-bold text-white">{competitors.length}</div>
+              <div className="text-xl font-bold text-foreground">{competitors.length}</div>
               <div className="text-xs text-zinc-400">Competitors</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-white">{avgRating.toFixed(1)}</div>
+              <div className="text-xl font-bold text-foreground">{avgRating.toFixed(1)}</div>
               <div className="text-xs text-zinc-400">Avg Rating</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-white">
+              <div className="text-xl font-bold text-foreground">
                 {currentApp?.category || 'Mixed'}
               </div>
               <div className="text-xs text-zinc-400">Category</div>
@@ -151,7 +151,7 @@ export const MarketPositionWidget: React.FC<MarketPositionWidgetProps> = ({
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-white">
+                <div className="font-medium text-foreground">
                   {categoryLeader.title || categoryLeader.name}
                 </div>
                 <div className="text-sm text-zinc-400">
@@ -161,7 +161,7 @@ export const MarketPositionWidget: React.FC<MarketPositionWidgetProps> = ({
               <div className="text-right">
                 <div className="flex items-center space-x-1">
                   <Star className="w-4 h-4 text-yellow-500" />
-                  <span className="text-white font-medium">
+                  <span className="text-foreground font-medium">
                     {categoryLeader.rating?.toFixed(1) || 'N/A'}
                   </span>
                 </div>

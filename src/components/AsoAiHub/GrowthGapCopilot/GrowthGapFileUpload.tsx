@@ -65,7 +65,7 @@ export const GrowthGapFileUpload: React.FC<GrowthGapFileUploadProps> = ({ onFile
   return (
     <Card className="border-none shadow-none bg-transparent">
       <CardHeader className="p-4">
-        <CardTitle className="text-lg text-white">Upload Files</CardTitle>
+        <CardTitle className="text-lg text-foreground">Upload Files</CardTitle>
       </CardHeader>
       
       <CardContent className="p-4 pt-0">

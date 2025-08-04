@@ -48,7 +48,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
         
         {/* Title */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight">
           <span className="bg-gradient-to-r from-white via-zinc-100 to-zinc-300 bg-clip-text text-transparent">
             {title}
           </span>
@@ -85,7 +85,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 variant="outline"
                 onClick={secondaryAction.onClick}
                 size="lg"
-                className="min-w-[200px] border-zinc-600 text-zinc-300 hover:text-white hover:border-zinc-500"
+                className="min-w-[200px] border-zinc-600 text-zinc-300 hover:text-foreground hover:border-zinc-500"
               >
                 {secondaryAction.text}
               </YodelButton>

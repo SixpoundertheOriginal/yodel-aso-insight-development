@@ -54,7 +54,7 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
       {/* App Store Preview */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Smartphone className="w-5 h-5 text-yodel-orange" />
             <span>App Store Preview</span>
           </CardTitle>
@@ -64,14 +64,14 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
             {/* App Store Search Result Simulation */}
             <div className="flex space-x-3">
               <div className="w-16 h-16 bg-gradient-to-br from-yodel-orange to-orange-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">
+                <span className="text-foreground font-bold text-lg">
                   {appName.charAt(0).toUpperCase()}
                 </span>
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="space-y-1">
-                  <h3 className="text-white font-semibold text-lg leading-tight">
+                  <h3 className="text-foreground font-semibold text-lg leading-tight">
                     {metadata.title || 'App Title'}
                   </h3>
                   <p className="text-zinc-400 text-sm leading-tight">
@@ -92,7 +92,7 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
               </div>
               
               <div className="flex flex-col items-end">
-                <button className="bg-yodel-orange text-white px-6 py-2 rounded-full text-sm font-medium">
+                <button className="bg-yodel-orange text-foreground px-6 py-2 rounded-full text-sm font-medium">
                   GET
                 </button>
               </div>
@@ -104,7 +104,7 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
       {/* Character Limits */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white">Character Limits</CardTitle>
+          <CardTitle className="text-foreground">Character Limits</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <CharacterCounter
@@ -129,12 +129,12 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
       {scoreData && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white">Metadata Quality Score</CardTitle>
+            <CardTitle className="text-foreground">Metadata Quality Score</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-white">Overall Score</span>
+                <span className="text-lg font-semibold text-foreground">Overall Score</span>
                 <Badge variant="outline" className={getScoreBadgeColor(scoreData.overall)}>
                   {scoreData.overall}%
                 </Badge>
@@ -168,7 +168,7 @@ export const MetadataPreview: React.FC<MetadataPreviewProps> = React.memo(({
       {/* Keywords Field Preview */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white">Keywords Field</CardTitle>
+          <CardTitle className="text-foreground">Keywords Field</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="bg-zinc-800/50 rounded-lg p-3">

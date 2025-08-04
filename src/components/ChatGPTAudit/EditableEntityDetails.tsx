@@ -83,7 +83,7 @@ export const EditableEntityDetails: React.FC<EditableEntityDetailsProps> = ({
             <div className="flex items-center gap-2">
               <Badge 
                 variant="secondary" 
-                className={`${getConfidenceColor(editedData.confidence)} text-white`}
+                className={`${getConfidenceColor(editedData.confidence)} text-foreground`}
               >
                 {getConfidenceLabel(editedData.confidence)} Confidence
               </Badge>

@@ -40,7 +40,7 @@ const ASOUnifiedPage: React.FC = () => {
     return (
       <MainLayout>
         <div className="text-center py-12">
-          <h3 className="text-xl font-semibold text-white mb-2">Authentication Required</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-2">Authentication Required</h3>
           <p className="text-zinc-400">Please sign in to access ASO Intelligence features</p>
         </div>
       </MainLayout>
@@ -52,7 +52,7 @@ const ASOUnifiedPage: React.FC = () => {
       <div className="container mx-auto py-6">
         {/* Simple header with mode toggle */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white">ASO Intelligence Hub</h1>
+          <h1 className="text-3xl font-bold text-foreground">ASO Intelligence Hub</h1>
           <p className="text-zinc-400 mt-2">
             Comprehensive app analysis combining audit insights and keyword intelligence
           </p>

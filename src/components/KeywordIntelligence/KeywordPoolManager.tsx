@@ -146,7 +146,7 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-white">Keyword Pool Manager</CardTitle>
+            <CardTitle className="text-foreground">Keyword Pool Manager</CardTitle>
             <CardDescription>
               Organize and manage keyword collections for different strategies
             </CardDescription>
@@ -160,28 +160,28 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
             </DialogTrigger>
             <DialogContent className="bg-zinc-900 border-zinc-800">
               <DialogHeader>
-                <DialogTitle className="text-white">Create Keyword Pool</DialogTitle>
+                <DialogTitle className="text-foreground">Create Keyword Pool</DialogTitle>
                 <DialogDescription>
                   Create a new keyword collection for targeted analysis
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-white">Pool Name</label>
+                  <label className="text-sm font-medium text-foreground">Pool Name</label>
                   <Input
                     value={newPoolData.name}
                     onChange={(e) => setNewPoolData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., High-Value Keywords"
-                    className="bg-zinc-800 border-zinc-700 text-white"
+                    className="bg-zinc-800 border-zinc-700 text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-white">Pool Type</label>
+                  <label className="text-sm font-medium text-foreground">Pool Type</label>
                   <Select 
                     value={newPoolData.type} 
                     onValueChange={(value) => setNewPoolData(prev => ({ ...prev, type: value as any }))}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -193,28 +193,28 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-white">Keywords (one per line)</label>
+                  <label className="text-sm font-medium text-foreground">Keywords (one per line)</label>
                   <Textarea
                     value={newPoolData.keywords}
                     onChange={(e) => setNewPoolData(prev => ({ ...prev, keywords: e.target.value }))}
                     placeholder="keyword 1&#10;keyword 2&#10;keyword 3"
-                    className="bg-zinc-800 border-zinc-700 text-white h-32"
+                    className="bg-zinc-800 border-zinc-700 text-foreground h-32"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-white">Description (optional)</label>
+                  <label className="text-sm font-medium text-foreground">Description (optional)</label>
                   <Input
                     value={newPoolData.description}
                     onChange={(e) => setNewPoolData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Description of this keyword pool"
-                    className="bg-zinc-800 border-zinc-700 text-white"
+                    className="bg-zinc-800 border-zinc-700 text-foreground"
                   />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button 
                     variant="outline" 
                     onClick={() => setIsCreatingPool(false)}
-                    className="border-zinc-700 text-white"
+                    className="border-zinc-700 text-foreground"
                   >
                     Cancel
                   </Button>
@@ -243,11 +243,11 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search pools or keywords..."
-                  className="pl-10 bg-zinc-800 border-zinc-700 text-white"
+                  className="pl-10 bg-zinc-800 border-zinc-700 text-foreground"
                 />
               </div>
               <Select value={selectedPoolType} onValueChange={setSelectedPoolType}>
-                <SelectTrigger className="w-[140px] bg-zinc-800 border-zinc-700 text-white">
+                <SelectTrigger className="w-[140px] bg-zinc-800 border-zinc-700 text-foreground">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -279,7 +279,7 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
                             {getPoolTypeIcon(pool.pool_type)}
                           </div>
                           <div>
-                            <h4 className="font-medium text-white">{pool.pool_name}</h4>
+                            <h4 className="font-medium text-foreground">{pool.pool_name}</h4>
                             <p className="text-sm text-zinc-400">
                               {pool.keywords.length} keywords • Created {new Date(pool.created_at).toLocaleDateString()}
                             </p>
@@ -293,7 +293,7 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
                             size="sm"
                             variant="outline"
                             onClick={() => handlePoolSelect(pool)}
-                            className="border-zinc-700 text-white"
+                            className="border-zinc-700 text-foreground"
                           >
                             Use Pool
                           </Button>
@@ -332,13 +332,13 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-zinc-800/50 border-zinc-700">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-white">{keywordPools.length}</div>
+                  <div className="text-2xl font-bold text-foreground">{keywordPools.length}</div>
                   <div className="text-sm text-zinc-400">Total Pools</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-800/50 border-zinc-700">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold text-foreground">
                     {keywordPools.reduce((sum, pool) => sum + pool.keywords.length, 0)}
                   </div>
                   <div className="text-sm text-zinc-400">Total Keywords</div>
@@ -346,7 +346,7 @@ export const KeywordPoolManager: React.FC<KeywordPoolManagerProps> = ({
               </Card>
               <Card className="bg-zinc-800/50 border-zinc-700">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold text-foreground">
                     {keywordPools.filter(p => p.pool_type === 'trending').length}
                   </div>
                   <div className="text-sm text-zinc-400">Trending Pools</div>

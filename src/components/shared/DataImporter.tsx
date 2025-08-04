@@ -43,7 +43,7 @@ export const DataImporter: React.FC<DataImporterProps> = ({
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white text-lg flex items-center space-x-2">
+        <CardTitle className="text-foreground text-lg flex items-center space-x-2">
           {icon}
           <span>{title}</span>
         </CardTitle>
@@ -60,7 +60,7 @@ export const DataImporter: React.FC<DataImporterProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="bg-zinc-800 border-zinc-700 text-white"
+            className="bg-zinc-800 border-zinc-700 text-foreground"
             disabled={isLoading}
           />
         </div>

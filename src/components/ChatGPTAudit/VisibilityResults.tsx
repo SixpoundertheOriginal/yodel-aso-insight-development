@@ -212,7 +212,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardContent className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No Results Yet</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Results Yet</h3>
           <p className="text-zinc-400">Results will appear here as queries are processed</p>
         </CardContent>
       </Card>
@@ -262,7 +262,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                         {result.query_category}
                       </Badge>
                     </div>
-                    <CardTitle className="text-sm font-medium text-white">
+                    <CardTitle className="text-sm font-medium text-foreground">
                       {result.query_text}
                     </CardTitle>
                   </div>
@@ -355,7 +355,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-2">
                     <Star className="h-4 w-4 text-green-400" />
-                    <span className="text-sm font-medium text-white">Position #{result.mention_position}</span>
+                    <span className="text-sm font-medium text-foreground">Position #{result.mention_position}</span>
                     <Badge variant="outline" className="text-xs">
                       {result.mention_context}
                     </Badge>

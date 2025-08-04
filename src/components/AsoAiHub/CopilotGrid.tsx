@@ -104,7 +104,7 @@ const CopilotSection: React.FC<CopilotSectionProps> = ({
           {icon}
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-xl font-bold text-white">{title}</h2>
+              <h2 className="text-xl font-bold text-foreground">{title}</h2>
               {badge && (
                 <Badge variant="outline" className="text-yodel-orange border-yodel-orange text-xs">
                   {badge}

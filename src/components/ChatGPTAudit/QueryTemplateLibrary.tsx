@@ -382,7 +382,7 @@ export const QueryTemplateLibrary: React.FC<QueryTemplateLibraryProps> = ({
                 {template.icon}
               </div>
               <div>
-                <CardTitle className="text-sm font-medium text-white">
+                <CardTitle className="text-sm font-medium text-foreground">
                   {template.name}
                 </CardTitle>
                 <div className="flex items-center space-x-2 mt-1">
@@ -418,7 +418,7 @@ export const QueryTemplateLibrary: React.FC<QueryTemplateLibraryProps> = ({
                       placeholder={defaultValue}
                       value={variables[key] || defaultValue}
                       onChange={(e) => handleVariableChange(template.id, key, e.target.value)}
-                      className="bg-zinc-800 border-zinc-700 text-white text-sm h-8"
+                      className="bg-zinc-800 border-zinc-700 text-foreground text-sm h-8"
                     />
                   </div>
                 ))}
@@ -444,23 +444,23 @@ export const QueryTemplateLibrary: React.FC<QueryTemplateLibraryProps> = ({
       {/* Search and Filter Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="text-white">Search Templates</Label>
+          <Label className="text-foreground">Search Templates</Label>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
             <Input
               placeholder="Search by name or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-zinc-800 border-zinc-700 text-white"
+              className="pl-10 bg-zinc-800 border-zinc-700 text-foreground"
             />
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-white">Category</Label>
+          <Label className="text-foreground">Category</Label>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
+            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded-md text-foreground"
           >
             {categories.map(category => (
               <option key={category} value={category}>
@@ -498,7 +498,7 @@ export const QueryTemplateLibrary: React.FC<QueryTemplateLibraryProps> = ({
       {filteredTemplates.length === 0 && (
         <div className="text-center py-12">
           <Search className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No templates found</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No templates found</h3>
           <p className="text-zinc-400">Try adjusting your search or filter criteria</p>
         </div>
       )}

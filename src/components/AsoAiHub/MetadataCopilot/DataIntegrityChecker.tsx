@@ -80,7 +80,7 @@ export const DataIntegrityChecker: React.FC<DataIntegrityCheckerProps> = ({ meta
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white text-sm flex items-center justify-between">
+        <CardTitle className="text-foreground text-sm flex items-center justify-between">
           Data Quality Report
           <div className="flex space-x-2 text-xs">
             <span className="text-green-400">✓ {passCount}</span>

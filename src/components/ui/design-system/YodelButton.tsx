@@ -26,11 +26,11 @@ export const YodelButton: React.FC<YodelButtonProps> = ({
   const baseClasses = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variants = {
-    primary: "bg-yodel-orange hover:bg-yodel-orange/90 text-white focus:ring-yodel-orange/50 shadow-sm hover:shadow-md",
-    secondary: "bg-zinc-700 hover:bg-zinc-600 text-white focus:ring-zinc-500 shadow-sm hover:shadow-md",
-    outline: "border border-zinc-600 hover:border-zinc-500 text-zinc-300 hover:text-white hover:bg-zinc-800 focus:ring-zinc-500",
-    ghost: "text-zinc-400 hover:text-white hover:bg-zinc-800 focus:ring-zinc-500",
-    danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 shadow-sm hover:shadow-md"
+    primary: "bg-yodel-orange hover:bg-yodel-orange/90 text-foreground focus:ring-yodel-orange/50 shadow-sm hover:shadow-md",
+    secondary: "bg-zinc-700 hover:bg-zinc-600 text-foreground focus:ring-zinc-500 shadow-sm hover:shadow-md",
+    outline: "border border-zinc-600 hover:border-zinc-500 text-zinc-300 hover:text-foreground hover:bg-zinc-800 focus:ring-zinc-500",
+    ghost: "text-zinc-400 hover:text-foreground hover:bg-zinc-800 focus:ring-zinc-500",
+    danger: "bg-red-600 hover:bg-red-700 text-foreground focus:ring-red-500 shadow-sm hover:shadow-md"
   };
 
   const sizes = {

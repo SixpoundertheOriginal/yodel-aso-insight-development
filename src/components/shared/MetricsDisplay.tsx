@@ -65,7 +65,7 @@ export const MetricsDisplay: React.FC<MetricsDisplayProps> = ({
   return (
     <Card className={`bg-zinc-900/50 border-zinc-800 ${className}`}>
       <CardHeader>
-        <CardTitle className="text-white text-lg">{title}</CardTitle>
+        <CardTitle className="text-foreground text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className={

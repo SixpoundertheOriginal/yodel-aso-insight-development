@@ -233,7 +233,7 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-yodel-orange" />
             {mode === 'edit' ? 'Edit App' : 'Add New App'}
           </DialogTitle>
@@ -250,20 +250,20 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="app_name" className="text-white">App Name *</Label>
+                <Label htmlFor="app_name" className="text-foreground">App Name *</Label>
                 <Input
                   id="app_name"
                   value={formData.app_name}
                   onChange={(e) => handleInputChange('app_name', e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   placeholder="Enter app name"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="platform" className="text-white">Platform *</Label>
+                <Label htmlFor="platform" className="text-foreground">Platform *</Label>
                 <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
@@ -299,7 +299,7 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
               {/* Search Results */}
               {searchResults.length > 0 && (
                 <div className="border border-zinc-700 rounded-lg p-4 space-y-3">
-                  <div className="text-sm font-medium text-white">
+                  <div className="text-sm font-medium text-foreground">
                     Search Results ({searchResults.length} found):
                   </div>
                   <div className="grid gap-3 max-h-64 overflow-y-auto">
@@ -321,7 +321,7 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
                           </div>
                         )}
                         <div className="flex-1">
-                          <div className="text-white font-medium">{result.name}</div>
+                          <div className="text-foreground font-medium">{result.name}</div>
                           <div className="text-sm text-zinc-400">{result.developer}</div>
                           {result.rating > 0 && (
                             <div className="flex items-center gap-1 mt-1">
@@ -360,22 +360,22 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
             {/* App Store Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="app_store_id" className="text-white">App Store ID</Label>
+                <Label htmlFor="app_store_id" className="text-foreground">App Store ID</Label>
                 <Input
                   id="app_store_id"
                   value={formData.app_store_id}
                   onChange={(e) => handleInputChange('app_store_id', e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   placeholder={formData.platform === 'ios' ? '123456789' : 'com.company.app'}
                 />
               </div>
               <div>
-                <Label htmlFor="bundle_id" className="text-white">Bundle ID</Label>
+                <Label htmlFor="bundle_id" className="text-foreground">Bundle ID</Label>
                 <Input
                   id="bundle_id"
                   value={formData.bundle_id}
                   onChange={(e) => handleInputChange('bundle_id', e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   placeholder="com.company.appname"
                 />
               </div>
@@ -383,34 +383,34 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="developer_name" className="text-white">Developer Name</Label>
+                <Label htmlFor="developer_name" className="text-foreground">Developer Name</Label>
                 <Input
                   id="developer_name"
                   value={formData.developer_name}
                   onChange={(e) => handleInputChange('developer_name', e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   placeholder="Company Name"
                 />
               </div>
               <div>
-                <Label htmlFor="category" className="text-white">Category</Label>
+                <Label htmlFor="category" className="text-foreground">Category</Label>
                 <Input
                   id="category"
                   value={formData.category}
                   onChange={(e) => handleInputChange('category', e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   placeholder="Productivity"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="app_icon_url" className="text-white">App Icon URL</Label>
+              <Label htmlFor="app_icon_url" className="text-foreground">App Icon URL</Label>
               <Input
                 id="app_icon_url"
                 value={formData.app_icon_url}
                 onChange={(e) => handleInputChange('app_icon_url', e.target.value)}
-                className="bg-zinc-800 border-zinc-700 text-white"
+                className="bg-zinc-800 border-zinc-700 text-foreground"
                 placeholder="https://example.com/icon.png"
               />
               {formData.app_icon_url && (

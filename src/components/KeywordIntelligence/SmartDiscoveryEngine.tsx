@@ -222,7 +222,7 @@ export const SmartDiscoveryEngine: React.FC<SmartDiscoveryEngineProps> = ({
     <div className="space-y-6">
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Brain className="h-5 w-5 text-purple-400" />
             Smart Discovery Engine
           </CardTitle>
@@ -249,7 +249,7 @@ export const SmartDiscoveryEngine: React.FC<SmartDiscoveryEngineProps> = ({
                   placeholder="Enter seed keywords (comma-separated, optional)"
                   value={seedKeywords}
                   onChange={(e) => setSeedKeywords(e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                 />
                 
                 <Button
@@ -274,7 +274,7 @@ export const SmartDiscoveryEngine: React.FC<SmartDiscoveryEngineProps> = ({
                   placeholder="Enter competitor app names (comma-separated)"
                   value={competitorApps}
                   onChange={(e) => setCompetitorApps(e.target.value)}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                 />
                 
                 <Button
@@ -311,7 +311,7 @@ export const SmartDiscoveryEngine: React.FC<SmartDiscoveryEngineProps> = ({
       {generatedSuggestions.length > 0 && (
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-400" />
               Smart Suggestions ({generatedSuggestions.length})
             </CardTitle>
@@ -324,7 +324,7 @@ export const SmartDiscoveryEngine: React.FC<SmartDiscoveryEngineProps> = ({
               {generatedSuggestions.slice(0, 12).map((suggestion, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
                   <div className="flex-1">
-                    <h4 className="font-medium text-white">{suggestion.keyword}</h4>
+                    <h4 className="font-medium text-foreground">{suggestion.keyword}</h4>
                     <p className="text-sm text-zinc-400 mt-1">
                       {suggestion.contextualReason}
                     </p>

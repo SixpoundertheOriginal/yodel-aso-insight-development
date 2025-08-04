@@ -90,7 +90,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-white">{label}</label>
+        <label className="text-sm font-medium text-foreground">{label}</label>
         <div className="flex items-center space-x-2">
           {/* Mode Toggle */}
           <DropdownMenu>
@@ -127,7 +127,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`min-h-[120px] bg-zinc-800 border-zinc-700 text-white resize-none ${
+          className={`min-h-[120px] bg-zinc-800 border-zinc-700 text-foreground resize-none ${
             isOverLimit ? 'border-red-500' : ''
           }`}
           maxLength={maxLength + 100} // Allow slight overage for UX
@@ -138,7 +138,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
           variant="ghost"
           size="sm"
           onClick={() => setShowSuggestions(!showSuggestions)}
-          className="absolute top-2 right-2 text-zinc-400 hover:text-white"
+          className="absolute top-2 right-2 text-zinc-400 hover:text-foreground"
         >
           <Lightbulb className="w-4 h-4" />
         </Button>
@@ -161,7 +161,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
         <Card className="bg-zinc-800 border-zinc-700">
           <CardContent className="p-4 space-y-3">
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Hook Templates</h4>
+              <h4 className="text-sm font-medium text-foreground mb-2">Hook Templates</h4>
               <div className="space-y-1">
                 {hooks.map((hook, index) => (
                   <Button
@@ -169,7 +169,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => insertSuggestion(hook)}
-                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-white"
+                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-foreground"
                   >
                     {hook}
                   </Button>
@@ -178,7 +178,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Closer Templates</h4>
+              <h4 className="text-sm font-medium text-foreground mb-2">Closer Templates</h4>
               <div className="space-y-1">
                 {closers.map((closer, index) => (
                   <Button
@@ -186,7 +186,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => insertSuggestion(closer)}
-                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-white"
+                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-foreground"
                   >
                     {closer}
                   </Button>
@@ -195,7 +195,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-white mb-2">Differentiator Templates</h4>
+              <h4 className="text-sm font-medium text-foreground mb-2">Differentiator Templates</h4>
               <div className="space-y-1">
                 {differentiators.map((diff, index) => (
                   <Button
@@ -203,7 +203,7 @@ export const SmartEditor: React.FC<SmartEditorProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => insertSuggestion(diff)}
-                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-white"
+                    className="w-full text-left justify-start text-xs text-zinc-300 hover:text-foreground"
                   >
                     {diff}
                   </Button>

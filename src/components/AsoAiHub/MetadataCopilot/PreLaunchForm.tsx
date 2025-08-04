@@ -96,7 +96,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-center space-x-2">
               <Loader2 className="w-5 h-5 animate-spin text-yodel-orange" />
-              <span className="text-white font-medium">Analyzing Market & Generating Strategy</span>
+              <span className="text-foreground font-medium">Analyzing Market & Generating Strategy</span>
             </div>
             
             <Progress value={loadingProgress} className="h-2" />
@@ -133,7 +133,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-white">
+          <CardTitle className="flex items-center space-x-2 text-foreground">
             <Rocket className="w-5 h-5 text-yodel-orange" />
             <span>Pre-Launch Strategic Research</span>
             <Badge variant="secondary" className="bg-yodel-orange/20 text-yodel-orange border-yodel-orange/30">
@@ -157,7 +157,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
                 value={formData.appName}
                 onChange={(e) => updateField('appName', e.target.value)}
                 placeholder="Enter your app name"
-                className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+                className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
                 required
               />
             </div>
@@ -172,12 +172,12 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
                 onValueChange={(value) => updateField('targetCategory', value)}
                 required
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-foreground">
                   <SelectValue placeholder="Select app category" />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-800 border-zinc-700">
                   {APP_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value} className="text-white">
+                    <SelectItem key={category.value} value={category.value} className="text-foreground">
                       {category.label}
                     </SelectItem>
                   ))}
@@ -198,7 +198,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               value={formData.appConcept}
               onChange={(e) => updateField('appConcept', e.target.value)}
               placeholder="Describe what your app does, the problem it solves, and its main purpose. Be specific about functionality and user benefits."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 min-h-24"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400 min-h-24"
               required
             />
           </div>
@@ -214,7 +214,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               value={formData.targetAudience}
               onChange={(e) => updateField('targetAudience', e.target.value)}
               placeholder="e.g., Small business owners, College students, Fitness enthusiasts"
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
             />
           </div>
 
@@ -229,7 +229,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               value={formData.keyFeatures}
               onChange={(e) => updateField('keyFeatures', e.target.value)}
               placeholder="List your app's main features and capabilities (comma-separated or bullet points)"
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 min-h-20"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400 min-h-20"
             />
           </div>
 
@@ -243,7 +243,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               value={formData.differentiators}
               onChange={(e) => updateField('differentiators', e.target.value)}
               placeholder="What sets your app apart from competitors? Unique features, better UX, novel approach, etc."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 min-h-20"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400 min-h-20"
             />
           </div>
 
@@ -254,12 +254,12 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               value={formData.targetCountry}
               onValueChange={(value) => updateField('targetCountry', value)}
             >
-              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-700">
                 {COUNTRIES.map((country) => (
-                  <SelectItem key={country.value} value={country.value} className="text-white">
+                  <SelectItem key={country.value} value={country.value} className="text-foreground">
                     {country.label}
                   </SelectItem>
                 ))}
@@ -269,7 +269,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
 
           <Button
             type="submit"
-            className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+            className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-foreground"
             disabled={!isFormValid}
           >
             Generate Strategic Metadata

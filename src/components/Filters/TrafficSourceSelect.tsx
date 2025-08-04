@@ -104,7 +104,7 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className="w-full justify-between bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
+            className="w-full justify-between bg-zinc-800 border-zinc-700 text-foreground hover:bg-zinc-700"
           >
             <span className="truncate">{getDisplayText()}</span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
@@ -124,12 +124,12 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
                     placeholder="Search sources..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 bg-zinc-900 border-zinc-600 text-white placeholder-zinc-400"
+                    className="pl-9 bg-zinc-900 border-zinc-600 text-foreground placeholder-zinc-400"
                   />
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm("")}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-white"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -145,7 +145,7 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={handleSelectAll}
-                className="flex-1 text-zinc-300 hover:text-white hover:bg-zinc-700"
+                className="flex-1 text-zinc-300 hover:text-foreground hover:bg-zinc-700"
                 disabled={selectedSources.length === allAvailableSources.length}
               >
                 <Check className="h-4 w-4 mr-1" />
@@ -155,7 +155,7 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={handleClearAll}
-                className="flex-1 text-zinc-300 hover:text-white hover:bg-zinc-700"
+                className="flex-1 text-zinc-300 hover:text-foreground hover:bg-zinc-700"
                 disabled={selectedSources.length === 0}
               >
                 <X className="h-4 w-4 mr-1" />
@@ -188,7 +188,7 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
                         }
                         className="border-zinc-600 data-[state=checked]:bg-yodel-orange data-[state=checked]:border-yodel-orange"
                       />
-                      <span className="text-white text-sm flex-1 cursor-pointer">
+                      <span className="text-foreground text-sm flex-1 cursor-pointer">
                         {source}
                       </span>
                     </div>

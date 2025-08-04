@@ -46,7 +46,7 @@ export const WorkflowManager: React.FC = () => {
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Workflow className="w-5 h-5 text-yodel-orange" />
             <span>ASO Workflow Templates</span>
           </CardTitle>
@@ -62,7 +62,7 @@ export const WorkflowManager: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-2xl">{template.icon}</span>
                   <div>
-                    <h3 className="text-white font-medium">{template.name}</h3>
+                    <h3 className="text-foreground font-medium">{template.name}</h3>
                     <p className="text-zinc-400 text-sm">{template.description}</p>
                   </div>
                 </div>
@@ -97,7 +97,7 @@ export const WorkflowManager: React.FC = () => {
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <span className="text-2xl">{activeWorkflow.icon}</span>
             <div>
               <span>{activeWorkflow.name}</span>
@@ -108,7 +108,7 @@ export const WorkflowManager: React.FC = () => {
             variant="ghost"
             size="sm"
             onClick={() => setShowTemplates(true)}
-            className="text-zinc-400 hover:text-white"
+            className="text-zinc-400 hover:text-foreground"
           >
             Change Workflow
           </Button>
@@ -129,7 +129,7 @@ export const WorkflowManager: React.FC = () => {
 
         {/* Workflow Steps */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-white">Workflow Steps</h3>
+          <h3 className="text-sm font-medium text-foreground">Workflow Steps</h3>
           {activeWorkflow.steps.map((step, index) => {
             const isCompleted = workflowHistory.some(h => h.sourcecopilotId === step.copilotId && h.status === 'completed');
             const isCurrent = index === completedSteps;
@@ -139,9 +139,9 @@ export const WorkflowManager: React.FC = () => {
               <div key={step.id} className="flex items-center space-x-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   isCompleted 
-                    ? 'bg-green-500 text-white' 
+                    ? 'bg-green-500 text-foreground' 
                     : isCurrent 
-                    ? 'bg-yodel-orange text-white' 
+                    ? 'bg-yodel-orange text-foreground' 
                     : 'bg-zinc-700 text-zinc-400'
                 }`}>
                   {isCompleted ? (
@@ -192,7 +192,7 @@ export const WorkflowManager: React.FC = () => {
         {/* Recent Activity */}
         {workflowHistory.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-white">Recent Activity</h3>
+            <h3 className="text-sm font-medium text-foreground">Recent Activity</h3>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {workflowHistory.slice(-3).reverse().map((entry, index) => (
                 <div key={index} className="flex items-center space-x-2 text-xs">

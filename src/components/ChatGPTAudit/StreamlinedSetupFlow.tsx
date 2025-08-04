@@ -743,7 +743,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
           <Zap className="h-5 w-5" />
           <span>Create New Audit</span>
           {appIntelligence && (
-            <Badge className="bg-green-600 text-white">
+            <Badge className="bg-green-600 text-foreground">
               <Brain className="h-3 w-3 mr-1" />
               AI Enhanced
             </Badge>

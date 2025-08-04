@@ -13,7 +13,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ userContext }) => {
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white text-sm">Context Loading...</CardTitle>
+          <CardTitle className="text-foreground text-sm">Context Loading...</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-zinc-400 text-sm">Gathering your ASO data...</p>
@@ -28,7 +28,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ userContext }) => {
     <div className="space-y-4">
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white text-sm flex items-center space-x-2">
+          <CardTitle className="text-foreground text-sm flex items-center space-x-2">
             <BarChart className="w-4 h-4" />
             <span>Your ASO Context</span>
           </CardTitle>

@@ -41,10 +41,10 @@ export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
           {/* App Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="secondary" className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs">
+              <Badge variant="secondary" className="bg-gradient-to-r from-purple-500 to-pink-600 text-foreground text-xs">
                 #{rank}
               </Badge>
-              <CardTitle className="text-xl font-bold text-white truncate">
+              <CardTitle className="text-xl font-bold text-foreground truncate">
                 {app.title}
               </CardTitle>
             </div>

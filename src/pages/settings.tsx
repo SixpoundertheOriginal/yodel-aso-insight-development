@@ -11,7 +11,7 @@ const SettingsPage: React.FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
           <p className="text-zinc-400">
             Manage your account preferences and application settings
           </p>
@@ -20,7 +20,7 @@ const SettingsPage: React.FC = () => {
         <div className="grid gap-6">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Notifications</CardTitle>
+              <CardTitle className="text-foreground">Notifications</CardTitle>
               <CardDescription className="text-zinc-400">
                 Configure how you receive notifications
               </CardDescription>
@@ -52,7 +52,7 @@ const SettingsPage: React.FC = () => {
 
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">Data & Privacy</CardTitle>
+              <CardTitle className="text-foreground">Data & Privacy</CardTitle>
               <CardDescription className="text-zinc-400">
                 Manage your data preferences
               </CardDescription>
@@ -80,7 +80,7 @@ const SettingsPage: React.FC = () => {
 
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">API Access</CardTitle>
+              <CardTitle className="text-foreground">API Access</CardTitle>
               <CardDescription className="text-zinc-400">
                 Manage API keys and integrations
               </CardDescription>

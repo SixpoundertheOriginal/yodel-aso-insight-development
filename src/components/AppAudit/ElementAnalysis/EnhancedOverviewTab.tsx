@@ -67,7 +67,7 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
       {/* Overall Score Summary */}
       <Card className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-zinc-700">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-white">
+          <CardTitle className="flex items-center justify-between text-foreground">
             <div className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-yellow-400" />
               <span>Element-by-Element ASO Analysis</span>

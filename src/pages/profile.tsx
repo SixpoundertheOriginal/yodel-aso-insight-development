@@ -17,7 +17,7 @@ const Profile: React.FC = () => {
   if (authLoading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="text-white">Loading...</div>
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -39,7 +39,7 @@ const Profile: React.FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Profile</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
           <p className="text-zinc-400">Manage your account settings and preferences</p>
         </div>
 
@@ -47,7 +47,7 @@ const Profile: React.FC = () => {
           {/* Profile Information */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-foreground flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Profile Information
               </CardTitle>
@@ -63,7 +63,7 @@ const Profile: React.FC = () => {
                   type="email"
                   value={user.email || ''}
                   disabled
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                 />
               </div>
               <div className="space-y-2">
@@ -72,7 +72,7 @@ const Profile: React.FC = () => {
                   id="userId"
                   value={user.id}
                   disabled
-                  className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm"
+                  className="bg-zinc-800 border-zinc-700 text-foreground font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -81,7 +81,7 @@ const Profile: React.FC = () => {
                   id="created"
                   value={user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                   disabled
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                 />
               </div>
             </CardContent>
@@ -90,7 +90,7 @@ const Profile: React.FC = () => {
           {/* Organization & Roles */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-foreground flex items-center gap-2">
                 <Building className="h-5 w-5" />
                 Organization & Roles
               </CardTitle>
@@ -104,7 +104,7 @@ const Profile: React.FC = () => {
                 <Input
                   value={organizationId || 'Not assigned'}
                   disabled
-                  className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm"
+                  className="bg-zinc-800 border-zinc-700 text-foreground font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -131,7 +131,7 @@ const Profile: React.FC = () => {
           {/* Account Actions */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
+              <CardTitle className="text-foreground flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Account Actions
               </CardTitle>

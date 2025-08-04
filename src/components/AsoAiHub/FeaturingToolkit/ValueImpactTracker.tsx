@@ -86,7 +86,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
       </DialogTrigger>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center space-x-2">
+          <DialogTitle className="text-foreground flex items-center space-x-2">
             <BarChart3 className="w-5 h-5 text-yodel-orange" />
             <span>Value Impact Tracker</span>
           </DialogTitle>
@@ -96,7 +96,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
           {/* Metrics Input */}
           <Card className="bg-zinc-800/50 border-zinc-700">
             <CardHeader>
-              <CardTitle className="text-sm text-white">Performance Metrics</CardTitle>
+              <CardTitle className="text-sm text-foreground">Performance Metrics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -108,7 +108,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     ...metrics,
                     conversionLift: Number(e.target.value)
                   })}
-                  className="bg-zinc-700 border-zinc-600 text-white"
+                  className="bg-zinc-700 border-zinc-600 text-foreground"
                 />
               </div>
               
@@ -121,7 +121,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     ...metrics,
                     retentionIncrease: Number(e.target.value)
                   })}
-                  className="bg-zinc-700 border-zinc-600 text-white"
+                  className="bg-zinc-700 border-zinc-600 text-foreground"
                 />
               </div>
               
@@ -134,7 +134,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     ...metrics,
                     engagementBoost: Number(e.target.value)
                   })}
-                  className="bg-zinc-700 border-zinc-600 text-white"
+                  className="bg-zinc-700 border-zinc-600 text-foreground"
                 />
               </div>
             </CardContent>
@@ -143,7 +143,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
           {/* Impact Infographics */}
           <Card className="bg-zinc-800/50 border-zinc-700">
             <CardHeader>
-              <CardTitle className="text-sm text-white">Impact Infographics</CardTitle>
+              <CardTitle className="text-sm text-foreground">Impact Infographics</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-3">
@@ -153,7 +153,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     <TrendingUp className="w-4 h-4 text-green-400" />
                     <span className="text-xs text-green-400 font-medium">Conversion Impact</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold text-foreground">
                     {metrics.conversionLift > 0 ? `${metrics.conversionLift}x` : '--'}
                   </div>
                   <div className="text-xs text-zinc-300">higher conversion rate</div>
@@ -165,7 +165,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     <Users className="w-4 h-4 text-blue-400" />
                     <span className="text-xs text-blue-400 font-medium">Retention Impact</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold text-foreground">
                     {metrics.retentionIncrease > 0 ? `+${metrics.retentionIncrease}%` : '--'}
                   </div>
                   <div className="text-xs text-zinc-300">user retention increase</div>
@@ -177,7 +177,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                     <Zap className="w-4 h-4 text-purple-400" />
                     <span className="text-xs text-purple-400 font-medium">Engagement Impact</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold text-foreground">
                     {metrics.engagementBoost > 0 ? `+${metrics.engagementBoost}%` : '--'}
                   </div>
                   <div className="text-xs text-zinc-300">engagement boost</div>
@@ -190,7 +190,7 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
         {/* Differentiators Section */}
         <Card className="bg-zinc-800/50 border-zinc-700">
           <CardHeader>
-            <CardTitle className="text-sm text-white">Key Differentiators</CardTitle>
+            <CardTitle className="text-sm text-foreground">Key Differentiators</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex space-x-2">
@@ -198,12 +198,12 @@ export const ValueImpactTracker: React.FC<ValueImpactTrackerProps> = ({
                 value={newDifferentiator}
                 onChange={(e) => setNewDifferentiator(e.target.value)}
                 placeholder="Add a key differentiator..."
-                className="bg-zinc-700 border-zinc-600 text-white"
+                className="bg-zinc-700 border-zinc-600 text-foreground"
               />
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value as Differentiator['type'])}
-                className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-white text-sm"
+                className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-foreground text-sm"
               >
                 <option value="exclusive">Exclusive</option>
                 <option value="first">First-to-Market</option>
