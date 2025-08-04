@@ -10,6 +10,7 @@ import { BigQueryAppSelector } from "./BigQueryAppSelector";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
@@ -110,6 +111,7 @@ const TopBar: React.FC = React.memo(() => {
               <ResetButton />
             </div>
           )}
+          <ThemeToggle />
           <UserMenu />
         </div>
       </div>

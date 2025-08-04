@@ -12,7 +12,7 @@ interface MainLayoutProps {
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={true}>
-      <GradientBackground variant="yodel" intensity="subtle" className="flex min-h-screen w-full dark">
+      <GradientBackground variant="yodel" intensity="subtle" className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <TopBar />

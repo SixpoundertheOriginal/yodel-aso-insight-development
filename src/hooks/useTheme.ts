@@ -1,19 +1,76 @@
+import { useEffect, useState } from 'react';
 
-import { useState, useEffect } from 'react';
+type Theme = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
 
-type Theme = 'dark' | 'light';
+interface UseThemeReturn {
+  theme: Theme;
+  resolvedTheme: ResolvedTheme;
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
+}
 
-export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>('dark');
-  
+export function useTheme(): UseThemeReturn {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const stored = localStorage.getItem('theme') as Theme;
+    return stored || 'system';
+  });
+
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return systemPrefersDark ? 'dark' : 'light';
+  });
+
   useEffect(() => {
-    // Always set to dark mode for this project
-    document.body.classList.add('dark');
-    setTheme('dark');
+    const updateResolvedTheme = () => {
+      if (theme === 'system') {
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setResolvedTheme(systemPrefersDark ? 'dark' : 'light');
+      } else {
+        setResolvedTheme(theme as ResolvedTheme);
+      }
+    };
+
+    updateResolvedTheme();
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', updateResolvedTheme);
+
+    return () => mediaQuery.removeEventListener('change', updateResolvedTheme);
+  }, [theme]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolvedTheme);
+    document.body.classList.remove('light', 'dark');
+    document.body.classList.add(resolvedTheme);
+    localStorage.setItem('theme', theme);
+  }, [theme, resolvedTheme]);
+
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        const newTheme = (e.newValue as Theme) || 'system';
+        setThemeState(newTheme);
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
   }, []);
-  
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+  };
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
+
   return {
     theme,
-    isDark: theme === 'dark'
+    resolvedTheme,
+    setTheme,
+    toggleTheme
   };
-};
+}
