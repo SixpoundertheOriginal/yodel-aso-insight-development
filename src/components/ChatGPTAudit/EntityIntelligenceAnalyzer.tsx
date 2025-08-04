@@ -181,10 +181,10 @@ export const EntityIntelligenceAnalyzer: React.FC<EntityIntelligenceAnalyzerProp
   };
 
   useEffect(() => {
-    if (entityData) {
+    if (entityData && !intelligence) {
       analyzeEntityIntelligence();
     }
-  }, [entityData]);
+  }, [entityData, intelligence]);
 
   if (!intelligence) {
     return (
