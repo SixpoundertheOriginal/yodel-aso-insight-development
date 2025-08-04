@@ -56,7 +56,7 @@ export const KeywordVolumeChart: React.FC<KeywordVolumeChartProps> = ({
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardContent className="p-8 text-center">
           <TrendingUp className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">Select a Keyword</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">Select a Keyword</h3>
           <p className="text-zinc-400 mb-4">
             Choose a keyword from the dropdown to view its search volume trends over time.
           </p>
@@ -83,7 +83,7 @@ export const KeywordVolumeChart: React.FC<KeywordVolumeChartProps> = ({
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <TrendingUp className="w-5 h-5 text-green-400" />
             <span>Search Volume Trends</span>
           </CardTitle>

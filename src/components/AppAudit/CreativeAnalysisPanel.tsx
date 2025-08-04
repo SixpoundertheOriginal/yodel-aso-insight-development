@@ -119,7 +119,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
               <Sparkles className="h-4 w-4 text-purple-400" />
               <span className="text-sm text-zinc-400">Creative Score</span>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {creativeScore}/100
             </div>
             <div className="text-xs text-zinc-500 mt-1">
@@ -136,7 +136,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
               <Eye className="h-4 w-4 text-blue-400" />
               <span className="text-sm text-zinc-400">Visual Impact</span>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {visualTheme.consistency}%
             </div>
             <div className="text-xs text-zinc-500 mt-1">
@@ -151,7 +151,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
               <Calendar className="h-4 w-4 text-green-400" />
               <span className="text-sm text-zinc-400">Events Active</span>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {inAppEvents.filter(e => e.detected).length}
             </div>
             <div className="text-xs text-zinc-500 mt-1">
@@ -166,7 +166,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
               <TrendingUp className="h-4 w-4 text-orange-400" />
               <span className="text-sm text-zinc-400">Market Position</span>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {competitiveVisualAnalysis.marketAlignment}%
             </div>
             <div className="text-xs text-zinc-500 mt-1">
@@ -190,7 +190,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
             {/* Visual Theme Analysis */}
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
+                <CardTitle className="text-foreground flex items-center space-x-2">
                   <Palette className="h-5 w-5 text-purple-400" />
                   <span>Visual Theme</span>
                 </CardTitle>
@@ -212,7 +212,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                 
                 <div>
                   <h4 className="text-sm font-medium text-zinc-400 mb-2">Design Style</h4>
-                  <Badge variant="outline" className="text-white border-zinc-600">
+                  <Badge variant="outline" className="text-foreground border-zinc-600">
                     {visualTheme.designStyle}
                   </Badge>
                 </div>
@@ -233,7 +233,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
             {/* In-App Events Detection */}
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
+                <CardTitle className="text-foreground flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-green-400" />
                   <span>In-App Events</span>
                 </CardTitle>
@@ -246,7 +246,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                     }`} />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-white">{event.type}</h4>
+                        <h4 className="font-medium text-foreground">{event.type}</h4>
                         <Badge variant={event.detected ? "default" : "secondary"}>
                           {event.confidence}% confidence
                         </Badge>
@@ -262,7 +262,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
           {/* Creative Recommendations */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
+              <CardTitle className="text-foreground flex items-center space-x-2">
                 <Lightbulb className="h-5 w-5 text-yellow-400" />
                 <span>Creative Recommendations</span>
               </CardTitle>
@@ -280,7 +280,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                     </Badge>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-white">{suggestion.category}</h4>
+                        <h4 className="font-medium text-foreground">{suggestion.category}</h4>
                         <span className="text-xs text-zinc-500">{suggestion.impact}</span>
                       </div>
                       <p className="text-sm text-zinc-400 mt-1">{suggestion.suggestion}</p>
@@ -295,7 +295,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
         <TabsContent value="screenshots" className="space-y-6">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center justify-between">
+              <CardTitle className="text-foreground flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Eye className="h-5 w-5 text-blue-400" />
                   <span>Screenshot Analysis</span>
@@ -327,7 +327,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                           className="w-full aspect-[9/16] object-cover"
                         />
                         <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-                          <ZoomIn className="h-3 w-3 text-white" />
+                          <ZoomIn className="h-3 w-3 text-foreground" />
                         </div>
                       </div>
                     ))}
@@ -336,7 +336,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                   {/* Selected Screenshot Analysis */}
                   {screenshotAnalysis[selectedScreenshot] && (
                     <div className="p-4 bg-zinc-800/50 rounded-lg">
-                      <h4 className="font-medium text-white mb-2">
+                      <h4 className="font-medium text-foreground mb-2">
                         Screenshot {selectedScreenshot + 1} Analysis
                       </h4>
                       <p className="text-sm text-zinc-400">
@@ -362,7 +362,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white">App Icon</CardTitle>
+                <CardTitle className="text-foreground">App Icon</CardTitle>
               </CardHeader>
               <CardContent>
                 {metadata.icon ? (
@@ -379,16 +379,16 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                         <span className="text-zinc-400">Visual Impact</span>
                         <div className="flex items-center">
                           <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                          <span className="text-white">8.5/10</span>
+                          <span className="text-foreground">8.5/10</span>
                         </div>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-zinc-400">Brand Recognition</span>
-                        <span className="text-white">85%</span>
+                        <span className="text-foreground">85%</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-zinc-400">Store Visibility</span>
-                        <span className="text-white">Good</span>
+                        <span className="text-foreground">Good</span>
                       </div>
                     </div>
                   </div>
@@ -403,7 +403,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
-                <CardTitle className="text-white">Icon Analysis</CardTitle>
+                <CardTitle className="text-foreground">Icon Analysis</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -434,7 +434,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
         <TabsContent value="competitors" className="space-y-6">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
+              <CardTitle className="text-foreground flex items-center space-x-2">
                 <Users className="h-5 w-5 text-purple-400" />
                 <span>Competitive Visual Analysis</span>
               </CardTitle>
@@ -443,21 +443,21 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Visual Positioning</h4>
+                    <h4 className="font-medium text-foreground mb-2">Visual Positioning</h4>
                     <p className="text-2xl font-bold text-blue-400">
                       {competitiveVisualAnalysis.visualPositioning}
                     </p>
                     <p className="text-sm text-zinc-400">Market perception</p>
                   </div>
                   <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Differentiation</h4>
+                    <h4 className="font-medium text-foreground mb-2">Differentiation</h4>
                     <p className="text-2xl font-bold text-green-400">
                       {competitiveVisualAnalysis.differentiators.length}
                     </p>
                     <p className="text-sm text-zinc-400">Unique elements</p>
                   </div>
                   <div className="p-4 bg-zinc-800/50 rounded-lg">
-                    <h4 className="font-medium text-white mb-2">Opportunities</h4>
+                    <h4 className="font-medium text-foreground mb-2">Opportunities</h4>
                     <p className="text-2xl font-bold text-orange-400">
                       {competitiveVisualAnalysis.opportunities.length}
                     </p>
@@ -466,7 +466,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="font-medium text-white">Key Differentiators</h4>
+                  <h4 className="font-medium text-foreground">Key Differentiators</h4>
                   {competitiveVisualAnalysis.differentiators.map((diff, index) => (
                     <div key={index} className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-green-400 rounded-full" />
@@ -476,7 +476,7 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="font-medium text-white">Improvement Opportunities</h4>
+                  <h4 className="font-medium text-foreground">Improvement Opportunities</h4>
                   {competitiveVisualAnalysis.opportunities.map((opp, index) => (
                     <div key={index} className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-orange-400 rounded-full" />

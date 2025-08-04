@@ -31,7 +31,7 @@ export const IconAnalysisCard: React.FC<IconAnalysisCardProps> = ({
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-white">
+        <CardTitle className="flex items-center justify-between text-foreground">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-cyan-400" />
             <span>Icon Analysis</span>

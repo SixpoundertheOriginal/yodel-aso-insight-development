@@ -25,15 +25,15 @@ export const AsoKnowledgeMessage: React.FC<AsoKnowledgeMessageProps> = ({ messag
       <div className={`flex items-start space-x-3 max-w-4xl ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
           isUser 
-            ? 'bg-purple-600 text-white' 
-            : 'bg-gradient-to-br from-purple-500 to-blue-600 text-white'
+            ? 'bg-purple-600 text-foreground' 
+            : 'bg-gradient-to-br from-purple-500 to-blue-600 text-foreground'
         }`}>
           {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
         </div>
         
         <div className={`px-4 py-3 rounded-lg ${
           isUser 
-            ? 'bg-purple-600 text-white rounded-br-sm' 
+            ? 'bg-purple-600 text-foreground rounded-br-sm' 
             : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
         }`}>
           {message.type === 'quick-action' && (
@@ -51,14 +51,14 @@ export const AsoKnowledgeMessage: React.FC<AsoKnowledgeMessageProps> = ({ messag
             ) : (
               <ReactMarkdown
                 components={{
-                  h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-3">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-base font-semibold text-white mb-2">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-sm font-medium text-white mb-2">{children}</h3>,
+                  h1: ({ children }) => <h1 className="text-lg font-bold text-foreground mb-3">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-semibold text-foreground mb-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-medium text-foreground mb-2">{children}</h3>,
                   p: ({ children }) => <p className="text-sm leading-relaxed text-zinc-100 mb-2">{children}</p>,
                   ul: ({ children }) => <ul className="list-disc list-inside text-sm text-zinc-100 mb-2 space-y-1">{children}</ul>,
                   ol: ({ children }) => <ol className="list-decimal list-inside text-sm text-zinc-100 mb-2 space-y-1">{children}</ol>,
                   li: ({ children }) => <li className="text-zinc-100">{children}</li>,
-                  strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
                   em: ({ children }) => <em className="italic text-zinc-200">{children}</em>,
                   code: ({ children }) => <code className="bg-zinc-700 px-1 py-0.5 rounded text-xs text-zinc-200">{children}</code>,
                   table: ({ children }) => (

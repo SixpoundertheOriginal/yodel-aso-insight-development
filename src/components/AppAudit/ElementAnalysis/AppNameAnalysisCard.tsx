@@ -29,7 +29,7 @@ export const AppNameAnalysisCard: React.FC<AppNameAnalysisCardProps> = ({
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-white">
+        <CardTitle className="flex items-center justify-between text-foreground">
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-blue-400" />
             <span>App Name Analysis</span>
@@ -44,7 +44,7 @@ export const AppNameAnalysisCard: React.FC<AppNameAnalysisCardProps> = ({
         {/* App Name Display */}
         <div className="p-3 bg-zinc-800/50 rounded-lg">
           <div className="text-sm text-zinc-400 mb-1">Current App Name</div>
-          <div className="text-lg font-semibold text-white">{appName}</div>
+          <div className="text-lg font-semibold text-foreground">{appName}</div>
         </div>
 
         {/* Core Metrics */}

@@ -12,7 +12,7 @@ export const PreLaunchModeSelector: React.FC<PreLaunchModeSelectorProps> = ({ on
   return (
     <div className="space-y-4">
       <div className="text-center space-y-2">
-        <h3 className="text-xl font-semibold text-white">Choose Your App Stage</h3>
+        <h3 className="text-xl font-semibold text-foreground">Choose Your App Stage</h3>
         <p className="text-sm text-zinc-400">
           Select whether you're working with an existing app or planning a pre-launch strategy
         </p>
@@ -25,7 +25,7 @@ export const PreLaunchModeSelector: React.FC<PreLaunchModeSelectorProps> = ({ on
           onClick={() => onModeSelect('existing')}
         >
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-white">
+            <CardTitle className="flex items-center space-x-2 text-foreground">
               <Search className="w-5 h-5 text-blue-500" />
               <span>Existing App</span>
             </CardTitle>
@@ -46,7 +46,7 @@ export const PreLaunchModeSelector: React.FC<PreLaunchModeSelectorProps> = ({ on
             </div>
             
             <Button 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white group-hover:bg-blue-600"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-foreground group-hover:bg-blue-600"
               onClick={(e) => {
                 e.stopPropagation();
                 onModeSelect('existing');
@@ -63,7 +63,7 @@ export const PreLaunchModeSelector: React.FC<PreLaunchModeSelectorProps> = ({ on
           onClick={() => onModeSelect('pre-launch')}
         >
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-white">
+            <CardTitle className="flex items-center space-x-2 text-foreground">
               <Rocket className="w-5 h-5 text-yodel-orange" />
               <span>Pre-Launch App</span>
               <Badge variant="secondary" className="bg-yodel-orange/20 text-yodel-orange border-yodel-orange/30">
@@ -92,7 +92,7 @@ export const PreLaunchModeSelector: React.FC<PreLaunchModeSelectorProps> = ({ on
             </div>
             
             <Button 
-              className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-white group-hover:bg-yodel-orange"
+              className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-foreground group-hover:bg-yodel-orange"
               onClick={(e) => {
                 e.stopPropagation();
                 onModeSelect('pre-launch');

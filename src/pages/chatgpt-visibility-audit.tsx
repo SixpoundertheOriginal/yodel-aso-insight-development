@@ -363,7 +363,7 @@ function ChatGPTVisibilityAudit() {
       <div className="space-y-6 p-6">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white flex items-center space-x-3">
+          <h1 className="text-3xl font-bold text-foreground flex items-center space-x-3">
             <MessageSquare className="h-8 w-8 text-blue-400" />
             <span>ChatGPT Visibility Audit</span>
           </h1>
@@ -384,8 +384,8 @@ function ChatGPTVisibilityAudit() {
               onClick={() => setActiveTab(id as any)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
                 activeTab === id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+                  ? 'bg-blue-600 text-foreground'
+                  : 'text-zinc-400 hover:text-foreground hover:bg-zinc-700'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -459,7 +459,7 @@ function ChatGPTVisibilityAudit() {
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardContent className="text-center py-12">
                   <TrendingUp className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-white mb-2">No Results Available</h3>
+                  <h3 className="text-xl font-medium text-foreground mb-2">No Results Available</h3>
                   <p className="text-zinc-400 mb-4">
                     {selectedAuditRun 
                       ? 'Complete the selected audit run to view results.'

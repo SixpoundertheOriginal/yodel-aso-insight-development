@@ -173,7 +173,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardContent className="text-center py-12">
           <Trophy className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No Competition Data</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Competition Data</h3>
           <p className="text-zinc-400">Run more queries to see competitive rankings</p>
         </CardContent>
       </Card>
@@ -187,7 +187,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
       {/* Top 5 Overall Performers */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Trophy className="h-5 w-5 text-yodel-orange" />
             <span>Top Performers (ChatGPT Mentions)</span>
           </CardTitle>
@@ -202,7 +202,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
                 <div className="flex items-center space-x-3">
                   {getRankIcon(index + 1)}
                   <div>
-                    <h4 className="font-medium text-white capitalize">{performer.app_name}</h4>
+                    <h4 className="font-medium text-foreground capitalize">{performer.app_name}</h4>
                     <p className="text-sm text-zinc-400">
                       {performer.mentioned_queries} mentions in {performer.total_queries} queries
                     </p>
@@ -221,13 +221,13 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
                   <p className="text-xs text-zinc-500">Mention Rate</p>
                   <div className="flex items-center space-x-2">
                     <Progress value={performer.mention_rate} className="h-2 flex-1" />
-                    <span className="text-sm text-white">{performer.mention_rate}%</span>
+                    <span className="text-sm text-foreground">{performer.mention_rate}%</span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-xs text-zinc-500">Avg Position</p>
-                  <p className="text-sm text-white">
+                  <p className="text-sm text-foreground">
                     {performer.avg_ranking_position > 0 ? `#${performer.avg_ranking_position}` : 'N/A'}
                   </p>
                 </div>
@@ -236,7 +236,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
                   <p className="text-xs text-zinc-500">Recommendation</p>
                   <div className="flex items-center space-x-1">
                     <Star className="h-3 w-3 text-yellow-400" />
-                    <span className="text-sm text-white">{performer.recommendation_strength}/10</span>
+                    <span className="text-sm text-foreground">{performer.recommendation_strength}/10</span>
                   </div>
                 </div>
 
@@ -259,7 +259,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-white flex items-center space-x-2">
+            <CardTitle className="text-sm text-foreground flex items-center space-x-2">
               <Target className="h-4 w-4 text-green-400" />
               <span>Highest Mention Rate</span>
             </CardTitle>
@@ -268,7 +268,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
             {topPerformers.slice(0, 3).map((performer, index) => (
               <div key={performer.app_name} className="flex items-center justify-between py-2">
                 <span className="text-sm text-zinc-300 capitalize">{performer.app_name}</span>
-                <span className="text-sm text-white">{performer.mention_rate}%</span>
+                <span className="text-sm text-foreground">{performer.mention_rate}%</span>
               </div>
             ))}
           </CardContent>
@@ -276,7 +276,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
 
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-white flex items-center space-x-2">
+            <CardTitle className="text-sm text-foreground flex items-center space-x-2">
               <TrendingUp className="h-4 w-4 text-blue-400" />
               <span>Best Average Position</span>
             </CardTitle>
@@ -289,7 +289,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
               .map((performer, index) => (
                 <div key={performer.app_name} className="flex items-center justify-between py-2">
                   <span className="text-sm text-zinc-300 capitalize">{performer.app_name}</span>
-                  <span className="text-sm text-white">#{performer.avg_ranking_position}</span>
+                  <span className="text-sm text-foreground">#{performer.avg_ranking_position}</span>
                 </div>
               ))}
           </CardContent>
@@ -297,7 +297,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
 
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-white flex items-center space-x-2">
+            <CardTitle className="text-sm text-foreground flex items-center space-x-2">
               <Star className="h-4 w-4 text-yellow-400" />
               <span>Strongest Recommendations</span>
             </CardTitle>
@@ -309,7 +309,7 @@ export const TopPerformersSection: React.FC<TopPerformersProps> = ({
               .map((performer, index) => (
                 <div key={performer.app_name} className="flex items-center justify-between py-2">
                   <span className="text-sm text-zinc-300 capitalize">{performer.app_name}</span>
-                  <span className="text-sm text-white">{performer.recommendation_strength}/10</span>
+                  <span className="text-sm text-foreground">{performer.recommendation_strength}/10</span>
                 </div>
               ))}
           </CardContent>

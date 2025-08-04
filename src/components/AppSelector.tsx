@@ -25,7 +25,7 @@ export const AppSelector: React.FC = () => {
 
   if (apps.length === 0) {
     return (
-      <div className="flex items-center gap-2 text-zinc-400">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Smartphone className="h-4 w-4" />
         <span className="text-sm">No apps</span>
       </div>
@@ -38,7 +38,7 @@ export const AppSelector: React.FC = () => {
         <Button variant="ghost" className="flex items-center gap-2 px-3 py-2 h-auto">
           <Smartphone className="h-4 w-4 text-yodel-orange" />
           <div className="flex flex-col items-start">
-            <span className="text-sm font-medium text-white truncate max-w-32">
+            <span className="text-sm font-medium text-foreground truncate max-w-32">
               {selectedApp?.app_name || 'Select App'}
             </span>
             {selectedApp && (
@@ -49,7 +49,7 @@ export const AppSelector: React.FC = () => {
               </div>
             )}
           </div>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
@@ -68,17 +68,17 @@ export const AppSelector: React.FC = () => {
                 />
               ) : (
                 <div className="h-8 w-8 bg-zinc-700 rounded-lg flex items-center justify-center">
-                  <Smartphone className="h-4 w-4 text-zinc-400" />
+                  <Smartphone className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="font-medium text-white">{app.app_name}</span>
+                <span className="font-medium text-foreground">{app.app_name}</span>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
                     {app.platform}
                   </Badge>
                   {app.category && (
-                    <span className="text-xs text-zinc-400">{app.category}</span>
+                    <span className="text-xs text-muted-foreground">{app.category}</span>
                   )}
                 </div>
               </div>

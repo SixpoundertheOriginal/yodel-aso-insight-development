@@ -25,8 +25,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         disabled={disabled}
         className={`flex items-center space-x-2 ${
           mode === 'ai-generation' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground' 
+            : 'text-zinc-400 hover:text-foreground hover:bg-zinc-700'
         }`}
       >
         <Wand2 className="w-4 h-4" />
@@ -40,8 +40,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         disabled={disabled}
         className={`flex items-center space-x-2 ${
           mode === 'manual-editor' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground' 
+            : 'text-zinc-400 hover:text-foreground hover:bg-zinc-700'
         }`}
       >
         <Edit3 className="w-4 h-4" />
@@ -55,8 +55,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         disabled={disabled}
         className={`flex items-center space-x-2 ${
           mode === 'competitive-analysis' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground' 
+            : 'text-zinc-400 hover:text-foreground hover:bg-zinc-700'
         }`}
       >
         <Users className="w-4 h-4" />
@@ -70,8 +70,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         disabled={disabled}
         className={`flex items-center space-x-2 ${
           mode === 'long-description' 
-            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-white' 
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
+            ? 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground' 
+            : 'text-zinc-400 hover:text-foreground hover:bg-zinc-700'
         }`}
       >
         <FileText className="w-4 h-4" />

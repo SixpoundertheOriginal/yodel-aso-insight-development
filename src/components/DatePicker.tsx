@@ -136,7 +136,7 @@ const DatePicker: React.FC = React.memo(() => {
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className="border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-white min-w-[200px] justify-start"
+            className="border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-foreground min-w-[200px] justify-start"
           >
             <Calendar className="mr-2 h-4 w-4" />
             <span>{getDisplayText()}</span>
@@ -160,8 +160,8 @@ const DatePicker: React.FC = React.memo(() => {
                       variant="ghost"
                       size="sm"
                       className={cn(
-                        "w-full justify-start text-left font-normal text-zinc-300 hover:text-white hover:bg-zinc-700",
-                        isActive && "bg-yodel-orange text-white hover:bg-yodel-orange/80"
+                        "w-full justify-start text-left font-normal text-zinc-300 hover:text-foreground hover:bg-zinc-700",
+                        isActive && "bg-yodel-orange text-foreground hover:bg-yodel-orange/80"
                       )}
                       onClick={() => handlePresetSelect(preset)}
                     >
@@ -181,10 +181,10 @@ const DatePicker: React.FC = React.memo(() => {
                 numberOfMonths={2}
                 className="pointer-events-auto"
                 classNames={{
-                  day_selected: "bg-yodel-orange text-white hover:bg-yodel-orange hover:text-white",
+                  day_selected: "bg-yodel-orange text-foreground hover:bg-yodel-orange hover:text-foreground",
                   day_range_middle: "bg-yodel-orange/20",
-                  day_range_start: "bg-yodel-orange text-white",
-                  day_range_end: "bg-yodel-orange text-white"
+                  day_range_start: "bg-yodel-orange text-foreground",
+                  day_range_end: "bg-yodel-orange text-foreground"
                 }}
               />
             </div>

@@ -29,7 +29,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             onClick={onBack}
             variant="ghost"
             size="sm"
-            className="text-zinc-400 hover:text-white"
+            className="text-zinc-400 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -45,7 +45,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         )}
         
         <div>
-          <h1 className="text-2xl font-bold text-white">{app.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{app.name}</h1>
           <p className="text-zinc-400">
             {app.applicationCategory} • {app.locale}
             {lastUpdated && (

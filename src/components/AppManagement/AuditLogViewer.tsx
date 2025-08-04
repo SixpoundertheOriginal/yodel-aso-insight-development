@@ -53,7 +53,7 @@ export const AuditLogViewer: React.FC = () => {
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-yodel-orange" />
             Activity Log
           </CardTitle>
@@ -78,7 +78,7 @@ export const AuditLogViewer: React.FC = () => {
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
+        <CardTitle className="text-foreground flex items-center gap-2">
           <Activity className="h-5 w-5 text-yodel-orange" />
           Activity Log
         </CardTitle>
@@ -113,7 +113,7 @@ export const AuditLogViewer: React.FC = () => {
                         )}
                       </div>
                       
-                      <div className="text-white font-medium truncate">
+                      <div className="text-foreground font-medium truncate">
                         {appName}
                       </div>
                       

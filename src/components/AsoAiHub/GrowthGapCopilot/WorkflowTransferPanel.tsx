@@ -79,7 +79,7 @@ export const WorkflowTransferPanel: React.FC<WorkflowTransferPanelProps> = ({
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center space-x-2">
+        <CardTitle className="text-foreground flex items-center space-x-2">
           <Zap className="w-5 h-5 text-yodel-orange" />
           <span>Continue Workflow</span>
         </CardTitle>
@@ -106,11 +106,11 @@ export const WorkflowTransferPanel: React.FC<WorkflowTransferPanelProps> = ({
             <div key={option.id} className="border border-zinc-700 rounded-lg p-3 hover:border-zinc-600 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 ${option.color} rounded-lg flex items-center justify-center text-white`}>
+                  <div className={`w-8 h-8 ${option.color} rounded-lg flex items-center justify-center text-foreground`}>
                     <span className="text-sm">{option.icon}</span>
                   </div>
                   <div>
-                    <h3 className="text-white font-medium text-sm">{option.name}</h3>
+                    <h3 className="text-foreground font-medium text-sm">{option.name}</h3>
                     <p className="text-zinc-400 text-xs">{option.description}</p>
                   </div>
                 </div>

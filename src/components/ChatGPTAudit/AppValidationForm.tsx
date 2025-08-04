@@ -138,7 +138,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
       {validationStep === 'search' && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <Search className="h-5 w-5 text-yodel-orange" />
               <span>App Store Validation</span>
             </CardTitle>
@@ -148,20 +148,20 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-white">App Name or App Store ID</Label>
+              <Label className="text-foreground">App Name or App Store ID</Label>
               <div className="flex space-x-2">
                 <Input
                   placeholder="e.g., Instagram, Spotify, or App Store ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="bg-zinc-800 border-zinc-700 text-white"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
                   disabled={isSearching}
                 />
                 <Button 
                   onClick={handleSearch}
                   disabled={isSearching || !searchTerm.trim()}
-                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground"
                 >
                   {isSearching ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -193,7 +193,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
       {validationStep === 'results' && searchResults.length > 0 && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center justify-between">
+            <CardTitle className="text-foreground flex items-center justify-between">
               <span>Search Results</span>
               <Button variant="outline" size="sm" onClick={resetSearch}>
                 New Search
@@ -221,7 +221,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-semibold text-white truncate">
+                          <h3 className="font-semibold text-foreground truncate">
                             {app.name}
                           </h3>
                           <p className="text-sm text-zinc-400 mb-2">
@@ -230,7 +230,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
                         </div>
                         <Button
                           onClick={() => handleAppSelect(app)}
-                          className="bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+                          className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground"
                         >
                           Select
                         </Button>
@@ -286,7 +286,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
       {validationStep === 'confirmed' && selectedApp && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
               <span>App Validated</span>
             </CardTitle>
@@ -307,7 +307,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
                     />
                   )}
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">
+                    <h3 className="text-lg font-semibold text-foreground mb-1">
                       {selectedApp.name}
                     </h3>
                     <p className="text-zinc-300 mb-2">
@@ -341,23 +341,23 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
 
               {/* Metadata Preview */}
               <div className="space-y-3">
-                <Label className="text-white font-medium">Extracted Metadata for Query Generation:</Label>
+                <Label className="text-foreground font-medium">Extracted Metadata for Query Generation:</Label>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-zinc-400">App ID:</span>
-                    <span className="text-white ml-2">{selectedApp.appId || selectedApp.title}</span>
+                    <span className="text-foreground ml-2">{selectedApp.appId || selectedApp.title}</span>
                   </div>
                   <div>
                     <span className="text-zinc-400">Category:</span>
-                    <span className="text-white ml-2">{selectedApp.applicationCategory || 'General'}</span>
+                    <span className="text-foreground ml-2">{selectedApp.applicationCategory || 'General'}</span>
                   </div>
                   <div>
                     <span className="text-zinc-400">Developer:</span>
-                    <span className="text-white ml-2">{selectedApp.developer || 'Unknown'}</span>
+                    <span className="text-foreground ml-2">{selectedApp.developer || 'Unknown'}</span>
                   </div>
                   <div>
                     <span className="text-zinc-400">Rating:</span>
-                    <span className="text-white ml-2">{selectedApp.rating || 'N/A'}</span>
+                    <span className="text-foreground ml-2">{selectedApp.rating || 'N/A'}</span>
                   </div>
                 </div>
               </div>
@@ -366,7 +366,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
               <div className="flex space-x-3">
                 <Button
                   onClick={handleConfirmApp}
-                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-white flex-1"
+                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground flex-1"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Confirm & Continue
@@ -389,7 +389,7 @@ export const AppValidationForm: React.FC<AppValidationFormProps> = ({
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardContent className="text-center py-8">
             <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No Apps Found</h3>
+            <h3 className="text-lg font-medium text-foreground mb-2">No Apps Found</h3>
             <p className="text-zinc-400 mb-4">
               We couldn't find any apps matching "{searchTerm}" in the App Store.
             </p>

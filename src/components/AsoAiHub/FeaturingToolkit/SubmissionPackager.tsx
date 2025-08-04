@@ -82,7 +82,7 @@ Copy and paste the above content into the respective fields in App Store Connect
   return (
     <div className="flex items-center gap-4 p-6 bg-zinc-900/50 rounded-lg border border-zinc-800">
       <div className="flex-grow">
-        <h3 className="text-lg font-semibold text-white">Generate Final Submission</h3>
+        <h3 className="text-lg font-semibold text-foreground">Generate Final Submission</h3>
         <p className="text-zinc-400">Package your content into downloadable files for App Store Connect.</p>
       </div>
       <div className="flex gap-2">

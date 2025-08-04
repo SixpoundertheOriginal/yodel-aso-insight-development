@@ -163,7 +163,7 @@ export const GrowthGapResults: React.FC<GrowthGapResultsProps> = ({ results, isL
   return (
     <Card className="border-none shadow-none bg-transparent h-full overflow-auto">
       <CardHeader className="p-4 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg text-white">
+        <CardTitle className="text-lg text-foreground">
           {results.data.title}
         </CardTitle>
         <div className="flex space-x-2">
@@ -204,7 +204,7 @@ export const GrowthGapResults: React.FC<GrowthGapResultsProps> = ({ results, isL
         </div>
         
         <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
-          <h3 className="text-md font-medium text-white mb-4">Analysis Visualization</h3>
+          <h3 className="text-md font-medium text-foreground mb-4">Analysis Visualization</h3>
           <div className="h-64 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
@@ -213,7 +213,7 @@ export const GrowthGapResults: React.FC<GrowthGapResultsProps> = ({ results, isL
         </div>
         
         <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
-          <h3 className="text-md font-medium text-white mb-3">Recommendations</h3>
+          <h3 className="text-md font-medium text-foreground mb-3">Recommendations</h3>
           <ul className="space-y-2 text-sm">
             {results.data.recommendations.map((recommendation: string, index: number) => (
               <li key={index} className="flex items-start">

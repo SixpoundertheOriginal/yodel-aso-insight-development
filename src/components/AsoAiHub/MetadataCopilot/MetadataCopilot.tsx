@@ -73,12 +73,12 @@ export const MetadataCopilot: React.FC = () => {
       <div className="space-y-6">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <span className="text-2xl">📝</span>
               <span>Metadata Co-Pilot</span>
             </CardTitle>
             {importedData && (
-               <button onClick={handleReset} className="text-sm text-zinc-400 hover:text-white">Start Over</button>
+               <button onClick={handleReset} className="text-sm text-zinc-400 hover:text-foreground">Start Over</button>
             )}
           </CardHeader>
         </Card>

@@ -27,7 +27,7 @@ export const AlignmentMatrix: React.FC<AlignmentMatrixProps> = ({ foundPhrases }
                 ) : (
                   <XCircle className="w-5 h-5 text-zinc-500 flex-shrink-0" />
                 )}
-                <span className={`text-sm ${isFound ? 'text-white' : 'text-zinc-400'}`}>
+                <span className={`text-sm ${isFound ? 'text-foreground' : 'text-zinc-400'}`}>
                   {phrase}
                 </span>
               </div>

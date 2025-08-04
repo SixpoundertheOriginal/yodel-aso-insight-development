@@ -117,7 +117,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Network className="w-5 h-5 text-blue-400" />
             <span>Enhanced Keyword Clusters</span>
           </CardTitle>
@@ -136,7 +136,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Network className="w-5 h-5 text-blue-400" />
             <span>Enhanced Keyword Clusters</span>
           </CardTitle>
@@ -144,7 +144,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
         <CardContent>
           <div className="text-center py-8">
             <Network className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Clusters Available</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Clusters Available</h3>
             <p className="text-zinc-400">
               Import an app to generate intelligent keyword clusters with performance analytics.
             </p>
@@ -159,7 +159,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
       {/* Enhanced Header with Intelligence Overview */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Network className="w-5 h-5 text-blue-400" />
             <span>Enhanced Keyword Clusters</span>
             <Badge variant="outline" className="ml-2 text-zinc-400 border-zinc-600">
@@ -223,7 +223,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium text-white">{cluster.clusterName}</h3>
+                              <h3 className="font-medium text-foreground">{cluster.clusterName}</h3>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -249,7 +249,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                             <div className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Eye className="h-3 w-3 text-cyan-400" />
-                                <span className="text-sm font-semibold text-white">
+                                <span className="text-sm font-semibold text-foreground">
                                   {Math.round(performance.visibilityScore)}
                                 </span>
                               </div>
@@ -258,7 +258,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                             <div className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <TrendingUp className="h-3 w-3 text-green-400" />
-                                <span className="text-sm font-semibold text-white">
+                                <span className="text-sm font-semibold text-foreground">
                                   {Math.round(performance.growthPotential)}%
                                 </span>
                               </div>
@@ -300,14 +300,14 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                                 <div>
                                   <div className="flex justify-between text-xs mb-1">
                                     <span className="text-zinc-400">Competitive Gap</span>
-                                    <span className="text-white">{Math.round(performance.competitiveGap)}%</span>
+                                    <span className="text-foreground">{Math.round(performance.competitiveGap)}%</span>
                                   </div>
                                   <Progress value={performance.competitiveGap} className="h-1" />
                                 </div>
                                 <div>
                                   <div className="flex justify-between text-xs mb-1">
                                     <span className="text-zinc-400">Market Share</span>
-                                    <span className="text-white">{Math.round(performance.marketShare)}%</span>
+                                    <span className="text-foreground">{Math.round(performance.marketShare)}%</span>
                                   </div>
                                   <Progress value={performance.marketShare} className="h-1" />
                                 </div>
@@ -343,7 +343,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="font-medium text-white">{cluster.clusterName}</h3>
+                            <h3 className="font-medium text-foreground">{cluster.clusterName}</h3>
                             <p className="text-sm text-zinc-400">{cluster.relatedKeywords.length + 1} keywords</p>
                           </div>
                           <Badge className={`${getRiskLevelColor(performance.riskLevel)} border-current`}>
@@ -393,7 +393,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                 {/* Opportunity Matrix */}
                 <Card className="bg-zinc-800/50 border-zinc-700">
                   <CardHeader>
-                    <CardTitle className="text-white text-lg">Opportunity Matrix</CardTitle>
+                    <CardTitle className="text-foreground text-lg">Opportunity Matrix</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -405,7 +405,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                           return (
                             <div key={cluster.id} className="flex items-center justify-between p-2 bg-zinc-700/50 rounded">
                               <div>
-                                <p className="text-sm font-medium text-white">{cluster.clusterName}</p>
+                                <p className="text-sm font-medium text-foreground">{cluster.clusterName}</p>
                                 <p className="text-xs text-zinc-400">
                                   {Math.round((cluster.opportunityScore || 0) * 100)}% opportunity
                                 </p>
@@ -426,7 +426,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                 {/* Risk Assessment */}
                 <Card className="bg-zinc-800/50 border-zinc-700">
                   <CardHeader>
-                    <CardTitle className="text-white text-lg">Risk Assessment</CardTitle>
+                    <CardTitle className="text-foreground text-lg">Risk Assessment</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -441,7 +441,7 @@ export const KeywordClustersPanel: React.FC<KeywordClustersPanelProps> = ({
                           return (
                             <div key={cluster.id} className="flex items-center justify-between p-2 bg-red-900/20 border border-red-800/30 rounded">
                               <div>
-                                <p className="text-sm font-medium text-white">{cluster.clusterName}</p>
+                                <p className="text-sm font-medium text-foreground">{cluster.clusterName}</p>
                                 <p className="text-xs text-red-400">High competition cluster</p>
                               </div>
                               <div className="text-right">

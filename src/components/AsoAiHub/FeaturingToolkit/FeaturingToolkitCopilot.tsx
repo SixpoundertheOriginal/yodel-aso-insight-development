@@ -64,7 +64,7 @@ export const FeaturingToolkitCopilot: React.FC = () => {
           <div className="space-y-6">
             <div className="text-center py-12">
               <div className="text-6xl mb-4">⭐</div>
-              <h2 className="text-2xl font-bold text-white mb-4">
+              <h2 className="text-2xl font-bold text-foreground mb-4">
                 Welcome to Featuring Strategy Toolkit
               </h2>
               <p className="text-zinc-400 max-w-2xl mx-auto">
@@ -134,7 +134,7 @@ export const FeaturingToolkitCopilot: React.FC = () => {
         return (
           <div className="space-y-6">
             <div className="bg-zinc-800/50 p-6 rounded-lg border border-zinc-700">
-              <h3 className="text-xl font-bold text-white mb-4">Submission Checklist</h3>
+              <h3 className="text-xl font-bold text-foreground mb-4">Submission Checklist</h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <input 

@@ -494,7 +494,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       {/* Processing Controls */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Zap className="h-5 w-5" />
             <span>Bulk Processing Engine</span>
           </CardTitle>
@@ -507,7 +507,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-zinc-400">Total Queries</p>
-              <p className="text-2xl font-bold text-white">{auditRun.total_queries}</p>
+              <p className="text-2xl font-bold text-foreground">{auditRun.total_queries}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-zinc-400">Completed</p>
@@ -597,7 +597,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       {/* Processing Logs */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <RefreshCw className="h-5 w-5" />
             <span>Processing Logs</span>
           </CardTitle>
@@ -623,7 +623,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       {generatedQueries.length > 0 ? (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white">Generated Queries ({generatedQueries.length})</CardTitle>
+            <CardTitle className="text-foreground">Generated Queries ({generatedQueries.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -631,7 +631,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
                 <div key={query.id} className="p-3 bg-zinc-800/50 rounded-md border border-zinc-700">
                   <div className="flex items-center space-x-2 mb-2">
                     {query.icon}
-                    <span className="text-sm font-medium text-white">{query.generated_from}</span>
+                    <span className="text-sm font-medium text-foreground">{query.generated_from}</span>
                   </div>
                   <p className="text-xs text-zinc-400">{query.query_text.substring(0, 100)}...</p>
                   <Badge variant="outline" className="text-xs mt-2">
@@ -650,7 +650,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
       ) : selectedTemplates.length > 0 && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white">Selected Templates ({selectedTemplates.length})</CardTitle>
+            <CardTitle className="text-foreground">Selected Templates ({selectedTemplates.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -658,7 +658,7 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
                 <div key={template.id} className="p-3 bg-zinc-800/50 rounded-md border border-zinc-700">
                   <div className="flex items-center space-x-2 mb-2">
                     {template.icon}
-                    <span className="text-sm font-medium text-white">{template.name}</span>
+                    <span className="text-sm font-medium text-foreground">{template.name}</span>
                   </div>
                   <p className="text-xs text-zinc-400">{template.description}</p>
                   <Badge variant="outline" className="text-xs mt-2">

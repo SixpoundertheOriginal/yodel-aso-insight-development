@@ -302,7 +302,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardContent className="text-center py-12">
           <Trophy className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No Rankings Data</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Rankings Data</h3>
           <p className="text-zinc-400">No ranking results were detected in the audit responses</p>
           <p className="text-zinc-500 text-sm mt-2">Try queries that typically produce ranked lists or recommendations</p>
         </CardContent>
@@ -320,7 +320,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
               <Crown className="h-5 w-5 text-yellow-500" />
               <div>
                 <p className="text-sm text-zinc-400">Best Position</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   #{competitiveMetrics.bestPosition || 'N/A'}
                 </p>
               </div>
@@ -334,7 +334,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
               <Target className="h-5 w-5 text-blue-400" />
               <div>
                 <p className="text-sm text-zinc-400">Avg Position</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   #{competitiveMetrics.averagePosition ? competitiveMetrics.averagePosition.toFixed(1) : 'N/A'}
                 </p>
               </div>
@@ -348,7 +348,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
               <Award className="h-5 w-5 text-green-500" />
               <div>
                 <p className="text-sm text-zinc-400">Top 3 Count</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {competitiveMetrics.marketShare.top3}
                 </p>
               </div>
@@ -362,7 +362,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
               <Users className="h-5 w-5 text-purple-400" />
               <div>
                 <p className="text-sm text-zinc-400">Competitors</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {competitiveMetrics.totalCompetitors}
                 </p>
               </div>
@@ -374,7 +374,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       {/* Market Share Analysis */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <BarChart3 className="h-5 w-5" />
             <span>Market Position Analysis</span>
           </CardTitle>
@@ -430,7 +430,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       {topCompetitors.length > 0 && (
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
+            <CardTitle className="text-foreground flex items-center space-x-2">
               <Users className="h-5 w-5" />
               <span>Top Competitors</span>
               <Badge variant="outline">{topCompetitors.length} detected</Badge>
@@ -445,7 +445,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                     <div className="flex items-center justify-center w-6 h-6 bg-zinc-700 rounded-full text-xs text-zinc-300">
                       {index + 1}
                     </div>
-                    <span className="text-sm font-medium text-white">{competitor}</span>
+                    <span className="text-sm font-medium text-foreground">{competitor}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-zinc-400">{frequency} mentions</span>
@@ -507,7 +507,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
       {/* Query Rankings Table */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Trophy className="h-5 w-5" />
             <span>Query Rankings</span>
             <Badge variant="secondary">{filteredRankings.length} queries</Badge>
@@ -538,7 +538,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white font-medium truncate" title={ranking.queryText}>
+                          <p className="text-sm text-foreground font-medium truncate" title={ranking.queryText}>
                             {ranking.queryText}
                           </p>
                           <div className="flex items-center space-x-2 mt-1">
@@ -566,7 +566,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                           </span>
                         </div>
                         
-                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-foreground">
                           View Top 10
                         </Button>
                       </div>
@@ -578,7 +578,7 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                   <div className="mt-2 p-4 bg-zinc-900/70 border border-zinc-700 rounded-lg">
                     <div className="flex items-center space-x-2 mb-3">
                       <Hash className="h-4 w-4 text-zinc-400" />
-                      <span className="text-sm font-medium text-white">Top 10 Entities</span>
+                      <span className="text-sm font-medium text-foreground">Top 10 Entities</span>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -594,14 +594,14 @@ export const RankingsTabContent: React.FC<RankingsTabContentProps> = ({
                           <div className="flex items-center space-x-3">
                             <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
                               entity.position === 1 ? 'bg-yellow-500 text-black' :
-                              entity.position <= 3 ? 'bg-orange-500 text-white' :
-                              entity.position <= 5 ? 'bg-blue-500 text-white' :
+                              entity.position <= 3 ? 'bg-orange-500 text-foreground' :
+                              entity.position <= 5 ? 'bg-blue-500 text-foreground' :
                               'bg-zinc-600 text-zinc-200'
                             }`}>
                               {entity.position}
                             </div>
                             <span className={`text-sm font-medium ${
-                              entity.isTarget ? 'text-blue-300' : 'text-white'
+                              entity.isTarget ? 'text-blue-300' : 'text-foreground'
                             }`}>
                               {entity.name}
                               {entity.isTarget && (

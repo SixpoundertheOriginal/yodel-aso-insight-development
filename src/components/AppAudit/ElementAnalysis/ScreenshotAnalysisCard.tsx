@@ -29,7 +29,7 @@ export const ScreenshotAnalysisCard: React.FC<ScreenshotAnalysisCardProps> = ({
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-white">
+        <CardTitle className="flex items-center justify-between text-foreground">
           <div className="flex items-center gap-2">
             <Image className="h-5 w-5 text-pink-400" />
             <span>Screenshot Analysis</span>

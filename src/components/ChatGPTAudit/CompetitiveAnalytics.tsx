@@ -200,7 +200,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
       {/* Export Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Analytics & Insights</h2>
+          <h2 className="text-2xl font-bold text-foreground">Analytics & Insights</h2>
           <p className="text-zinc-400">Competitive analysis and performance trends</p>
         </div>
         <Button onClick={handleExportResults} variant="outline">
@@ -217,7 +217,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
               <Trophy className="h-5 w-5 text-yodel-orange" />
               <div>
                 <p className="text-sm text-zinc-400">Latest Score</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {trendsData?.[trendsData.length - 1]?.visibility_score || 0}
                 </p>
               </div>
@@ -249,7 +249,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
               <BarChart3 className="h-5 w-5 text-blue-400" />
               <div>
                 <p className="text-sm text-zinc-400">Audits Run</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {trendsData?.length || 0}
                 </p>
               </div>
@@ -263,7 +263,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
               <Users2 className="h-5 w-5 text-purple-400" />
               <div>
                 <p className="text-sm text-zinc-400">Competitors</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {competitorData?.length || 0}
                 </p>
               </div>
@@ -275,7 +275,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
       {/* Performance Trends */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <TrendingUp className="h-5 w-5" />
             <span>Performance Trends</span>
           </CardTitle>
@@ -294,7 +294,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <p className="text-sm font-medium text-white">Score: {item.visibility_score}</p>
+                      <p className="text-sm font-medium text-foreground">Score: {item.visibility_score}</p>
                       <p className="text-xs text-zinc-400">Mention Rate: {item.mention_rate}%</p>
                     </div>
                     <div className="w-24">
@@ -316,7 +316,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
       {/* Competitive Analysis */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <Users2 className="h-5 w-5" />
             <span>Competitive Landscape</span>
           </CardTitle>
@@ -336,7 +336,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
                         {getThreatIcon(competitor.threat_level)}
                       </div>
                       <div>
-                        <h4 className="font-medium text-white">{competitor.name}</h4>
+                        <h4 className="font-medium text-foreground">{competitor.name}</h4>
                         <p className="text-sm text-zinc-400">{competitor.mentions} mentions</p>
                       </div>
                     </div>
@@ -366,7 +366,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
       {/* Export Information */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center space-x-2">
+          <CardTitle className="text-foreground flex items-center space-x-2">
             <FileText className="h-5 w-5" />
             <span>Export & Reporting</span>
           </CardTitle>
@@ -378,7 +378,7 @@ export const CompetitiveAnalytics: React.FC<CompetitiveAnalyticsProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg">
               <div>
-                <h4 className="font-medium text-white">Complete Audit Results</h4>
+                <h4 className="font-medium text-foreground">Complete Audit Results</h4>
                 <p className="text-sm text-zinc-400">CSV export with all query results, scores, and metrics</p>
               </div>
               <Button onClick={handleExportResults} variant="outline" size="sm">

@@ -58,7 +58,7 @@ export const CopilotInterface: React.FC = () => {
         ) : (
           <div className="text-center py-8">
             <div className="text-4xl mb-4">🧠</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Authentication Required</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Authentication Required</h3>
             <p className="text-zinc-400">Please sign in to access the ASO Knowledge Engine</p>
           </div>
         );
@@ -74,7 +74,7 @@ export const CopilotInterface: React.FC = () => {
               {currentSession.messages.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">{activeCopilotData.icon}</div>
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     Welcome to {activeCopilotData.name}
                   </h3>
                   <p className="text-zinc-400 max-w-md mx-auto">
@@ -103,13 +103,13 @@ export const CopilotInterface: React.FC = () => {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder={`Ask ${activeCopilotData.name} anything...`}
-                  className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+                  className="flex-1 bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || isLoading}
-                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+                  className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -143,7 +143,7 @@ export const CopilotInterface: React.FC = () => {
           <div className="flex items-center space-x-3">
             <div className="text-2xl">{activeCopilotData.icon}</div>
             <div>
-              <CardTitle className="text-lg text-white">
+              <CardTitle className="text-lg text-foreground">
                 {activeCopilotData.name}
               </CardTitle>
               <p className="text-sm text-zinc-400">
@@ -157,7 +157,7 @@ export const CopilotInterface: React.FC = () => {
               variant="ghost"
               size="icon"
               onClick={clearSession}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-400 hover:text-foreground"
             >
               <RotateCcw className="w-4 h-4" />
             </Button>
@@ -165,7 +165,7 @@ export const CopilotInterface: React.FC = () => {
               variant="ghost"
               size="icon"
               onClick={() => setActiveCopilot(null)}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-400 hover:text-foreground"
             >
               <X className="w-4 h-4" />
             </Button>

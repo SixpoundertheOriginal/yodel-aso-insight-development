@@ -33,7 +33,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({ content, setConten
           value={content.editorialDescription}
           onChange={(e) => handleContentChange('editorialDescription', e.target.value)}
           placeholder="Craft a compelling story about your app..."
-          className="min-h-[250px] bg-zinc-900 border-zinc-700 text-white"
+          className="min-h-[250px] bg-zinc-900 border-zinc-700 text-foreground"
         />
         <div className="text-right text-sm mt-2">
           <span className={cn(getCharCountColor(validation.editorial.charCount, EDITORIAL_CHAR_LIMIT))}>
@@ -51,7 +51,7 @@ export const ContentEditor: React.FC<ContentEditorProps> = ({ content, setConten
           value={content.helpfulInfo}
           onChange={(e) => handleContentChange('helpfulInfo', e.target.value)}
           placeholder="Provide context for the reviewer..."
-          className="min-h-[250px] bg-zinc-900 border-zinc-700 text-white"
+          className="min-h-[250px] bg-zinc-900 border-zinc-700 text-foreground"
         />
         <div className="text-right text-sm mt-2">
           <span className={cn(getCharCountColor(validation.helpfulInfo.charCount, HELPFUL_INFO_CHAR_LIMIT))}>

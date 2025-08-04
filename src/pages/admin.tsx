@@ -63,7 +63,7 @@ const AdminPage: React.FC = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Panel</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
           <p className="text-zinc-400">
             System administration and management
           </p>
@@ -79,7 +79,7 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">Organizations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.organizationCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{systemStats?.organizationCount}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -87,7 +87,7 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">Total Users</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.userCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{systemStats?.userCount}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -95,7 +95,7 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">Total Apps</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white">{systemStats?.appCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{systemStats?.appCount}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -111,7 +111,7 @@ const AdminPage: React.FC = () => {
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
-                  <CardTitle className="text-white">Organizations</CardTitle>
+                  <CardTitle className="text-foreground">Organizations</CardTitle>
                   <CardDescription className="text-zinc-400">
                     Manage platform organizations
                   </CardDescription>
@@ -121,7 +121,7 @@ const AdminPage: React.FC = () => {
                     {systemStats?.organizations.map((org) => (
                       <div key={org.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                         <div>
-                          <p className="text-white font-medium">{org.name}</p>
+                          <p className="text-foreground font-medium">{org.name}</p>
                         </div>
                         <Badge variant="secondary" className="bg-zinc-700 text-zinc-300">
                           {org.subscription_tier}
@@ -134,7 +134,7 @@ const AdminPage: React.FC = () => {
 
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
+                  <CardTitle className="text-foreground">Recent Activity</CardTitle>
                   <CardDescription className="text-zinc-400">
                     Latest system activities
                   </CardDescription>
@@ -144,7 +144,7 @@ const AdminPage: React.FC = () => {
                     {recentActivity?.map((activity) => (
                       <div key={activity.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                         <div>
-                          <p className="text-white text-sm">{activity.action}</p>
+                          <p className="text-foreground text-sm">{activity.action}</p>
                           <p className="text-zinc-400 text-xs">{activity.resource_type}</p>
                         </div>
                         <div className="text-right">

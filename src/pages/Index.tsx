@@ -12,7 +12,7 @@ const Index = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="text-white">Loading...</div>
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -30,18 +30,18 @@ const Index = () => {
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-yodel-orange to-orange-600 shadow-lg">
-              <span className="text-xl font-bold text-white">Y</span>
+              <span className="text-xl font-bold text-foreground">Y</span>
             </div>
-            <h1 className="text-4xl font-bold text-white">Yodel ASO</h1>
+            <h1 className="text-4xl font-bold text-foreground">Yodel ASO</h1>
           </div>
           <p className="text-xl text-zinc-400 mb-8">
             Enterprise App Store Optimization Insights Platform
           </p>
           <div className="flex gap-4 justify-center">
-            <Button asChild className="bg-yodel-orange hover:bg-orange-600 text-white px-8 py-3">
+            <Button asChild className="bg-yodel-orange hover:bg-orange-600 text-foreground px-8 py-3">
               <a href="/auth/sign-in">Sign In</a>
             </Button>
-            <Button asChild variant="outline" className="border-zinc-700 text-white hover:bg-zinc-800 px-8 py-3">
+            <Button asChild variant="outline" className="border-zinc-700 text-foreground hover:bg-zinc-800 px-8 py-3">
               <a href="/auth/sign-up">Get Started</a>
             </Button>
           </div>
@@ -51,7 +51,7 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <Smartphone className="h-5 w-5 text-yodel-orange" />
                 App Management
               </CardTitle>
@@ -63,7 +63,7 @@ const Index = () => {
 
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <BarChart3 className="h-5 w-5 text-yodel-orange" />
                 Analytics Dashboard
               </CardTitle>
@@ -75,7 +75,7 @@ const Index = () => {
 
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <TrendingUp className="h-5 w-5 text-yodel-orange" />
                 Performance Tracking
               </CardTitle>
@@ -87,7 +87,7 @@ const Index = () => {
 
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <Bot className="h-5 w-5 text-yodel-orange" />
                 AI Insights
               </CardTitle>
@@ -102,7 +102,7 @@ const Index = () => {
         <div className="text-center">
           <Card className="bg-zinc-900/30 border-zinc-800 max-w-2xl mx-auto">
             <CardHeader>
-              <CardTitle className="text-2xl text-white">
+              <CardTitle className="text-2xl text-foreground">
                 Ready to optimize your app's performance?
               </CardTitle>
               <CardDescription className="text-zinc-400 text-lg">
@@ -110,7 +110,7 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="bg-yodel-orange hover:bg-orange-600 text-white px-8 py-3">
+              <Button asChild className="bg-yodel-orange hover:bg-orange-600 text-foreground px-8 py-3">
                 <a href="/auth/sign-up">Start Free Trial</a>
               </Button>
             </CardContent>

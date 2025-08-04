@@ -99,16 +99,16 @@ export const CreativeAnalysisHub: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-zinc-950 text-foreground">
       <div className="container mx-auto px-6 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
-              <Palette className="h-6 w-6 text-white" />
+              <Palette className="h-6 w-6 text-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Creative Analysis</h1>
+              <h1 className="text-3xl font-bold text-foreground">Creative Analysis</h1>
               <p className="text-zinc-400">Analyze app store creatives and visual strategies</p>
             </div>
           </div>
@@ -117,7 +117,7 @@ export const CreativeAnalysisHub: React.FC = () => {
         {/* Search Interface */}
         <Card className="bg-zinc-900 border-zinc-800 mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Search className="h-5 w-5" />
               Creative Search
             </CardTitle>
@@ -148,13 +148,13 @@ export const CreativeAnalysisHub: React.FC = () => {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+                className="flex-1 bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
                 placeholder={searchType === 'keyword' ? 'Enter keyword (e.g., fitness, gaming)' : 'Enter App Store ID'}
               />
               <Button
                 onClick={handleSearch}
                 disabled={loading || !keyword.trim()}
-                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white border-0"
+                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-foreground border-0"
               >
                 {loading ? (
                   <>
@@ -188,7 +188,7 @@ export const CreativeAnalysisHub: React.FC = () => {
             {/* Results Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-bold text-white">Analysis Results</h2>
+                <h2 className="text-2xl font-bold text-foreground">Analysis Results</h2>
                 <Badge variant="secondary" className="bg-zinc-800 text-zinc-200">
                   {results.totalResults} {results.totalResults === 1 ? 'app' : 'apps'} found
                 </Badge>
@@ -283,7 +283,7 @@ export const CreativeAnalysisHub: React.FC = () => {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="py-12 text-center">
               <Palette className="h-16 w-16 mx-auto mb-6 text-zinc-500" />
-              <h3 className="text-xl font-semibold text-white mb-2">Ready to Analyze Creatives</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Ready to Analyze Creatives</h3>
               <p className="text-zinc-400 mb-6">
                 Enter a keyword or App Store ID to start analyzing app store creatives and visual strategies.
               </p>

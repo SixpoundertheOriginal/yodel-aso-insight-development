@@ -49,7 +49,7 @@ export const PendingAppsTable: React.FC<PendingAppsTableProps> = ({
                     <Database className="h-6 w-6 text-zinc-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{app.app_identifier}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{app.app_identifier}</h3>
                     <p className="text-sm text-zinc-400">BigQuery Client ID</p>
                   </div>
                   <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 border-orange-500/30">
@@ -62,25 +62,25 @@ export const PendingAppsTable: React.FC<PendingAppsTableProps> = ({
                   <div className="flex items-center gap-2 text-sm">
                     <BarChart3 className="h-4 w-4 text-zinc-400" />
                     <span className="text-zinc-400">Records:</span>
-                    <span className="text-white font-medium">{formatNumber(app.record_count)}</span>
+                    <span className="text-foreground font-medium">{formatNumber(app.record_count)}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-zinc-400" />
                     <span className="text-zinc-400">Days:</span>
-                    <span className="text-white font-medium">{app.days_with_data}</span>
+                    <span className="text-foreground font-medium">{app.days_with_data}</span>
                   </div>
 
                   <div className="text-sm">
                     <span className="text-zinc-400">First seen:</span>
-                    <span className="text-white font-medium ml-2">
+                    <span className="text-foreground font-medium ml-2">
                       {format(new Date(app.first_seen), 'MMM dd, yyyy')}
                     </span>
                   </div>
 
                   <div className="text-sm">
                     <span className="text-zinc-400">Last seen:</span>
-                    <span className="text-white font-medium ml-2">
+                    <span className="text-foreground font-medium ml-2">
                       {format(new Date(app.last_seen), 'MMM dd, yyyy')}
                     </span>
                   </div>
@@ -98,7 +98,7 @@ export const PendingAppsTable: React.FC<PendingAppsTableProps> = ({
                   onClick={() => onApprove(app.id)}
                   disabled={isUpdating}
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-green-600 hover:bg-green-700 text-foreground"
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Approve

@@ -48,7 +48,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="text-white">
+          <DialogTitle className="text-foreground">
             {mode === 'analyze' 
               ? `Choose an app to analyze for "${searchTerm}"`
               : `Multiple apps found for "${searchTerm}"`
@@ -75,7 +75,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white truncate">
+                    <h3 className="font-semibold text-foreground truncate">
                       {app.name}
                     </h3>
                     <p className="text-sm text-zinc-400 mb-2">
@@ -107,7 +107,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                   
                   <Button
                     onClick={() => onSelect(app)}
-                    className="bg-yodel-orange hover:bg-yodel-orange/90 text-white flex items-center"
+                    className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground flex items-center"
                   >
                     {buttonIcon}
                     {buttonText}
@@ -124,7 +124,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
             <Separator className="bg-zinc-800" />
             <div className="space-y-3 pt-4">
               <div className="text-center">
-                <h4 className="text-sm font-medium text-white mb-2">
+                <h4 className="text-sm font-medium text-foreground mb-2">
                   Or analyze the competitive landscape
                 </h4>
                 <p className="text-xs text-zinc-400 mb-4">

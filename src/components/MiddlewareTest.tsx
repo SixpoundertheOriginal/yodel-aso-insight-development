@@ -32,7 +32,7 @@ export const MiddlewareTest: React.FC = () => {
   return (
     <Card className="bg-zinc-900/50 border-zinc-800 max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-white flex items-center justify-between">
+        <CardTitle className="text-foreground flex items-center justify-between">
           <span>Middleware Foundation Test</span>
           {rateLimitInfo && (
             <Badge variant="outline" className="text-zinc-300">
@@ -48,7 +48,7 @@ export const MiddlewareTest: React.FC = () => {
             value={testInput}
             onChange={(e) => setTestInput(e.target.value)}
             placeholder="Enter app description..."
-            className="bg-zinc-800 border-zinc-700 text-white"
+            className="bg-zinc-800 border-zinc-700 text-foreground"
           />
         </div>
 
@@ -66,15 +66,15 @@ export const MiddlewareTest: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 text-xs">
               <div>
                 <span className="text-zinc-400">Hourly:</span>
-                <div className="text-white">{rateLimitInfo.usage.hourly}/{rateLimitInfo.limits.hourly}</div>
+                <div className="text-foreground">{rateLimitInfo.usage.hourly}/{rateLimitInfo.limits.hourly}</div>
               </div>
               <div>
                 <span className="text-zinc-400">Daily:</span>
-                <div className="text-white">{rateLimitInfo.usage.daily}/{rateLimitInfo.limits.daily}</div>
+                <div className="text-foreground">{rateLimitInfo.usage.daily}/{rateLimitInfo.limits.daily}</div>
               </div>
               <div>
                 <span className="text-zinc-400">Monthly:</span>
-                <div className="text-white">{rateLimitInfo.usage.monthly}/{rateLimitInfo.limits.monthly}</div>
+                <div className="text-foreground">{rateLimitInfo.usage.monthly}/{rateLimitInfo.limits.monthly}</div>
               </div>
             </div>
           </div>

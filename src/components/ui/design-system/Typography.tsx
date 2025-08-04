@@ -8,25 +8,25 @@ interface TypographyProps {
 }
 
 export const Heading1: React.FC<TypographyProps> = ({ children, className }) => (
-  <h1 className={cn("text-4xl font-bold text-white leading-tight tracking-tight", className)}>
+  <h1 className={cn("text-4xl font-bold text-foreground leading-tight tracking-tight", className)}>
     {children}
   </h1>
 );
 
 export const Heading2: React.FC<TypographyProps> = ({ children, className }) => (
-  <h2 className={cn("text-3xl font-semibold text-white leading-tight", className)}>
+  <h2 className={cn("text-3xl font-semibold text-foreground leading-tight", className)}>
     {children}
   </h2>
 );
 
 export const Heading3: React.FC<TypographyProps> = ({ children, className }) => (
-  <h3 className={cn("text-2xl font-semibold text-white leading-snug", className)}>
+  <h3 className={cn("text-2xl font-semibold text-foreground leading-snug", className)}>
     {children}
   </h3>
 );
 
 export const Heading4: React.FC<TypographyProps> = ({ children, className }) => (
-  <h4 className={cn("text-xl font-medium text-white leading-snug", className)}>
+  <h4 className={cn("text-xl font-medium text-foreground leading-snug", className)}>
     {children}
   </h4>
 );

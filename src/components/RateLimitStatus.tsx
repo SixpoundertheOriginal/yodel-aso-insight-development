@@ -57,12 +57,12 @@ export const RateLimitStatus: React.FC = () => {
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader className="pb-3">
-        <CardTitle className="text-white flex items-center justify-between text-sm">
+        <CardTitle className="text-foreground flex items-center justify-between text-sm">
           <span className="flex items-center space-x-2">
             <Zap className="w-4 h-4" />
             <span>API Usage</span>
           </span>
-          <Badge className={`${tierColors[rateLimitInfo.tier]} text-white`}>
+          <Badge className={`${tierColors[rateLimitInfo.tier]} text-foreground`}>
             {getTierLabel(rateLimitInfo.tier)}
           </Badge>
         </CardTitle>

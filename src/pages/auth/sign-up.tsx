@@ -12,7 +12,7 @@ const SignUp = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="text-white">Loading...</div>
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -29,7 +29,7 @@ const SignUp = () => {
         <div className="mb-6">
           <Button
             variant="ghost"
-            className="text-zinc-400 hover:text-white"
+            className="text-zinc-400 hover:text-foreground"
             onClick={() => window.history.back()}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -41,11 +41,11 @@ const SignUp = () => {
           <CardHeader className="text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-yodel-orange to-orange-600 shadow-lg">
-                <span className="text-lg font-bold text-white">Y</span>
+                <span className="text-lg font-bold text-foreground">Y</span>
               </div>
-              <span className="text-2xl font-bold text-white">Yodel ASO</span>
+              <span className="text-2xl font-bold text-foreground">Yodel ASO</span>
             </div>
-            <CardTitle className="text-white">Create your account</CardTitle>
+            <CardTitle className="text-foreground">Create your account</CardTitle>
             <CardDescription className="text-zinc-400">
               Get started with your ASO insights platform
             </CardDescription>

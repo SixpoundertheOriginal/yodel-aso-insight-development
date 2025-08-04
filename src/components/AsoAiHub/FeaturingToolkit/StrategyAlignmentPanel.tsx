@@ -106,7 +106,7 @@ export const StrategyAlignmentPanel: React.FC<StrategyAlignmentPanelProps> = ({
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center space-x-2">
+        <CardTitle className="text-foreground flex items-center space-x-2">
           <TrendingUp className="w-5 h-5 text-yodel-orange" />
           <span>Strategy Alignment</span>
         </CardTitle>
@@ -131,7 +131,7 @@ export const StrategyAlignmentPanel: React.FC<StrategyAlignmentPanelProps> = ({
 
         {/* Apple's 5 Editorial Pillars */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-white">Apple's Editorial Pillars</h3>
+          <h3 className="text-sm font-medium text-foreground">Apple's Editorial Pillars</h3>
           {pillars.map((pillar) => (
             <div key={pillar.key} className="space-y-2">
               <div className="flex items-start space-x-3">
@@ -143,7 +143,7 @@ export const StrategyAlignmentPanel: React.FC<StrategyAlignmentPanelProps> = ({
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-lg">{pillar.icon}</span>
-                    <h4 className="text-sm font-medium text-white">{pillar.title}</h4>
+                    <h4 className="text-sm font-medium text-foreground">{pillar.title}</h4>
                   </div>
                   <p className="text-xs text-zinc-400 mt-1">{pillar.description}</p>
                   
@@ -179,7 +179,7 @@ export const StrategyAlignmentPanel: React.FC<StrategyAlignmentPanelProps> = ({
         {/* Editorial Themes Tag Cloud */}
         {editorialThemes.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-white">Editorial Themes Detected</h3>
+            <h3 className="text-sm font-medium text-foreground">Editorial Themes Detected</h3>
             <div className="flex flex-wrap gap-1">
               {editorialThemes.map((theme, index) => (
                 <Badge key={index} variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">

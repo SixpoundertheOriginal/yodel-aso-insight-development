@@ -82,7 +82,7 @@ export const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({ onAction
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center space-x-2">
+        <CardTitle className="text-foreground flex items-center space-x-2">
           <Lightbulb className="w-5 h-5 text-yellow-400" />
           <span>Quick ASO Actions</span>
         </CardTitle>

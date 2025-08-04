@@ -440,7 +440,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
           <div className="flex items-center space-x-2">
             <button 
               onClick={handleBackToSelector}
-              className="text-sm text-zinc-400 hover:text-white"
+              className="text-sm text-zinc-400 hover:text-foreground"
             >
               ← Back to mode selection
             </button>
@@ -461,7 +461,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
           <div className="flex items-center justify-between">
             <button 
               onClick={handleBackToSelector}
-              className="text-sm text-zinc-400 hover:text-white"
+              className="text-sm text-zinc-400 hover:text-foreground"
             >
               ← Back to mode selection
             </button>
@@ -476,7 +476,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Shield className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {isSearching ? 'Debounced Search Active' : 'Bulletproof Search Active'}
                       </span>
                     </div>
@@ -517,25 +517,25 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-zinc-400">Overall Health:</span>
-                    <div className="font-medium text-white">
+                    <div className="font-medium text-foreground">
                       {Math.round(systemHealth.circuitBreakers.overallHealth * 100)}%
                     </div>
                   </div>
                   <div>
                     <span className="text-zinc-400">Cache Hit Rate:</span>
-                    <div className="font-medium text-white">
+                    <div className="font-medium text-foreground">
                       {Math.round(systemHealth.cacheStats.hitRate * 100)}%
                     </div>
                   </div>
                   <div>
                     <span className="text-zinc-400">Healthy Components:</span>
-                    <div className="font-medium text-white">
+                    <div className="font-medium text-foreground">
                       {systemHealth.circuitBreakers.healthyComponents}/{systemHealth.circuitBreakers.totalComponents}
                     </div>
                   </div>
                   <div>
                     <span className="text-zinc-400">Recovery Success:</span>
-                    <div className="font-medium text-white">
+                    <div className="font-medium text-foreground">
                       {systemHealth.recoveryStats.successfulRecoveries} ops
                     </div>
                   </div>
@@ -567,7 +567,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <div className="text-sm font-medium text-white">Enable Competitor Discovery</div>
+                  <div className="text-sm font-medium text-foreground">Enable Competitor Discovery</div>
                   <div className="text-xs text-zinc-400">
                     Automatically find and analyze top competitors during import
                   </div>
@@ -581,7 +581,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
               {enableCompetitorDiscovery && (
                 <>
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-white">Competitors to Analyze</div>
+                    <div className="text-sm font-medium text-foreground">Competitors to Analyze</div>
                     <div className="flex space-x-2">
                       {[3, 5, 8, 10].map((limit) => (
                         <button
@@ -589,7 +589,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
                           onClick={() => setCompetitorLimit(limit)}
                           className={`px-3 py-1 rounded text-sm transition-colors ${
                             competitorLimit === limit
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-blue-600 text-foreground'
                               : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                           }`}
                         >
@@ -601,7 +601,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
                   
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <div className="text-sm font-medium text-white">Keyword Gap Analysis</div>
+                      <div className="text-sm font-medium text-foreground">Keyword Gap Analysis</div>
                       <div className="text-xs text-zinc-400">
                         Identify keyword opportunities from competitor analysis
                       </div>
@@ -633,7 +633,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
                   onClick={() => setSearchType(value as any)}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                     searchType === value
-                      ? 'bg-yodel-orange text-white'
+                      ? 'bg-yodel-orange text-foreground'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
@@ -706,13 +706,13 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
           {/* Enhanced Feature Highlights */}
           <div className="grid grid-cols-2 gap-4 mt-6">
             <div className="bg-zinc-800/30 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-white mb-2">🛡️ Bulletproof Search</h4>
+              <h4 className="text-sm font-medium text-foreground mb-2">🛡️ Bulletproof Search</h4>
               <p className="text-xs text-zinc-400">
                 99%+ success rate with intelligent fallback chain, circuit breakers, and auto-recovery
               </p>
             </div>
             <div className="bg-zinc-800/30 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-white mb-2">
+              <h4 className="text-sm font-medium text-foreground mb-2">
                 {enableCompetitorDiscovery ? '🧠 Competitive Intelligence' : '🧠 ASO Intelligence'}
               </h4>
               <p className="text-xs text-zinc-400">

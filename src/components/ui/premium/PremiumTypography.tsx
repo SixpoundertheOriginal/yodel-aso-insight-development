@@ -24,7 +24,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>
@@ -41,7 +41,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>
@@ -58,7 +58,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>
@@ -69,7 +69,7 @@ export const PremiumTypography = {
   // Card titles
   CardTitle: ({ children, className, animated = false }: Omit<TypographyProps, 'gradient'>) => (
     <h3 className={cn(
-      "font-sans text-lg font-semibold leading-snug text-white",
+      "font-sans text-lg font-semibold leading-snug text-foreground",
       animated && 'animate-fade-in',
       className
     )}>
@@ -80,7 +80,7 @@ export const PremiumTypography = {
   // Data/metric values
   MetricValue: ({ children, className, animated = false }: DataTypographyProps) => (
     <div className={cn(
-      "font-mono text-2xl md:text-3xl font-bold leading-none text-white",
+      "font-mono text-2xl md:text-3xl font-bold leading-none text-foreground",
       animated && 'animate-fade-in',
       className
     )}>
@@ -108,7 +108,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>
@@ -124,7 +124,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>
@@ -140,7 +140,7 @@ export const PremiumTypography = {
         'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent',
         'success': 'bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent'
       }[gradient],
-      gradient === 'none' && 'text-white',
+      gradient === 'none' && 'text-foreground',
       animated && 'animate-fade-in',
       className
     )}>

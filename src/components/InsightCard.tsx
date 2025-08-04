@@ -74,7 +74,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
             {Math.round(insight.confidence)}% confidence
           </div>
         </div>
-        <CardTitle className="text-white text-base font-medium">
+        <CardTitle className="text-foreground text-base font-medium">
           {insight.title}
         </CardTitle>
       </CardHeader>
@@ -88,7 +88,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
             <div className="text-xs text-zinc-400 uppercase tracking-wide mb-1">
               {insight.metric}
             </div>
-            <div className="text-lg font-bold text-white">
+            <div className="text-lg font-bold text-foreground">
               {typeof insight.value === 'number' ? insight.value.toLocaleString() : insight.value}
             </div>
           </div>

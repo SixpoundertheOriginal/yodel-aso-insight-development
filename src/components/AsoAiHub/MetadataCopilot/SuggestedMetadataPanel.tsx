@@ -435,7 +435,7 @@ Respond with ONLY the ${fieldName}, no formatting or labels.`;
                             {selectedKeywords.map((keyword) => (
                               <Badge 
                                 key={keyword} 
-                                className="bg-green-600 text-white cursor-pointer hover:bg-green-700"
+                                className="bg-green-600 text-foreground cursor-pointer hover:bg-green-700"
                                 onClick={() => handleKeywordRemove(keyword)}
                               >
                                 {keyword} ×
@@ -513,7 +513,7 @@ Respond with ONLY the ${fieldName}, no formatting or labels.`;
       {generatedMetadata && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-white">
+            <h3 className="text-xl font-semibold text-foreground">
               {competitors.length > 0 ? 'Competitive-Aware Metadata' : 'Suggested Metadata'}
             </h3>
             <div className="flex space-x-2">
@@ -533,7 +533,7 @@ Respond with ONLY the ${fieldName}, no formatting or labels.`;
                 variant="default"
                 size="sm"
                 onClick={saveMetadata}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-foreground"
                 disabled={isSaving || isGenerating || isChatLoading}
               >
                 <Save className="w-4 h-4 mr-2" />

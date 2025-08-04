@@ -309,7 +309,7 @@ export const GrowthGapChatInterface: React.FC<GrowthGapChatInterfaceProps> = ({
   return (
     <Card className="border-none shadow-none bg-transparent flex flex-col h-full">
       <CardHeader className="p-4">
-        <CardTitle className="text-lg text-white">
+        <CardTitle className="text-lg text-foreground">
           Opportunity Strategist
         </CardTitle>
       </CardHeader>
@@ -327,7 +327,7 @@ export const GrowthGapChatInterface: React.FC<GrowthGapChatInterfaceProps> = ({
                 <div
                   className={`max-w-[80%] rounded-lg p-3 ${
                     message.role === "user"
-                      ? "bg-yodel-orange text-white"
+                      ? "bg-yodel-orange text-foreground"
                       : message.error 
                         ? "bg-red-900/70 text-red-100" 
                         : "bg-zinc-800 text-zinc-100"

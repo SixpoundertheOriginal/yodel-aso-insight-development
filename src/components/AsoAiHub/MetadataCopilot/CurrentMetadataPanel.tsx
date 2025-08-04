@@ -108,7 +108,7 @@ export const CurrentMetadataPanel: React.FC<CurrentMetadataPanelProps> = React.m
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white">Current App Store Listing</CardTitle>
+        <CardTitle className="text-foreground">Current App Store Listing</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Debug Panel - Development Only */}
@@ -134,14 +134,14 @@ export const CurrentMetadataPanel: React.FC<CurrentMetadataPanelProps> = React.m
               name={metadata.name}
             />
             <div className="flex-1 min-w-0">
-              <h3 className="text-white font-semibold text-xl leading-tight truncate" title={metadata.title}>
+              <h3 className="text-foreground font-semibold text-xl leading-tight truncate" title={metadata.title}>
                 {metadata.title || metadata.name || 'Unknown App'}
               </h3>
               <p className="text-zinc-400 text-sm leading-tight truncate" title={metadata.subtitle}>
                 {metadata.subtitle || 'No subtitle available'}
               </p>
               <div className="mt-2">
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full px-6 h-8">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-foreground font-bold rounded-full px-6 h-8">
                   GET
                 </Button>
               </div>

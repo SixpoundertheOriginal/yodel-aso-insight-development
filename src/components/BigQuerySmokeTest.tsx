@@ -197,7 +197,7 @@ export const BigQuerySmokeTest: React.FC = () => {
         {/* BigQuery Metadata */}
         {response?.meta && (
           <div className="bg-zinc-800 p-4 rounded">
-            <h4 className="text-white font-medium mb-2">BigQuery Metadata</h4>
+            <h4 className="text-foreground font-medium mb-2">BigQuery Metadata</h4>
             <pre className="text-xs text-zinc-300 whitespace-pre-wrap overflow-auto max-h-40">
               {JSON.stringify(response.meta, null, 2)}
             </pre>
@@ -207,7 +207,7 @@ export const BigQuerySmokeTest: React.FC = () => {
         {/* Sample Data */}
         {response?.data && response.data.length > 0 && (
           <div className="bg-zinc-800 p-4 rounded">
-            <h4 className="text-white font-medium mb-2">Sample Data (First 3 Rows)</h4>
+            <h4 className="text-foreground font-medium mb-2">Sample Data (First 3 Rows)</h4>
             <pre className="text-xs text-zinc-300 whitespace-pre-wrap overflow-auto max-h-60">
               {JSON.stringify(response.data.slice(0, 3), null, 2)}
             </pre>
@@ -216,7 +216,7 @@ export const BigQuerySmokeTest: React.FC = () => {
 
         {/* Full Response */}
         <details className="bg-zinc-900 p-4 rounded">
-          <summary className="text-white font-medium cursor-pointer">
+          <summary className="text-foreground font-medium cursor-pointer">
             Full Response (Click to expand)
           </summary>
           <pre className="text-xs text-zinc-300 whitespace-pre-wrap overflow-auto max-h-96 mt-2">
@@ -232,7 +232,7 @@ export const BigQuerySmokeTest: React.FC = () => {
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="text-white">BigQuery Edge Function Smoke Test</span>
+            <span className="text-foreground">BigQuery Edge Function Smoke Test</span>
             <Button 
               onClick={runSmokeTest} 
               disabled={isRunning}
@@ -257,7 +257,7 @@ export const BigQuerySmokeTest: React.FC = () => {
       {/* Test Instructions */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-white">What This Test Checks</CardTitle>
+          <CardTitle className="text-foreground">What This Test Checks</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-zinc-300">
           <div>✅ Edge Function invocation succeeds</div>

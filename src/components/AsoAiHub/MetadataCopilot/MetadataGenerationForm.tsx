@@ -68,7 +68,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
   return (
     <Card className="bg-zinc-900/50 border-zinc-800">
       <CardHeader>
-        <CardTitle className="text-white flex items-center space-x-2">
+        <CardTitle className="text-foreground flex items-center space-x-2">
           <FileText className="w-5 h-5 text-yodel-orange" />
           <span>AI Metadata Generation</span>
         </CardTitle>
@@ -89,7 +89,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
                 id="locale"
                 value={findLocaleLabel(locale)}
                 readOnly
-                className="bg-zinc-800 border-zinc-700 text-white"
+                className="bg-zinc-800 border-zinc-700 text-foreground"
               />
             </div>
 
@@ -99,7 +99,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
                 id="category"
                 value={category}
                 readOnly
-                className="bg-zinc-800 border-zinc-700 text-white"
+                className="bg-zinc-800 border-zinc-700 text-foreground"
               />
             </div>
           </div>
@@ -110,7 +110,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
               id="appName"
               value={appName}
               readOnly
-              className="bg-zinc-800 border-zinc-700 text-white"
+              className="bg-zinc-800 border-zinc-700 text-foreground"
             />
           </div>
 
@@ -121,7 +121,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
               value={formData.targetAudience}
               onChange={(e) => setFormData(prev => ({ ...prev, targetAudience: e.target.value }))}
               placeholder="e.g., Parents with children 3-8"
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+              className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400"
             />
           </div>
 
@@ -155,7 +155,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
                 value={formData.keywordData}
                 onChange={(e) => setFormData(prev => ({ ...prev, keywordData: e.target.value }))}
                 placeholder="Paste your keyword data here (tab-separated format)..."
-                className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400 min-h-32"
+                className="bg-zinc-800 border-zinc-700 text-foreground placeholder-zinc-400 min-h-32"
                 required
               />
             </div>
@@ -163,7 +163,7 @@ export const MetadataGenerationForm: React.FC<MetadataGenerationFormProps> = ({
 
           <Button
             type="submit"
-            className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-white"
+            className="w-full bg-yodel-orange hover:bg-yodel-orange/90 text-foreground"
             disabled={isLoading || !formData.keywordData}
           >
             {isLoading ? `Generating ${formData.generationType === 'complete' ? 'Complete Package' : formData.generationType}...` : `Generate ${formData.generationType === 'complete' ? 'Complete Package' : formData.generationType}`}
