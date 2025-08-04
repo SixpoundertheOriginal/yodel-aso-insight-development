@@ -268,7 +268,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                No entity intelligence available. Consider running enhanced analysis for better query generation.
+                No entity intelligence available. Consider running analysis for better query generation.
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -276,7 +276,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                   onClick={handleEnhanceAnalysis}
                 >
                   <Brain className="h-4 w-4 mr-1" />
-                  Run Enhanced Analysis
+                  Run Analysis
                 </Button>
               </AlertDescription>
             </Alert>
@@ -326,7 +326,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
           {/* Enhanced Entity Intelligence Analyzer */}
           {showEntityAnalyzer && (
             <div className="space-y-3">
-              <Badge variant="default" className="mb-2">Enhanced Analysis</Badge>
+              <Badge variant="default" className="mb-2">Analysis</Badge>
               <EntityIntelligenceAnalyzer
                 entityData={{
                   entityName: topicData.entityToTrack,
@@ -353,7 +353,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="default">Enhanced Analysis Complete</Badge>
+                  <Badge variant="default">Analysis Complete</Badge>
                   <Badge variant="outline">
                     {Math.round(enhancedEntityIntelligence.confidence_score * 100)}% Confidence
                   </Badge>
@@ -365,7 +365,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
               </div>
               <div className="p-4 bg-muted/30 rounded-lg">
                 <p className="text-sm text-muted-foreground mb-3">
-                  Enhanced entity intelligence with {enhancedEntityIntelligence.target_personas?.length || 0} personas, 
+                  Enhanced entity intelligence with {enhancedEntityIntelligence.target_personas?.length || 0} personas,
                   {enhancedEntityIntelligence.services?.length || 0} services, and 
                   {enhancedEntityIntelligence.competitors?.length || 0} competitors identified.
                 </p>
@@ -391,7 +391,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                   <li>• Run entity intelligence analysis for better query generation</li>
                 )}
                 {entityIntelligence && !enhancedEntityIntelligence && (
-                  <li>• Use enhanced analysis for more realistic user behavior simulation</li>
+                  <li>• Use analysis for more realistic user behavior simulation</li>
                 )}
                 {!topicData.context_description && (
                   <li>• Add context description for more targeted queries</li>

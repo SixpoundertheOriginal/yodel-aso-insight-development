@@ -69,67 +69,42 @@ export const EntityIntelligenceAnalyzer: React.FC<EntityIntelligenceAnalyzerProp
     if (!entityData) return;
 
     setIsAnalyzing(true);
-    setAnalysisStep("Scraping entity website and data...");
+    setAnalysisStep("Analyzing entity intelligence with AI...");
 
     try {
-      // First, get basic entity intelligence
-      setAnalysisStep("Gathering basic entity information...");
-      const basicData = await getBasicEntityIntelligence();
-      
-      // Then enhance with AI analysis
-      setAnalysisStep("Enhancing with AI analysis...");
-      const enhancedAnalysis = await enhanceWithAI(basicData);
+      const enhancedAnalysis = await enhanceWithAI();
       
       if (enhancedAnalysis) {
         setIntelligence(enhancedAnalysis);
         onIntelligenceGenerated(enhancedAnalysis);
-        setAnalysisStep("AI enhancement complete");
+        setAnalysisStep("Analysis complete");
         return;
       }
+      
+      throw new Error("Enhanced analysis failed");
     } catch (error) {
-      console.warn('AI enhancement failed, using fallback analysis:', error);
-    }
-
-    // Fallback to basic analysis
-    setAnalysisStep("Using fallback analysis...");
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAnalysisStep("Analyzing entity category...");
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAnalysisStep("Extracting target clients...");
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAnalysisStep("Identifying competitors...");
-
+      console.error('Error analyzing entity intelligence:', error);
+      // Create minimal fallback if absolutely needed
       const fallback: EnhancedEntityIntelligence = {
         entityName: entityData.entityName,
-        description: `Business entity: ${entityData.entityName}`,
-        specific_category: 'business_services',
-        target_personas: [{
-          name: 'business_clients',
-          demographics: 'Business professionals',
-          goals: ['solve business challenges'],
-          typical_queries: [`services offered by ${entityData.entityName}`]
-        }],
-        services: ['business services'],
-        targetClients: ['businesses'],
-        authentic_use_cases: ['business solutions'],
-        pain_points_solved: ['business challenges'],
+        description: `Unable to analyze ${entityData.entityName}. Please try again.`,
+        specific_category: 'unknown',
+        target_personas: [],
+        services: [],
+        targetClients: [],
+        authentic_use_cases: [],
+        pain_points_solved: [],
         competitors: [],
-        marketPosition: 'established',
-        industryFocus: ['business'],
+        marketPosition: 'unknown',
+        industryFocus: [],
         recentNews: [],
         user_language: [entityData.entityName],
-        confidence_score: 0.3,
+        confidence_score: 0.1,
         scrapedAt: new Date().toISOString()
       };
 
       setIntelligence(fallback);
       onIntelligenceGenerated(fallback);
-    } catch (error) {
-      console.error('Error analyzing entity intelligence:', error);
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep("");
@@ -137,33 +112,14 @@ export const EntityIntelligenceAnalyzer: React.FC<EntityIntelligenceAnalyzerProp
     }
   };
 
-  const getBasicEntityIntelligence = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('entity-intelligence-scraper', {
-        body: { 
-          entityName: entityData.entityName,
-          organizationId: 'default' // This should come from context
-        }
-      });
 
-      if (error) throw error;
-      return data?.intelligence || entityData;
-    } catch (error) {
-      console.error('Basic entity intelligence error:', error);
-      return entityData;
-    }
-  };
-
-  const enhanceWithAI = async (basicData: any): Promise<EnhancedEntityIntelligence | null> => {
+  const enhanceWithAI = async (): Promise<EnhancedEntityIntelligence | null> => {
     if (!entityData) return null;
 
     try {
       const { data, error } = await supabase.functions.invoke('enhanced-entity-intelligence', {
         body: { 
-          entityData: {
-            ...entityData,
-            ...basicData
-          }
+          entityData: entityData
         }
       });
 
@@ -175,7 +131,7 @@ export const EntityIntelligenceAnalyzer: React.FC<EntityIntelligenceAnalyzerProp
 
       return null;
     } catch (error) {
-      console.error('AI enhancement error:', error);
+      console.error('AI analysis error:', error);
       return null;
     }
   };
