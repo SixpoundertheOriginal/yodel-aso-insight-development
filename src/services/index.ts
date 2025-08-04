@@ -4,7 +4,6 @@ export { competitiveIntelligenceService } from './competitive-intelligence.servi
 export { exportService } from './export.service';
 export { securityService } from './security.service';
 export { dataValidationService } from './data-validation.service';
-export { cppStrategyService } from './cpp-strategy.service';
 export { inputDetectionService } from './input-detection.service';
 export { bypassPatternsService } from './bypass-patterns.service';
 export { correlationTracker } from './correlation-tracker.service';

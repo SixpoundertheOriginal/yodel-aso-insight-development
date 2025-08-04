@@ -91,7 +91,7 @@ const workflowTemplates: WorkflowTemplate[] = [
   {
     id: 'competitive-intelligence-flow',
     name: 'Competitive Intelligence Workflow',
-    description: 'Growth gap analysis → CPP strategy → Featuring opportunities',
+    description: 'Growth gap analysis → Featuring opportunities',
     icon: '🎯',
     steps: [
       {
@@ -102,18 +102,10 @@ const workflowTemplates: WorkflowTemplate[] = [
         outputMapping: { 'competitor_insights': 'positioning_data' }
       },
       {
-        id: 'cpp-strategy',
-        name: 'CPP Strategy Development',
-        copilotId: 'cpp-strategy-copilot',
-        requiredInputs: ['positioning_data'],
-        outputMapping: { 'cpp_themes': 'visual_strategy' },
-        autoTrigger: true
-      },
-      {
         id: 'featuring-alignment',
         name: 'Featuring Alignment',
         copilotId: 'featuring-assistant',
-        requiredInputs: ['visual_strategy'],
+        requiredInputs: ['positioning_data'],
         outputMapping: { 'featuring_strategy': 'editorial_ready' },
         autoTrigger: true
       }

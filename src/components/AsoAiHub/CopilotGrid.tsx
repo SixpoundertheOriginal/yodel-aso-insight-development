@@ -9,8 +9,8 @@ export const CopilotGrid: React.FC = () => {
   const { copilots } = useAsoAiHub();
 
   // Enhanced categorization with priority levels
-  const featuredCopilots = copilots.filter(c => 
-    ['metadata-copilot', 'growth-gap-finder', 'cpp-strategy-copilot'].includes(c.id)
+  const featuredCopilots = copilots.filter(c =>
+    ['metadata-copilot', 'growth-gap-finder'].includes(c.id)
   );
   
   const strategyCopilots = copilots.filter(c => 

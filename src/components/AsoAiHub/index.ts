@@ -5,7 +5,6 @@ export { CopilotInterface } from './CopilotInterface';
 export { CopilotChatMessage } from './CopilotChatMessage';
 export { MetadataCopilot } from './MetadataCopilot/MetadataCopilot';
 export { GrowthGapCopilot } from './GrowthGapCopilot';
-export { CppCopilot } from './CppCopilot';
 export { WorkflowManager } from './WorkflowManager';
 
 // Re-export types for convenience

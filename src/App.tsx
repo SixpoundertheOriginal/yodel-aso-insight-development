@@ -26,7 +26,6 @@ const ChatGPTVisibilityAudit = lazy(() => import("./pages/chatgpt-visibility-aud
 const FeaturingToolkit = lazy(() => import("./pages/featuring-toolkit"));
 const MetadataCopilot = lazy(() => import("./pages/metadata-copilot"));
 const GrowthGapCopilot = lazy(() => import("./pages/growth-gap-copilot"));
-const CppStrategyCopilot = lazy(() => import("./pages/cpp-strategy-copilot"));
 const CreativeAnalysis = lazy(() => import("./pages/creative-analysis"));
 const AsoKnowledgeEngine = lazy(() => import("./pages/aso-knowledge-engine"));
 const ASOUnified = lazy(() => import("./pages/aso-unified"));
@@ -71,7 +70,6 @@ function App() {
                           <Route path="/featuring-toolkit" element={<FeaturingToolkit />} />
                           <Route path="/metadata-copilot" element={<MetadataCopilot />} />
                           <Route path="/growth-gap-copilot" element={<GrowthGapCopilot />} />
-                          <Route path="/cpp-strategy-copilot" element={<CppStrategyCopilot />} />
                           <Route path="/creative-analysis" element={<CreativeAnalysis />} />
                           <Route path="/aso-knowledge-engine" element={<AsoKnowledgeEngine />} />
                           <Route path="/aso-unified" element={<ASOUnified />} />

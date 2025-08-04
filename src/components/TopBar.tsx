@@ -48,9 +48,8 @@ const TopBar: React.FC = React.memo(() => {
   // Growth Accelerator pages don't need app selector (they work independently)
   const growthAcceleratorPages = [
     '/aso-knowledge-engine',
-    '/metadata-copilot', 
+    '/metadata-copilot',
     '/growth-gap-copilot',
-    '/cpp-strategy-copilot',
     '/featuring-toolkit',
     '/creative-analysis',
     '/aso-ai-hub',

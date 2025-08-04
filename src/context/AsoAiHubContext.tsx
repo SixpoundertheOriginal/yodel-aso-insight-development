@@ -71,15 +71,6 @@ const initialCopilots: CopilotData[] = [
     status: 'available'
   },
   {
-    id: 'cpp-strategy-copilot',
-    name: 'CPP Strategy Copilot',
-    description: 'Analyze screenshots and generate Custom Product Page themes for maximum conversion',
-    icon: '🎯',
-    progress: 88,
-    category: 'strategy',
-    status: 'available'
-  },
-  {
     id: 'cpp-strategy-builder',
     name: 'CPP Strategy Builder',
     description: 'Build comprehensive Custom Product Page strategies with seasonal optimization',
