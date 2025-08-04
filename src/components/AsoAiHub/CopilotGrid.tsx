@@ -111,14 +111,14 @@ const CopilotSection: React.FC<CopilotSectionProps> = ({
                 </Badge>
               )}
             </div>
-            <p className="text-zinc-400 text-sm mt-1">{description}</p>
+            <p className="text-muted-foreground text-sm mt-1">{description}</p>
           </div>
         </div>
         
         {priority === 'featured' && (
           <div className="text-right">
-            <div className="text-sm text-zinc-400">Ready to Use</div>
-            <div className="text-xs text-yodel-orange">• Professional Grade</div>
+            <div className="text-sm text-muted-foreground">Ready to Use</div>
+            <div className="text-xs text-primary">• Professional Grade</div>
           </div>
         )}
       </div>

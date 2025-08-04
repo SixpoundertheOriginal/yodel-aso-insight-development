@@ -45,18 +45,18 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
   if (isLoading || analyzing) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        <span className="ml-3 text-zinc-400">Analyzing app elements...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-3 text-muted-foreground">Analyzing app elements...</span>
       </div>
     );
   }
 
   if (!analysis) {
     return (
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="py-12 text-center">
-          <Sparkles className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-          <p className="text-zinc-400">Unable to analyze app elements</p>
+          <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Unable to analyze app elements</p>
         </CardContent>
       </Card>
     );
@@ -65,7 +65,7 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Overall Score Summary */}
-      <Card className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-zinc-700">
+      <Card className="bg-gradient-to-r from-card to-muted border-border">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-foreground">
             <div className="flex items-center gap-2">
@@ -81,27 +81,27 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400">{analysis.appName.score}</div>
-              <div className="text-sm text-zinc-400">App Name</div>
+              <div className="text-sm text-muted-foreground">App Name</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">{analysis.title.score}</div>
-              <div className="text-sm text-zinc-400">Title</div>
+              <div className="text-sm text-muted-foreground">Title</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">{analysis.subtitle.score}</div>
-              <div className="text-sm text-zinc-400">Subtitle</div>
+              <div className="text-sm text-muted-foreground">Subtitle</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-400">{analysis.description.score}</div>
-              <div className="text-sm text-zinc-400">Description</div>
+              <div className="text-sm text-muted-foreground">Description</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-pink-400">{analysis.screenshots.score}</div>
-              <div className="text-sm text-zinc-400">Screenshots</div>
+              <div className="text-sm text-muted-foreground">Screenshots</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-cyan-400">{analysis.icon.score}</div>
-              <div className="text-sm text-zinc-400">Icon</div>
+              <div className="text-sm text-muted-foreground">Icon</div>
             </div>
           </div>
         </CardContent>

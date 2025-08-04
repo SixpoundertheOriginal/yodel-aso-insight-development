@@ -29,7 +29,7 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
     if (status === 'in-progress') {
       return {
         label: 'In Development',
-        color: 'bg-yodel-orange/20 text-yodel-orange border-yodel-orange/30',
+        color: 'bg-primary/20 text-primary border-primary/30',
         icon: <Clock className="w-3 h-3 mr-1" />
       };
     }
@@ -55,16 +55,16 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
   const isFeatured = priority === 'featured';
 
   return (
-    <Card className={`bg-zinc-900/50 backdrop-blur-sm border transition-all duration-300 hover:scale-105 ${getCardSize()} ${
+    <Card className={`glass-effect border transition-all duration-300 hover:scale-105 ${getCardSize()} ${
       isActive 
-        ? 'border-yodel-orange shadow-lg shadow-yodel-orange/20' 
-        : 'border-zinc-800 hover:border-zinc-700'
+        ? 'border-primary shadow-lg shadow-primary/20' 
+        : 'border-border hover:border-primary/30'
     } ${isFeatured ? 'relative overflow-hidden' : ''}`}>
       
       {/* Featured Badge */}
       {isFeatured && (
         <div className="absolute top-3 right-3 z-10">
-          <Badge className="bg-yodel-orange/20 text-yodel-orange border-yodel-orange/30 text-xs">
+          <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
             Featured
           </Badge>
         </div>
@@ -96,7 +96,7 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
       
       <CardContent className="pt-0 flex flex-col justify-between flex-1">
         <div>
-          <p className={`text-zinc-400 leading-relaxed mb-4 ${
+          <p className={`text-muted-foreground leading-relaxed mb-4 ${
             isFeatured ? 'text-sm' : 'text-sm'
           }`}>
             {copilot.description}
@@ -106,16 +106,16 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
           {copilot.progress > 0 && (
             <div className="mb-4">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-xs text-zinc-500">Optimization Level</span>
-                <span className="text-xs font-medium text-yodel-orange">
+                <span className="text-xs text-muted-foreground">Optimization Level</span>
+                <span className="text-xs font-medium text-primary">
                   {copilot.progress >= 90 ? 'Excellent' : 
                    copilot.progress >= 80 ? 'Very Good' : 
                    copilot.progress >= 70 ? 'Good' : 'Developing'}
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-zinc-700 rounded-full">
+              <div className="w-full h-1.5 bg-muted rounded-full">
                 <div 
-                  className="h-full bg-gradient-to-r from-yodel-orange to-yellow-400 rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-primary to-yellow-400 rounded-full transition-all duration-300"
                   style={{ width: `${copilot.progress}%` }}
                 />
               </div>
@@ -127,8 +127,8 @@ export const CopilotCard: React.FC<CopilotCardProps> = ({ copilot, priority = 'm
           onClick={handleLaunch}
           className={`w-full transition-all duration-300 mt-auto ${
             isActive
-              ? 'bg-yodel-orange/20 text-yodel-orange border border-yodel-orange hover:bg-yodel-orange/30'
-              : 'bg-yodel-orange hover:bg-yodel-orange/90 text-foreground'
+              ? 'bg-primary/20 text-primary border border-primary hover:bg-primary/30'
+              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
           } ${isFeatured ? 'h-10' : 'h-9'}`}
           variant={isActive ? "outline" : "default"}
         >
