@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { ModeSelector } from './ModeSelector';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
+import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
@@ -67,7 +68,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   onAuditCreate
 }) => {
   // Setup state
-  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'confirmation' | 'queries' | 'review'>('mode');
+  const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'auto-populate' | 'queries' | 'review'>('mode');
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [topicData, setTopicData] = useState<TopicAuditData | null>(null);
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedTopicQuery[]>([]);
@@ -75,6 +76,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [entityIntelligence, setEntityIntelligence] = useState<any>(null);
   const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
   const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
+  
+  // Auto-population state
+  const [autoPopulatedData, setAutoPopulatedData] = useState<TopicAuditData | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [entityInput, setEntityInput] = useState('');
+  const [isAnalyzingEntity, setIsAnalyzingEntity] = useState(false);
   
   // Loading states
   const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
@@ -92,8 +99,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
   const steps = [
     { id: 'mode', label: 'Analysis Type', icon: Settings },
-    { id: 'entity', label: auditMode === 'app' ? 'Select App' : 'Topic Setup', icon: Target },
-    { id: 'confirmation', label: 'Confirmation', icon: Brain },
+    { id: 'entity', label: auditMode === 'app' ? 'Select App' : 'Entity Input', icon: Target },
+    { id: 'auto-populate', label: 'Review & Edit', icon: Brain },
     { id: 'queries', label: 'Query Generation', icon: MessageSquare },
     { id: 'review', label: 'Review & Create', icon: CheckCircle }
   ];
@@ -127,7 +134,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         setGeneratedQueries([]);
         setShowEntityAnalyzer(false);
         setEnhancedEntityIntelligence(null);
-      } else if (previousStep.id === 'confirmation') {
+      } else if (previousStep.id === 'auto-populate') {
         setGeneratedQueries([]);
       } else if (previousStep.id === 'queries') {
         // Keep queries but allow editing
@@ -161,8 +168,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setSelectedApp(app);
     setAuditName(`${app.app_name} Visibility Audit - ${new Date().toLocaleDateString()}`);
     setAuditDescription(`ChatGPT visibility analysis for ${app.app_name} to identify optimization opportunities.`);
-    // Auto-proceed to confirmation for app mode
-    setCurrentStep('confirmation');
+    // Auto-proceed to auto-populate for app mode
+    setCurrentStep('auto-populate');
   };
 
   const handleTopicAnalysis = async (topic: TopicAuditData) => {
@@ -193,8 +200,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         });
       }
       
-      // Automatically proceed to confirmation step
-      setCurrentStep('confirmation');
+      // Automatically proceed to auto-populate step
+      setCurrentStep('auto-populate');
     } catch (error) {
       console.error('Error in topic analysis:', error);
       toast({
@@ -392,6 +399,80 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     return auditName.trim() && canProceedToQueries();
   };
 
+  // Auto-population logic using entity intelligence
+  const autoPopulateFromEntity = (intelligence: any) => {
+    console.log('🤖 Auto-populating from entity intelligence:', intelligence);
+    
+    // Simple mapping rules as specified in requirements
+    const mapTopicFromServices = (services: string[]): string => {
+      if (!services || services.length === 0) return intelligence.entityName + " services";
+      
+      const firstService = services[0].toLowerCase();
+      if (firstService.includes('marketing')) return "mobile marketing agencies";
+      if (firstService.includes('fitness')) return "fitness apps";
+      if (firstService.includes('language')) return "language learning apps";
+      
+      return services[0] + " providers";
+    };
+
+    const mapIndustryFromFocus = (industryFocus: string[], services: string[]): string => {
+      if (industryFocus && industryFocus.length > 0) {
+        return industryFocus[0];
+      }
+      if (services && services.length > 0) {
+        const service = services[0].toLowerCase();
+        if (service.includes('tech') || service.includes('software')) return "Technology";
+        if (service.includes('health') || service.includes('fitness')) return "Healthcare";
+        if (service.includes('finance')) return "Financial Services";
+        if (service.includes('education')) return "Education";
+        if (service.includes('marketing')) return "Marketing & Advertising";
+      }
+      return "Technology"; // Default
+    };
+
+    const mapTargetAudience = (targetClients: string[], services: string[]): string => {
+      if (targetClients && targetClients.length > 0) {
+        const firstClient = targetClients[0].toLowerCase();
+        if (firstClient.includes('enterprise') || firstClient.includes('business')) return "enterprise companies";
+        if (firstClient.includes('consumer') || firstClient.includes('individual')) return "consumers";
+        if (firstClient.includes('small business')) return "small businesses";
+      }
+      
+      // Infer from services
+      if (services && services.length > 0) {
+        const service = services[0].toLowerCase();
+        if (service.includes('agency') || service.includes('consulting')) return "enterprise companies";
+        if (service.includes('app') || service.includes('consumer')) return "consumers";
+      }
+      
+      return "businesses"; // Default
+    };
+
+    const autoPopulated: TopicAuditData = {
+      topic: mapTopicFromServices(intelligence.services || []),
+      industry: mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || []),
+      target_audience: mapTargetAudience(intelligence.targetClients || [], intelligence.services || []),
+      context_description: intelligence.description || `Visibility analysis for ${intelligence.entityName}`,
+      known_players: intelligence.competitors ? intelligence.competitors.map((comp: any) => 
+        typeof comp === 'string' ? comp : comp.name
+      ).slice(0, 5) : [],
+      geographic_focus: '',
+      entityToTrack: intelligence.entityName,
+      entityAliases: [],
+      queryStrategy: 'market_research',
+      competitorFocus: true,
+      intentLevel: 'medium',
+      entityIntelligence: intelligence
+    };
+
+    setAutoPopulatedData(autoPopulated);
+    setTopicData(autoPopulated);
+    setAuditName(`${intelligence.entityName} Visibility Audit - ${new Date().toLocaleDateString()}`);
+    setAuditDescription(`AI-powered ChatGPT visibility analysis for ${intelligence.entityName}`);
+    
+    console.log('✅ Auto-populated topic data:', autoPopulated);
+  };
+
   return (
     <Card className="bg-card border-border">
       <CardHeader>
@@ -522,28 +603,272 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 </>
               ) : (
                 <>
-                   <h3 className="text-lg font-semibold text-primary">Topic Analysis Setup</h3>
-                   <TopicAnalysisInterface 
-                     onTopicAnalysisGenerated={handleTopicAnalysis}
-                   />
+                   <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
+                   <div className="space-y-4">
+                     <div className="space-y-2">
+                       <Label htmlFor="entityInput">Entity to Analyze</Label>
+                       <Input
+                         id="entityInput"
+                         value={entityInput}
+                         onChange={(e) => setEntityInput(e.target.value)}
+                         placeholder="Enter entity name (e.g., 'Ogilvy', 'HubSpot', 'Instagram')"
+                         className="w-full"
+                       />
+                       <p className="text-xs text-muted-foreground">
+                         Enter the business, brand, or entity you want to analyze for ChatGPT visibility
+                       </p>
+                     </div>
+                     
+                     {entityInput.trim() && !isAnalyzingEntity && (
+                       <Button 
+                         onClick={() => {
+                           setIsAnalyzingEntity(true);
+                           // Start entity analysis which will auto-populate fields
+                         }}
+                         className="w-full"
+                       >
+                         <Brain className="h-4 w-4 mr-2" />
+                         Analyze Entity
+                       </Button>
+                     )}
+                     
+                     {isAnalyzingEntity && entityInput.trim() && (
+                       <EntityIntelligenceAnalyzer
+                         entityData={{
+                           entityName: entityInput.trim(),
+                           context: 'topic audit analysis',
+                           auditContext: {
+                             industry: '',
+                             topic: '',
+                             target_audience: '',
+                             known_competitors: [],
+                             queryStrategy: 'market_research'
+                           }
+                         }}
+                         onIntelligenceGenerated={(intelligence) => {
+                           setEnhancedEntityIntelligence(intelligence);
+                           // Auto-populate fields from entity intelligence
+                           autoPopulateFromEntity(intelligence);
+                         }}
+                         onAnalysisComplete={() => {
+                           setIsAnalyzingEntity(false);
+                           if (autoPopulatedData) {
+                             setCurrentStep('auto-populate');
+                           }
+                         }}
+                       />
+                     )}
+                   </div>
                  </>
                )}
             </div>
           )}
 
-          {/* Step 3: Topic & Entity Confirmation */}
-          {currentStep === 'confirmation' && (
+          {/* Step 3: Auto-Populate & Edit */}
+          {currentStep === 'auto-populate' && (
             <div className="space-y-4">
-              {auditMode === 'topic' && topicData ? (
-                 <TopicEntityConfirmation
-                   topicData={topicData}
-                   entityIntelligence={entityIntelligence}
-                   onConfirm={handleConfirmation}
-                   onEdit={() => setCurrentStep('entity')}
-                 />
+              {auditMode === 'topic' && autoPopulatedData ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-primary">Review Auto-Populated Fields</h3>
+                    <Badge variant="outline" className="text-green-600 border-green-200">
+                      <Brain className="h-3 w-3 mr-1" />
+                      AI Suggested
+                    </Badge>
+                  </div>
+                  
+                  <Alert className="bg-blue-900/20 border-blue-700/50">
+                    <Brain className="h-4 w-4" />
+                    <AlertDescription className="text-blue-400">
+                      Fields have been auto-populated based on entity analysis. Click the edit icon next to any field to modify it.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4">
+                    {/* Topic Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Topic</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'topic' ? null : 'topic')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'topic' ? (
+                        <Input
+                          value={autoPopulatedData.topic}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, topic: e.target.value} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full"
+                        />
+                      ) : (
+                        <p className="text-sm bg-background/50 border rounded-lg p-3">{autoPopulatedData.topic}</p>
+                      )}
+                    </div>
+
+                    {/* Industry Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Industry</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'industry' ? null : 'industry')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'industry' ? (
+                        <Input
+                          value={autoPopulatedData.industry}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, industry: e.target.value} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full"
+                        />
+                      ) : (
+                        <p className="text-sm bg-background/50 border rounded-lg p-3">{autoPopulatedData.industry}</p>
+                      )}
+                    </div>
+
+                    {/* Target Audience Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Target Audience</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'target_audience' ? null : 'target_audience')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'target_audience' ? (
+                        <Input
+                          value={autoPopulatedData.target_audience}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, target_audience: e.target.value} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          className="w-full"
+                        />
+                      ) : (
+                        <p className="text-sm bg-background/50 border rounded-lg p-3">{autoPopulatedData.target_audience}</p>
+                      )}
+                    </div>
+
+                    {/* Competitors Field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Known Competitors</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'competitors' ? null : 'competitors')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'competitors' ? (
+                        <Textarea
+                          value={autoPopulatedData.known_players.join(', ')}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, known_players: e.target.value.split(',').map(s => s.trim()).filter(Boolean)} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          placeholder="Enter competitors separated by commas"
+                          className="w-full min-h-[80px]"
+                        />
+                      ) : (
+                        <div className="bg-background/50 border rounded-lg p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {autoPopulatedData.known_players.map((competitor, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {competitor}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Context Description */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Context Description</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingField(editingField === 'context' ? null : 'context')}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {editingField === 'context' ? (
+                        <Textarea
+                          value={autoPopulatedData.context_description || ''}
+                          onChange={(e) => setAutoPopulatedData(prev => prev ? {...prev, context_description: e.target.value} : null)}
+                          onBlur={() => setEditingField(null)}
+                          autoFocus
+                          placeholder="Brief description of the analysis context"
+                          className="w-full min-h-[80px]"
+                        />
+                      ) : (
+                        <p className="text-sm bg-background/50 border rounded-lg p-3">{autoPopulatedData.context_description}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <Button
+                      onClick={() => {
+                        setTopicData(autoPopulatedData);
+                        handleConfirmation({ entityIntelligence: enhancedEntityIntelligence });
+                      }}
+                      className="flex-1"
+                      disabled={isGeneratingQueries}
+                    >
+                      {isGeneratingQueries ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating Queries...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-4 w-4 mr-2" />
+                          Continue to Query Generation
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep('entity')}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-2" />
+                      Back to Entity Input
+                    </Button>
+                  </div>
+                  
+                  {isGeneratingQueries && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>{queryGenerationProgress.stage}</span>
+                        <span>{queryGenerationProgress.current}/{queryGenerationProgress.total}</span>
+                      </div>
+                      <div className="w-full bg-background/50 rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${(queryGenerationProgress.current / queryGenerationProgress.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">App mode confirmation coming soon...</p>
+                  <p className="text-muted-foreground">App mode auto-population coming soon...</p>
                   <Button onClick={() => setCurrentStep('queries')} className="mt-4">
                     Continue to Query Generation
                   </Button>
