@@ -8,56 +8,89 @@ export interface TopicQueryTemplate {
   purchaseIntent?: boolean;
 }
 
-const TOPIC_QUERY_TEMPLATES: TopicQueryTemplate[] = [
+// Universal Enhanced Templates (work for agencies, apps, platforms, tools)
+const UNIVERSAL_ENHANCED_TEMPLATES: TopicQueryTemplate[] = [
+  // High-Intent Hiring/Selection Patterns (Universal)
   {
-    template: "What are the best {topic} for {target_audience}?",
-    type: "recommendation",
-    priority: 1
+    template: "Need {topic} for {pain_point}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
   },
   {
-    template: "I need help choosing {topic} for my {target_audience_context}. What do you recommend?",
-    type: "recommendation", 
-    priority: 1
+    template: "Looking to {action_verb} {topic} for {business_goal}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high", 
+    purchaseIntent: true
   },
   {
-    template: "Compare the top {topic} available right now",
+    template: "Which {topic} should I choose for {specific_context}?",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Best {topic} for {specific_need}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "{topic} recommendations for {refined_audience}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  
+  // Comparison Intent (Universal)
+  {
+    template: "{competitor_a} vs {competitor_b} for {use_case}",
     type: "comparison",
-    priority: 2
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
   },
   {
-    template: "What {topic} should I use for {target_audience}?",
-    type: "recommendation",
-    priority: 1
+    template: "How to choose the right {topic}",
+    type: "comparison", 
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
   },
   {
-    template: "I'm looking for {topic} that work well for {target_audience}. Any suggestions?",
-    type: "conversational",
-    priority: 2
-  },
-  {
-    template: "Which {topic} are most popular among {target_audience}?",
-    type: "recommendation",
-    priority: 2
-  },
-  {
-    template: "Help me find the right {topic} for {target_audience}",
-    type: "problem_solving",
-    priority: 2
-  },
-  {
-    template: "What are some alternatives to popular {topic}?",
+    template: "Compare top {topic} options",
     type: "comparison",
-    priority: 3
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  },
+  
+  // Urgent Need Intent (Universal)  
+  {
+    template: "Need {topic} ASAP for {deadline_context}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
   },
   {
-    template: "I'm having trouble choosing between different {topic}. What should I consider?",
-    type: "problem_solving",
-    priority: 3
+    template: "Quick {topic} recommendations",
+    type: "high_intent", 
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
   },
   {
-    template: "Can you recommend {topic} that are suitable for {target_audience}?",
-    type: "recommendation",
-    priority: 1
+    template: "Immediate {topic} needed for {project_type}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high", 
+    purchaseIntent: true
   }
 ];
 
@@ -215,47 +248,136 @@ export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
+    // Apply universal enhancements FIRST
+    const enhancedTopicData = this.applyUniversalEnhancements(topicData);
+    
     // Use analysis depth to determine actual query count
-    const targetCount = this.getQueryCountFromDepth(topicData.analysisDepth || 'standard', count);
+    const targetCount = this.getQueryCountFromDepth(enhancedTopicData.analysisDepth || 'standard', count);
     
     // Determine query strategy
-    const strategy = topicData.queryStrategy || 'mixed';
-    const intentLevel = topicData.intentLevel || 'medium';
+    const strategy = enhancedTopicData.queryStrategy || 'mixed';
+    const intentLevel = enhancedTopicData.intentLevel || 'medium';
     
-    // 🆕 Generate solution-specific queries based on solutions offered
-    if (topicData.solutionsOffered && topicData.solutionsOffered.length > 0) {
-      const solutionQueries = this.generateSolutionBasedQueries(topicData, Math.ceil(targetCount * 0.4));
-      queries.push(...solutionQueries);
-    }
+    // Generate enhanced universal queries using new templates
+    const universalQueries = this.generateUniversalQueries(enhancedTopicData, Math.ceil(targetCount * 0.7));
+    queries.push(...universalQueries);
     
-    // Generate intent-driven queries based on strategy
-    if (strategy === 'competitive_discovery' || strategy === 'mixed') {
-      const remaining = targetCount - queries.length;
-      const intentQueries = this.generateIntentDrivenQueries(topicData, Math.ceil(remaining * 0.4));
-      queries.push(...intentQueries);
-    }
-    
-    // Enhanced query generation with entity intelligence
-    if (topicData.entityIntelligence) {
-      const remaining = targetCount - queries.length;
-      const intelligenceQueries = this.generateIntelligenceBasedQueries(topicData, Math.ceil(remaining * 0.6));
-      queries.push(...intelligenceQueries);
-    }
-    
-    // Generate context-aware queries using industry category and target audience
-    const remaining = targetCount - queries.length;
-    if (remaining > 0) {
-      const contextualQueries = this.generateUserContextQueries(topicData, remaining);
-      queries.push(...contextualQueries);
-    }
-    
-    // Fill remaining slots with variations if needed
+    // Fill remaining slots with fallback queries if needed
     if (queries.length < targetCount) {
-      const additionalQueries = this.generateVariations(topicData, targetCount - queries.length);
-      queries.push(...additionalQueries);
+      const remaining = targetCount - queries.length;
+      const fallbackQueries = this.generateUserContextQueries(enhancedTopicData, remaining);
+      queries.push(...fallbackQueries);
     }
     
     return queries.slice(0, targetCount);
+  }
+
+  // Universal enhancements - Step 1: Apply smart fixes
+  private static applyUniversalEnhancements(topicData: TopicAuditData): TopicAuditData {
+    return {
+      ...topicData,
+      target_audience: this.refineAudience(topicData.topic, topicData.target_audience),
+      solutionsOffered: this.cleanSolutions(topicData.solutionsOffered || [])
+    };
+  }
+
+  // Step 2: Smart audience detection (Universal)
+  private static refineAudience(topic: string, originalAudience: string): string {
+    if (originalAudience === 'consumers') {
+      if (topic.includes('agency') || topic.includes('consultant') || topic.includes('specialist')) {
+        return 'business owners';
+      }
+      if (topic.includes('fitness') || topic.includes('health')) {
+        return 'health-conscious individuals';
+      }
+      if (topic.includes('language') || topic.includes('learning')) {
+        return 'language learners';
+      }
+      if (topic.includes('mobile') || topic.includes('app')) {
+        return 'mobile users';
+      }
+    }
+    return originalAudience;
+  }
+
+  // Step 3: Clean solution text processing
+  private static cleanSolutions(solutions: string[]): string[] {
+    return solutions.map(solution => 
+      solution.replace(/\s+services?$/i, '').replace(/\s+solutions?$/i, '')
+    );
+  }
+
+  // Step 4: Generate universal queries using enhanced templates
+  private static generateUniversalQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    UNIVERSAL_ENHANCED_TEMPLATES.forEach(template => {
+      if (queries.length >= count) return;
+      
+      const queryText = this.populateUniversalVariables(template.template, topicData);
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: template.type as any,
+        priority: template.priority,
+        target_entity: topicData.entityToTrack,
+        search_intent: template.purchaseIntent ? 'purchase_intent' : 'research',
+        purchase_intent: template.purchaseIntent ? 'high' : 'low',
+        source: 'universal_enhanced'
+      });
+    });
+    
+    return queries.slice(0, count);
+  }
+
+  // Step 5: Smart variable population (Universal)
+  private static populateUniversalVariables(template: string, context: TopicAuditData): string {
+    const actionVerb = context.topic.includes('agency') ? 'hire' : 'find';
+    const painPoint = this.generatePainPoints(context.industry);
+    const businessGoal = this.generateGoals(context.target_audience);
+    const specificContext = context.industrySubVertical || context.industry;
+    const specificNeed = `${context.target_audience} needs`;
+    const refinedAudience = context.target_audience;
+    const competitors = context.known_players;
+    const useCase = `${context.target_audience} use cases`;
+    const deadlineContext = 'urgent project needs';
+    const projectType = `${context.industry} projects`;
+    
+    return template
+      .replace(/{topic}/g, context.topic)
+      .replace(/{action_verb}/g, actionVerb)
+      .replace(/{pain_point}/g, painPoint)
+      .replace(/{business_goal}/g, businessGoal)
+      .replace(/{specific_context}/g, specificContext)
+      .replace(/{specific_need}/g, specificNeed)
+      .replace(/{refined_audience}/g, refinedAudience)
+      .replace(/{competitor_a}/g, competitors[0] || 'leading provider')
+      .replace(/{competitor_b}/g, competitors[1] || 'alternatives')
+      .replace(/{use_case}/g, useCase)
+      .replace(/{deadline_context}/g, deadlineContext)
+      .replace(/{project_type}/g, projectType);
+  }
+
+  // Universal context generators
+  private static generatePainPoints(industry: string): string {
+    const painPoints: Record<string, string> = {
+      'Technology': 'declining app downloads',
+      'Mobile Technology': 'poor app store visibility',
+      'Marketing': 'low user acquisition',
+      'Advertising': 'high customer acquisition costs'
+    };
+    return painPoints[industry] || 'business growth challenges';
+  }
+
+  private static generateGoals(audience: string): string {
+    const goals: Record<string, string> = {
+      'business owners': 'business growth',
+      'mobile users': 'better app experience',
+      'health-conscious individuals': 'fitness goals',
+      'language learners': 'language mastery'
+    };
+    return goals[audience] || 'improved outcomes';
   }
 
   private static getQueryCountFromDepth(depth: 'standard' | 'comprehensive' | 'deep', requestedCount: number): number {
