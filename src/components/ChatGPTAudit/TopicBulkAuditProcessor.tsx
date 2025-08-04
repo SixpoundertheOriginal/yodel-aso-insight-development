@@ -419,6 +419,52 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         .eq('id', selectedAuditRun.id);
       
       onStatusChange();
+      
+      toast({
+        title: 'Audit Stopped',
+        description: 'Processing has been stopped and audit reset to pending',
+      });
+    }
+  };
+
+  const deleteAudit = async () => {
+    if (!selectedAuditRun) return;
+    
+    if (selectedAuditRun.status === 'running') {
+      toast({
+        title: 'Cannot Delete',
+        description: 'Please stop the audit before deleting',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Delete associated queries first
+      await supabase
+        .from('chatgpt_queries')
+        .delete()
+        .eq('audit_run_id', selectedAuditRun.id);
+
+      // Delete the audit run
+      await supabase
+        .from('chatgpt_audit_runs')
+        .delete()
+        .eq('id', selectedAuditRun.id);
+
+      toast({
+        title: 'Audit Deleted',
+        description: 'Audit and all associated data have been deleted',
+      });
+
+      onStatusChange();
+    } catch (error) {
+      console.error('Error deleting audit:', error);
+      toast({
+        title: 'Delete Failed',
+        description: 'Failed to delete audit. Please try again.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -534,7 +580,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         )}
 
         {/* Action Buttons */}
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           {canProcess && (
             <Button 
               onClick={startProcessing}
@@ -564,12 +610,22 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
               className="flex items-center space-x-2"
             >
               <Square className="h-4 w-4" />
-              <span>Stop</span>
+              <span>Stop Audit</span>
             </Button>
           )}
+
+          {/* Delete Button - Always visible but disabled during processing */}
+          <Button 
+            onClick={deleteAudit}
+            variant="destructive"
+            disabled={selectedAuditRun.status === 'running'}
+            className="flex items-center space-x-2 ml-auto"
+          >
+            Delete Audit
+          </Button>
           
           {!isProcessing && processingStats.total > 0 && (
-            <div className="text-sm text-muted-foreground flex items-center">
+            <div className="text-sm text-muted-foreground flex items-center w-full">
               Processing query {processingStats.completed + processingStats.failed + 1} of {processingStats.total}
             </div>
           )}
