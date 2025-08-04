@@ -66,11 +66,6 @@ const aiToolsItems = [
     url: "/chatgpt-visibility-audit",
     icon: Brain,
   },
-  {
-    title: "Portfolio Manager",
-    url: "/apps",
-    icon: Smartphone,
-  },
 ];
 
 // Growth Accelerators - Dedicated copilot interfaces
@@ -242,16 +237,30 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === '/app-discovery'}
+                      tooltip="App Intelligence"
+                      className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
+                    >
+                      <Link to="/app-discovery" className="flex items-center gap-3">
+                        <Database className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                        <span className="truncate font-medium">App Intelligence</span>
+                      </Link>
+                   </SidebarMenuButton>
+                 </SidebarMenuItem>
+
                 <SidebarMenuItem>
                    <SidebarMenuButton
                      asChild
-                     isActive={location.pathname === '/app-discovery'}
-                     tooltip="App Intelligence"
+                     isActive={location.pathname === '/apps'}
+                     tooltip="Portfolio Manager"
                      className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                    >
-                     <Link to="/app-discovery" className="flex items-center gap-3">
-                       <Database className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                       <span className="truncate font-medium">App Intelligence</span>
+                     <Link to="/apps" className="flex items-center gap-3">
+                       <Smartphone className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                       <span className="truncate font-medium">Portfolio Manager</span>
                      </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
