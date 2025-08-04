@@ -14,7 +14,6 @@ import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
-import { EntityIntelligenceService } from '@/services/entity-intelligence.service';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Target, 
@@ -184,21 +183,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         description: "Generating entity intelligence...",
       });
       
-      // Fetch basic entity intelligence first
-      console.log('🔍 Fetching basic entity intelligence for:', topic.entityToTrack);
-      const intelligence = await EntityIntelligenceService.getEntityIntelligence(
-        topic.entityToTrack,
-        'default-org'
-      );
-
-      if (intelligence) {
-        setEntityIntelligence(intelligence);
-        console.log('🧠 Entity intelligence received:', intelligence);
-        toast({
-          title: "Analysis Complete",
-          description: "Entity intelligence generated successfully!",
-        });
-      }
+      // Enhanced analysis will be handled by EntityIntelligenceAnalyzer component
+      console.log('🔍 Starting enhanced entity intelligence analysis for:', topic.entityToTrack);
+      toast({
+        title: "Enhanced Analysis Starting",
+        description: "Using AI to analyze entity intelligence...",
+      });
       
       // Automatically proceed to auto-populate step
       setCurrentStep('auto-populate');
