@@ -8,13 +8,59 @@ export interface TopicQueryTemplate {
   purchaseIntent?: boolean;
 }
 
+// Foundation Templates for High-Volume Discovery Queries (Priority 1)
+const FOUNDATION_TEMPLATES: TopicQueryTemplate[] = [
+  {
+    template: "Best {primary_solution} {entity_type}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Top {primary_solution} {entity_type}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high", 
+    purchaseIntent: true
+  },
+  {
+    template: "Leading {primary_solution} {entity_type}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Best {entity_type} for {primary_solution}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Top {entity_type} for {primary_solution}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Best {primary_solution} {entity_type} for {refined_audience}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  }
+];
+
 // Universal Enhanced Templates (work for agencies, apps, platforms, tools)
 const UNIVERSAL_ENHANCED_TEMPLATES: TopicQueryTemplate[] = [
   // High-Intent Hiring/Selection Patterns (Universal)
   {
     template: "Need {topic} for {pain_point}",
     type: "high_intent",
-    priority: 1,
+    priority: 2,
     intentLevel: "high",
     purchaseIntent: true
   },
@@ -258,8 +304,12 @@ export class TopicQueryGeneratorService {
     const strategy = enhancedTopicData.queryStrategy || 'mixed';
     const intentLevel = enhancedTopicData.intentLevel || 'medium';
     
-    // Generate enhanced universal queries using new templates
-    const universalQueries = this.generateUniversalQueries(enhancedTopicData, Math.ceil(targetCount * 0.7));
+    // Priority 1: Generate foundation templates (30% of queries)
+    const foundationQueries = this.generateFoundationQueries(enhancedTopicData, Math.ceil(targetCount * 0.3));
+    queries.push(...foundationQueries);
+    
+    // Priority 2: Generate enhanced universal queries (40% of queries)
+    const universalQueries = this.generateUniversalQueries(enhancedTopicData, Math.ceil(targetCount * 0.4));
     queries.push(...universalQueries);
     
     // Fill remaining slots with fallback queries if needed
@@ -305,6 +355,34 @@ export class TopicQueryGeneratorService {
     return solutions.map(solution => 
       solution.replace(/\s+services?$/i, '').replace(/\s+solutions?$/i, '')
     );
+  }
+
+  // NEW: Generate foundation templates for high-volume discovery queries 
+  private static generateFoundationQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    // Extract primary solution and detect entity type
+    const primarySolution = this.extractPrimarySolution(topicData);
+    const entityType = this.detectEntityType(topicData);
+    
+    FOUNDATION_TEMPLATES.forEach(template => {
+      if (queries.length >= count) return;
+      
+      const queryText = this.populateFoundationVariables(template.template, topicData, primarySolution, entityType);
+      
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: template.type as any,
+        priority: template.priority,
+        target_entity: topicData.entityToTrack,
+        search_intent: template.purchaseIntent ? 'purchase_intent' : 'research',
+        purchase_intent: template.purchaseIntent ? 'high' : 'low',
+        source: 'foundation'
+      });
+    });
+    
+    return queries.slice(0, count);
   }
 
   // Step 4: Generate universal queries using enhanced templates
@@ -357,6 +435,48 @@ export class TopicQueryGeneratorService {
       .replace(/{use_case}/g, useCase)
       .replace(/{deadline_context}/g, deadlineContext)
       .replace(/{project_type}/g, projectType);
+  }
+
+  // NEW: Extract primary solution from solutions offered
+  private static extractPrimarySolution(topicData: TopicAuditData): string {
+    if (!topicData.solutionsOffered || topicData.solutionsOffered.length === 0) {
+      return topicData.topic;
+    }
+    
+    // Take the first solution and extract main terms
+    const primarySolution = topicData.solutionsOffered[0]
+      .toLowerCase()
+      .replace(/\b(app store optimization|aso)\b/gi, 'ASO')
+      .replace(/\b(user acquisition)\b/gi, 'user acquisition')
+      .replace(/\b(mobile analytics)\b/gi, 'mobile analytics')
+      .replace(/\b(creative strategy)\b/gi, 'creative strategy');
+    
+    return primarySolution;
+  }
+
+  // NEW: Detect entity type from context
+  private static detectEntityType(topicData: TopicAuditData): string {
+    const topic = topicData.topic.toLowerCase();
+    const solutions = (topicData.solutionsOffered || []).join(' ').toLowerCase();
+    
+    if (topic.includes('agency') || solutions.includes('agency') || solutions.includes('consultant') || solutions.includes('specialist')) {
+      return 'agency';
+    }
+    if (topic.includes('app') || topicData.industry.includes('Mobile')) {
+      return 'app';
+    }
+    if (topic.includes('platform') || topic.includes('software') || topic.includes('tool')) {
+      return 'platform';
+    }
+    return 'company';
+  }
+
+  // NEW: Populate foundation template variables
+  private static populateFoundationVariables(template: string, context: TopicAuditData, primarySolution: string, entityType: string): string {
+    return template
+      .replace(/{primary_solution}/g, primarySolution)
+      .replace(/{entity_type}/g, entityType)
+      .replace(/{refined_audience}/g, context.target_audience);
   }
 
   // Universal context generators
