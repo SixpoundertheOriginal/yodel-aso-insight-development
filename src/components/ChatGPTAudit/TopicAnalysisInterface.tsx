@@ -23,6 +23,9 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
     known_players: [],
     entityToTrack: '',
     entityAliases: [],
+    queryStrategy: 'mixed',
+    competitorFocus: false,
+    intentLevel: 'medium'
   });
 
   const [newPlayer, setNewPlayer] = useState('');
@@ -222,11 +225,150 @@ export const TopicAnalysisInterface: React.FC<TopicAnalysisInterfaceProps> = ({
           )}
         </div>
 
+        {/* Query Strategy Configuration */}
+        <div className="space-y-6 p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-lg border-2 border-blue-200/20">
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Brain className="h-5 w-5 text-blue-500" />
+              <h3 className="text-lg font-semibold text-primary">Query Strategy</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Configure how queries are generated for competitive analysis
+            </p>
+          </div>
+
+          {/* Query Strategy Type */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Analysis Focus</Label>
+            <Select 
+              value={topicData.queryStrategy} 
+              onValueChange={(value: 'competitive_discovery' | 'market_research' | 'mixed') => 
+                setTopicData({...topicData, queryStrategy: value})
+              }
+            >
+              <SelectTrigger className="bg-background/80 border-border h-11">
+                <SelectValue placeholder="Select analysis focus" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border-border shadow-lg z-50">
+                <SelectItem value="competitive_discovery">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Competitive Discovery</span>
+                    <span className="text-xs text-muted-foreground">Focus on customer purchase intent</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="market_research">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Market Research</span>
+                    <span className="text-xs text-muted-foreground">General informational queries</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="mixed">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Mixed Approach</span>
+                    <span className="text-xs text-muted-foreground">Balanced mix of both types</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Intent Level */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Purchase Intent Level</Label>
+            <Select 
+              value={topicData.intentLevel} 
+              onValueChange={(value: 'high' | 'medium' | 'low') => 
+                setTopicData({...topicData, intentLevel: value})
+              }
+            >
+              <SelectTrigger className="bg-background/80 border-border h-11">
+                <SelectValue placeholder="Select intent level" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border-border shadow-lg z-50">
+                <SelectItem value="high">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-green-600">High Intent</span>
+                    <span className="text-xs text-muted-foreground">Ready to hire/purchase queries</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="medium">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-orange-600">Medium Intent</span>
+                    <span className="text-xs text-muted-foreground">Comparing and evaluating options</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="low">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-blue-600">Low Intent</span>
+                    <span className="text-xs text-muted-foreground">Learning and research phase</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Intent Level Explanations */}
+            <div className="mt-3 p-3 bg-background/50 rounded-md border border-border">
+              <div className="text-sm space-y-2">
+                <div className="font-medium text-foreground">Query Examples by Intent:</div>
+                {topicData.intentLevel === 'high' && (
+                  <div className="space-y-1">
+                    <div className="text-green-600 font-medium">High Intent (Purchase Ready):</div>
+                    <div className="text-xs text-muted-foreground pl-2 space-y-0.5">
+                      <div>• "Best {topicData.topic || 'marketing agencies'} for hire"</div>
+                      <div>• "Which {topicData.topic || 'marketing agency'} should I choose?"</div>
+                      <div>• "{topicData.topic || 'Marketing agency'} pricing and services"</div>
+                    </div>
+                  </div>
+                )}
+                {topicData.intentLevel === 'medium' && (
+                  <div className="space-y-1">
+                    <div className="text-orange-600 font-medium">Medium Intent (Evaluating):</div>
+                    <div className="text-xs text-muted-foreground pl-2 space-y-0.5">
+                      <div>• "{topicData.topic || 'Marketing agency'} vs in-house team"</div>
+                      <div>• "Compare {topicData.topic || 'marketing agencies'}"</div>
+                      <div>• "Pros and cons of hiring {topicData.topic || 'marketing agencies'}"</div>
+                    </div>
+                  </div>
+                )}
+                {topicData.intentLevel === 'low' && (
+                  <div className="space-y-1">
+                    <div className="text-blue-600 font-medium">Low Intent (Research):</div>
+                    <div className="text-xs text-muted-foreground pl-2 space-y-0.5">
+                      <div>• "How to improve {topicData.industry || 'marketing'} performance"</div>
+                      <div>• "{topicData.industry || 'Marketing'} best practices"</div>
+                      <div>• "What is {topicData.topic || 'digital marketing'}?"</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Competitor Focus Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="competitorFocus"
+                checked={topicData.competitorFocus || false}
+                onChange={(e) => setTopicData({...topicData, competitorFocus: e.target.checked})}
+                className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
+              />
+              <Label htmlFor="competitorFocus" className="text-sm font-medium cursor-pointer">
+                Focus on competitive positioning queries
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground pl-7">
+              Emphasize queries where customers compare different service providers
+            </p>
+          </div>
+        </div>
+
         {/* Optional Fields - Expandable */}
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-base font-medium text-muted-foreground">Optional Enhancements</h3>
-            <p className="text-xs text-muted-foreground">Add more context for better query generation</p>
+            <h3 className="text-base font-medium text-muted-foreground">Additional Context</h3>
+            <p className="text-xs text-muted-foreground">Add more details for enhanced analysis</p>
           </div>
 
           {/* Optional context */}
