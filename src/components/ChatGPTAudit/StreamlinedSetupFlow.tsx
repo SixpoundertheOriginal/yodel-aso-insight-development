@@ -513,7 +513,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             const isComplete = isStepComplete(step.id);
             
             return (
-              <React.Fragment key={step.id}>
+              <div key={step.id} className="flex items-center">
                 <div className="flex flex-col items-center space-y-2">
                   <div className={`p-2 rounded-full border-2 transition-colors ${
                     isCurrent 
@@ -536,9 +536,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 </div>
                 
                 {index < steps.length - 1 && (
-                  <ChevronRight className="h-4 w-4 text-zinc-600" />
+                  <ChevronRight className="h-4 w-4 text-zinc-600 ml-4" />
                 )}
-              </React.Fragment>
+              </div>
             );
           })}
         </div>
@@ -597,9 +597,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                     }}
                     onAnalysisComplete={() => {
                       setIsAnalyzingEntity(false);
-                      if (autoPopulatedData) {
-                        setCurrentStep('auto-populate');
-                      }
+                      // Always move to auto-populate step after analysis completes
+                      setCurrentStep('auto-populate');
                     }}
                   />
                 )}
