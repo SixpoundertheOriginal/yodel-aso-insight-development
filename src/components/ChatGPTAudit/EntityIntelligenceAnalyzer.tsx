@@ -11,6 +11,15 @@ interface EntityData {
   context?: string;
   websiteData?: any;
   searchData?: any;
+  // Enhanced audit context for competitive research
+  auditContext?: {
+    industry: string;
+    topic: string;
+    target_audience: string;
+    known_competitors: string[];
+    geographic_focus?: string;
+    queryStrategy?: 'competitive_discovery' | 'market_research' | 'mixed';
+  };
 }
 
 interface EnhancedEntityIntelligence {

@@ -18,6 +18,15 @@ interface EntityData {
   websiteData?: any;
   searchData?: any;
   context?: string;
+  // Enhanced context for competitive research
+  auditContext?: {
+    industry: string;
+    topic: string;
+    target_audience: string;
+    known_competitors: string[];
+    geographic_focus?: string;
+    queryStrategy?: 'competitive_discovery' | 'market_research' | 'mixed';
+  };
 }
 
 interface EnhancedEntityIntelligence {
@@ -109,80 +118,115 @@ async function analyzeEntityWithAI(entityData: EntityData): Promise<EnhancedEnti
     throw new Error('OpenAI API key not configured');
   }
 
-  const prompt = `
-Analyze this entity for ChatGPT visibility optimization. You are a business intelligence expert who understands real user behavior and business contexts.
+  // Build context-driven prompt based on audit data
+  const buildContextualPrompt = () => {
+    const auditContext = entityData.auditContext;
+    
+    // Base research prompt
+    let prompt = `
+You are a business intelligence researcher analyzing "${entityData.entityName}" for competitive analysis. Use real-world business context to make this analysis highly accurate.
 
-Entity: ${entityData.entityName}
-Website Data: ${JSON.stringify(entityData.websiteData || {}, null, 2)}
-Search Context: ${entityData.context || 'General business analysis'}
+Entity to Research: ${entityData.entityName}
+Basic Data: ${JSON.stringify(entityData.websiteData || {}, null, 2)}
+`;
 
-Extract structured data for natural query generation:
+    // Add competitive context if available
+    if (auditContext) {
+      prompt += `
+COMPETITIVE RESEARCH CONTEXT:
+- Industry: ${auditContext.industry}
+- Topic Focus: ${auditContext.topic}
+- Target Audience: ${auditContext.target_audience}
+- Known Market Players: ${auditContext.known_competitors.join(', ')}
+- Geographic Focus: ${auditContext.geographic_focus || 'Global'}
+- Analysis Strategy: ${auditContext.queryStrategy || 'mixed'}
 
-1. SPECIFIC_CATEGORY: Precise business category, not broad
-   - NOT "Consulting" → "Digital Marketing Consulting"
-   - NOT "Technology" → "AI-Powered Analytics"
+RESEARCH APPROACH: Act as a real-time researcher. Based on the industry context "${auditContext.industry}" and the fact that competitors include "${auditContext.known_competitors.join(', ')}", what specific services would "${entityData.entityName}" most likely offer in the "${auditContext.topic}" space?
 
-2. TARGET_PERSONAS: Real client types with specific goals and search queries
-   - NOT "businesses" → "B2B SaaS startups", "enterprise_retailers"
-   - Include demographics, goals, and how they actually search for services
+Consider these market dynamics:
+- How does "${entityData.entityName}" compete with ${auditContext.known_competitors.slice(0, 3).join(', ')}?
+- What would clients in "${auditContext.target_audience}" specifically search for when looking for "${auditContext.topic}" solutions?
+- What market gaps exist between known players: ${auditContext.known_competitors.join(', ')}?
+`;
+    } else {
+      prompt += `
+GENERAL RESEARCH APPROACH: Research "${entityData.entityName}" as a business intelligence expert. Make educated inferences about their services, target clients, and competitive positioning based on their name, industry context, and typical business patterns.
+`;
+    }
 
-3. SERVICES: Core service offerings and capabilities
-   - What specific services/products does this entity provide?
-   - How do they differentiate from competitors?
+    prompt += `
 
-4. AUTHENTIC_USE_CASES: How clients actually use their services
-   - NOT "general_consulting" → "launching new product in European market"
-   - Real client scenarios and contexts
+ANALYSIS REQUIREMENTS - Be Specific and Research-Driven:
 
-5. PAIN_POINTS_SOLVED: Problems this entity uniquely addresses
-   - What client problems does this entity solve vs competitors?
-   - Specific business challenges they tackle
+1. PRECISE_BUSINESS_CATEGORY: 
+   - Research what "${entityData.entityName}" actually does in their specific market
+   - NOT generic like "Consulting" → Specific like "Mobile App Store Optimization for Enterprise"
+   - Consider industry context: ${auditContext?.industry || 'business services'}
 
-6. COMPETITOR_CONTEXT: Main competitors with positioning
-   - Direct competitors with strengths/weaknesses
-   - How this entity is different/better
+2. REAL_SERVICES_OFFERED:
+   - What specific services would "${entityData.entityName}" provide based on their market position?
+   - How do they differentiate from competitors: ${auditContext?.known_competitors.slice(0, 3).join(', ') || 'market leaders'}?
+   - Focus on services that clients in "${auditContext?.target_audience || 'business professionals'}" would actually pay for
 
-7. USER_LANGUAGE: How real clients describe this entity
-   - Natural language patterns clients use
-   - Key phrases clients would search for
+3. AUTHENTIC_TARGET_PERSONAS:
+   - Who ACTUALLY hires companies like "${entityData.entityName}"?
+   - What are their real job titles, company sizes, pain points?
+   - How do they search for solutions like "${auditContext?.topic || 'business services'}"?
+   - Include their typical search queries and purchase intent
 
-8. TARGET_CLIENTS: Specific client segments they serve
-   - Industry verticals, company sizes, geographic regions
-   - Client characteristics and requirements
+4. COMPETITIVE_POSITIONING:
+   - How does "${entityData.entityName}" compare to: ${auditContext?.known_competitors.join(', ') || 'industry leaders'}?
+   - What's their unique value proposition vs competitors?
+   - Where do they fit in the market hierarchy?
+
+5. CLIENT_LANGUAGE_PATTERNS:
+   - How do real clients describe companies like "${entityData.entityName}"?
+   - What phrases would trigger recommendations for this type of service?
+   - Industry-specific terminology clients use when searching
+
+6. REALISTIC_USE_CASES:
+   - Specific client scenarios where "${entityData.entityName}" gets hired
+   - Real business problems they solve vs generic consulting
+   - Context: "${auditContext?.target_audience || 'businesses'}" looking for "${auditContext?.topic || 'business solutions'}"
 
 Return ONLY valid JSON:
 {
-  "entityName": "string",
-  "website": "string (if known)",
-  "description": "comprehensive description",
-  "specific_category": "string",
+  "entityName": "${entityData.entityName}",
+  "website": "string (if research indicates website)",
+  "description": "research-based comprehensive description",
+  "specific_category": "precise category based on research",
   "target_personas": [
     {
-      "name": "string", 
-      "demographics": "string", 
-      "goals": ["string"],
-      "typical_queries": ["string"]
+      "name": "specific job title/role", 
+      "demographics": "company size, industry, location specifics", 
+      "goals": ["specific business goals they're trying to achieve"],
+      "typical_queries": ["actual search phrases they would use"]
     }
   ],
-  "services": ["string"],
-  "targetClients": ["string"],
-  "authentic_use_cases": ["string"],
-  "pain_points_solved": ["string"],
+  "services": ["specific service offerings based on competitive research"],
+  "targetClients": ["specific client segments with company characteristics"],
+  "authentic_use_cases": ["real scenarios where clients hire this type of company"],
+  "pain_points_solved": ["specific problems they solve vs generic business challenges"],
   "competitors": [
     {
-      "name": "string", 
-      "positioning": "string",
-      "weakness": "string (optional)"
+      "name": "competitor name", 
+      "positioning": "how they position vs ${entityData.entityName}",
+      "weakness": "where ${entityData.entityName} might be stronger"
     }
   ],
   "marketPosition": "startup|established|leader|emerging",
-  "industryFocus": ["string"],
-  "recentNews": ["string"],
-  "user_language": ["string"],
-  "confidence_score": 0.95,
+  "industryFocus": ["specific industries they serve"],
+  "recentNews": ["recent developments if research suggests any"],
+  "user_language": ["natural phrases clients use to describe this type of service"],
+  "confidence_score": 0.85,
   "scrapedAt": "${new Date().toISOString()}"
 }
 `;
+    
+    return prompt;
+  };
+
+  const prompt = buildContextualPrompt();
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',

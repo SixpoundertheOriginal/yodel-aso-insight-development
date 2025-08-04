@@ -331,6 +331,14 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                 entityData={{
                   entityName: topicData.entityToTrack,
                   context: topicData.context_description,
+                  auditContext: {
+                    industry: topicData.industry,
+                    topic: topicData.topic,
+                    target_audience: topicData.target_audience,
+                    known_competitors: topicData.known_players || [],
+                    geographic_focus: topicData.geographic_focus,
+                    queryStrategy: topicData.queryStrategy
+                  }
                 }}
                 onIntelligenceGenerated={(intelligence) => {
                   setEnhancedEntityIntelligence(intelligence);
