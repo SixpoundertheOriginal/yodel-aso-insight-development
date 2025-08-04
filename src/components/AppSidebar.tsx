@@ -121,15 +121,15 @@ export function AppSidebar() {
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-zinc-700">
-      <SidebarHeader className="border-b border-zinc-700 p-4">
+    <Sidebar collapsible="icon" className="border-r border-footer-border">
+      <SidebarHeader className="border-b border-footer-border p-4">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-yodel-orange to-orange-600 shadow-lg">
-            <span className="text-lg font-bold text-white">Y</span>
+            <span className="text-lg font-bold text-nav-text">Y</span>
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate font-semibold text-white">Yodel ASO</span>
-            <span className="truncate text-xs text-zinc-400">Insights Platform</span>
+            <span className="truncate font-semibold text-nav-text">Yodel ASO</span>
+            <span className="truncate text-xs text-nav-text-secondary">Insights Platform</span>
           </div>
         </div>
       </SidebarHeader>
@@ -137,12 +137,12 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-4">
         {/* Performance Intelligence Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 border-b border-zinc-800/50 mb-2">
+          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-yodel-blue to-blue-500 rounded-full"></div>
-              Performance Intelligence
-            </div>
-          </SidebarGroupLabel>
+                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-yodel-blue to-blue-500"></div>
+                Performance Intelligence
+              </div>
+            </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {analyticsItems.map((item) => {
@@ -153,7 +153,7 @@ export function AppSidebar() {
                        asChild
                        isActive={isActive}
                        tooltip={item.title}
-                       className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                      >
                        <Link to={item.url} className="flex items-center gap-3">
                          <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -169,7 +169,7 @@ export function AppSidebar() {
 
         {/* AI Command Center Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 border-b border-zinc-800/50 mb-2">
+          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-gradient-to-r from-yodel-orange to-orange-500 rounded-full"></div>
               AI Command Center
@@ -185,7 +185,7 @@ export function AppSidebar() {
                        asChild
                        isActive={isActive}
                        tooltip={item.title}
-                       className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                      >
                        <Link to={item.url} className="flex items-center gap-3">
                          <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -201,7 +201,7 @@ export function AppSidebar() {
 
         {/* Growth Accelerators Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 border-b border-zinc-800/50 mb-2">
+          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
               Growth Accelerators
@@ -217,7 +217,7 @@ export function AppSidebar() {
                        asChild
                        isActive={isActive}
                        tooltip={item.title}
-                       className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                      >
                        <Link to={item.url} className="flex items-center gap-3">
                          <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -234,7 +234,7 @@ export function AppSidebar() {
         {/* Control Center Section - visible to org admins and super admins */}
         {(isSuperAdmin || isOrganizationAdmin) && (
           <SidebarGroup>
-            <SidebarGroupLabel className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 border-b border-zinc-800/50 mb-2">
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full"></div>
                 Control Center
@@ -247,7 +247,7 @@ export function AppSidebar() {
                      asChild
                      isActive={location.pathname === '/app-discovery'}
                      tooltip="App Intelligence"
-                     className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                     className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                    >
                      <Link to="/app-discovery" className="flex items-center gap-3">
                        <Database className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -262,7 +262,7 @@ export function AppSidebar() {
                        asChild
                        isActive={location.pathname === '/admin'}
                        tooltip="System Control"
-                       className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                      >
                        <Link to="/admin" className="flex items-center gap-3">
                          <Shield className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -278,7 +278,7 @@ export function AppSidebar() {
 
         {/* Account Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 border-b border-zinc-800/50 mb-2">
+          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-gradient-to-r from-zinc-500 to-zinc-400 rounded-full"></div>
               Account
@@ -294,7 +294,7 @@ export function AppSidebar() {
                        asChild
                        isActive={isActive}
                        tooltip={item.title}
-                       className="h-11 data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-white data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-white transition-all duration-200 ease-in-out group"
+                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
                      >
                        <Link to={item.url} className="flex items-center gap-3">
                          <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
@@ -309,8 +309,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-zinc-700/50 p-4 bg-gradient-to-r from-zinc-900/50 to-zinc-800/30">
-        <div className="text-xs text-zinc-400 group-data-[collapsible=icon]:hidden font-medium">
+      <SidebarFooter className="border-t border-footer-border/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/30 p-4">
+        <div className="text-xs font-medium text-nav-text-secondary group-data-[collapsible=icon]:hidden">
           © 2025 Yodel Mobile by NP Digital
         </div>
       </SidebarFooter>

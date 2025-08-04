@@ -26,7 +26,10 @@ export const UserMenu: React.FC = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+        <Button
+          variant="ghost"
+          className="relative h-8 w-8 rounded-full text-foreground hover:bg-muted"
+        >
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-yodel-orange text-white text-xs">
               {initials}
@@ -37,7 +40,7 @@ export const UserMenu: React.FC = () => {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none text-white">
+            <p className="text-sm font-medium leading-none text-foreground">
               {user.email}
             </p>
             {isSuperAdmin && (

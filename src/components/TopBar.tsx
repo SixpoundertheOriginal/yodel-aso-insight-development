@@ -7,6 +7,7 @@ import ResetButton from "./ResetButton";
 import { UserMenu } from "./UserMenu";
 import { AppSelector } from "./AppSelector";
 import { BigQueryAppSelector } from "./BigQueryAppSelector";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -64,26 +65,26 @@ const TopBar: React.FC = React.memo(() => {
   const showManualAppSelector = !isAnalyticsPage && !isGrowthAcceleratorPage && !authPages.includes(location.pathname) && !systemPages.includes(location.pathname);
 
   return (
-    <div className="sticky top-0 z-40 border-b border-zinc-700 bg-zinc-900/80 backdrop-blur-sm">
+    <div className="sticky top-0 z-40 header-nav border-b backdrop-blur-sm">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">
-          <SidebarTrigger className="h-8 w-8 text-zinc-400 hover:text-white" />
+          <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground" />
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-yodel-orange"></div>
-            <Heading3 className="text-lg font-semibold text-white sm:text-2xl">
+            <Heading3 className="text-lg font-semibold text-foreground sm:text-2xl">
               {getPageTitle()}
             </Heading3>
             {isAnalyticsPage && (
               <div className="hidden sm:flex items-center gap-2 ml-4">
-                <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-400">
+                <div className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
                   Data Source: BigQuery
                 </div>
               </div>
             )}
           </div>
         </div>
-        
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* BigQuery App Selector for Analytics pages */}
           {isAnalyticsPage && !profileLoading && (
             <div className="hidden md:block">
@@ -110,12 +111,15 @@ const TopBar: React.FC = React.memo(() => {
               <ResetButton />
             </div>
           )}
+          <div className="theme-toggle-container">
+            <ThemeToggle />
+          </div>
           <UserMenu />
         </div>
       </div>
-      
+
       {/* Mobile controls - show below header on mobile when needed */}
-      <div className="border-t border-zinc-800 px-4 py-3 md:hidden">
+      <div className="border-t border-border px-4 py-3 md:hidden">
         <div className="flex items-center justify-between">
           {isAnalyticsPage && !profileLoading && (
             <BigQueryAppSelector
