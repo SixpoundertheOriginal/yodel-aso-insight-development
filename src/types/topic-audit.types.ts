@@ -10,6 +10,11 @@ export interface TopicAuditData {
   entityToTrack: string; // e.g., "Ogilvy", "HubSpot", "Instagram"
   entityAliases?: string[]; // e.g., ["Ogilvy & Mather", "Ogilvy Agency"]
   
+  // Intent-driven query configuration
+  queryStrategy?: 'competitive_discovery' | 'market_research' | 'mixed';
+  competitorFocus?: boolean;
+  intentLevel?: 'high' | 'medium' | 'low';
+  
   // Entity Intelligence Data (populated automatically)
   entityIntelligence?: EntityIntelligence;
 }
@@ -33,14 +38,16 @@ export interface TopicIntelligence {
 export interface GeneratedTopicQuery {
   id: string;
   query_text: string;
-  query_type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' | 'research' | 'service_specific' | 'industry_specific';
+  query_type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' | 'research' | 'service_specific' | 'industry_specific' | 'high_intent' | 'medium_intent' | 'low_intent';
   priority: number;
   target_entity: string;
   personas?: string[];
   reasoning?: string;
   persona?: string;
-  search_intent?: string;
-  source?: 'openai_enhanced' | 'template';
+  search_intent?: 'immediate_need' | 'research' | 'comparison' | 'education' | 'purchase_intent';
+  purchase_intent?: 'high' | 'medium' | 'low';
+  client_scenario?: string;
+  source?: 'openai_enhanced' | 'template' | 'intent_based';
 }
 
 export type AuditMode = 'app' | 'topic';

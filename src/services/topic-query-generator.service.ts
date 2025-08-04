@@ -2,8 +2,10 @@ import { TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 
 export interface TopicQueryTemplate {
   template: string;
-  type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational';
+  type: 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' | 'high_intent' | 'medium_intent' | 'low_intent';
   priority: number;
+  intentLevel?: 'high' | 'medium' | 'low';
+  purchaseIntent?: boolean;
 }
 
 const TOPIC_QUERY_TEMPLATES: TopicQueryTemplate[] = [
@@ -98,13 +100,135 @@ const ENTITY_QUERY_TEMPLATES: TopicQueryTemplate[] = [
   }
 ];
 
+// Intent-based query templates for competitive discovery
+const INTENT_BASED_TEMPLATES: TopicQueryTemplate[] = [
+  // High-Intent Queries (Direct Product Discovery)
+  {
+    template: "Best {topic} for {target_audience}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Top {topic} with proven ROI",
+    type: "high_intent", 
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Which {topic} should I hire for {target_audience}?",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "{topic} pricing and services comparison",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  
+  // Medium-Intent Queries (Solution Comparison)
+  {
+    template: "{topic} vs in-house team",
+    type: "medium_intent",
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  },
+  {
+    template: "Compare {topic} platforms",
+    type: "medium_intent",
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  },
+  {
+    template: "Pros and cons of hiring {topic}",
+    type: "medium_intent",
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  },
+  
+  // Low-Intent Queries (Problem/Solution Exploration)
+  {
+    template: "How to improve {context_problem}",
+    type: "low_intent",
+    priority: 3,
+    intentLevel: "low",
+    purchaseIntent: false
+  },
+  {
+    template: "{industry} strategies for {target_audience}",
+    type: "low_intent",
+    priority: 3,
+    intentLevel: "low",
+    purchaseIntent: false
+  },
+  {
+    template: "Best practices for {topic_category}",
+    type: "low_intent",
+    priority: 3,
+    intentLevel: "low",
+    purchaseIntent: false
+  }
+];
+
+// Client scenario templates for realistic customer journeys
+const CLIENT_SCENARIO_TEMPLATES: TopicQueryTemplate[] = [
+  {
+    template: "Need {topic} for {client_scenario} - recommendations?",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high",
+    purchaseIntent: true
+  },
+  {
+    template: "Looking for {topic} agency to handle {service_need}",
+    type: "high_intent",
+    priority: 1,
+    intentLevel: "high", 
+    purchaseIntent: true
+  },
+  {
+    template: "Who provides {service_type} for {target_clients}?",
+    type: "medium_intent",
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  },
+  {
+    template: "Help with {pain_point} for {target_audience}",
+    type: "medium_intent",
+    priority: 2,
+    intentLevel: "medium",
+    purchaseIntent: true
+  }
+];
+
 export class TopicQueryGeneratorService {
   static generateQueries(topicData: TopicAuditData, count: number = 10): GeneratedTopicQuery[] {
     const queries: GeneratedTopicQuery[] = [];
     
+    // Determine query strategy
+    const strategy = topicData.queryStrategy || 'mixed';
+    const intentLevel = topicData.intentLevel || 'medium';
+    
+    // Generate intent-driven queries based on strategy
+    if (strategy === 'competitive_discovery' || strategy === 'mixed') {
+      const intentQueries = this.generateIntentDrivenQueries(topicData, Math.ceil(count * 0.5));
+      queries.push(...intentQueries);
+    }
+    
     // Enhanced query generation with entity intelligence
     if (topicData.entityIntelligence) {
-      const intelligenceQueries = this.generateIntelligenceBasedQueries(topicData, Math.ceil(count * 0.6));
+      const remaining = count - queries.length;
+      const intelligenceQueries = this.generateIntelligenceBasedQueries(topicData, Math.ceil(remaining * 0.6));
       queries.push(...intelligenceQueries);
     }
     
@@ -205,6 +329,130 @@ export class TopicQueryGeneratorService {
     return priority;
   }
 
+  private static generateIntentDrivenQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    const intentLevel = topicData.intentLevel || 'medium';
+    
+    // Filter templates by intent level and competitor focus
+    let relevantTemplates = INTENT_BASED_TEMPLATES;
+    if (topicData.competitorFocus) {
+      relevantTemplates = relevantTemplates.filter(t => t.purchaseIntent);
+    }
+    
+    // Generate client scenario queries
+    const scenarioQueries = this.generateClientScenarioQueries(topicData, Math.ceil(count * 0.4));
+    queries.push(...scenarioQueries);
+    
+    // Generate template-based intent queries
+    const templateQueries = this.generateFromIntentTemplates(topicData, count - queries.length, relevantTemplates);
+    queries.push(...templateQueries);
+    
+    return queries.slice(0, count);
+  }
+
+  private static generateClientScenarioQueries(topicData: TopicAuditData, count: number): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    const intelligence = topicData.entityIntelligence;
+    
+    if (!intelligence) return queries;
+    
+    // Create realistic client scenarios
+    const scenarios = [
+      `${topicData.target_audience} struggling with low app downloads`,
+      `startup needing help with app store visibility`,
+      `${topicData.target_audience} wanting to improve app rankings`,
+      `company looking to boost app user acquisition`,
+      `${topicData.target_audience} seeking ASO expertise`
+    ];
+    
+    scenarios.slice(0, count).forEach((scenario, index) => {
+      const queryText = `Need ${topicData.topic} for ${scenario}`;
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: 'high_intent',
+        priority: 1,
+        target_entity: topicData.entityToTrack,
+        client_scenario: scenario,
+        purchase_intent: 'high',
+        search_intent: 'immediate_need',
+        source: 'intent_based'
+      });
+    });
+    
+    return queries;
+  }
+
+  private static generateFromIntentTemplates(topicData: TopicAuditData, count: number, templates: TopicQueryTemplate[]): GeneratedTopicQuery[] {
+    const queries: GeneratedTopicQuery[] = [];
+    
+    templates.slice(0, count).forEach(template => {
+      const queryText = this.fillIntentTemplate(template, topicData);
+      queries.push({
+        id: crypto.randomUUID(),
+        query_text: queryText,
+        query_type: template.type as any,
+        priority: template.priority,
+        target_entity: topicData.entityToTrack,
+        purchase_intent: template.purchaseIntent ? 'high' : 'low',
+        search_intent: template.purchaseIntent ? 'purchase_intent' : 'research',
+        source: 'intent_based'
+      });
+    });
+    
+    return queries;
+  }
+
+  private static fillIntentTemplate(template: TopicQueryTemplate, topicData: TopicAuditData): string {
+    let query = template.template;
+    
+    // Replace placeholders
+    query = query.replace(/{topic}/g, topicData.topic);
+    query = query.replace(/{target_audience}/g, topicData.target_audience);
+    query = query.replace(/{industry}/g, topicData.industry);
+    query = query.replace(/{context_problem}/g, this.getContextProblem(topicData));
+    query = query.replace(/{topic_category}/g, this.getTopicCategory(topicData.topic));
+    query = query.replace(/{client_scenario}/g, this.getClientScenario(topicData));
+    query = query.replace(/{service_need}/g, this.getServiceNeed(topicData));
+    query = query.replace(/{service_type}/g, this.getServiceType(topicData));
+    query = query.replace(/{target_clients}/g, topicData.entityIntelligence?.targetClients?.[0] || topicData.target_audience);
+    query = query.replace(/{pain_point}/g, this.getPainPoint(topicData));
+    
+    return query;
+  }
+
+  private static getContextProblem(topicData: TopicAuditData): string {
+    const problems = {
+      'marketing': 'app downloads and user acquisition',
+      'technology': 'app performance and visibility',
+      'mobile': 'app store rankings and optimization',
+      'advertising': 'user acquisition costs and ROI'
+    };
+    return problems[topicData.industry.toLowerCase()] || 'business growth and efficiency';
+  }
+
+  private static getClientScenario(topicData: TopicAuditData): string {
+    return `${topicData.target_audience} needing ${topicData.industry} expertise`;
+  }
+
+  private static getServiceNeed(topicData: TopicAuditData): string {
+    return topicData.entityIntelligence?.services?.[0] || `${topicData.industry} services`;
+  }
+
+  private static getServiceType(topicData: TopicAuditData): string {
+    return topicData.entityIntelligence?.services?.join(' and ') || topicData.topic;
+  }
+
+  private static getPainPoint(topicData: TopicAuditData): string {
+    const painPoints = {
+      'marketing': 'low conversion rates',
+      'mobile': 'poor app visibility',
+      'technology': 'scaling challenges',
+      'advertising': 'high acquisition costs'
+    };
+    return painPoints[topicData.industry.toLowerCase()] || 'operational challenges';
+  }
+
   private static determineQueryType(queryText: string): 'comparison' | 'recommendation' | 'problem_solving' | 'conversational' {
     const lowerText = queryText.toLowerCase();
     
@@ -221,6 +469,25 @@ export class TopicQueryGeneratorService {
     }
     
     return 'conversational';
+  }
+
+  private static classifyQueryByIntent(queryText: string): 'high' | 'medium' | 'low' {
+    const lowerText = queryText.toLowerCase();
+    
+    // High intent indicators
+    const highIntentKeywords = ['hire', 'pricing', 'cost', 'buy', 'purchase', 'need', 'looking for', 'which should i'];
+    if (highIntentKeywords.some(keyword => lowerText.includes(keyword))) {
+      return 'high';
+    }
+    
+    // Medium intent indicators  
+    const mediumIntentKeywords = ['compare', 'vs', 'pros and cons', 'alternatives', 'review'];
+    if (mediumIntentKeywords.some(keyword => lowerText.includes(keyword))) {
+      return 'medium';
+    }
+    
+    // Low intent (research/educational)
+    return 'low';
   }
   
   private static fillTemplate(template: TopicQueryTemplate, topicData: TopicAuditData): string {

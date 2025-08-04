@@ -111,9 +111,17 @@ serve(async (req) => {
     const userPersonas = createUserPersonas(topicData, entityIntelligence);
     const problemContexts = extractProblemContexts(topicData, entityIntelligence);
     
-    const prompt = `You are simulating search behavior of real people looking for solutions in the ${topicData.industry} industry. 
+    // Extract intent strategy from topicData
+    const queryStrategy = topicData.queryStrategy || 'mixed';
+    const intentLevel = topicData.intentLevel || 'medium';
+    const competitorFocus = topicData.competitorFocus || false;
+    
+    const prompt = `You are an expert in customer discovery and purchase intent simulation. Your task is to generate realistic search queries that potential clients use when they are ACTIVELY LOOKING TO HIRE services or solve real business problems.
 
-**TARGET AUDIENCE PERSONAS:**
+**FOCUS ON CUSTOMER DISCOVERY SCENARIOS:**
+These are people who have a business problem and are actively seeking solutions, not just researching out of curiosity.
+
+**TARGET AUDIENCE PERSONAS (with purchase intent):**
 ${userPersonas.map(persona => `- ${persona.name}: ${persona.description} (Search behavior: ${persona.searchBehavior})`).join('\n')}
 
 **ENTITY BEING ANALYZED:**
@@ -121,49 +129,64 @@ ${userPersonas.map(persona => `- ${persona.name}: ${persona.description} (Search
 - Services: ${entityIntelligence?.services?.join(', ') || 'Business services'}
 - Target Clients: ${entityIntelligence?.targetClients?.join(', ') || topicData.target_audience}
 - Market Position: ${entityIntelligence?.marketPosition || 'Industry provider'}
+- Industry Focus: ${entityIntelligence?.industryFocus?.join(', ') || topicData.industry}
 
-**USER CONTEXT:**
+**BUSINESS CONTEXT:**
 - Industry: ${topicData.industry}
 - Geographic Focus: ${topicData.geographic_focus || 'Global'}
 - Specific Context: ${topicData.context_description || 'General business needs'}
 - Known Players: ${topicData.known_players?.join(', ') || 'Various providers'}
+- Query Strategy: ${queryStrategy} (${intentLevel} intent level)
+- Competitor Focus: ${competitorFocus ? 'Yes - include competitive queries' : 'No'}
 
-**PROBLEM CONTEXTS TO ADDRESS:**
+**REAL CLIENT PAIN POINTS TO ADDRESS:**
 ${problemContexts.map(context => `- ${context.problem}: ${context.searchIntent}`).join('\n')}
 
-Generate ${queryCount} realistic search queries from the perspective of your target personas experiencing real problems that the entity can solve.
+Generate ${queryCount} intent-driven queries that simulate how real clients discover and evaluate service providers.
 
-**QUERY CATEGORIES TO COVER:**
-1. **Problem-solving** (40%): People experiencing specific issues
-2. **Research** (25%): People learning about solutions  
-3. **Comparison** (20%): People evaluating options
-4. **Service-specific** (10%): People looking for specific services
-5. **Industry-specific** (5%): Using industry terminology
+**QUERY INTENT DISTRIBUTION:**
+${intentLevel === 'high' ? 
+  '1. **High Purchase Intent** (60%): "Need to hire", "Looking for", "Which company should I choose"' :
+  intentLevel === 'medium' ?
+  '1. **Medium Purchase Intent** (40%): Comparison and evaluation queries\n2. **Research Intent** (30%): Learning about solutions\n3. **High Purchase Intent** (30%): Ready to hire queries' :
+  '1. **Research Intent** (50%): Learning about industry and solutions\n2. **Medium Purchase Intent** (30%): Comparing options\n3. **High Purchase Intent** (20%): Ready to hire queries'
+}
 
-**QUERY CHARACTERISTICS:**
-- Natural language (how real people search, not marketing copy)
-- Various intents: immediate need, research, comparison, education
-- Different specificity levels: broad problems to specific solutions
-- Include long-tail variations and conversational queries
-- Add geographic modifiers when relevant
-- Use industry-specific pain points and terminology
+**QUERY CHARACTERISTICS FOR CUSTOMER DISCOVERY:**
+- Use language that real business decision-makers use
+- Include urgency indicators: "need", "looking for", "help with"
+- Focus on business outcomes and results
+- Include service-specific terminology from the entity's offerings
+- Add realistic business constraints: budget, timeline, industry-specific needs
+- Include geographic qualifiers when relevant
+- Use competitive language: "vs", "alternatives", "better than"
+- Include client scenario contexts: startup, enterprise, specific industry verticals
 
-**EXAMPLES OF GOOD QUERIES:**
-- "Why is my [relevant item] not working as expected"
-- "How to solve [specific problem] for [target audience type]" 
-- "[Entity service] vs doing it myself"
-- "Best practices for [relevant industry process]"
-- "[Geographic area] [service type] recommendations"
+**EXAMPLES OF HIGH-INTENT CUSTOMER DISCOVERY QUERIES:**
+- "Best ${entityIntelligence?.services?.[0] || 'marketing'} agency for ${topicData.target_audience}"
+- "Need help with ${problemContexts[0]?.problem || 'app marketing'} - recommendations?"
+- "Which ${topicData.topic} should I hire for ${topicData.target_audience}?"
+- "${entityIntelligence?.services?.[0] || 'Marketing'} companies with proven ROI"
+- "Looking for ${topicData.topic} that specialize in ${topicData.industry}"
+- "${topicData.geographic_focus || 'US'} ${topicData.topic} with ${entityIntelligence?.services?.[0] || 'expertise'}"
+
+**CRITICAL REQUIREMENTS:**
+- Every query should sound like a real client with a real need
+- Include specific service mentions from the entity's service list
+- Focus on business decision-making scenarios
+- Simulate various stages of the buying journey
+- Include pain points that drive people to search for external help
 
 Return ONLY a JSON array with this format:
 [
   {
-    "query_text": "actual search query",
-    "query_type": "problem_solving|research|comparison|service_specific|industry_specific",
+    "query_text": "actual search query that a real client would use",
+    "query_type": "high_intent|medium_intent|low_intent|comparison|service_specific",
     "priority": 1-10,
     "persona": "which target persona would search this",
-    "search_intent": "immediate_need|research|comparison|education",
-    "reasoning": "why this persona would search this"
+    "search_intent": "immediate_need|purchase_intent|comparison|research|service_evaluation",
+    "purchase_intent": "high|medium|low",
+    "reasoning": "specific business scenario driving this search"
   }
 ]`;
 
@@ -219,16 +242,18 @@ Return ONLY a JSON array with this format:
       throw new Error('Invalid JSON response from OpenAI');
     }
 
-    // Validate and format the response
+    // Validate and format the response with enhanced intent data
     const formattedQueries = enhancedQueries.map((query: any, index: number) => ({
       id: `ai_enhanced_${Date.now()}_${index}`,
       query_text: query.query_text || query.query || '',
-      query_type: query.query_type || 'conversational',
+      query_type: query.query_type || 'medium_intent',
       priority: query.priority || 5,
       target_entity: entityIntelligence?.entityName || topicData.entityToTrack,
-      reasoning: query.reasoning || 'AI generated query',
-      persona: query.persona || 'General user',
-      search_intent: query.search_intent || 'research',
+      reasoning: query.reasoning || 'AI generated customer discovery query',
+      persona: query.persona || 'Business decision maker',
+      search_intent: query.search_intent || 'purchase_intent',
+      purchase_intent: query.purchase_intent || 'medium',
+      client_scenario: query.reasoning || 'Business seeking external expertise',
       source: 'openai_enhanced'
     }));
 
