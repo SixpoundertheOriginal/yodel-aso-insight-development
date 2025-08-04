@@ -307,19 +307,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       </div>
                     </div>
 
-                    {/* Competitors Mentioned */}
-                    {result.competitors_mentioned.length > 0 && (
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-zinc-300">Competitors Mentioned:</h5>
-                        <div className="flex flex-wrap gap-2">
-                          {result.competitors_mentioned.map(competitor => (
-                            <Badge key={competitor} variant="outline" className="text-xs">
-                              {competitor}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
                     {/* Scores */}
                     <div className="grid grid-cols-2 gap-4">
@@ -398,18 +385,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                 </div>
                 <p className="text-sm text-zinc-300 mb-2">{result.query_text}</p>
                 <p className="text-xs text-red-400">✗ App not mentioned in response</p>
-                {result.competitors_mentioned.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-zinc-500">Competitors mentioned instead:</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {result.competitors_mentioned.map(competitor => (
-                        <Badge key={competitor} variant="outline" className="text-xs">
-                          {competitor}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
