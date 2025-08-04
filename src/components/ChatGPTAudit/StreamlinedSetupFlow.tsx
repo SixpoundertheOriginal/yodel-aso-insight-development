@@ -223,13 +223,16 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const getTopicAuditData = (): TopicAuditData => {
     if (setupMode === 'simple') {
       return {
-        topic: `${simpleInputs.industry?.label || 'Technology'} services`,
+        // ✅ Entity is PRIMARY and REQUIRED
+        entityToTrack: simpleInputs.entityToTrack, // Required field
+        
+        // Context builds around the entity
+        topic: `${simpleInputs.industry?.label} for ${simpleInputs.entityToTrack}`,
         industry: simpleInputs.industry?.value || 'Technology',
         target_audience: simpleInputs.audiences.map(a => a.label).join(', ') || 'General users',
-        entityToTrack: simpleInputs.entityToTrack || 'Unknown Entity',
         known_players: [],
         entityIntelligence: {
-          entityName: simpleInputs.entityToTrack || 'Unknown Entity',
+          entityName: simpleInputs.entityToTrack, // ✅ Required for tracking
           description: `Provider of ${simpleInputs.industry?.label || 'technology'} services`,
           services: simpleInputs.industry?.services || [],
           targetClients: simpleInputs.audiences.map(a => a.label),
@@ -255,9 +258,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   // Validation for simple inputs
   const validateSimpleInputs = () => {
     const errors = [];
+    if (!simpleInputs.entityToTrack.trim()) errors.push('Entity to track is required');
     if (!simpleInputs.industry) errors.push('Industry is required');
-    if (simpleInputs.audiences.length === 0) errors.push('Select at least 1 audience');
-    if (simpleInputs.painPoints.length < 2) errors.push('Select at least 2 pain points');
     return errors;
   };
 
@@ -787,7 +789,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         <div className="text-2xl">⚡</div>
                         <div>
                           <h4 className="font-medium">Quick Setup</h4>
-                          <p className="text-sm text-muted-foreground">Basic fields, instant results</p>
+                          <p className="text-sm text-muted-foreground">Enter your entity + basic context to start tracking ChatGPT visibility</p>
+                          <p className="text-xs text-muted-foreground mt-1">Like Google Search Console, but for ChatGPT recommendations</p>
                         </div>
                       </div>
                     </CardContent>
@@ -815,7 +818,44 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold text-primary">Quick Setup</h3>
                   
-                  {/* Industry Focus */}
+                  {/* STEP 1: Entity to Track - REQUIRED & PRIMARY */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="simpleEntity">Entity to Track</Label>
+                      <span className="text-red-500">*</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="space-y-2">
+                              <p className="font-medium">What entity do you want to track in ChatGPT responses?</p>
+                              <p className="text-sm">Just like how SEO tools track your website rankings in Google, we'll track how often your entity appears in ChatGPT recommendations.</p>
+                              <div className="text-sm">
+                                <p className="font-medium">Examples:</p>
+                                <p>• Company: "Yodel Mobile", "Gummicube", "Ogilvy"</p>
+                                <p>• App: "Fitness Pal", "Duolingo", "Slack"</p>
+                                <p>• Service: "AppTweak", "Sensor Tower"</p>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Input
+                      id="simpleEntity"
+                      value={simpleInputs.entityToTrack}
+                      onChange={(e) => setSimpleInputs({...simpleInputs, entityToTrack: e.target.value})}
+                      placeholder="Your company/app name to track (e.g., 'Yodel Mobile')"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This is the primary entity we'll search for in all ChatGPT responses
+                    </p>
+                  </div>
+
+                  {/* STEP 2: Industry Context - To Generate Relevant Queries */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Label htmlFor="industry">Industry Focus</Label>
@@ -825,8 +865,16 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                           <TooltipTrigger>
                             <HelpCircle className="h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p>This determines 80% of your generated queries</p>
+                          <TooltipContent className="max-w-xs">
+                            <div className="space-y-2">
+                              <p className="font-medium">What industry context should we test your entity in?</p>
+                              <p className="text-sm">Like selecting keyword categories in SEO tools, this determines what types of business queries we'll test your entity against.</p>
+                              <div className="text-sm">
+                                <p className="font-medium">Examples:</p>
+                                <p>• ASO: Tests queries like "best ASO agency", "app store optimization help"</p>
+                                <p>• Mobile Marketing: Tests "mobile marketing agency", "user acquisition services"</p>
+                              </div>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -839,7 +887,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="What type of service do you provide?" />
+                        <SelectValue placeholder="What industry should we test your entity in?" />
                       </SelectTrigger>
                       <SelectContent>
                         {INDUSTRY_OPTIONS.map((option) => (
@@ -852,20 +900,23 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Determines 100% of query types - this is your "keyword category"
+                    </p>
                   </div>
 
-                  {/* Target Audience */}
+                  {/* STEP 3: Target Audience - For Query Targeting */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Label>Target Audience</Label>
-                      <span className="text-red-500">*</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
                             <HelpCircle className="h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Who are your typical clients? Select up to 3.</p>
+                          <TooltipContent className="max-w-xs">
+                            <p className="font-medium">Who searches for entities like yours?</p>
+                            <p className="text-sm">Creates audience-specific queries to test your visibility. Select up to 3.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -897,20 +948,23 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Creates audience-specific queries to test your visibility
+                    </p>
                   </div>
 
-                  {/* Pain Points */}
+                  {/* STEP 4: Pain Points - For High-Intent Queries */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Label>Common Pain Points</Label>
-                      <span className="text-red-500">*</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
                             <HelpCircle className="h-4 w-4 text-muted-foreground" />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Select at least 2 pain points to create targeted queries</p>
+                          <TooltipContent className="max-w-xs">
+                            <p className="font-medium">What problems do your prospects have?</p>
+                            <p className="text-sm">Creates problem-focused queries where prospects actively search for solutions.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -939,29 +993,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Entity to Track */}
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor="simpleEntity">Entity to Track</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Your company/app name (optional)</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input
-                      id="simpleEntity"
-                      value={simpleInputs.entityToTrack}
-                      onChange={(e) => setSimpleInputs({...simpleInputs, entityToTrack: e.target.value})}
-                      placeholder="Your company/app name (optional)"
-                    />
+                    <p className="text-xs text-muted-foreground">
+                      Creates problem-focused queries where prospects actively search for solutions
+                    </p>
                   </div>
 
                   {/* Validation Errors */}
