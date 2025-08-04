@@ -33,8 +33,12 @@ import {
   Search,
   Trash2,
   Copy,
-  MoreVertical
+  MoreVertical,
+  HelpCircle,
+  CheckSquare
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface App {
   id: string;
@@ -66,12 +70,121 @@ interface StreamlinedSetupFlowProps {
   }) => void;
 }
 
+// Simple mode options data
+const INDUSTRY_OPTIONS = [
+  {
+    value: 'aso',
+    label: 'App Store Optimization',
+    description: 'Services focused on improving app visibility in app stores',
+    services: ['ASO audits', 'Keyword optimization', 'Listing optimization'],
+    explainer: 'Includes ASO agencies, consultants, and optimization services'
+  },
+  {
+    value: 'user-acquisition', 
+    label: 'User Acquisition & Mobile Marketing',
+    description: 'Paid advertising and growth services for mobile apps',
+    services: ['Facebook ads', 'Google campaigns', 'Influencer marketing'],
+    explainer: 'Includes UA agencies, mobile ad networks, and growth services'
+  },
+  {
+    value: 'app-development',
+    label: 'App Development',
+    description: 'Mobile app creation and development services',
+    services: ['iOS development', 'Android development', 'Cross-platform apps'],
+    explainer: 'App development agencies, freelance developers, and dev studios'
+  },
+  {
+    value: 'analytics',
+    label: 'Mobile Analytics',
+    description: 'App performance tracking and analytics tools',
+    services: ['Performance monitoring', 'User analytics', 'Revenue tracking'],
+    explainer: 'Analytics platforms, BI tools, and performance services'
+  }
+];
+
+const AUDIENCE_OPTIONS = [
+  {
+    value: 'gaming',
+    label: 'Gaming Apps',
+    description: 'Mobile games and gaming platforms',
+    explainer: 'Casual games, RPG, puzzle games, etc.'
+  },
+  {
+    value: 'startups',
+    label: 'Tech Startups', 
+    description: 'Early-stage technology companies',
+    explainer: 'B2B SaaS, productivity apps, social platforms'
+  },
+  {
+    value: 'enterprise',
+    label: 'Enterprise Companies',
+    description: 'Large corporations and established businesses',
+    explainer: 'Fortune 500, large-scale mobile apps'
+  },
+  {
+    value: 'ecommerce',
+    label: 'E-commerce Apps',
+    description: 'Shopping and retail mobile applications',
+    explainer: 'Online stores, marketplace apps, shopping platforms'
+  },
+  {
+    value: 'healthcare',
+    label: 'Healthcare Apps',
+    description: 'Health and medical mobile applications',
+    explainer: 'Fitness apps, medical tools, wellness platforms'
+  }
+];
+
+const PAIN_POINT_OPTIONS = [
+  {
+    value: 'declining-downloads',
+    label: 'Declining Downloads',
+    description: 'App downloads are dropping',
+    explainer: 'Creates queries like "help with declining app downloads"'
+  },
+  {
+    value: 'poor-conversion',
+    label: 'Poor App Store Conversion',
+    description: 'Low conversion from views to installs', 
+    explainer: 'Creates queries like "improve app store conversion rate"'
+  },
+  {
+    value: 'keyword-ranking',
+    label: 'Poor Keyword Rankings',
+    description: 'App not ranking for important keywords',
+    explainer: 'Creates queries like "improve app store keyword rankings"'
+  },
+  {
+    value: 'competitor-outranking',
+    label: 'Competitors Outranking',
+    description: 'Competitors appearing higher in search results',
+    explainer: 'Creates queries like "beat competitors in app store search"'
+  },
+  {
+    value: 'low-visibility',
+    label: 'Low App Store Visibility',
+    description: 'App is hard to find in app stores',
+    explainer: 'Creates queries like "increase app store visibility"'
+  }
+];
+
 export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   apps,
   auditMode,
   onModeChange,
   onAuditCreate
 }) => {
+  // Setup mode state
+  const [setupMode, setSetupMode] = useState<'simple' | 'advanced'>('simple');
+  
+  // Simple mode state
+  const [simpleInputs, setSimpleInputs] = useState({
+    industry: null as typeof INDUSTRY_OPTIONS[0] | null,
+    audiences: [] as typeof AUDIENCE_OPTIONS,
+    painPoints: [] as typeof PAIN_POINT_OPTIONS,
+    entityToTrack: ''
+  });
+  
   // Setup state
   const [currentStep, setCurrentStep] = useState<'mode' | 'entity' | 'auto-populate' | 'queries' | 'review'>('entity');
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
@@ -105,6 +218,48 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const { toast } = useToast();
+
+  // Data mapping function for simple mode
+  const getTopicAuditData = (): TopicAuditData => {
+    if (setupMode === 'simple') {
+      return {
+        topic: `${simpleInputs.industry?.label || 'Technology'} services`,
+        industry: simpleInputs.industry?.value || 'Technology',
+        target_audience: simpleInputs.audiences.map(a => a.label).join(', ') || 'General users',
+        entityToTrack: simpleInputs.entityToTrack || 'Unknown Entity',
+        known_players: [],
+        entityIntelligence: {
+          entityName: simpleInputs.entityToTrack || 'Unknown Entity',
+          description: `Provider of ${simpleInputs.industry?.label || 'technology'} services`,
+          services: simpleInputs.industry?.services || [],
+          targetClients: simpleInputs.audiences.map(a => a.label),
+          competitors: [],
+          recentNews: [],
+          marketPosition: 'unknown',
+          industryFocus: [simpleInputs.industry?.label || 'Technology'],
+          confidenceScore: 0.8,
+          scrapedAt: new Date().toISOString()
+        }
+      };
+    } else {
+      return topicData || {
+        topic: '',
+        industry: '',
+        target_audience: '',
+        entityToTrack: '',
+        known_players: []
+      };
+    }
+  };
+
+  // Validation for simple inputs
+  const validateSimpleInputs = () => {
+    const errors = [];
+    if (!simpleInputs.industry) errors.push('Industry is required');
+    if (simpleInputs.audiences.length === 0) errors.push('Select at least 1 audience');
+    if (simpleInputs.painPoints.length < 2) errors.push('Select at least 2 pain points');
+    return errors;
+  };
 
   // Automatically set mode to 'topic' on mount
   useEffect(() => {
@@ -618,62 +773,297 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         <div className="min-h-[400px]">
           {/* Step 1: Entity Selection */}
           {currentStep === 'entity' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
+            <div className="space-y-6">
+              {/* Mode Toggle */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="entityInput">Entity to Analyze</Label>
-                  <Input
-                    id="entityInput"
-                    value={entityInput}
-                    onChange={(e) => setEntityInput(e.target.value)}
-                    placeholder="Enter entity name (e.g., 'Ogilvy', 'HubSpot', 'Instagram')"
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the business, brand, or entity you want to analyze for ChatGPT visibility
-                  </p>
+                <h3 className="text-lg font-semibold text-primary">Setup Mode</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card 
+                    className={`cursor-pointer transition-all ${setupMode === 'simple' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => setSetupMode('simple')}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">⚡</div>
+                        <div>
+                          <h4 className="font-medium">Quick Setup</h4>
+                          <p className="text-sm text-muted-foreground">Basic fields, instant results</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className={`cursor-pointer transition-all ${setupMode === 'advanced' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    onClick={() => setSetupMode('advanced')}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">🧠</div>
+                        <div>
+                          <h4 className="font-medium">AI Analysis</h4>
+                          <p className="text-sm text-muted-foreground">Full entity intelligence (current system)</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                
-                {entityInput.trim() && !isAnalyzingEntity && (
+              </div>
+
+              {/* Simple Mode Section */}
+              {setupMode === 'simple' ? (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-primary">Quick Setup</h3>
+                  
+                  {/* Industry Focus */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="industry">Industry Focus</Label>
+                      <span className="text-red-500">*</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>This determines 80% of your generated queries</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Select 
+                      value={simpleInputs.industry?.value || ''} 
+                      onValueChange={(value) => {
+                        const industry = INDUSTRY_OPTIONS.find(opt => opt.value === value);
+                        setSimpleInputs({...simpleInputs, industry: industry || null});
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="What type of service do you provide?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div>
+                              <div className="font-medium">{option.label}</div>
+                              <div className="text-sm text-muted-foreground">{option.description}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Target Audience */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label>Target Audience</Label>
+                      <span className="text-red-500">*</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Who are your typical clients? Select up to 3.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {AUDIENCE_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={option.value}
+                            checked={simpleInputs.audiences.some(a => a.value === option.value)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                if (simpleInputs.audiences.length < 3) {
+                                  setSimpleInputs({
+                                    ...simpleInputs, 
+                                    audiences: [...simpleInputs.audiences, option]
+                                  });
+                                }
+                              } else {
+                                setSimpleInputs({
+                                  ...simpleInputs,
+                                  audiences: simpleInputs.audiences.filter(a => a.value !== option.value)
+                                });
+                              }
+                            }}
+                            disabled={!simpleInputs.audiences.some(a => a.value === option.value) && simpleInputs.audiences.length >= 3}
+                          />
+                          <Label htmlFor={option.value} className="text-sm">{option.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pain Points */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label>Common Pain Points</Label>
+                      <span className="text-red-500">*</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select at least 2 pain points to create targeted queries</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <div className="space-y-2">
+                      {PAIN_POINT_OPTIONS.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={option.value}
+                            checked={simpleInputs.painPoints.some(p => p.value === option.value)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSimpleInputs({
+                                  ...simpleInputs, 
+                                  painPoints: [...simpleInputs.painPoints, option]
+                                });
+                              } else {
+                                setSimpleInputs({
+                                  ...simpleInputs,
+                                  painPoints: simpleInputs.painPoints.filter(p => p.value !== option.value)
+                                });
+                              }
+                            }}
+                          />
+                          <Label htmlFor={option.value} className="text-sm font-medium">{option.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Entity to Track */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="simpleEntity">Entity to Track</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Your company/app name (optional)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Input
+                      id="simpleEntity"
+                      value={simpleInputs.entityToTrack}
+                      onChange={(e) => setSimpleInputs({...simpleInputs, entityToTrack: e.target.value})}
+                      placeholder="Your company/app name (optional)"
+                    />
+                  </div>
+
+                  {/* Validation Errors */}
+                  {validateSimpleInputs().length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        <ul className="list-disc list-inside">
+                          {validateSimpleInputs().map((error, index) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Continue Button */}
                   <Button 
                     onClick={() => {
-                      setIsAnalyzingEntity(true);
-                      // Start entity analysis which will auto-populate fields
-                    }}
-                    className="w-full"
-                  >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Analyze Entity
-                  </Button>
-                )}
-                
-                {isAnalyzingEntity && entityInput.trim() && (
-                  <EntityIntelligenceAnalyzer
-                    entityData={{
-                      entityName: entityInput.trim(),
-                      context: 'topic audit analysis',
-                      auditContext: {
-                        industry: '',
-                        topic: '',
-                        target_audience: '',
-                        known_competitors: [],
-                        queryStrategy: 'market_research'
+                      const errors = validateSimpleInputs();
+                      if (errors.length === 0) {
+                        const simpleTopicData = getTopicAuditData();
+                        setTopicData(simpleTopicData);
+                        setAuditName(`${simpleTopicData.topic} Visibility Audit - ${new Date().toLocaleDateString()}`);
+                        setCurrentStep('queries');
+                        // Generate queries immediately for simple mode
+                        const queries = TopicQueryGeneratorService.generateQueries(simpleTopicData, 20);
+                        setGeneratedQueries(queries);
+                        toast({ 
+                          title: "Setup Complete", 
+                          description: `Generated ${queries.length} queries for your audit` 
+                        });
                       }
                     }}
-                    onIntelligenceGenerated={(intelligence) => {
-                      setEnhancedEntityIntelligence(intelligence);
-                      // Auto-populate fields from entity intelligence
-                      autoPopulateFromEntity(intelligence);
-                    }}
-                    onAnalysisComplete={() => {
-                      setIsAnalyzingEntity(false);
-                      // Always move to auto-populate step after analysis completes
-                      setCurrentStep('auto-populate');
-                    }}
-                  />
-                )}
-              </div>
+                    className="w-full"
+                    disabled={validateSimpleInputs().length > 0}
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    Generate Queries
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Advanced Mode Section (existing EntityIntelligenceAnalyzer) */}
+                  <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="entityInput">Entity to Analyze</Label>
+                      <Input
+                        id="entityInput"
+                        value={entityInput}
+                        onChange={(e) => setEntityInput(e.target.value)}
+                        placeholder="Enter entity name (e.g., 'Ogilvy', 'HubSpot', 'Instagram')"
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter the business, brand, or entity you want to analyze for ChatGPT visibility
+                      </p>
+                    </div>
+                    
+                    {entityInput.trim() && !isAnalyzingEntity && (
+                      <Button 
+                        onClick={() => {
+                          setIsAnalyzingEntity(true);
+                          // Start entity analysis which will auto-populate fields
+                        }}
+                        className="w-full"
+                      >
+                        <Brain className="h-4 w-4 mr-2" />
+                        Analyze Entity
+                      </Button>
+                    )}
+                    
+                    {isAnalyzingEntity && entityInput.trim() && (
+                      <EntityIntelligenceAnalyzer
+                        entityData={{
+                          entityName: entityInput.trim(),
+                          context: 'topic audit analysis',
+                          auditContext: {
+                            industry: '',
+                            topic: '',
+                            target_audience: '',
+                            known_competitors: [],
+                            queryStrategy: 'market_research'
+                          }
+                        }}
+                        onIntelligenceGenerated={(intelligence) => {
+                          setEnhancedEntityIntelligence(intelligence);
+                          // Auto-populate fields from entity intelligence
+                          autoPopulateFromEntity(intelligence);
+                        }}
+                        onAnalysisComplete={() => {
+                          setIsAnalyzingEntity(false);
+                          // Always move to auto-populate step after analysis completes
+                          setCurrentStep('auto-populate');
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+                </>
+              )}
             </div>
           )}
 
