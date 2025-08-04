@@ -38,6 +38,37 @@
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 24 100% 53%;
+
+    /* Light mode variables */
+    --background-light: 0 0% 100%;
+    --foreground-light: 240 10% 3.9%;
+    --card-light: 0 0% 100%;
+    --card-foreground-light: 240 10% 3.9%;
+    --popover-light: 0 0% 100%;
+    --popover-foreground-light: 240 10% 3.9%;
+    --primary-light: 24 100% 53%;
+    --primary-foreground-light: 0 0% 100%;
+    --secondary-light: 0 0% 98%;
+    --secondary-foreground-light: 240 5.9% 10%;
+    --muted-light: 0 0% 98%;
+    --muted-foreground-light: 240 3.8% 46.1%;
+    --accent-light: 215 100% 50%;
+    --accent-foreground-light: 0 0% 100%;
+    --destructive-light: 0 84.2% 60.2%;
+    --destructive-foreground-light: 0 0% 100%;
+    --border-light: 240 5.9% 90%;
+    --input-light: 240 5.9% 90%;
+    --ring-light: 240 5.9% 10%;
+
+    /* Sidebar light mode variables */
+    --sidebar-light: 0 0% 98%;
+    --sidebar-foreground-light: 240 5.9% 10%;
+    --sidebar-primary-light: 24 100% 53%;
+    --sidebar-primary-foreground-light: 0 0% 100%;
+    --sidebar-accent-light: 0 0% 94%;
+    --sidebar-accent-foreground-light: 240 5.9% 10%;
+    --sidebar-border-light: 240 5.9% 90%;
+    --sidebar-ring-light: 24 100% 53%;
   }
 }
 
