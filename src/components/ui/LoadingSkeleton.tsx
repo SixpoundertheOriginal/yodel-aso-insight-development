@@ -233,65 +233,75 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   }
 };
 
-// Enhanced branded loading spinner with sophisticated animations
+// Enhanced branded loading spinner with sophisticated animations and theme support
 export const BrandedLoadingSpinner: React.FC<{ 
   className?: string;
   message?: string;
   description?: string;
-  primaryColor?: string;
-  secondaryColor?: string;
 }> = ({ 
   className = '',
   message = "ASO Intelligence Platform",
   description = "Analyzing your app's potential...",
-  primaryColor = "yodel-orange",
-  secondaryColor = "purple-500"
 }) => {
   // Check for reduced motion preference
   const prefersReducedMotion = typeof window !== 'undefined' && 
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Detect current theme
+  const theme = typeof window !== 'undefined' ? 
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light' : 'dark';
+
   return (
     <div 
-      className={`flex h-screen w-full items-center justify-center ${className}`}
+      className={`flex h-screen w-full items-center justify-center bg-gradient-to-br from-background via-muted to-accent ${className}`}
       role="status"
       aria-label="Loading"
     >
       <div className="relative">
-        {/* Enhanced sophisticated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 backdrop-blur-sm animate-fade-in" />
+        {/* Theme-adaptive glow overlay */}
+        <div className={`absolute inset-0 rounded-full ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-br from-blue-400/30 to-purple-500/30' 
+            : 'bg-gradient-to-br from-blue-200/20 to-purple-300/20'
+        } blur-3xl ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
         
         {/* Main loading content */}
         <div className="relative z-10 text-center space-y-8 animate-scale-in">
-          {/* Enhanced multi-layer spinner with particle effects */}
+          {/* Enhanced multi-layer spinner */}
           <div className="relative mx-auto w-20 h-20">
-            {/* Outer static ring - background */}
-            <div className="absolute inset-0 rounded-full border-4 border-blue-200/20" />
+            {/* Outer static ring */}
+            <div className={`absolute inset-0 rounded-full border-4 ${
+              theme === 'dark' ? 'border-blue-400/20' : 'border-blue-300/30'
+            }`} />
             
-            {/* Middle ring - existing spinner enhanced */}
+            {/* Middle spinning ring */}
             <div className={`absolute inset-0 rounded-full border-4 border-transparent bg-gradient-to-r ${
-              primaryColor === 'yodel-orange' ? 'from-yodel-orange via-yodel-orange/80 to-yodel-orange' : `from-${primaryColor} via-${primaryColor}/80 to-${primaryColor}`
+              theme === 'dark' 
+                ? 'from-blue-400 via-blue-500 to-purple-500' 
+                : 'from-blue-300 via-blue-400 to-purple-400'
             } bg-clip-border ${prefersReducedMotion ? 'animate-pulse' : 'animate-spin [animation-duration:2s]'}`}>
               <div className="absolute inset-1 rounded-full bg-background" />
             </div>
             
-            {/* Inner pulsing core with gradient */}
+            {/* Inner pulsing core */}
             <div className={`absolute inset-6 rounded-full bg-gradient-to-r ${
-              primaryColor === 'yodel-orange' && secondaryColor === 'purple-500' 
+              theme === 'dark' 
                 ? 'from-blue-400 to-purple-500' 
-                : `from-${primaryColor} to-${secondaryColor}`
+                : 'from-blue-300 to-purple-400'
             } ${prefersReducedMotion ? 'opacity-75' : 'animate-pulse'}`} />
             
             {/* Floating particles around spinner */}
             {!prefersReducedMotion && (
               <div className="absolute inset-0">
-                {Array.from({ length: 10 }, (_, i) => (
+                {Array.from({ length: 8 }, (_, i) => (
                   <div
                     key={i}
-                    className="absolute w-0.5 h-0.5 rounded-full bg-blue-400/60 animate-ping"
+                    className={`absolute w-0.5 h-0.5 rounded-full ${
+                      theme === 'dark' ? 'bg-blue-400/60' : 'bg-blue-300/60'
+                    } animate-ping`}
                     style={{
-                      transform: `rotate(${i * 36}deg) translateY(-40px)`,
-                      animationDelay: `${i * 0.2}s`,
+                      transform: `rotate(${i * 45}deg) translateY(-35px)`,
+                      animationDelay: `${i * 0.15}s`,
                       animationDuration: '2s'
                     }}
                   />
@@ -300,53 +310,58 @@ export const BrandedLoadingSpinner: React.FC<{
             )}
             
             {/* Enhanced glow effect */}
-            <div className={`absolute inset-0 rounded-full bg-gradient-to-r ${
-              primaryColor === 'yodel-orange' ? 'from-yodel-orange/20 to-purple-500/20' : `from-${primaryColor}/20 to-${secondaryColor}/20`
+            <div className={`absolute inset-0 rounded-full ${
+              theme === 'dark'
+                ? 'bg-gradient-to-r from-blue-400/30 to-purple-500/30'
+                : 'bg-gradient-to-r from-blue-200/20 to-purple-300/20'
             } blur-lg ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
           </div>
           
-          {/* Enhanced branded text with loading messages */}
+          {/* Enhanced branded text with theme-adaptive styling */}
           <div className="space-y-3">
             <div className={`text-xl font-semibold ${
-              primaryColor === 'yodel-orange' 
-                ? 'bg-gradient-to-r from-yodel-orange to-purple-500 bg-clip-text text-transparent' 
-                : `text-${primaryColor}`
+              theme === 'dark'
+                ? 'bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent'
+                : 'text-foreground'
             } animate-fade-in [animation-delay:0.3s]`}>
               {message}
             </div>
-            <div className="text-sm text-slate-300 animate-fade-in [animation-delay:0.6s]">
+            <div className="text-sm text-muted-foreground animate-fade-in [animation-delay:0.6s]">
               {description}
             </div>
             
-            {/* Enhanced progress dots with shimmer */}
+            {/* Progress dots with bounce animation */}
             <div className="flex justify-center space-x-2 animate-fade-in [animation-delay:0.9s]">
               {Array.from({ length: 3 }, (_, i) => (
                 <div
                   key={i}
                   className={`w-2 h-2 rounded-full ${
-                    primaryColor === 'yodel-orange' ? 'bg-yodel-orange' : `bg-${primaryColor}`
-                  } ${prefersReducedMotion ? 'opacity-75' : 'animate-pulse'}`}
-                  style={{ animationDelay: `${i * 0.2}s` }}
+                    theme === 'dark' ? 'bg-blue-400' : 'bg-blue-500'
+                  } ${prefersReducedMotion ? 'opacity-75' : 'animate-bounce'}`}
+                  style={{ 
+                    animationDelay: `${i * 0.2}s`,
+                    animationDuration: '1.5s'
+                  }}
                 />
               ))}
             </div>
           </div>
           
-          {/* Enhanced particle system - floating around the entire component */}
+          {/* Enhanced particle system floating around the component */}
           {!prefersReducedMotion && (
-            <div className="absolute -inset-8 pointer-events-none">
-              {Array.from({ length: 8 }, (_, i) => (
+            <div className="absolute -inset-12 pointer-events-none">
+              {Array.from({ length: 6 }, (_, i) => (
                 <div
                   key={i}
                   className={`absolute w-1 h-1 rounded-full ${
                     i % 2 === 0 
-                      ? (primaryColor === 'yodel-orange' ? 'bg-yodel-orange/40' : `bg-${primaryColor}/40`)
-                      : `bg-${secondaryColor}/40`
+                      ? (theme === 'dark' ? 'bg-blue-400/40' : 'bg-blue-300/40')
+                      : (theme === 'dark' ? 'bg-purple-500/40' : 'bg-purple-400/40')
                   } animate-ping`}
                   style={{
-                    top: `${Math.sin(i * Math.PI / 4) * 50 + 50}%`,
-                    left: `${Math.cos(i * Math.PI / 4) * 50 + 50}%`,
-                    animationDelay: `${i * 0.3}s`,
+                    top: `${Math.sin(i * Math.PI / 3) * 60 + 50}%`,
+                    left: `${Math.cos(i * Math.PI / 3) * 60 + 50}%`,
+                    animationDelay: `${i * 0.4}s`,
                     animationDuration: '3s'
                   }}
                 />
