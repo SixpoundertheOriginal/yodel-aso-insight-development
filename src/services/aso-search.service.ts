@@ -326,9 +326,15 @@ class AsoSearchService {
    * FIXED: Enhanced edge function search with proper ambiguity handling
    */
   private async executeEnhancedEdgeFunctionSearch(input: string, config: SearchConfig): Promise<SearchResult> {
+    // Detect input type using the input detection service
+    const inputAnalysis = inputDetectionService.analyzeInput(input.trim());
+    const searchType = inputAnalysis.success ? inputAnalysis.data.type : 'keyword';
+    
+    console.log('🔍 [BULLETPROOF-EDGE] Detected search type:', searchType, 'for input:', input);
+    
     const requestPayload = {
       searchTerm: input.trim(),
-      searchType: 'keyword' as const,
+      searchType: searchType,
       organizationId: config.organizationId,
       includeCompetitorAnalysis: true,
       searchParameters: {
