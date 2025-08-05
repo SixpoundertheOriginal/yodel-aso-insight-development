@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Brain, Target, Users, Trophy, Zap, AlertCircle } from 'lucide-react';
+import { BrandedLoadingSpinner } from '@/components/ui/LoadingSkeleton';
+import { Brain, Target, Users, Trophy, Zap, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -350,22 +351,7 @@ export const AppIntelligenceAnalyzer: React.FC<AppIntelligenceAnalyzerProps> = (
   }, [appData]);
 
   if (!intelligence) {
-    return (
-      <Card className="border-primary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            App Intelligence Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">{analysisStep}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <BrandedLoadingSpinner message="App Intelligence Analysis" description={analysisStep} />;
   }
 
   return (

@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { DashboardSkeleton } from "@/components/ui/dashboard-skeleton";
+import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
@@ -89,11 +89,7 @@ const Dashboard: React.FC = () => {
   const yearComparison = useComparisonData("year");
 
   if (loading || !data) {
-    return (
-      <MainLayout>
-        <DashboardSkeleton />
-      </MainLayout>
-    );
+    return <BrandedLoadingSpinner message="Loading Dashboard" description="Fetching your ASO analytics..." />;
   }
 
   // Check for empty data state

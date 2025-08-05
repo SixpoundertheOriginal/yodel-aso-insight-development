@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { BrandedLoadingSpinner } from '@/components/ui/LoadingSkeleton';
 import { ScrapedMetadata } from '@/types/aso';
 import { AppElementAnalysisService, ComprehensiveElementAnalysis } from '@/services/app-element-analysis.service';
 import { UnifiedNameTitleAnalysisCard } from './UnifiedNameTitleAnalysisCard';
@@ -43,12 +44,7 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
   }, [metadata, competitorData]);
 
   if (isLoading || analyzing) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-3 text-muted-foreground">Analyzing app elements...</span>
-      </div>
-    );
+    return <BrandedLoadingSpinner message="Analyzing App Elements" description="Analyzing app elements..." />;
   }
 
   if (!analysis) {

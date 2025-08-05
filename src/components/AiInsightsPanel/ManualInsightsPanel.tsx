@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, Sparkles, Zap } from 'lucide-react';
 import { InsightRequestCards } from './InsightRequestCards';
-import { InsightLoadingState } from './InsightLoadingState';
+import { BrandedLoadingSpinner } from '@/components/ui/LoadingSkeleton';
 import { InsightResults } from './InsightResults';
 import { HeroSection, YodelButton } from '@/components/ui/design-system';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
@@ -82,11 +82,7 @@ export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
 
   // Loading state during insight generation
   if (isGenerating && currentAction) {
-    return (
-      <Card className={`bg-gradient-to-br from-background to-muted/20 border ${className}`}>
-        <InsightLoadingState actionType={currentAction} />
-      </Card>
-    );
+    return <BrandedLoadingSpinner message="Generating AI Insights" description={`Analyzing ${currentAction.replace('_', ' ')}...`} />;
   }
 
   // Results state - show insights if available

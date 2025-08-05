@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Download, FileDown, Share2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import { 
   BarChart, 
   ResponsiveContainer, 
@@ -40,19 +41,7 @@ interface GrowthGapResultsProps {
 export const GrowthGapResults: React.FC<GrowthGapResultsProps> = ({ results, isLoading = false }) => {
   // Loading state
   if (isLoading) {
-    return (
-      <Card className="border-none shadow-none bg-transparent flex items-center justify-center h-full">
-        <CardContent className="p-6 text-center">
-          <div className="text-yodel-orange mb-4">
-            <Loader2 className="w-12 h-12 mx-auto animate-spin" />
-          </div>
-          <h3 className="text-lg font-medium text-zinc-300 mb-1">Analyzing Your Data</h3>
-          <p className="text-sm text-zinc-500 max-w-xs mx-auto">
-            We're processing your data and generating insights. This may take a moment...
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <BrandedLoadingSpinner message="Analyzing Your Data" description="We're processing your data and generating insights. This may take a moment..." />;
   }
 
   // Empty state
