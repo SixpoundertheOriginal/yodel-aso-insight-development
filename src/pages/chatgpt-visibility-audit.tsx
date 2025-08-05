@@ -306,15 +306,20 @@ function ChatGPTVisibilityAudit() {
         console.log('ChatGPTVisibilityAudit: Successfully inserted queries');
       }
 
-      setSelectedAuditRun({
+      const newAuditRun = {
         ...data,
         status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
         audit_type: data.audit_type || auditData.mode,
         total_queries: data.total_queries || 0,
         completed_queries: data.completed_queries || 0
-      });
+      };
+
+      // Immediately add to local state for instant UI update
+      setAuditRuns(prev => [newAuditRun, ...prev]);
+      setSelectedAuditRun(newAuditRun);
       
-      await loadAuditRuns(organizationId);
+      // Auto-navigate to runs tab immediately
+      setActiveTab('runs');
 
       const entityName = auditData.mode === 'app' 
         ? auditData.app?.app_name 
@@ -325,10 +330,8 @@ function ChatGPTVisibilityAudit() {
         description: `Created ${auditData.mode} audit "${data.name}" for ${entityName}`,
       });
 
-      // Auto-navigate to runs tab after all operations complete
-      setTimeout(() => {
-        setActiveTab('runs');
-      }, 100);
+      // Refresh from database to ensure consistency
+      await loadAuditRuns(organizationId);
     } catch (error) {
       console.error('Error creating audit run:', error);
       toast({
