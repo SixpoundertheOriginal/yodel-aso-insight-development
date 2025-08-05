@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette } from 'lucide-react';
+import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette, FileSpreadsheet } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
 import { MetadataWorkspace } from '../AsoAiHub/MetadataCopilot/MetadataWorkspace';
 import { KeywordClustersPanel } from '../KeywordIntelligence/KeywordClustersPanel';
@@ -26,6 +27,7 @@ interface AppAuditHubProps {
 export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppScraped }) => {
   const [importedMetadata, setImportedMetadata] = useState<ScrapedMetadata | null>(null);
   const [activeTab, setActiveTab] = useState('import');
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const {
     auditData,
@@ -71,6 +73,149 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
       toast.success('Audit report downloaded successfully');
     } catch (error) {
       toast.error('Failed to generate audit report');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!importedMetadata || !auditData) return;
+    
+    setIsExportingPDF(true);
+    try {
+      // Create a temporary container for PDF generation
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.position = 'absolute';
+      pdfContainer.style.left = '-9999px';
+      pdfContainer.style.top = '0';
+      pdfContainer.style.width = '210mm'; // A4 width
+      pdfContainer.style.backgroundColor = 'white';
+      pdfContainer.style.color = 'black';
+      pdfContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      
+      // Generate PDF-optimized content
+      pdfContainer.innerHTML = `
+        <div style="padding: 20px; font-size: 12px; line-height: 1.4;">
+          <!-- Cover Page -->
+          <div style="text-align: center; margin-bottom: 40px; page-break-after: always;">
+            <h1 style="font-size: 28px; color: #1a1a1a; margin-bottom: 10px;">${importedMetadata.name}</h1>
+            <h2 style="font-size: 18px; color: #666; margin-bottom: 20px;">ASO Audit Report</h2>
+            <div style="margin: 20px 0;">
+              <img src="${importedMetadata.icon}" alt="App Icon" style="width: 80px; height: 80px; border-radius: 12px;" />
+            </div>
+            <p style="color: #666; margin: 10px 0;">${importedMetadata.applicationCategory} • ${new Date().toLocaleDateString()}</p>
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #1a1a1a; margin-bottom: 15px;">Overall Score</h3>
+              <div style="font-size: 48px; font-weight: bold; color: ${auditData.overallScore >= 70 ? '#22c55e' : auditData.overallScore >= 40 ? '#f59e0b' : '#ef4444'};">
+                ${auditData.overallScore}/100
+              </div>
+              <p style="color: #666; margin-top: 10px;">
+                ${auditData.overallScore >= 80 ? 'Excellent' : auditData.overallScore >= 60 ? 'Good' : auditData.overallScore >= 40 ? 'Fair' : 'Needs Work'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Executive Summary -->
+          <div style="margin-bottom: 40px;">
+            <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; margin-bottom: 20px;">Executive Summary</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+              <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #22c55e;">${auditData.metadataScore}/100</div>
+                <div style="color: #666; font-size: 11px;">Metadata Score</div>
+              </div>
+              <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${auditData.keywordScore}/100</div>
+                <div style="color: #666; font-size: 11px;">Keyword Score</div>
+              </div>
+              <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #8b5cf6;">${auditData.competitorScore}/100</div>
+                <div style="color: #666; font-size: 11px;">Competitive Score</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Findings -->
+          <div style="margin-bottom: 40px;">
+            <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; margin-bottom: 20px;">Key Findings</h2>
+            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+              <h3 style="color: #ea580c; margin-bottom: 10px;">🎯 Title Analysis</h3>
+              <p style="margin: 5px 0;">Current title: "${importedMetadata.title}"</p>
+              <p style="margin: 5px 0;">Length: ${importedMetadata.title?.length || 0}/30 characters</p>
+              ${(importedMetadata.title?.length || 0) > 30 ? '<p style="color: #dc2626; margin: 5px 0;">⚠️ Title may be truncated in search results</p>' : ''}
+            </div>
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+              <h3 style="color: #0284c7; margin-bottom: 10px;">📱 App Store Optimization</h3>
+              <p style="margin: 5px 0;">Category: ${importedMetadata.applicationCategory}</p>
+              <p style="margin: 5px 0;">Developer: ${importedMetadata.developer || 'Not specified'}</p>
+            </div>
+          </div>
+
+          <!-- Priority Recommendations -->
+          <div style="page-break-before: always;">
+            <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; margin-bottom: 20px;">Priority Recommendations</h2>
+            ${auditData.recommendations?.slice(0, 6).map((rec, index) => `
+              <div style="background: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid;">
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                  <span style="background: ${
+                    rec.priority === 'high' ? '#fee2e2' : rec.priority === 'medium' ? '#fef3c7' : '#dbeafe'
+                  }; color: ${
+                    rec.priority === 'high' ? '#dc2626' : rec.priority === 'medium' ? '#d97706' : '#2563eb'
+                  }; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase;">${rec.priority}</span>
+                  <span style="margin-left: 10px; color: #666; font-size: 10px;">${rec.category}</span>
+                </div>
+                <h3 style="color: #1a1a1a; margin-bottom: 8px; font-size: 14px;">${rec.title}</h3>
+                <p style="color: #666; margin: 0; font-size: 11px;">${rec.description}</p>
+                ${'impact' in rec ? `
+                  <div style="margin-top: 10px;">
+                    <div style="color: #666; font-size: 10px;">Expected Impact: ${rec.impact}%</div>
+                    <div style="background: #e5e5e5; height: 4px; border-radius: 2px; margin-top: 4px;">
+                      <div style="background: #f59e0b; height: 4px; border-radius: 2px; width: ${rec.impact}%;"></div>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Footer -->
+          <div style="margin-top: 40px; text-align: center; color: #999; font-size: 10px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+            Generated on ${new Date().toLocaleDateString()} • ASO Audit Report • ${importedMetadata.name}
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(pdfContainer);
+
+      // Configure PDF options
+      const opt = {
+        margin: [10, 10],
+        filename: `${importedMetadata.name.replace(/[^a-z0-9]/gi, '_')}_ASO_Audit_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      // Generate and download PDF
+      await html2pdf().set(opt).from(pdfContainer).save();
+      
+      // Clean up
+      document.body.removeChild(pdfContainer);
+      
+      toast.success('PDF audit report downloaded successfully');
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('Failed to generate PDF report. Please try again.');
+    } finally {
+      setIsExportingPDF(false);
     }
   };
 
@@ -183,12 +328,22 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           <Button
+            onClick={handleExportPDF}
+            disabled={isExportingPDF || !auditData}
+            variant="outline"
+            size="sm"
+            className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+          >
+            <FileSpreadsheet className={`h-4 w-4 mr-2 ${isExportingPDF ? 'animate-pulse' : ''}`} />
+            {isExportingPDF ? 'Generating PDF...' : 'Export PDF'}
+          </Button>
+          <Button
             onClick={handleExportReport}
             variant="outline"
             size="sm"
           >
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            Export JSON
           </Button>
         </div>
       </div>
