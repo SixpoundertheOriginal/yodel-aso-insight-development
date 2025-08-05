@@ -17,6 +17,7 @@ export interface TopicAuditData {
   
   // Strategic enhancement fields
   solutionsOffered?: string[]; // Auto-populated from entity.services
+  keyFeatures?: string[]; // App-specific: distinctive features for query generation
   analysisDepth?: 'standard' | 'comprehensive' | 'deep'; // Controls query count (20/50/100)
   industrySubVertical?: string; // Precision targeting field
   

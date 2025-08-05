@@ -257,35 +257,70 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const extractKeyFeatures = (appData: any): string[] => {
     const features = [];
     
-    if (appData?.featureAnalysis?.topFeatures) {
-      features.push(...appData.featureAnalysis.topFeatures.slice(0, 5));
-    }
-    
-    if (appData?.competitiveOpportunities) {
-      appData.competitiveOpportunities.forEach((opp: string) => {
-        if (opp.includes('feature') || opp.includes('capability')) {
-          features.push(opp.split(' ').slice(0, 2).join(' '));
-        }
-      });
-    }
-
-    // Extract features from description analysis
+    // Enhanced feature extraction from app description
     if (appData?.description) {
-      const descWords = appData.description.toLowerCase();
-      const featureKeywords = ['feature', 'tool', 'tracking', 'analysis', 'monitoring', 'management', 'optimization'];
-      featureKeywords.forEach(keyword => {
-        if (descWords.includes(keyword)) {
-          features.push(keyword);
+      const description = appData.description.toLowerCase();
+      
+      // Extract capabilities and features mentioned in description
+      const featurePatterns = [
+        /(\w+)\s+(learning|training|tracking|analysis|monitoring|management|optimization|capability|feature)/g,
+        /(audio|visual|offline|online|mobile|real-time|spaced|personalized|adaptive|interactive)\s+\w+/g,
+        /(voice|speech|conversation|pronunciation|grammar|vocabulary)\s*\w*/g,
+        /(beginner|intermediate|advanced|professional)\s+(level|mode|course)/g
+      ];
+      
+      featurePatterns.forEach(pattern => {
+        const matches = description.match(pattern) || [];
+        matches.forEach(match => {
+          const cleaned = match.replace(/[^\w\s]/g, '').trim();
+          if (cleaned.length > 3 && cleaned.length < 25) {
+            features.push(cleaned);
+          }
+        });
+      });
+      
+      // Common app feature keywords
+      const commonFeatures = [
+        'offline capability', 'audio-based learning', 'spaced repetition', 
+        'conversational practice', 'pronunciation training', 'progress tracking',
+        'personalized lessons', 'mobile learning', 'voice recognition',
+        'interactive exercises', 'adaptive learning', 'gamification'
+      ];
+      
+      commonFeatures.forEach(feature => {
+        if (description.includes(feature.toLowerCase()) || 
+            feature.split(' ').every(word => description.includes(word))) {
+          features.push(feature);
         }
       });
     }
-
-    // Extract from category
+    
+    // Extract from app category with more specific mapping
     if (appData?.applicationCategory) {
-      features.push(appData.applicationCategory.toLowerCase().replace(/[^a-z\s]/g, ''));
+      const category = appData.applicationCategory.toLowerCase();
+      const categoryFeatures = {
+        'education': ['educational content', 'learning platform'],
+        'language': ['language learning', 'multilingual support'],
+        'fitness': ['workout tracking', 'health monitoring'],
+        'productivity': ['task management', 'workflow optimization'],
+        'finance': ['expense tracking', 'financial planning']
+      };
+      
+      Object.entries(categoryFeatures).forEach(([key, categoryFeats]) => {
+        if (category.includes(key)) {
+          features.push(...categoryFeats);
+        }
+      });
     }
     
-    return features.filter(Boolean).slice(0, 8);
+    // Use existing feature analysis if available
+    if (appData?.featureAnalysis?.topFeatures) {
+      features.push(...appData.featureAnalysis.topFeatures.slice(0, 3));
+    }
+    
+    // Remove duplicates and limit to most relevant features
+    const uniqueFeatures = [...new Set(features)];
+    return uniqueFeatures.filter(Boolean).slice(0, 6);
   };
 
   const searchAppsForEntity = async (entityName: string) => {
@@ -322,14 +357,15 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         setAppSearchResults(modalResults);
         setShowAppPicker(true);
         
+        // Show success notification only
         toast({
-          title: 'Apps found!',
-          description: `Found ${response.data.length} app(s) matching "${entityName}". Please select the correct one.`,
+          title: `Successfully analyzed ${entityName}`,
+          description: `Found ${response.data.length} app(s). Please select the correct one to continue.`,
         });
         
       } else {
-        // Handle no results or failed search
-        console.log('❌ No apps found or search failed:', response);
+        // Handle no results or failed search - don't show error if we got results
+        console.log('ℹ️ No apps found for:', entityName);
         toast({
           title: 'No apps found',
           description: `No matching apps found for "${entityName}". You can enter an App Store URL manually.`,
@@ -355,11 +391,6 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     // Auto-populate URL field with selected app
     setAppStoreUrl(selectedApp.url);
     
-    toast({
-      title: 'App selected',
-      description: `Selected ${selectedApp.name}. Analyzing app data...`,
-    });
-    
     // Analyze the selected app to extract features
     setIsLoadingAppData(true);
     try {
@@ -370,24 +401,28 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         const featuresText = features.filter(f => f && f.trim()).join(', ');
         setDistinctiveFeatures(featuresText);
         
+        // Store app data for processing
+        setAppStoreData(appData);
+        
         toast({
-          title: 'App analysis complete',
-          description: `Extracted ${features.length} distinctive features for ${selectedApp.name}`,
+          title: `Successfully analyzed ${selectedApp.name}`,
+          description: `App selected and ${features.length} key features extracted`,
         });
       } else {
         // Even if feature extraction fails, we still have the basic app data
         setDistinctiveFeatures(''); // User can fill manually
         toast({
-          title: 'App selected',
-          description: `${selectedApp.name} selected. You can add distinctive features manually.`,
+          title: `Successfully selected ${selectedApp.name}`,
+          description: 'App selected. You can add key features manually.',
         });
       }
     } catch (error) {
       console.error('App analysis failed:', error);
+      // Don't show error here - the app was still successfully selected
+      setDistinctiveFeatures('');
       toast({
-        title: 'Analysis incomplete',
-        description: `Selected ${selectedApp.name}. Please add distinctive features manually.`,
-        variant: 'default'
+        title: `Successfully selected ${selectedApp.name}`,
+        description: 'App selected. Please add key features manually.',
       });
     } finally {
       setIsLoadingAppData(false);
@@ -786,7 +821,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
 
   const generateAppEnhancedQueries = (appData: any, entityData: any): GeneratedTopicQuery[] => {
     const appCategory = extractAppCategory(appData);
-    const keyFeatures = extractKeyFeatures(appData);
+    // Use manually entered features if available, otherwise extract from app data
+    const keyFeatures = distinctiveFeatures 
+      ? distinctiveFeatures.split(',').map(f => f.trim()).filter(Boolean)
+      : extractKeyFeatures(appData);
     const topKeywords = extractTopKeywords(appData);
     const competitors = extractCompetitors(appData);
     
@@ -1100,6 +1138,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       competitorFocus: true,
       intentLevel: 'high', // Default to high for competitive discovery
       solutionsOffered: mapSolutionsFromServices(intelligence.services || []),
+      keyFeatures: isAppEnabled && appStoreData ? extractKeyFeatures(appStoreData) : undefined,
       analysisDepth: 'standard', // Default to 20 queries
       industrySubVertical: mapSubVertical(intelligence.services || [], mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || [])),
       entityIntelligence: intelligence
@@ -1794,6 +1833,54 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         </div>
                       )}
                     </div>
+
+                    {/* Key Features - Only shown when app toggle is enabled */}
+                    {isAppEnabled && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm font-medium">Key Features</Label>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Distinctive app features used for targeted query generation</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingField(editingField === 'keyFeatures' ? null : 'keyFeatures')}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {editingField === 'keyFeatures' ? (
+                          <Textarea
+                            value={distinctiveFeatures}
+                            onChange={(e) => setDistinctiveFeatures(e.target.value)}
+                            onBlur={() => setEditingField(null)}
+                            autoFocus
+                            placeholder="Enter key features separated by commas (e.g., audio-based learning, offline capability, spaced repetition)"
+                            className="w-full min-h-[80px]"
+                          />
+                        ) : (
+                          <div className="bg-background/50 border rounded-lg p-3">
+                            <div className="flex flex-wrap gap-1">
+                              {distinctiveFeatures ? distinctiveFeatures.split(',').map((feature, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {feature.trim()}
+                                </Badge>
+                              )) : <span className="text-muted-foreground text-sm">No features specified - will be extracted from app description</span>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Query Strategy */}
                     <div className="space-y-2">
