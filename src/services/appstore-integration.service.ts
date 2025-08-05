@@ -47,33 +47,21 @@ export class AppStoreIntegrationService {
         return { success: false, error: error.message || 'Failed to search App Store' };
       }
 
-      if (!data || !data.success) {
-        console.error('❌ [APPSTORE-INTEGRATION] Scraper returned error:', data);
+      // Handle edge function response - check for results array instead of success field
+      if (!data || !data.results || !Array.isArray(data.results)) {
+        console.error('❌ [APPSTORE-INTEGRATION] No results in response:', data);
         return { success: false, error: data?.error || 'No results found' };
       }
 
-      console.log('✅ [APPSTORE-INTEGRATION] Raw scraper response:', data);
-
-      // Handle different response formats from the edge function
-      let resultsToTransform: any[] = [];
-
-      if (data.isAmbiguous && data.data?.results) {
-        // Ambiguous search: multiple results in nested structure
-        console.log('📋 [APPSTORE-INTEGRATION] Processing ambiguous search results');
-        resultsToTransform = Array.isArray(data.data.results) ? data.data.results : [data.data.results];
-      } else if (data.data && !data.isAmbiguous) {
-        // Non-ambiguous search: single result or direct array
-        console.log('🎯 [APPSTORE-INTEGRATION] Processing non-ambiguous search result');
-        resultsToTransform = Array.isArray(data.data) ? data.data : [data.data];
+      // Log response status for debugging
+      if (data.isAmbiguous) {
+        console.log(`✅ [APPSTORE-INTEGRATION] Found ${data.results.length} apps - disambiguation needed`);
       } else {
-        // Fallback: try to extract any available data
-        console.warn('⚠️ [APPSTORE-INTEGRATION] Unexpected response format, attempting fallback');
-        if (data.data) {
-          resultsToTransform = Array.isArray(data.data) ? data.data : [data.data];
-        } else {
-          return { success: false, error: 'No app data found in response' };
-        }
+        console.log('✅ [APPSTORE-INTEGRATION] Single app result found');
       }
+
+      // Extract results directly from the edge function response
+      const resultsToTransform = data.results;
 
       console.log('📊 [APPSTORE-INTEGRATION] Transforming results:', {
         resultsCount: resultsToTransform.length,
