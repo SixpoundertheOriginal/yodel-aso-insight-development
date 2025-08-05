@@ -52,7 +52,7 @@ export interface GeneratedTopicQuery {
   search_intent?: 'immediate_need' | 'research' | 'comparison' | 'education' | 'purchase_intent';
   purchase_intent?: 'high' | 'medium' | 'low';
   client_scenario?: string;
-  source?: 'openai_enhanced' | 'template' | 'intent_based' | 'solution_based' | 'universal_enhanced' | 'foundation';
+  source?: 'openai_enhanced' | 'template' | 'intent_based' | 'solution_based' | 'universal_enhanced' | 'foundation' | 'app_enhanced';
 }
 
 export type AuditMode = 'app' | 'topic';

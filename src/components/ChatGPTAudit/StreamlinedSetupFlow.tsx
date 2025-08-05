@@ -9,9 +9,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
+import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
@@ -218,6 +220,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [newAlias, setNewAlias] = useState('');
   const [isAnalyzingEntity, setIsAnalyzingEntity] = useState(false);
   
+  // App Store Integration State
+  const [isAppEnabled, setIsAppEnabled] = useState(false);
+  const [appStoreUrl, setAppStoreUrl] = useState('');
+  const [appStoreData, setAppStoreData] = useState<any>(null);
+  const [isLoadingAppData, setIsLoadingAppData] = useState(false);
+  
   // Loading states
   const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
   const [isGeneratingQueries, setIsGeneratingQueries] = useState(false);
@@ -233,6 +241,76 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const { toast } = useToast();
+
+  // App Store Integration Helper Functions
+  const validateAppStoreUrl = (url: string): boolean => {
+    const iosPattern = /^https:\/\/apps\.apple\.com\/.+/;
+    const androidPattern = /^https:\/\/play\.google\.com\/store\/apps\/.+/;
+    return iosPattern.test(url) || androidPattern.test(url);
+  };
+
+  const extractKeyFeatures = (appData: any): string[] => {
+    const features = [];
+    
+    if (appData?.featureAnalysis?.topFeatures) {
+      features.push(...appData.featureAnalysis.topFeatures.slice(0, 5));
+    }
+    
+    if (appData?.competitiveOpportunities) {
+      appData.competitiveOpportunities.forEach((opp: string) => {
+        if (opp.includes('feature') || opp.includes('capability')) {
+          features.push(opp.split(' ').slice(0, 2).join(' '));
+        }
+      });
+    }
+    
+    return features.filter(Boolean).slice(0, 5);
+  };
+
+  const fetchAppStoreData = async (url: string) => {
+    if (!isAppEnabled || !url || !validateAppStoreUrl(url)) {
+      return null;
+    }
+    
+    setIsLoadingAppData(true);
+    try {
+      const response = await AppStoreIntegrationService.searchApp(url, 'default-org');
+      if (response.success && response.data && response.data.length > 0) {
+        const appData = response.data[0];
+        setAppStoreData(appData);
+        return appData;
+      } else {
+        toast({
+          title: 'App Store Analysis Failed',
+          description: response.error || 'Could not analyze app store data',
+          variant: 'destructive'
+        });
+        return null;
+      }
+    } catch (error) {
+      console.error('Failed to fetch app store data:', error);
+      toast({
+        title: 'App Store Analysis Failed',
+        description: 'Failed to analyze app store data. Continuing with basic analysis.',
+        variant: 'destructive'
+      });
+      return null;
+    } finally {
+      setIsLoadingAppData(false);
+    }
+  };
+
+  const handleAnalyzeEntity = async () => {
+    setIsAnalyzingEntity(true);
+    
+    // Fetch app store data if enabled
+    let appData = null;
+    if (isAppEnabled && appStoreUrl) {
+      appData = await fetchAppStoreData(appStoreUrl);
+    }
+    
+    // Continue with entity analysis (existing logic will handle this)
+  };
 
   // Data mapping function for simple mode
   const getTopicAuditData = (): TopicAuditData => {
@@ -498,7 +576,30 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     try {
       console.log('🚀 Generating queries from enhanced entity intelligence:', entityIntelligence);
       
-      // Try AI-enhanced query generation with enhanced intelligence
+      // Generate base queries using existing logic
+      const baseQueries = await generateBaseQueries(entityIntelligence);
+      
+      // If app toggle is enabled and we have app data, enhance queries
+      if (isAppEnabled && appStoreData) {
+        const enhancedQueries = generateAppEnhancedQueries(appStoreData, entityIntelligence);
+        
+        // Combine and deduplicate, maintaining priority order
+        const allQueries = [...baseQueries, ...enhancedQueries];
+        const uniqueQueries = removeDuplicateQueries(allQueries);
+        
+        setGeneratedQueries(uniqueQueries.slice(0, 20)); // Limit to 20 total queries
+      } else {
+        setGeneratedQueries(baseQueries);
+      }
+    } catch (error) {
+      console.error('❌ Enhanced query generation error:', error);
+      await generateTemplateQueries();
+    }
+  };
+
+  const generateBaseQueries = async (entityIntelligence: any): Promise<GeneratedTopicQuery[]> => {
+    // Try AI-enhanced query generation with enhanced intelligence
+    try {
       const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
         body: {
           topicData: topicData,
@@ -514,21 +615,151 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             confidenceScore: entityIntelligence.confidence_score,
             scrapedAt: entityIntelligence.scrapedAt
           },
-          queryCount: 25
+          queryCount: 15
         }
       });
       
       if (aiResponse?.queries?.length) {
         console.log('✅ Enhanced AI queries generated:', aiResponse.queries.length);
-        setGeneratedQueries(aiResponse.queries);
+        return aiResponse.queries;
       } else {
         console.warn('⚠️ Enhanced AI query generation failed, using fallback');
-        await generateTemplateQueries();
+        return generateFallbackQueries();
       }
     } catch (error) {
-      console.error('❌ Enhanced query generation error:', error);
-      await generateTemplateQueries();
+      console.error('❌ Base query generation error:', error);
+      return generateFallbackQueries();
     }
+  };
+
+  const generateFallbackQueries = (): GeneratedTopicQuery[] => {
+    if (!topicData) return [];
+    console.log('🔄 Generating fallback queries for topic:', topicData.topic);
+    return TopicQueryGeneratorService.generateQueries(topicData, 15);
+  };
+
+  const generateAppEnhancedQueries = (appData: any, entityData: any): GeneratedTopicQuery[] => {
+    const appCategory = extractAppCategory(appData);
+    const keyFeatures = extractKeyFeatures(appData);
+    const topKeywords = extractTopKeywords(appData);
+    const competitors = extractCompetitors(appData);
+    
+    const enhancedQueries: GeneratedTopicQuery[] = [];
+    let priority = 100;
+    
+    // Feature-based queries
+    keyFeatures.forEach(feature => {
+      enhancedQueries.push({
+        id: `app-feature-${Date.now()}-${Math.random()}`,
+        query_text: `best ${appCategory} with ${feature}`,
+        query_type: 'service_specific',
+        priority: priority--,
+        target_entity: entityData.entityName,
+        source: 'app_enhanced'
+      });
+      
+      enhancedQueries.push({
+        id: `app-feature-rec-${Date.now()}-${Math.random()}`,
+        query_text: `${feature} app recommendations`,
+        query_type: 'recommendation',
+        priority: priority--,
+        target_entity: entityData.entityName,
+        source: 'app_enhanced'
+      });
+    });
+    
+    // Category + use case queries
+    enhancedQueries.push({
+      id: `app-category-${Date.now()}-${Math.random()}`,
+      query_text: `best ${appCategory} for professionals`,
+      query_type: 'recommendation',
+      priority: priority--,
+      target_entity: entityData.entityName,
+      source: 'app_enhanced'
+    });
+    
+    enhancedQueries.push({
+      id: `app-top-${Date.now()}-${Math.random()}`,
+      query_text: `top ${appCategory} apps`,
+      query_type: 'recommendation',
+      priority: priority--,
+      target_entity: entityData.entityName,
+      source: 'app_enhanced'
+    });
+    
+    // Competitive queries
+    competitors.forEach(competitor => {
+      enhancedQueries.push({
+        id: `app-alt-${Date.now()}-${Math.random()}`,
+        query_text: `alternatives to ${competitor}`,
+        query_type: 'comparison',
+        priority: priority--,
+        target_entity: entityData.entityName,
+        source: 'app_enhanced'
+      });
+      
+      enhancedQueries.push({
+        id: `app-vs-${Date.now()}-${Math.random()}`,
+        query_text: `${entityData.entityName} vs ${competitor}`,
+        query_type: 'comparison',
+        priority: priority--,
+        target_entity: entityData.entityName,
+        source: 'app_enhanced'
+      });
+    });
+    
+    // Keyword-based queries
+    topKeywords.forEach(keyword => {
+      enhancedQueries.push({
+        id: `app-keyword-${Date.now()}-${Math.random()}`,
+        query_text: `best apps for ${keyword}`,
+        query_type: 'recommendation',
+        priority: priority--,
+        target_entity: entityData.entityName,
+        source: 'app_enhanced'
+      });
+    });
+    
+    return enhancedQueries.filter(Boolean);
+  };
+
+  const extractAppCategory = (appData: any): string => {
+    return appData.applicationCategory || appData.category || 'mobile app';
+  };
+
+  const extractTopKeywords = (appData: any): string[] => {
+    // Extract keywords from app description and title
+    const keywords = [];
+    
+    if (appData.description) {
+      // Simple keyword extraction from description
+      const words = appData.description.toLowerCase().split(/\s+/);
+      const relevantWords = words.filter(word => 
+        word.length > 4 && 
+        !['this', 'that', 'with', 'from', 'they', 'have', 'been', 'will'].includes(word)
+      );
+      keywords.push(...relevantWords.slice(0, 4));
+    }
+    
+    return keywords.filter(Boolean).slice(0, 5);
+  };
+
+  const extractCompetitors = (appData: any): string[] => {
+    // For now, return empty array as we'd need competitor analysis
+    // This could be enhanced later with actual competitor data
+    return [];
+  };
+
+  const removeDuplicateQueries = (queries: GeneratedTopicQuery[]): GeneratedTopicQuery[] => {
+    const seen = new Set();
+    return queries.filter(query => {
+      const normalized = query.query_text.toLowerCase().trim();
+      if (seen.has(normalized)) {
+        return false;
+      }
+      seen.add(normalized);
+      return true;
+    });
   };
 
   const generateTemplateQueries = async () => {
@@ -1071,7 +1302,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                 </div>
               ) : (
                 <>
-                  {/* Advanced Mode Section (existing EntityIntelligenceAnalyzer) */}
+                  {/* Advanced Mode Section with App Store Integration */}
                   <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-primary">Entity Intelligence Analysis</h3>
                   <div className="space-y-4">
@@ -1088,13 +1319,68 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                         Enter the business, brand, or entity you want to analyze for ChatGPT visibility
                       </p>
                     </div>
+
+                    {/* App Store Integration Toggle */}
+                    {entityInput.trim() && (
+                      <div className="space-y-4 p-4 bg-accent/10 rounded-lg border">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Label htmlFor="isApp" className="text-sm font-medium">Is this an app?</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Enable app store analysis for enhanced queries
+                            </p>
+                          </div>
+                          <Switch
+                            id="isApp"
+                            checked={isAppEnabled}
+                            onCheckedChange={setIsAppEnabled}
+                          />
+                        </div>
+                        
+                        {isAppEnabled && (
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="appStoreUrl" className="text-sm font-medium">App Store URL</Label>
+                              <Input
+                                id="appStoreUrl"
+                                value={appStoreUrl}
+                                onChange={(e) => setAppStoreUrl(e.target.value)}
+                                placeholder="https://apps.apple.com/... or https://play.google.com/..."
+                                className="w-full"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Enter iOS App Store or Google Play Store URL for enhanced analysis
+                              </p>
+                            </div>
+                            
+                            {isLoadingAppData && (
+                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                                <span>Analyzing app store data...</span>
+                              </div>
+                            )}
+                            
+                            {appStoreData && (
+                              <div className="space-y-2 p-3 bg-primary/10 rounded-lg">
+                                <h4 className="text-sm font-medium text-primary">App Analysis Complete</h4>
+                                <div className="flex flex-wrap gap-1">
+                                  {extractKeyFeatures(appStoreData).slice(0, 3).map(feature => (
+                                    <Badge key={feature} variant="secondary" className="text-xs">{feature}</Badge>
+                                  ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Enhanced queries will include app-specific features
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {entityInput.trim() && !isAnalyzingEntity && (
                       <Button 
-                        onClick={() => {
-                          setIsAnalyzingEntity(true);
-                          // Start entity analysis which will auto-populate fields
-                        }}
+                        onClick={handleAnalyzeEntity}
                         className="w-full"
                       >
                         <Brain className="h-4 w-4 mr-2" />
