@@ -156,12 +156,13 @@ class AsoSearchService {
 
   /**
    * Execute the bulletproof search chain with intelligent fallbacks
-   * FIXED: Handle AmbiguousSearchError as success, not failure
+   * FIXED: Check for ambiguity first before calling edge function
    */
   private async executeBulletproofSearchChain(input: string, config: SearchConfig, startTime: number): Promise<SearchResult> {
+    // FIXED: Reorder to check ambiguity first, then call edge function only for confirmed apps
     const searchMethods = [
-      { name: 'enhanced-edge-function', handler: () => this.executeEnhancedEdgeFunctionSearch(input, config) },
       { name: 'direct-itunes-api', handler: () => this.executeDirectApiSearch(input, config) },
+      { name: 'enhanced-edge-function', handler: () => this.executeEnhancedEdgeFunctionSearch(input, config) },
       { name: 'bypass-search', handler: () => this.executeBypassSearch(input, config) }
     ];
 
