@@ -427,7 +427,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     // Analyze the selected app to extract features
     setIsLoadingAppData(true);
     try {
-      const appData = await fetchAppStoreData(selectedApp.url);
+      // FIXED: Extract appId from selected app instead of passing full URL
+      const appId = selectedApp.appId || extractAppIdFromUrl(selectedApp.url);
+      const appData = await fetchAppStoreDataById(appId, selectedApp.name);
       if (appData) {
         // Extract distinctive features and populate the field
         const features = extractKeyFeatures(appData);
@@ -481,6 +483,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     }
   };
 
+  // Helper function to extract App Store ID from URL
+  const extractAppIdFromUrl = (url: string): string | null => {
+    const match = url.match(/id(\d+)/);
+    return match ? match[1] : null;
+  };
+
   const fetchAppStoreData = async (url: string) => {
     if (!isAppEnabled || !url || !validateAppStoreUrl(url)) {
       return null;
@@ -506,6 +514,43 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       }
     } catch (error) {
       console.error('Failed to fetch app store data:', error);
+      toast({
+        title: 'App Store Analysis Failed',
+        description: 'Failed to analyze app store data. Continuing with basic analysis.',
+        variant: 'destructive'
+      });
+      return null;
+    } finally {
+      setIsLoadingAppData(false);
+    }
+  };
+
+  const fetchAppStoreDataById = async (appId: string | null, appName: string) => {
+    if (!isAppEnabled || !appId) {
+      return null;
+    }
+    
+    setIsLoadingAppData(true);
+    try {
+      // Use appId directly instead of URL to avoid ambiguity
+      const response = await appStoreService.importAppData(appId, {
+        organizationId: 'default-org',
+        includeCaching: true,
+        debugMode: false
+      });
+      if (response) {
+        setAppStoreData(response);
+        return response;
+      } else {
+        toast({
+          title: 'App Store Analysis Failed',
+          description: 'Could not analyze app store data',
+          variant: 'destructive'
+        });
+        return null;
+      }
+    } catch (error) {
+      console.error('Failed to fetch app store data by ID:', error);
       toast({
         title: 'App Store Analysis Failed',
         description: 'Failed to analyze app store data. Continuing with basic analysis.',
