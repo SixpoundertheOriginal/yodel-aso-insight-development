@@ -787,8 +787,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             ...topicData,
             // NEW: Pass app-specific data when app toggle is enabled
             isAppToggleEnabled: isAppEnabled,
-            appFeatures: isAppEnabled && distinctiveFeatures ? distinctiveFeatures.split(',').map(f => f.trim()).filter(Boolean) : [],
-            keyFeatures: isAppEnabled && distinctiveFeatures ? distinctiveFeatures.split(',').map(f => f.trim()).filter(Boolean) : [],
+            appFeatures: isAppEnabled && appStoreData ? extractKeyFeatures(appStoreData) : [],
+            keyFeatures: isAppEnabled && appStoreData ? extractKeyFeatures(appStoreData) : [],
             isApp: isAppEnabled
           },
           entityIntelligence: {
