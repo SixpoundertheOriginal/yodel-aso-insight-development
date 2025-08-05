@@ -296,20 +296,36 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       console.log('🔍 Auto-searching apps for entity:', entityName);
       const response = await AppStoreIntegrationService.searchApp(entityName, 'default-org');
       
+      console.log('📱 App search response:', response);
+      
       if (response.success && response.data && response.data.length > 0) {
         console.log('✅ Found apps:', response.data.length);
-        setAppSearchResults(response.data);
-        setShowAppPicker(true);
+        
+        // Handle multiple results (ambiguous search) - SHOW PICKER
+        if (response.data.length > 1) {
+          console.log('🔀 Multiple apps found, showing picker');
+          setAppSearchResults(response.data);
+          setShowAppPicker(true);
+          toast({
+            title: 'Multiple apps found',
+            description: `Found ${response.data.length} apps matching "${entityName}". Please select the correct one.`,
+            variant: 'default'
+          });
+        } else {
+          // Single result - auto-select it
+          console.log('🎯 Single app found, auto-selecting');
+          await handleAppSelection(response.data[0]);
+        }
       } else {
-        console.log('❌ No apps found, keeping manual URL input');
+        console.log('❌ No apps found in response');
         toast({
           title: 'No apps found',
-          description: 'No matching apps found. You can enter an App Store URL manually.',
+          description: `No matching apps found for "${entityName}". You can enter an App Store URL manually.`,
           variant: 'default'
         });
       }
     } catch (error) {
-      console.error('App search failed:', error);
+      console.error('💥 App search failed:', error);
       toast({
         title: 'Search failed',
         description: 'App search failed. You can enter an App Store URL manually.',
