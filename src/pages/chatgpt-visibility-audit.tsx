@@ -411,11 +411,26 @@ function ChatGPTVisibilityAudit() {
              {selectedAuditRun && (
                <div className="space-y-4">
                  <div className="text-sm font-medium text-muted-foreground">Currently Selected:</div>
-                 <AuditRunIdentifier 
-                   auditRun={selectedAuditRun} 
-                   isSelected={true}
-                   showDetails={true}
-                 />
+                  <AuditRunIdentifier 
+                    auditRun={selectedAuditRun} 
+                    isSelected={true}
+                    showDetails={true}
+                    onNameUpdate={async (id: string, newName: string) => {
+                      try {
+                        const { error } = await supabase
+                          .from('chatgpt_audit_runs')
+                          .update({ name: newName })
+                          .eq('id', id)
+                          .eq('organization_id', organizationId);
+
+                        if (error) throw error;
+                        await loadAuditRuns(organizationId);
+                      } catch (error) {
+                        console.error('Error updating audit name:', error);
+                        throw error;
+                      }
+                    }}
+                  />
                </div>
              )}
 

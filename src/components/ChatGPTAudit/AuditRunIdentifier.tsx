@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Hash, Target, MessageSquare, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Calendar, Hash, Target, MessageSquare, Clock, Edit3, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface AuditRun {
@@ -21,13 +23,18 @@ interface AuditRunIdentifierProps {
   auditRun: AuditRun;
   isSelected?: boolean;
   showDetails?: boolean;
+  onNameUpdate?: (id: string, newName: string) => Promise<void>;
 }
 
 export const AuditRunIdentifier: React.FC<AuditRunIdentifierProps> = ({
   auditRun,
   isSelected = false,
-  showDetails = false
+  showDetails = false,
+  onNameUpdate
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingName, setEditingName] = useState(auditRun.name);
+  const [isUpdating, setIsUpdating] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'running': return 'secondary';
@@ -47,6 +54,47 @@ export const AuditRunIdentifier: React.FC<AuditRunIdentifierProps> = ({
     ? Math.round((auditRun.completed_queries / auditRun.total_queries) * 100)
     : 0;
 
+  const handleStartEdit = () => {
+    setEditingName(auditRun.name);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingName(auditRun.name);
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!onNameUpdate || editingName.trim() === auditRun.name) {
+      setIsEditing(false);
+      return;
+    }
+
+    const trimmedName = editingName.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await onNameUpdate(auditRun.id, trimmedName);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update audit name:', error);
+      setEditingName(auditRun.name);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
   return (
     <Card className={`transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}>
       <CardContent className="p-4">
@@ -54,7 +102,51 @@ export const AuditRunIdentifier: React.FC<AuditRunIdentifierProps> = ({
           <div className="flex-1 space-y-2">
             {/* Audit Run Name and Type */}
             <div className="flex items-center space-x-2">
-              <h3 className="font-medium text-foreground">{auditRun.name}</h3>
+              {isEditing ? (
+                <div className="flex items-center space-x-2 flex-1">
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    className="h-8 text-sm font-medium"
+                    disabled={isUpdating}
+                    autoFocus
+                    onBlur={handleSaveEdit}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSaveEdit}
+                    disabled={isUpdating}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    disabled={isUpdating}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 flex-1">
+                  <h3 className="font-medium text-foreground">{auditRun.name}</h3>
+                  {onNameUpdate && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleStartEdit}
+                      className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
               <Badge variant="outline" className="text-xs">
                 {auditRun.audit_type}
               </Badge>

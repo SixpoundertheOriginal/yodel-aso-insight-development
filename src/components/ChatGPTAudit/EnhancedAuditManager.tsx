@@ -29,6 +29,7 @@ import {
   PlayCircle,
   StopCircle
 } from 'lucide-react';
+import { AuditRunIdentifier } from './AuditRunIdentifier';
 
 interface AuditRun {
   id: string;
@@ -475,6 +476,34 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
     setProcessingQueue(prev => prev.filter(item => item.id !== itemId));
   };
 
+  // Update audit run name
+  const updateAuditRunName = async (runId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('chatgpt_audit_runs')
+        .update({ name: newName })
+        .eq('id', runId)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Name Updated',
+        description: 'Audit run name has been updated successfully.',
+      });
+
+      onRefresh();
+    } catch (error) {
+      console.error('Error updating audit name:', error);
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to update audit run name.',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
   // Delete single audit run
   const deleteAuditRun = async (runId: string) => {
     try {
@@ -896,7 +925,7 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
               filteredRuns.map(run => (
                 <div
                   key={run.id}
-                  className={`group flex items-center space-x-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`group flex items-center space-x-3 p-2 rounded-lg border cursor-pointer transition-all ${
                     selectedAuditRun?.id === run.id
                       ? 'border-blue-500 bg-blue-500/10'
                       : 'border-border bg-background/50 hover:border-zinc-600'
@@ -910,101 +939,62 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
                     onClick={(e) => e.stopPropagation()}
                   />
 
-                  {/* Status Icon */}
-                  <div className="flex-shrink-0">
-                    {getStatusIcon(run.status)}
+                  {/* Main Content with AuditRunIdentifier */}
+                  <div className="flex-1" onClick={(e) => e.stopPropagation()}>
+                    <AuditRunIdentifier 
+                      auditRun={run} 
+                      isSelected={selectedAuditRun?.id === run.id}
+                      onNameUpdate={updateAuditRunName}
+                    />
                   </div>
 
-                  {/* Main Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <h4 className="font-medium text-primary truncate">
-                          {run.name}
-                        </h4>
-                        <Badge variant="outline" className={getStatusColor(run.status)}>
-                          {run.status}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {run.audit_type}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-zinc-400">
-                          {run.completed_queries}/{run.total_queries} queries
-                        </span>
-                        
-                        {/* Quick Actions */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToQueue([run.id]);
-                              toast({
-                                title: 'Added to Queue',
-                                description: `${run.name} has been added to the processing queue.`,
-                              });
-                            }}
-                            variant="ghost"
-                            size="sm"
+                  {/* Quick Actions */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToQueue([run.id]);
+                        toast({
+                          title: 'Added to Queue',
+                          description: `${run.name} has been added to the processing queue.`,
+                        });
+                      }}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          onClick={(e) => e.stopPropagation()}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Audit Run</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{run.name}"? 
+                            This will permanently delete all audit data, queries, and results. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => deleteAuditRun(run.id)}
+                            className="bg-red-600 hover:bg-red-700"
                           >
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                onClick={(e) => e.stopPropagation()}
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-400 hover:text-red-300"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Audit Run</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{run.name}"? 
-                                  This will permanently delete all audit data, queries, and results. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteAuditRun(run.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete Audit
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {run.description && (
-                      <p className="text-sm text-zinc-400 mt-1 truncate">
-                        {run.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-zinc-500">
-                      <span className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{new Date(run.created_at).toLocaleDateString()}</span>
-                      </span>
-                      
-                      {run.audit_type === 'topic' && run.topic_data && (
-                        <span className="flex items-center space-x-1">
-                          <MessageSquare className="h-3 w-3" />
-                          <span>{(run.topic_data as any)?.topic}</span>
-                        </span>
-                      )}
-                    </div>
+                            Delete Audit
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))
