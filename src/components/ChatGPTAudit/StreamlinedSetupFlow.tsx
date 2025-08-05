@@ -783,7 +783,14 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     try {
       const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
         body: {
-          topicData: topicData,
+          topicData: {
+            ...topicData,
+            // NEW: Pass app-specific data when app toggle is enabled
+            isAppToggleEnabled: isAppEnabled,
+            appFeatures: isAppEnabled && distinctiveFeatures ? distinctiveFeatures.split(',').map(f => f.trim()).filter(Boolean) : [],
+            keyFeatures: isAppEnabled && distinctiveFeatures ? distinctiveFeatures.split(',').map(f => f.trim()).filter(Boolean) : [],
+            isApp: isAppEnabled
+          },
           entityIntelligence: {
             entityName: entityIntelligence.entityName,
             description: entityIntelligence.description,

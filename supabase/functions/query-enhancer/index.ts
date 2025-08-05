@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-// Helper function to create user personas based on target audience and context
+// Helper function to create user personas based on target audience and context (for B2B services)
 function createUserPersonas(topicData: any, entityIntelligence: any) {
   const personas = [];
   
@@ -48,7 +48,7 @@ function createUserPersonas(topicData: any, entityIntelligence: any) {
   return personas;
 }
 
-// Helper function to extract problem contexts from data
+// Helper function to extract problem contexts from data (for B2B services)
 function extractProblemContexts(topicData: any, entityIntelligence: any) {
   const contexts = [];
 
@@ -92,31 +92,156 @@ function extractProblemContexts(topicData: any, entityIntelligence: any) {
   return contexts;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+// NEW: Helper function to create app user personas (for B2C apps)
+function createAppUserPersonas(topicData: any, entityIntelligence: any) {
+  const personas = [];
+  
+  // Primary app user persona
+  const mainAudience = topicData.target_audience || 'mobile users';
+  personas.push({
+    name: `Active ${mainAudience}`,
+    description: `${mainAudience} seeking mobile solutions for ${topicData.context_description || 'daily needs'}`,
+    searchBehavior: 'Feature-focused, outcome-driven searches'
+  });
+
+  // Context-specific persona
+  if (topicData.context_description) {
+    personas.push({
+      name: 'Problem-Solver',
+      description: `User needing help with: ${topicData.context_description}`,
+      searchBehavior: 'Specific problem searches with clear requirements'
+    });
   }
 
-  try {
-    const { topicData, entityIntelligence, queryCount = 15 } = await req.json();
+  // Category-specific persona
+  personas.push({
+    name: `${topicData.topic.replace('apps', '').trim()} Enthusiast`,
+    description: `Regular user of ${topicData.topic} looking for better options`,
+    searchBehavior: 'Comparison-focused, feature-conscious searches'
+  });
 
-    if (!openAIApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  return personas;
+}
 
-    // Create persona-driven prompt based on target audience and context
-    const userPersonas = createUserPersonas(topicData, entityIntelligence);
-    const problemContexts = extractProblemContexts(topicData, entityIntelligence);
-    
-    // Extract intent strategy from topicData
-    const queryStrategy = topicData.queryStrategy || 'mixed';
-    const intentLevel = topicData.intentLevel || 'medium';
-    const competitorFocus = topicData.competitorFocus || false;
-    
-    const prompt = `You are an expert in customer discovery and purchase intent simulation. Your task is to generate realistic search queries that potential clients use when they are ACTIVELY LOOKING TO HIRE services or solve real business problems.
+// NEW: Helper function to extract app-specific use cases
+function extractAppUseCases(topicData: any, appFeatures: string[]) {
+  const useCases = [];
+
+  // Feature-based use cases
+  appFeatures.slice(0, 3).forEach(feature => {
+    useCases.push({
+      scenario: `Need for ${feature.toLowerCase()}`,
+      searchIntent: `Apps with ${feature} functionality`
+    });
+  });
+
+  // Context-specific use cases
+  if (topicData.context_description) {
+    useCases.push({
+      scenario: topicData.context_description,
+      searchIntent: `Mobile solution for ${topicData.context_description.toLowerCase()}`
+    });
+  }
+
+  // Audience-specific use cases
+  useCases.push({
+    scenario: `${topicData.target_audience} seeking ${topicData.topic}`,
+    searchIntent: `Best ${topicData.topic} for ${topicData.target_audience}`
+  });
+
+  return useCases;
+}
+
+// NEW: App-specific prompt generation function
+function generateAppDiscoveryPrompt(topicData: any, entityIntelligence: any, queryCount: number, appFeatures: string[]) {
+  const userPersonas = createAppUserPersonas(topicData, entityIntelligence);
+  const appUseCases = extractAppUseCases(topicData, appFeatures);
+  
+  return `You are an expert in mobile app discovery and user search behavior. Generate realistic search queries that potential users employ when ACTIVELY LOOKING FOR MOBILE APPS to solve their specific needs.
+
+**FOCUS ON APP DISCOVERY SCENARIOS:**
+These are people who have identified a need for a mobile solution and are actively searching app stores, asking for recommendations, or researching app options.
+
+**APP BEING ANALYZED:**
+- App Name: ${entityIntelligence?.entityName || topicData.entityToTrack}
+- App Category: ${topicData.topic}
+- Key Features: ${appFeatures.join(', ') || 'mobile app features'}
+- Target Users: ${topicData.target_audience}
+- App Context: ${topicData.context_description}
+- Geographic Focus: ${topicData.geographic_focus || 'Global'}
+- Known Competitors: ${topicData.known_players?.join(', ') || 'Various apps'}
+
+**APP USER PERSONAS:**
+${userPersonas.map(persona => `- ${persona.name}: ${persona.description} (Search behavior: ${persona.searchBehavior})`).join('\n')}
+
+**APP USE CASES & SCENARIOS:**
+${appUseCases.map(useCase => `- ${useCase.scenario}: ${useCase.searchIntent}`).join('\n')}
+
+**APP DISCOVERY QUERY PATTERNS:**
+1. **Feature-based searches** (40%): Users searching for specific app capabilities
+2. **Use case searches** (30%): Users searching for apps to solve specific problems  
+3. **Comparison searches** (20%): Users comparing apps or looking for alternatives
+4. **Category + context** (10%): Users searching within app categories with specific needs
+
+Generate ${queryCount} realistic app discovery queries that simulate authentic user search behavior.
+
+**QUERY INTENT DISTRIBUTION:**
+- **High Purchase Intent** (50%): Ready to download, comparing final options
+- **Medium Purchase Intent** (30%): Researching and evaluating multiple apps
+- **Low Purchase Intent** (20%): Early research, learning about app categories
+
+**APP-SPECIFIC QUERY CHARACTERISTICS:**
+- Use language that real app users employ
+- Include specific features from the app's key capabilities
+- Focus on user problems and desired outcomes
+- Include contextual modifiers: "for beginners", "offline", "free", "premium"
+- Add platform preferences when relevant: "iOS", "Android"
+- Include usage scenarios: "for commuting", "for work", "for travel"
+- Use comparison language: "vs", "alternative to", "better than"
+- Include user constraints: "without ads", "under 50MB", "works offline"
+
+**EXAMPLES OF REALISTIC APP DISCOVERY QUERIES:**
+- "best ${topicData.topic} with ${appFeatures[0] || 'offline capability'}"
+- "${appFeatures[0] || 'feature'} apps for ${topicData.target_audience}"
+- "apps like ${topicData.known_players?.[0] || 'popular competitor'} but ${appFeatures[1] || 'better'}"
+- "${topicData.topic} that work ${appFeatures[1] || 'without internet'}"
+- "best ${topicData.topic} for ${topicData.target_audience} beginners"
+- "free ${topicData.topic} vs premium options"
+- "${topicData.topic} with ${appFeatures[0]} and ${appFeatures[1]}"
+- "${topicData.context_description} app recommendations"
+
+**CRITICAL REQUIREMENTS:**
+- Every query should reflect genuine user search behavior
+- Include specific app features from the extracted feature list
+- Focus on user needs and problem-solving scenarios
+- Simulate various stages of the app selection process
+- Include natural language variations users actually employ
+
+Return ONLY a JSON array with this format:
+[
+  {
+    "query_text": "actual search query that a real app user would type",
+    "query_type": "feature_based|use_case|comparison|category_search",
+    "priority": 1-10,
+    "persona": "which user persona would search this",
+    "search_intent": "ready_to_download|evaluating_options|early_research",
+    "purchase_intent": "high|medium|low",
+    "reasoning": "specific user scenario driving this search"
+  }
+]`;
+}
+
+// Existing B2B service prompt function (preserved unchanged)
+function generateExistingServicePrompt(topicData: any, entityIntelligence: any, queryCount: number) {
+  const userPersonas = createUserPersonas(topicData, entityIntelligence);
+  const problemContexts = extractProblemContexts(topicData, entityIntelligence);
+  
+  // Extract intent strategy from topicData
+  const queryStrategy = topicData.queryStrategy || 'mixed';
+  const intentLevel = topicData.intentLevel || 'medium';
+  const competitorFocus = topicData.competitorFocus || false;
+  
+  return `You are an expert in customer discovery and purchase intent simulation. Your task is to generate realistic search queries that potential clients use when they are ACTIVELY LOOKING TO HIRE services or solve real business problems.
 
 **FOCUS ON CUSTOMER DISCOVERY SCENARIOS:**
 These are people who have a business problem and are actively seeking solutions, not just researching out of curiosity.
@@ -189,6 +314,48 @@ Return ONLY a JSON array with this format:
     "reasoning": "specific business scenario driving this search"
   }
 ]`;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { topicData, entityIntelligence, queryCount = 15 } = await req.json();
+
+    if (!openAIApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // NEW: Detect if this is app analysis based on app toggle state and features
+    const isAppAnalysis = topicData.isAppToggleEnabled || 
+                         topicData.appFeatures?.length > 0 || 
+                         topicData.isApp === true ||
+                         topicData.keyFeatures?.length > 0;
+
+    const appFeatures = topicData.appFeatures || topicData.keyFeatures || [];
+
+    console.log(`Analysis type: ${isAppAnalysis ? 'APP' : 'SERVICE'} | Features: ${appFeatures.length}`);
+
+    // NEW: Route to appropriate prompt based on app toggle
+    let prompt;
+    try {
+      if (isAppAnalysis) {
+        console.log('Generating app discovery prompt...');
+        prompt = generateAppDiscoveryPrompt(topicData, entityIntelligence, queryCount, appFeatures);
+      } else {
+        console.log('Generating service discovery prompt...');
+        prompt = generateExistingServicePrompt(topicData, entityIntelligence, queryCount);
+      }
+    } catch (error) {
+      console.error('Prompt generation error, falling back to service prompt:', error);
+      // Always fallback to existing working prompt
+      prompt = generateExistingServicePrompt(topicData, entityIntelligence, queryCount);
+    }
 
     console.log('Generating enhanced queries with OpenAI...');
 
@@ -244,17 +411,17 @@ Return ONLY a JSON array with this format:
 
     // Validate and format the response with enhanced intent data
     const formattedQueries = enhancedQueries.map((query: any, index: number) => ({
-      id: `ai_enhanced_${Date.now()}_${index}`,
+      id: `${isAppAnalysis ? 'app' : 'service'}_enhanced_${Date.now()}_${index}`,
       query_text: query.query_text || query.query || '',
-      query_type: query.query_type || 'medium_intent',
+      query_type: query.query_type || (isAppAnalysis ? 'feature_based' : 'medium_intent'),
       priority: query.priority || 5,
       target_entity: entityIntelligence?.entityName || topicData.entityToTrack,
-      reasoning: query.reasoning || 'AI generated customer discovery query',
-      persona: query.persona || 'Business decision maker',
-      search_intent: query.search_intent || 'purchase_intent',
+      reasoning: query.reasoning || (isAppAnalysis ? 'AI generated app discovery query' : 'AI generated customer discovery query'),
+      persona: query.persona || (isAppAnalysis ? 'App user' : 'Business decision maker'),
+      search_intent: query.search_intent || (isAppAnalysis ? 'evaluating_options' : 'purchase_intent'),
       purchase_intent: query.purchase_intent || 'medium',
-      client_scenario: query.reasoning || 'Business seeking external expertise',
-      source: 'openai_enhanced'
+      client_scenario: query.reasoning || (isAppAnalysis ? 'User seeking mobile solution' : 'Business seeking external expertise'),
+      source: isAppAnalysis ? 'openai_app_enhanced' : 'openai_enhanced'
     }));
 
     console.log(`Generated ${formattedQueries.length} enhanced queries`);
