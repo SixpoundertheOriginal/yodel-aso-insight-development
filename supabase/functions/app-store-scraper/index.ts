@@ -51,76 +51,107 @@ serve(async (req) => {
     const errorHandler = new ErrorHandler();
     const responseBuilder = new ResponseBuilder(corsHeaders); // ✅ Pass CORS headers
 
-    // Parse request body
-    console.log(`📡 [${requestId}] ENHANCED PARSING REQUEST (Method: unknown)`);
-    
-    let body: any = {};
-    if (req.method === 'POST') {
-      try {
-        console.log(`📝 [${requestId}] Processing ENHANCED JSON body`);
-        const rawBody = await req.text();
-        
-        console.log(`📝 [${requestId}] RAW BODY READ ATTEMPT: {
-  bodyExists: ${!!rawBody},
-  bodyLength: ${rawBody.length},
-  bodyIsEmpty: ${rawBody.length === 0},
-  firstChars: "${rawBody.substring(0, 100)}",
-  lastChars: "${rawBody.substring(Math.max(0, rawBody.length - 50))}",
+    // Parse request data from multiple sources
+    console.log(`📡 [${requestId}] PARSING REQUEST: {
+  method: "${req.method}",
   contentType: "${req.headers.get('content-type')}",
-  expectedSize: "unknown"
+  hasBody: ${req.method === 'POST'}
 }`);
-
-        body = JSON.parse(rawBody);
+    
+    let requestData: any = {};
+    
+    if (req.method === 'GET') {
+      // Parse URL parameters
+      const url = new URL(req.url);
+      requestData = Object.fromEntries(url.searchParams.entries());
+      console.log(`📡 [${requestId}] GET PARAMETERS PARSED: ${JSON.stringify(requestData)}`);
+      
+    } else if (req.method === 'POST') {
+      const contentType = req.headers.get('content-type') || '';
+      
+      try {
+        if (contentType.includes('application/json')) {
+          // Handle JSON body
+          console.log(`📝 [${requestId}] Processing JSON body`);
+          const rawBody = await req.text();
+          
+          if (!rawBody || rawBody.trim() === '') {
+            console.log(`⚠️ [${requestId}] Empty JSON body received`);
+            requestData = {};
+          } else {
+            requestData = JSON.parse(rawBody);
+            console.log(`✅ [${requestId}] JSON parsed successfully`);
+          }
+          
+        } else if (contentType.includes('multipart/form-data')) {
+          // Handle form data
+          console.log(`📝 [${requestId}] Processing multipart form data`);
+          const formData = await req.formData();
+          
+          for (const [key, value] of formData.entries()) {
+            requestData[key] = value.toString();
+          }
+          console.log(`✅ [${requestId}] Form data parsed successfully`);
+          
+        } else {
+          // Fallback: try to parse as JSON
+          console.log(`📝 [${requestId}] Unknown content type, attempting JSON parse`);
+          const rawBody = await req.text();
+          
+          if (rawBody && rawBody.trim() !== '') {
+            requestData = JSON.parse(rawBody);
+          }
+        }
         
-        console.log(`✅ [${requestId}] ENHANCED JSON PARSED SUCCESSFULLY: {
-  hasSearchTerm: ${!!body.searchTerm},
-  hasTargetApp: ${!!body.targetApp},
-  hasCompetitorApps: ${!!body.competitorApps},
-  hasSeedKeywords: ${!!body.seedKeywords},
-  includeCompetitorAnalysis: ${body.includeCompetitorAnalysis},
-  organizationId: "${body.organizationId?.substring(0, 8)}...",
-  parsedKeys: ${JSON.stringify(Object.keys(body))}
+        console.log(`✅ [${requestId}] REQUEST DATA PARSED: {
+  hasSearchTerm: ${!!requestData.searchTerm},
+  searchType: "${requestData.searchType}",
+  organizationId: "${requestData.organizationId?.substring(0, 8)}...",
+  parsedKeys: ${JSON.stringify(Object.keys(requestData))}
 }`);
+        
       } catch (error) {
-        console.error(`❌ [${requestId}] JSON parsing failed:`, error);
-        return responseBuilder.error('Invalid JSON in request body', 400);
+        console.error(`❌ [${requestId}] Request parsing failed:`, error);
+        return responseBuilder.error('Invalid request format', 400);
       }
     }
+    
+    // Validate required fields
+    if (!requestData.searchTerm || !requestData.organizationId) {
+      console.error(`❌ [${requestId}] Missing required fields: searchTerm=${!!requestData.searchTerm}, organizationId=${!!requestData.organizationId}`);
+      return responseBuilder.error('Missing required fields: searchTerm, organizationId', 400);
+    }
 
-    // Enhanced routing decision
-    console.log(`🔀 [${requestId}] ENHANCED ROUTING DECISION: {
-  transmissionMethod: "unknown",
-  hasSearchTerm: ${!!body.searchTerm},
-  hasOrganizationId: ${!!body.organizationId},
-  hasKeywordDiscoveryFields: ${!!(body.targetApp || body.competitorApps || body.seedKeywords)},
-  isAppSearch: ${!!body.searchTerm && !body.targetApp},
-  isKeywordDiscovery: ${!!(body.targetApp || body.competitorApps || body.seedKeywords)},
-  searchTerm: "${body.searchTerm}",
-  includeCompetitorAnalysis: ${body.includeCompetitorAnalysis}
+    // Enhanced search type detection and validation
+    const searchType = requestData.searchType || 'keyword';
+    const supportedSearchTypes = ['brand', 'url', 'keyword'];
+    
+    if (!supportedSearchTypes.includes(searchType)) {
+      console.error(`❌ [${requestId}] Unsupported search type: ${searchType}`);
+      return responseBuilder.error(`Unsupported search type: ${searchType}. Supported types: ${supportedSearchTypes.join(', ')}`, 400);
+    }
+
+    console.log(`🔀 [${requestId}] ROUTING DECISION: {
+  searchTerm: "${requestData.searchTerm}",
+  searchType: "${searchType}",
+  organizationId: "${requestData.organizationId?.substring(0, 8)}...",
+  hasKeywordDiscoveryFields: ${!!(requestData.targetApp || requestData.competitorApps || requestData.seedKeywords)},
+  isAppSearch: ${!!requestData.searchTerm && !requestData.targetApp},
+  isKeywordDiscovery: ${!!(requestData.targetApp || requestData.competitorApps || requestData.seedKeywords)}
 }`);
 
     // Route to appropriate service
-    if (body.searchTerm && !body.targetApp) {
+    if (requestData.searchTerm && !requestData.targetApp) {
       // App Search Route
-      console.log(`📱 [${requestId}] ROUTING TO: App Search (via unknown)`);
+      console.log(`📱 [${requestId}] ROUTING TO: App Search (searchType: ${searchType})`);
       
-      const searchType = body.searchType || (body.searchTerm.includes('http') ? 'url' : 'keyword');
-      
-      console.log(`🚀 [${requestId}] STARTING APP STORE SEARCH WITH ENHANCED AMBIGUITY DETECTION: {
-  searchTerm: "${body.searchTerm}",
-  searchType: "${searchType}",
-  country: "${body.country || 'us'}",
-  limit: ${body.limit || 15},
-  includeCompetitors: ${body.includeCompetitorAnalysis}
-}`);
-
       const startTime = Date.now();
       
-      // Security validation with proper client
+      // Security validation
       const securityResult = await securityService.validateRequest({
-        searchTerm: body.searchTerm,
-        organizationId: body.organizationId,
-        securityContext: body.securityContext,
+        searchTerm: requestData.searchTerm,
+        organizationId: requestData.organizationId,
+        securityContext: requestData.securityContext,
         ipAddress: req.headers.get('x-forwarded-for') || 'unknown',
         userAgent: req.headers.get('user-agent') || 'unknown'
       });
@@ -133,38 +164,62 @@ serve(async (req) => {
       console.log(`✅ [${requestId}] Security validation passed`);
 
       // Check cache
-      const cacheKey = `search:${body.searchTerm}:${body.country || 'us'}`;
+      const cacheKey = `search:${requestData.searchTerm}:${requestData.country || 'us'}:${searchType}`;
       const cached = await cacheService.get(cacheKey);
       if (cached) {
         console.log(`📦 [${requestId}] CACHE HIT for search`);
         return responseBuilder.success(cached);
       }
 
-      // Perform search
-      const term = searchType === 'url' ? 
-        body.searchTerm.match(/id(\d+)/)?.[1] || body.searchTerm :
-        body.searchTerm;
+      // Process search based on type
+      let itunesUrl: string;
+      let term: string;
 
-      console.log(`🔍 [${requestId}] CALLING ITUNES SEARCH API: { term: "${term}", country: "${body.country || 'us'}", limit: ${body.limit || 15} }`);
+      if (searchType === 'url') {
+        // Extract app ID from URL for direct lookup
+        const appIdMatch = requestData.searchTerm.match(/id(\d+)/);
+        if (appIdMatch) {
+          term = appIdMatch[1];
+          itunesUrl = `https://itunes.apple.com/lookup?id=${term}&country=${requestData.country || 'us'}`;
+          console.log(`🔗 [${requestId}] URL-based lookup: appId=${term}`);
+        } else {
+          // Fallback to search if URL doesn't contain app ID
+          term = requestData.searchTerm;
+          itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&country=${requestData.country || 'us'}&media=software&limit=${requestData.limit || 15}`;
+          console.log(`🔍 [${requestId}] URL fallback to search: term=${term}`);
+        }
+      } else {
+        // Standard search for brand/keyword
+        term = requestData.searchTerm;
+        itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&country=${requestData.country || 'us'}&media=software&limit=${requestData.limit || 15}`;
+        console.log(`🔍 [${requestId}] Standard search: term=${term}, type=${searchType}`);
+      }
 
-      const searchResponse = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&country=${body.country || 'us'}&media=software&limit=${body.limit || 15}`
-      );
+      console.log(`🚀 [${requestId}] CALLING ITUNES API: {
+  url: "${itunesUrl}",
+  searchType: "${searchType}",
+  term: "${term}"
+}`);
+
+      const searchResponse = await fetch(itunesUrl);
 
       if (!searchResponse.ok) {
-        throw new Error(`iTunes API error: ${searchResponse.status}`);
+        throw new Error(`iTunes API error: ${searchResponse.status} ${searchResponse.statusText}`);
       }
 
       const searchData = await searchResponse.json();
       
-      console.log(`📊 [${requestId}] ITUNES API RESPONSE: { resultCount: ${searchData.resultCount}, resultsLength: ${searchData.results?.length} }`);
+      console.log(`📊 [${requestId}] ITUNES API RESPONSE: {
+  resultCount: ${searchData.resultCount || 0},
+  resultsLength: ${searchData.results?.length || 0}
+}`);
 
-      // Transform results using the new method
-      const transformedResults = metadataService.transformSearchResults(searchData.results);
+      // Transform results
+      const transformedResults = metadataService.transformSearchResults(searchData.results || []);
       
       console.log(`✅ [${requestId}] TRANSFORMED ${transformedResults.length} RESULTS`);
 
-      // Enhanced ambiguity detection
+      // Process response based on results
       let responseData: any;
       let isAmbiguous = false;
       let ambiguityReason: string | undefined;
@@ -173,61 +228,64 @@ serve(async (req) => {
         responseData = {
           results: [],
           isAmbiguous: false,
-          message: 'No apps found for the search term'
+          message: `No apps found for "${requestData.searchTerm}" (${searchType} search)`
         };
       } else if (transformedResults.length === 1) {
-        console.log(`✅ [${requestId}] AUTO-SELECTED SINGLE CLEAR RESULT: ${transformedResults[0].name}`);
+        console.log(`✅ [${requestId}] SINGLE RESULT FOUND: ${transformedResults[0].name}`);
         
-        // Single result - perform enhanced analysis
         const selectedApp = transformedResults[0];
         
-        // Enhanced screenshot analysis if requested
+        // Enhanced analysis for single result
         let screenshotAnalysis: any[] = [];
         let cppAnalysis: any = null;
         
-        if (body.includeScreenshotAnalysis !== false && selectedApp.screenshotUrls?.length > 0) {
-          const analysisResult = await screenshotService.analyze({
-            targetApp: selectedApp,
-            competitors: [],
-            analysisType: 'basic'
-          });
-          
-          if (analysisResult.success) {
-            screenshotAnalysis = analysisResult.data?.competitorAnalysis || [];
+        if (requestData.includeScreenshotAnalysis !== false && selectedApp.screenshotUrls?.length > 0) {
+          try {
+            const analysisResult = await screenshotService.analyze({
+              targetApp: selectedApp,
+              competitors: [],
+              analysisType: 'basic'
+            });
+            
+            if (analysisResult.success) {
+              screenshotAnalysis = analysisResult.data?.competitorAnalysis || [];
+            }
+          } catch (error) {
+            console.warn(`⚠️ [${requestId}] Screenshot analysis failed:`, error);
           }
         }
 
-        // CPP Analysis if requested
-        if (body.analyzeCpp && body.generateThemes !== false) {
-          console.log(`🎨 [${requestId}] GENERATING CPP THEMES`);
-          cppAnalysis = await cppService.generateCppThemes(selectedApp, screenshotAnalysis);
+        if (requestData.analyzeCpp && requestData.generateThemes !== false) {
+          try {
+            console.log(`🎨 [${requestId}] GENERATING CPP THEMES`);
+            cppAnalysis = await cppService.generateCppThemes(selectedApp, screenshotAnalysis);
+          } catch (error) {
+            console.warn(`⚠️ [${requestId}] CPP analysis failed:`, error);
+          }
         }
 
-        // Enhanced metadata with CPP data
-        const enhancedMetadata = {
+        responseData = {
           ...selectedApp,
           screenshotAnalysis,
           suggestedCppThemes: cppAnalysis?.suggestedThemes || [],
           competitorScreenshots: screenshotAnalysis,
           searchContext: {
-            query: body.searchTerm,
+            query: requestData.searchTerm,
             type: searchType,
             totalResults: 1,
             category: selectedApp.applicationCategory || 'Unknown',
-            country: body.country || 'us'
+            country: requestData.country || 'us'
           }
         };
-
-        responseData = enhancedMetadata;
       } else {
-        // Multiple results - check for ambiguity
+        // Multiple results - determine ambiguity
         const uniqueDevelopers = new Set(transformedResults.map(r => r.developer)).size;
         const uniqueCategories = new Set(transformedResults.map(r => r.applicationCategory)).size;
         
-        if (uniqueDevelopers > 1 || uniqueCategories > 1) {
+        if (searchType === 'brand' && (uniqueDevelopers > 1 || uniqueCategories > 1)) {
           isAmbiguous = true;
-          ambiguityReason = `Multiple apps from different developers found for "${body.searchTerm}"`;
-          console.log(`🎯 [${requestId}] AMBIGUOUS SEARCH DETECTED - Returning multiple candidates`);
+          ambiguityReason = `Multiple apps from different sources found for brand "${requestData.searchTerm}"`;
+          console.log(`🎯 [${requestId}] BRAND SEARCH AMBIGUOUS - ${uniqueDevelopers} developers, ${uniqueCategories} categories`);
         }
 
         responseData = {
@@ -235,11 +293,11 @@ serve(async (req) => {
           isAmbiguous,
           ambiguityReason,
           searchContext: {
-            query: body.searchTerm,
+            query: requestData.searchTerm,
             type: searchType,
             totalResults: transformedResults.length,
             category: 'Multiple',
-            country: body.country || 'us'
+            country: requestData.country || 'us'
           }
         };
       }
@@ -247,19 +305,19 @@ serve(async (req) => {
       const processingTime = Date.now() - startTime;
       
       console.log(`✅ [${requestId}] APP SEARCH COMPLETED: {
+  searchType: "${searchType}",
   resultsCount: ${Array.isArray(responseData.results) ? responseData.results.length : 1},
   isAmbiguous: ${isAmbiguous},
-  ambiguityReason: ${ambiguityReason ? `'${ambiguityReason}'` : 'undefined'},
   processingTime: "${processingTime}ms"
 }`);
 
       // Cache successful results
-      await cacheService.set(cacheKey, responseData, 3600); // 1 hour cache
+      await cacheService.set(cacheKey, responseData, 3600);
 
       // Track analytics
       await analyticsService.trackSearch({
-        organizationId: body.organizationId,
-        searchTerm: body.searchTerm,
+        organizationId: requestData.organizationId,
+        searchTerm: requestData.searchTerm,
         searchType,
         resultsCount: Array.isArray(responseData.results) ? responseData.results.length : 1,
         processingTime,
@@ -268,16 +326,16 @@ serve(async (req) => {
 
       return responseBuilder.success(responseData);
       
-    } else if (body.targetApp || body.competitorApps || body.seedKeywords) {
+    } else if (requestData.targetApp || requestData.competitorApps || requestData.seedKeywords) {
       // Keyword Discovery Route
-      console.log(`🔍 [${requestId}] ROUTING TO: Keyword Discovery (via unknown)`);
+      console.log(`🔍 [${requestId}] ROUTING TO: Keyword Discovery`);
       
       const discoveryResult = await discoveryService.discoverKeywords({
-        targetApp: body.targetApp,
-        competitorApps: body.competitorApps || [],
-        seedKeywords: body.seedKeywords || [],
-        organizationId: body.organizationId,
-        maxKeywords: body.maxKeywords || 50
+        targetApp: requestData.targetApp,
+        competitorApps: requestData.competitorApps || [],
+        seedKeywords: requestData.seedKeywords || [],
+        organizationId: requestData.organizationId,
+        maxKeywords: requestData.maxKeywords || 50
       });
 
       if (!discoveryResult.success) {
@@ -287,7 +345,7 @@ serve(async (req) => {
       return responseBuilder.success(discoveryResult.data);
       
     } else {
-      return responseBuilder.error('Invalid request: missing required parameters', 400);
+      return responseBuilder.error('Invalid request: missing required parameters (searchTerm or keyword discovery fields)', 400);
     }
 
   } catch (error) {
