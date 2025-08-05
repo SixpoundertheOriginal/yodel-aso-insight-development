@@ -1183,7 +1183,28 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       return "Technology"; // Default
     };
 
-    const mapTargetAudience = (targetClients: string[], services: string[]): string => {
+    const mapTargetAudience = (targetClients: string[], services: string[], isAppAudit: boolean = false): string => {
+      // For app audits, bias towards consumers unless clearly B2B
+      if (isAppAudit) {
+        // Check for B2B indicators in services or clients
+        const b2bKeywords = ['enterprise', 'business', 'crm', 'analytics', 'saas', 'b2b', 'corporate', 'professional', 'workforce', 'team'];
+        const hasB2BIndicators = services.some(service => 
+          b2bKeywords.some(keyword => service.toLowerCase().includes(keyword))
+        ) || targetClients.some(client => 
+          b2bKeywords.some(keyword => client.toLowerCase().includes(keyword))
+        );
+        
+        if (hasB2BIndicators) {
+          if (targetClients.some(client => client.toLowerCase().includes('enterprise'))) return "enterprise companies";
+          if (targetClients.some(client => client.toLowerCase().includes('small business'))) return "small businesses";
+          return "businesses";
+        }
+        
+        // Default to consumers for apps
+        return "consumers";
+      }
+      
+      // Original logic for non-app audits
       if (targetClients && targetClients.length > 0) {
         const firstClient = targetClients[0].toLowerCase();
         if (firstClient.includes('enterprise') || firstClient.includes('business')) return "enterprise companies";
@@ -1234,7 +1255,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     const autoPopulated: TopicAuditData = {
       topic: mapTopicFromServices(intelligence.services || []),
       industry: mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || []),
-      target_audience: mapTargetAudience(intelligence.targetClients || [], intelligence.services || []),
+      target_audience: mapTargetAudience(intelligence.targetClients || [], intelligence.services || [], auditMode === 'app'),
       context_description: intelligence.description || `Visibility analysis for ${intelligence.entityName}`,
       known_players: intelligence.competitors ? intelligence.competitors.map((comp: any) => 
         typeof comp === 'string' ? comp : comp.name
