@@ -16,6 +16,7 @@ import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
+import { AppSearchResultsModal } from '@/components/AsoAiHub/MetadataCopilot/AppSearchResultsModal';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,6 +226,10 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [appStoreUrl, setAppStoreUrl] = useState('');
   const [appStoreData, setAppStoreData] = useState<any>(null);
   const [isLoadingAppData, setIsLoadingAppData] = useState(false);
+  const [isSearchingApps, setIsSearchingApps] = useState(false);
+  const [appSearchResults, setAppSearchResults] = useState<any[]>([]);
+  const [showAppPicker, setShowAppPicker] = useState(false);
+  const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
   
   // Loading states
   const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
@@ -263,8 +268,103 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         }
       });
     }
+
+    // Extract features from description analysis
+    if (appData?.description) {
+      const descWords = appData.description.toLowerCase();
+      const featureKeywords = ['feature', 'tool', 'tracking', 'analysis', 'monitoring', 'management', 'optimization'];
+      featureKeywords.forEach(keyword => {
+        if (descWords.includes(keyword)) {
+          features.push(keyword);
+        }
+      });
+    }
+
+    // Extract from category
+    if (appData?.applicationCategory) {
+      features.push(appData.applicationCategory.toLowerCase().replace(/[^a-z\s]/g, ''));
+    }
     
-    return features.filter(Boolean).slice(0, 5);
+    return features.filter(Boolean).slice(0, 8);
+  };
+
+  const searchAppsForEntity = async (entityName: string) => {
+    if (!entityName.trim()) return;
+    
+    setIsSearchingApps(true);
+    try {
+      console.log('🔍 Auto-searching apps for entity:', entityName);
+      const response = await AppStoreIntegrationService.searchApp(entityName, 'default-org');
+      
+      if (response.success && response.data && response.data.length > 0) {
+        console.log('✅ Found apps:', response.data.length);
+        setAppSearchResults(response.data);
+        setShowAppPicker(true);
+      } else {
+        console.log('❌ No apps found, keeping manual URL input');
+        toast({
+          title: 'No apps found',
+          description: 'No matching apps found. You can enter an App Store URL manually.',
+          variant: 'default'
+        });
+      }
+    } catch (error) {
+      console.error('App search failed:', error);
+      toast({
+        title: 'Search failed',
+        description: 'App search failed. You can enter an App Store URL manually.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSearchingApps(false);
+    }
+  };
+
+  const handleAppSelection = async (selectedApp: any) => {
+    console.log('📱 App selected:', selectedApp);
+    setShowAppPicker(false);
+    
+    // Auto-populate URL field
+    setAppStoreUrl(selectedApp.url);
+    
+    // Analyze the selected app
+    setIsLoadingAppData(true);
+    try {
+      const appData = await fetchAppStoreData(selectedApp.url);
+      if (appData) {
+        // Extract distinctive features and populate the field
+        const features = extractKeyFeatures(appData);
+        setDistinctiveFeatures(features.join(', '));
+        
+        toast({
+          title: 'App analyzed successfully',
+          description: `Found ${features.length} distinctive features for ${selectedApp.name}`,
+        });
+      }
+    } catch (error) {
+      console.error('App analysis failed:', error);
+    } finally {
+      setIsLoadingAppData(false);
+    }
+  };
+
+  const handleAppToggle = async (enabled: boolean) => {
+    setIsAppEnabled(enabled);
+    
+    if (enabled) {
+      // Auto-trigger app search using the entity name
+      const entityName = simpleInputs.entityToTrack || entityInput;
+      if (entityName.trim()) {
+        await searchAppsForEntity(entityName);
+      }
+    } else {
+      // Reset app-related state
+      setAppStoreUrl('');
+      setAppStoreData(null);
+      setAppSearchResults([]);
+      setDistinctiveFeatures('');
+      setShowAppPicker(false);
+    }
   };
 
   const fetchAppStoreData = async (url: string) => {
@@ -968,7 +1068,8 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   };
 
   return (
-    <Card className="bg-card border-border">
+    <>
+      <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Zap className="h-5 w-5" />
@@ -1333,10 +1434,17 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                           <Switch
                             id="isApp"
                             checked={isAppEnabled}
-                            onCheckedChange={setIsAppEnabled}
+                            onCheckedChange={handleAppToggle}
                           />
                         </div>
                         
+                        {isSearchingApps && (
+                          <div className="flex items-center space-x-2 text-sm text-muted-foreground p-3">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                            <span>Searching for apps...</span>
+                          </div>
+                        )}
+
                         {isAppEnabled && (
                           <div className="space-y-3">
                             <div className="space-y-2">
@@ -1349,28 +1457,57 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                                 className="w-full"
                               />
                               <p className="text-xs text-muted-foreground">
-                                Enter iOS App Store or Google Play Store URL for enhanced analysis
+                                Select an app from the search above or enter URL manually
                               </p>
                             </div>
+                            
+                            {appStoreUrl && !isLoadingAppData && !appStoreData && (
+                              <Button
+                                onClick={() => fetchAppStoreData(appStoreUrl)}
+                                size="sm"
+                                variant="outline"
+                                className="w-full"
+                              >
+                                Analyze App Store URL
+                              </Button>
+                            )}
                             
                             {isLoadingAppData && (
                               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                                <span>Analyzing app store data...</span>
+                                <span>Analyzing app...</span>
                               </div>
                             )}
                             
                             {appStoreData && (
-                              <div className="space-y-2 p-3 bg-primary/10 rounded-lg">
-                                <h4 className="text-sm font-medium text-primary">App Analysis Complete</h4>
-                                <div className="flex flex-wrap gap-1">
-                                  {extractKeyFeatures(appStoreData).slice(0, 3).map(feature => (
-                                    <Badge key={feature} variant="secondary" className="text-xs">{feature}</Badge>
-                                  ))}
+                              <div className="space-y-3">
+                                <div className="space-y-2 p-3 bg-primary/10 rounded-lg">
+                                  <h4 className="text-sm font-medium text-primary">App Analysis Complete</h4>
+                                  <div className="flex items-center space-x-2">
+                                    {appStoreData.icon && (
+                                      <img src={appStoreData.icon} alt="App Icon" className="w-8 h-8 rounded" />
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-medium">{appStoreData.name}</p>
+                                      <p className="text-xs text-muted-foreground">{appStoreData.developer}</p>
+                                    </div>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Enhanced queries will include app-specific features
-                                </p>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="distinctiveFeatures" className="text-sm font-medium">Distinctive Features</Label>
+                                  <Textarea
+                                    id="distinctiveFeatures"
+                                    value={distinctiveFeatures}
+                                    onChange={(e) => setDistinctiveFeatures(e.target.value)}
+                                    placeholder="fitness tracking, workout plans, health monitoring..."
+                                    rows={3}
+                                    className="w-full"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    These features will be used to generate more targeted queries. You can edit or add additional features.
+                                  </p>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -2207,5 +2344,15 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         </div>
       </CardContent>
     </Card>
+
+    {/* App Search Results Modal */}
+    <AppSearchResultsModal
+      isOpen={showAppPicker}
+      results={appSearchResults}
+      searchTerm={entityInput}
+      onSelect={handleAppSelection}
+      onCancel={() => setShowAppPicker(false)}
+    />
+    </>
   );
 };
