@@ -298,26 +298,38 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       
       console.log('📱 App search response:', response);
       
+      // Handle successful response with results
       if (response.success && response.data && response.data.length > 0) {
-        console.log('✅ Found apps:', response.data.length);
+        console.log(`✅ Found ${response.data.length} apps for "${entityName}"`);
         
-        // Handle multiple results (ambiguous search) - SHOW PICKER
-        if (response.data.length > 1) {
-          console.log('🔀 Multiple apps found, showing picker');
-          setAppSearchResults(response.data);
-          setShowAppPicker(true);
-          toast({
-            title: 'Multiple apps found',
-            description: `Found ${response.data.length} apps matching "${entityName}". Please select the correct one.`,
-            variant: 'default'
-          });
-        } else {
-          // Single result - auto-select it
-          console.log('🎯 Single app found, auto-selecting');
-          await handleAppSelection(response.data[0]);
-        }
+        // Convert to ScrapedMetadata format for the modal
+        const modalResults = response.data.map((app: any) => ({
+          name: app.name,
+          appId: app.appId,
+          title: app.title,
+          subtitle: app.subtitle || '',
+          url: app.url,
+          icon: app.icon,
+          rating: app.rating,
+          reviews: app.reviews,
+          developer: app.developer,
+          applicationCategory: app.applicationCategory,
+          locale: app.locale || 'en-US'
+        }));
+        
+        // Always show picker for user confirmation - whether 1 or multiple apps
+        console.log('🔀 Showing app picker for user selection');
+        setAppSearchResults(modalResults);
+        setShowAppPicker(true);
+        
+        toast({
+          title: 'Apps found!',
+          description: `Found ${response.data.length} app(s) matching "${entityName}". Please select the correct one.`,
+        });
+        
       } else {
-        console.log('❌ No apps found in response');
+        // Handle no results or failed search
+        console.log('❌ No apps found or search failed:', response);
         toast({
           title: 'No apps found',
           description: `No matching apps found for "${entityName}". You can enter an App Store URL manually.`,
@@ -325,7 +337,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         });
       }
     } catch (error) {
-      console.error('💥 App search failed:', error);
+      console.error('💥 App search exception:', error);
       toast({
         title: 'Search failed',
         description: 'App search failed. You can enter an App Store URL manually.',
@@ -337,28 +349,46 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   };
 
   const handleAppSelection = async (selectedApp: any) => {
-    console.log('📱 App selected:', selectedApp);
+    console.log('📱 App selected from picker:', selectedApp.name);
     setShowAppPicker(false);
     
-    // Auto-populate URL field
+    // Auto-populate URL field with selected app
     setAppStoreUrl(selectedApp.url);
     
-    // Analyze the selected app
+    toast({
+      title: 'App selected',
+      description: `Selected ${selectedApp.name}. Analyzing app data...`,
+    });
+    
+    // Analyze the selected app to extract features
     setIsLoadingAppData(true);
     try {
       const appData = await fetchAppStoreData(selectedApp.url);
       if (appData) {
         // Extract distinctive features and populate the field
         const features = extractKeyFeatures(appData);
-        setDistinctiveFeatures(features.join(', '));
+        const featuresText = features.filter(f => f && f.trim()).join(', ');
+        setDistinctiveFeatures(featuresText);
         
         toast({
-          title: 'App analyzed successfully',
-          description: `Found ${features.length} distinctive features for ${selectedApp.name}`,
+          title: 'App analysis complete',
+          description: `Extracted ${features.length} distinctive features for ${selectedApp.name}`,
+        });
+      } else {
+        // Even if feature extraction fails, we still have the basic app data
+        setDistinctiveFeatures(''); // User can fill manually
+        toast({
+          title: 'App selected',
+          description: `${selectedApp.name} selected. You can add distinctive features manually.`,
         });
       }
     } catch (error) {
       console.error('App analysis failed:', error);
+      toast({
+        title: 'Analysis incomplete',
+        description: `Selected ${selectedApp.name}. Please add distinctive features manually.`,
+        variant: 'default'
+      });
     } finally {
       setIsLoadingAppData(false);
     }
