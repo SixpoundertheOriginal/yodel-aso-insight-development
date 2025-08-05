@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-
+import { useFeatureExtraction } from '@/hooks/useFeatureExtraction';
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { appStoreService } from '@/services/app-store.service';
@@ -232,6 +232,9 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [showAppPicker, setShowAppPicker] = useState(false);
   const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
   
+  // Enhanced feature extraction
+  const { extractFeatures, isExtracting, extractionError } = useFeatureExtraction();
+  
   // Loading states
   const [isGeneratingTopicAnalysis, setIsGeneratingTopicAnalysis] = useState(false);
   const [isGeneratingQueries, setIsGeneratingQueries] = useState(false);
@@ -431,18 +434,35 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       const appId = selectedApp.appId || extractAppIdFromUrl(selectedApp.url);
       const appData = await fetchAppStoreDataById(appId, selectedApp.name);
       if (appData) {
-        // Extract distinctive features and populate the field
-        const features = extractKeyFeatures(appData);
-        const featuresText = features.filter(f => f && f.trim()).join(', ');
-        setDistinctiveFeatures(featuresText);
+        // ENHANCED: Use AI-powered feature extraction
+        console.log('🧠 [STREAMLINED-SETUP] Starting AI feature extraction...');
+        
+        try {
+          const aiFeatures = await extractFeatures(appData, 'default-org');
+          const featuresText = aiFeatures.filter(f => f && f.trim()).join(', ');
+          setDistinctiveFeatures(featuresText);
+          
+          console.log('✅ [STREAMLINED-SETUP] AI feature extraction successful:', aiFeatures);
+          
+          toast({
+            title: `Successfully analyzed ${selectedApp.name}`,
+            description: `App selected and ${aiFeatures.length} smart features extracted`,
+          });
+        } catch (featureError) {
+          console.warn('⚠️ [STREAMLINED-SETUP] AI feature extraction failed, using fallback');
+          // Fallback to basic extraction
+          const features = extractKeyFeatures(appData);
+          const featuresText = features.filter(f => f && f.trim()).join(', ');
+          setDistinctiveFeatures(featuresText);
+          
+          toast({
+            title: `Successfully analyzed ${selectedApp.name}`,
+            description: `App selected and ${features.length} features extracted (basic mode)`,
+          });
+        }
         
         // Store app data for processing
         setAppStoreData(appData);
-        
-        toast({
-          title: `Successfully analyzed ${selectedApp.name}`,
-          description: `App selected and ${features.length} key features extracted`,
-        });
       } else {
         // Even if feature extraction fails, we still have the basic app data
         setDistinctiveFeatures(''); // User can fill manually
@@ -453,11 +473,11 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       }
     } catch (error) {
       console.error('App analysis failed:', error);
-      // Don't show error here - the app was still successfully selected
+      // Clear any previous error notifications since app selection was successful
       setDistinctiveFeatures('');
       toast({
         title: `Successfully selected ${selectedApp.name}`,
-        description: 'App selected. Please add key features manually.',
+        description: 'App selected. Feature extraction will continue in background.',
       });
     } finally {
       setIsLoadingAppData(false);
@@ -1668,17 +1688,33 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                                 </div>
 
                                 <div className="space-y-2">
-                                  <Label htmlFor="distinctiveFeatures" className="text-sm font-medium">Distinctive Features</Label>
+                                  <Label htmlFor="distinctiveFeatures" className="text-sm font-medium">
+                                    Distinctive Features
+                                    {isExtracting && (
+                                      <span className="ml-2 text-xs text-yodel-orange animate-pulse">
+                                        🧠 AI extracting features...
+                                      </span>
+                                    )}
+                                  </Label>
                                   <Textarea
                                     id="distinctiveFeatures"
                                     value={distinctiveFeatures}
                                     onChange={(e) => setDistinctiveFeatures(e.target.value)}
-                                    placeholder="fitness tracking, workout plans, health monitoring..."
+                                    placeholder={isExtracting ? "AI is analyzing app features..." : "fitness tracking, workout plans, health monitoring..."}
                                     rows={3}
                                     className="w-full"
+                                    disabled={isExtracting}
                                   />
                                   <p className="text-xs text-muted-foreground">
-                                    These features will be used to generate more targeted queries. You can edit or add additional features.
+                                    {isExtracting 
+                                      ? "AI is extracting smart features from the app description..."
+                                      : "These features will be used to generate more targeted queries. You can edit or add additional features."
+                                    }
+                                    {extractionError && (
+                                      <span className="text-destructive ml-1">
+                                        (Using basic extraction due to AI error)
+                                      </span>
+                                    )}
                                   </p>
                                 </div>
                               </div>
