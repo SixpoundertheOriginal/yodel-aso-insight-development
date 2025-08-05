@@ -13,7 +13,8 @@ import { Switch } from '@/components/ui/switch';
 
 import { TopicAnalysisInterface } from './TopicAnalysisInterface';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
-import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
+import { appStoreService } from '@/services/app-store.service';
+import { AmbiguousSearchError } from '@/types/search-errors';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AppSearchResultsModal } from '@/components/AsoAiHub/MetadataCopilot/AppSearchResultsModal';
@@ -329,28 +330,32 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     setIsSearchingApps(true);
     try {
       console.log('🔍 Auto-searching apps for entity:', entityName);
-      const response = await AppStoreIntegrationService.searchApp(entityName, 'default-org');
+      const response = await appStoreService.importAppData(entityName, {
+        organizationId: 'default-org',
+        includeCaching: true,
+        debugMode: false
+      });
       
       console.log('📱 App search response:', response);
       
       // Handle successful response with results
-      if (response.success && response.data && response.data.length > 0) {
-        console.log(`✅ Found ${response.data.length} apps for "${entityName}"`);
+      if (response) {
+        console.log(`✅ Found app for "${entityName}":`, response.name);
         
-        // Convert to ScrapedMetadata format for the modal
-        const modalResults = response.data.map((app: any) => ({
-          name: app.name,
-          appId: app.appId,
-          title: app.title,
-          subtitle: app.subtitle || '',
-          url: app.url,
-          icon: app.icon,
-          rating: app.rating,
-          reviews: app.reviews,
-          developer: app.developer,
-          applicationCategory: app.applicationCategory,
-          locale: app.locale || 'en-US'
-        }));
+        // Convert to array for the modal (single app result)
+        const modalResults = [{
+          name: response.name,
+          appId: response.appId,
+          title: response.title,
+          subtitle: response.subtitle || '',
+          url: response.url,
+          icon: response.icon,
+          rating: response.rating,
+          reviews: response.reviews,
+          developer: response.developer,
+          applicationCategory: response.applicationCategory,
+          locale: response.locale || 'en-US'
+        }];
         
         // Always show picker for user confirmation - whether 1 or multiple apps
         console.log('🔀 Showing app picker for user selection');
@@ -360,7 +365,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         // Show success notification only
         toast({
           title: `Successfully analyzed ${entityName}`,
-          description: `Found ${response.data.length} app(s). Please select the correct one to continue.`,
+          description: `Found: ${response.name}. Please confirm to continue.`,
         });
         
       } else {
@@ -372,13 +377,41 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
           variant: 'default'
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 App search exception:', error);
-      toast({
-        title: 'Search failed',
-        description: 'App search failed. You can enter an App Store URL manually.',
-        variant: 'destructive'
-      });
+      
+      // Handle AmbiguousSearchError for multiple results
+      if (error.candidates && Array.isArray(error.candidates)) {
+        console.log(`🎯 Found ambiguous results: ${error.candidates.length} apps`);
+        
+        const modalResults = error.candidates.map((app: any) => ({
+          name: app.name,
+          appId: app.appId || app.trackId?.toString() || `${app.name}-${Date.now()}`,
+          title: app.title,
+          subtitle: app.subtitle || '',
+          url: app.url,
+          icon: app.icon,
+          rating: app.rating,
+          reviews: app.reviews,
+          developer: app.developer,
+          applicationCategory: app.applicationCategory,
+          locale: app.locale || 'en-US'
+        }));
+        
+        setAppSearchResults(modalResults);
+        setShowAppPicker(true);
+        
+        toast({
+          title: `Multiple apps found`,
+          description: `Found ${error.candidates.length} potential matches for "${entityName}". Please select the correct one.`,
+        });
+      } else {
+        toast({
+          title: 'Search failed',
+          description: error.message || 'App search failed. You can enter an App Store URL manually.',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setIsSearchingApps(false);
     }
@@ -455,15 +488,18 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     
     setIsLoadingAppData(true);
     try {
-      const response = await AppStoreIntegrationService.searchApp(url, 'default-org');
-      if (response.success && response.data && response.data.length > 0) {
-        const appData = response.data[0];
-        setAppStoreData(appData);
-        return appData;
+      const response = await appStoreService.importAppData(url, {
+        organizationId: 'default-org',
+        includeCaching: true,
+        debugMode: false
+      });
+      if (response) {
+        setAppStoreData(response);
+        return response;
       } else {
         toast({
           title: 'App Store Analysis Failed',
-          description: response.error || 'Could not analyze app store data',
+          description: 'Could not analyze app store data',
           variant: 'destructive'
         });
         return null;
