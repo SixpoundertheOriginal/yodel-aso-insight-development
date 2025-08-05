@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { checkAppMention, extractCompetitors, extractRankingPosition, analyzeEntityMention } from './brand-recognition.ts';
+import { checkAppMention, extractCompetitors, extractRankingPosition } from './brand-recognition.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,9 +29,6 @@ interface VisibilityAnalysis {
   competitorsMentioned: string[];
   sentimentScore: number;
   visibilityScore: number;
-  confidence: number;
-  mentionCount: number;
-  matchedAlias?: string;
 }
 
 serve(async (req) => {
@@ -158,7 +155,30 @@ serve(async (req) => {
         .eq('id', auditRunId);
     }
 
-    // Analysis completed - single source of truth ensures data consistency
+    // Trigger enhanced analysis after storing basic results
+    try {
+      const enhancedAnalysisResponse = await fetch(`${supabaseUrl}/functions/v1/enhanced-response-analysis`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          responseText,
+          appName: actualAppName, // Use actual resolved app name
+          queryResultId: insertError ? null : queryId, // Use queryId as fallback
+          organizationId
+        }),
+      });
+      
+      if (!enhancedAnalysisResponse.ok) {
+        console.warn('[ChatGPT Query] Enhanced analysis failed, using basic analysis');
+      } else {
+        console.log('[ChatGPT Query] Enhanced analysis completed successfully');
+      }
+    } catch (enhancedError) {
+      console.warn('[ChatGPT Query] Enhanced analysis error:', enhancedError);
+    }
 
     console.log(`[ChatGPT Query] Query ${queryId} completed successfully`);
 
@@ -194,7 +214,10 @@ serve(async (req) => {
 });
 
 function analyzeVisibility(responseText: string, targetApp: string, aliases?: string[]): VisibilityAnalysis {
-  // Enhanced entity analysis with alias support
+  // Import enhanced analysis functions
+  const { checkAppMention, extractRankingPosition, extractCompetitors, analyzeEntityMention } = require('./brand-recognition.ts');
+  
+  // Use enhanced entity analysis with alias support
   const entityAnalysis = analyzeEntityMention(responseText, targetApp, aliases);
   const competitorsMentioned = extractCompetitors(responseText, targetApp, aliases);
   

@@ -4,14 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 import { RankingDetailsModal } from './RankingDetailsModal';
 import { RankingsTabContent } from './RankingsTabContent';
-import { VisibilitySummaryCards } from './VisibilitySummaryCards';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -23,9 +20,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
-  Search,
-  Filter
+  ExternalLink
 } from 'lucide-react';
 
 interface VisibilityResultsProps {
@@ -73,8 +68,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
     entityName: string;
     rankingDetails: any[];
   } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'mentioned' | 'not-mentioned'>('all');
 
   // Fetch query results
   const { data: queryResults, isLoading: loadingResults } = useQuery({
@@ -200,13 +193,12 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   if (loadingResults) {
     return (
       <div className="space-y-6">
-        <VisibilitySummaryCards queryResults={[]} isLoading={true} />
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="bg-card border-border">
+            <Card key={i} className="bg-zinc-900/50 border-zinc-800">
               <CardContent className="p-6">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-1/2"></div>
+                <div className="h-4 bg-zinc-700 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-zinc-700 rounded w-1/2"></div>
               </CardContent>
             </Card>
           ))}
@@ -241,50 +233,13 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
   const overallVisibilityScore = visibilityScore?.overall_score || 
     (mentionedResults.length > 0 ? Math.round(mentionedResults.reduce((sum, r) => sum + r.visibility_score, 0) / mentionedResults.length) : 0);
 
-  // Filter and search logic
-  const filteredResults = queryResults.filter(result => {
-    const matchesSearch = searchQuery === '' || 
-      result.query_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.response_text.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = filterStatus === 'all' || 
-      (filterStatus === 'mentioned' && getEntityMentionStatus(result)) ||
-      (filterStatus === 'not-mentioned' && !getEntityMentionStatus(result));
-    
-    return matchesSearch && matchesFilter;
-  });
-
   // Check if entity tracking is enabled - safely parse topic_data
   const topicData = auditRun?.topic_data as any;
   const hasEntityTracking = topicData?.entityToTrack;
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <VisibilitySummaryCards queryResults={queryResults} isLoading={loadingResults} />
 
-      {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search queries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter results" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Results</SelectItem>
-            <SelectItem value="mentioned">Mentioned Only</SelectItem>
-            <SelectItem value="not-mentioned">Not Mentioned</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Results Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
@@ -296,9 +251,9 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          {filteredResults.map(result => (
-            <Card key={result.id} className="bg-card border-border">
-              <CardHeader className="pb-3">
+          {queryResults.map(result => (
+            <Card key={result.id} className="bg-zinc-900/50 border-zinc-800">
+              <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
@@ -306,20 +261,6 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       <Badge variant="outline" className="text-xs">
                         {result.query_category}
                       </Badge>
-                      {/* Scores in header */}
-                      {getEntityMentionStatus(result) && (
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={getScoreBadgeVariant(result.visibility_score)} className="text-xs">
-                            Visibility: {result.visibility_score}
-                          </Badge>
-                          <Badge 
-                            variant={result.sentiment_score > 0 ? 'default' : result.sentiment_score < 0 ? 'destructive' : 'secondary'}
-                            className="text-xs"
-                          >
-                            Sentiment: {result.sentiment_score > 0 ? '+' : ''}{result.sentiment_score.toFixed(1)}
-                          </Badge>
-                        </div>
-                      )}
                     </div>
                     <CardTitle className="text-sm font-medium text-foreground">
                       {result.query_text}
@@ -340,46 +281,66 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Quick Summary - Always visible */}
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                {/* Quick Summary */}
+                <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className={`w-3 h-3 rounded-full ${getEntityMentionStatus(result) ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                     <span className="text-sm text-muted-foreground">
+                     <span className="text-sm text-zinc-300">
                       {getEntityMentionStatus(result) ? 'Mentioned' : 'Not Mentioned'}
-                      {result.mention_position && ` (Position #${result.mention_position})`}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-zinc-500">
                     {result.tokens_used} tokens • ${(result.cost_cents / 100).toFixed(3)}
                   </div>
                 </div>
 
-                {/* Expanded Details - Progressive disclosure */}
+                {/* Expanded Details */}
                 {expandedResults.has(result.id) && (
-                  <div className="space-y-4 border-t border-border pt-4">
+                  <div className="space-y-4 border-t border-zinc-800 pt-4">
                     {/* Full Response */}
                     <div className="space-y-2">
-                      <h5 className="text-sm font-medium text-muted-foreground">ChatGPT Response:</h5>
-                      <div className="p-4 bg-muted/50 border border-border rounded-md">
-                        <p className="text-sm text-foreground leading-relaxed">
+                      <h5 className="text-sm font-medium text-zinc-300">ChatGPT Response:</h5>
+                      <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-md">
+                        <p className="text-sm text-zinc-200 leading-relaxed">
                           {result.response_text}
                         </p>
                       </div>
                     </div>
 
-                    {/* Competitors if mentioned */}
-                    {result.competitors_mentioned && result.competitors_mentioned.length > 0 && (
+
+                    {/* Scores */}
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-muted-foreground">Competitors Mentioned:</h5>
-                        <div className="flex flex-wrap gap-2">
-                          {result.competitors_mentioned.map((competitor, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {competitor}
-                            </Badge>
-                          ))}
+                        <h5 className="text-sm font-medium text-zinc-300">Visibility Score</h5>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-zinc-400">Score</span>
+                            <span className={`text-sm font-medium ${getScoreColor(result.visibility_score)}`}>
+                              {result.visibility_score}/100
+                            </span>
+                          </div>
+                          <Progress value={result.visibility_score} className="h-2" />
                         </div>
                       </div>
-                    )}
+                      <div className="space-y-2">
+                        <h5 className="text-sm font-medium text-zinc-300">Sentiment Score</h5>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-zinc-400">Sentiment</span>
+                            <span className={`text-sm font-medium ${
+                              result.sentiment_score > 0 ? 'text-green-400' : 
+                              result.sentiment_score < 0 ? 'text-red-400' : 'text-yellow-400'
+                            }`}>
+                              {result.sentiment_score.toFixed(2)}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={((result.sentiment_score + 1) / 2) * 100} 
+                            className="h-2" 
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
