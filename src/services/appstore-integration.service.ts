@@ -20,6 +20,8 @@ interface SearchResponse {
   success: boolean;
   data?: AppStoreSearchResult[];
   error?: string;
+  isAmbiguous?: boolean;
+  totalResults?: number;
 }
 
 export class AppStoreIntegrationService {
@@ -107,14 +109,15 @@ export class AppStoreIntegrationService {
         return result;
       });
 
-      // Filter out any results that don't have a proper name
+      // Filter results but be less aggressive for ambiguous searches
       const validResults = transformedResults.filter(result => 
-        result.name && result.name !== searchTerm && result.name.trim().length > 0
+        result.name && result.name.trim().length > 0
       );
 
       console.log('✅ [APPSTORE-INTEGRATION] Final results:', {
         originalCount: transformedResults.length,
         validCount: validResults.length,
+        isAmbiguous: data.isAmbiguous,
         results: validResults.map(r => ({ name: r.name, developer: r.developer }))
       });
 
@@ -122,7 +125,13 @@ export class AppStoreIntegrationService {
         return { success: false, error: `No valid apps found for "${searchTerm.trim()}"` };
       }
 
-      return { success: true, data: validResults };
+      // Return success with ambiguity information preserved
+      return { 
+        success: true, 
+        data: validResults,
+        isAmbiguous: data.isAmbiguous || false,
+        totalResults: validResults.length
+      };
     } catch (error: any) {
       console.error('💥 [APPSTORE-INTEGRATION] Exception:', error);
       return { 
