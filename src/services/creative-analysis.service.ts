@@ -26,6 +26,8 @@ export interface ColorPalette {
 export interface MessageAnalysis {
   primaryMessage: string;
   messageType: 'feature' | 'benefit' | 'social_proof' | 'emotional' | 'functional';
+  psychologicalTrigger: 'trust' | 'curiosity' | 'urgency' | 'fear' | 'desire' | 'social_validation';
+  attentionScore: number;
   confidence: number;
   keywords: string[];
 }
@@ -46,6 +48,8 @@ export interface ScreenshotAnalysis {
   visualHierarchy: VisualHierarchy;
   textContent: string[];
   designPatterns: string[];
+  flowRole: 'hook' | 'feature' | 'proof' | 'CTA' | 'onboarding';
+  recommendations: string[];
   confidence: number;
 }
 
@@ -419,6 +423,8 @@ export class CreativeAnalysisService {
           visualHierarchy: analysisData.visualHierarchy as VisualHierarchy,
           textContent: analysisData.textContent as string[],
           designPatterns: analysisData.designPatterns as string[],
+          flowRole: analysisData.flowRole || 'feature',
+          recommendations: analysisData.recommendations || [],
           confidence: screenshot.confidence_score || 0
         };
       }) || [];

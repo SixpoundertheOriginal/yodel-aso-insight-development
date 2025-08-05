@@ -13,12 +13,26 @@ interface PatternData {
 interface PatternRecognitionSummaryProps {
   patterns: PatternData;
   keyword: string;
+  analysisCount: number;
 }
 
 export const PatternRecognitionSummary: React.FC<PatternRecognitionSummaryProps> = ({
   patterns,
-  keyword
+  keyword,
+  analysisCount
 }) => {
+  const isSingleApp = analysisCount === 1;
+  
+  const formatInsight = (insight: string) => {
+    if (isSingleApp) {
+      return insight
+        .replace(/Most apps use/, 'This app uses')
+        .replace(/of apps focus/, 'emphasizes')
+        .replace(/apps show/, 'shows')
+        .replace(/% of apps/, '%');
+    }
+    return insight;
+  };
   return (
     <Card className="border-zinc-800 bg-zinc-900">
       <CardHeader>
@@ -33,12 +47,12 @@ export const PatternRecognitionSummary: React.FC<PatternRecognitionSummaryProps>
         <div>
           <h4 className="flex items-center gap-2 font-medium text-zinc-200 mb-3">
             <Lightbulb className="w-4 h-4" />
-            Key Insights
+            {isSingleApp ? 'App Analysis' : 'Key Insights'}
           </h4>
           <div className="space-y-2">
             {patterns.insights.map((insight, i) => (
               <div key={i} className="bg-zinc-800 p-3 rounded-lg">
-                <p className="text-sm text-zinc-300">{insight}</p>
+                <p className="text-sm text-zinc-300">{formatInsight(insight)}</p>
               </div>
             ))}
           </div>

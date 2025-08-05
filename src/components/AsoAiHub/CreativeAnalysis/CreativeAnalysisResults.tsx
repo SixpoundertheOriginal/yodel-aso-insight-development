@@ -37,7 +37,8 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
       {analysis.patterns && (
         <PatternRecognitionSummary 
           patterns={analysis.patterns} 
-          keyword={keyword} 
+          keyword={keyword}
+          analysisCount={analysis.individual.length}
         />
       )}
 

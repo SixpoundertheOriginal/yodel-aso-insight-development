@@ -28,6 +28,8 @@ interface ColorPalette {
 interface MessageAnalysis {
   primaryMessage: string;
   messageType: 'feature' | 'benefit' | 'social_proof' | 'emotional' | 'functional';
+  psychologicalTrigger: 'trust' | 'curiosity' | 'urgency' | 'fear' | 'desire' | 'social_validation';
+  attentionScore: number;
   confidence: number;
   keywords: string[];
 }
@@ -48,6 +50,8 @@ interface ScreenshotAnalysis {
   visualHierarchy: VisualHierarchy;
   textContent: string[];
   designPatterns: string[];
+  flowRole: 'hook' | 'feature' | 'proof' | 'CTA' | 'onboarding';
+  recommendations: string[];
   confidence: number;
 }
 
@@ -61,45 +65,53 @@ const analyzeScreenshotWithVision = async (screenshot: any): Promise<ScreenshotA
     throw new Error(`Invalid screenshot URL: ${screenshot.url}`);
   }
 
-  const prompt = `Analyze this app screenshot by following these steps:
+  const prompt = `Analyze this individual app screenshot for ASO Creative Intelligence. Focus on this specific app's messaging and optimization opportunities.
 
-1. COLOR PALETTE: Identify the dominant colors used
-2. TEXT CONTENT: Extract all visible text elements
-3. IMAGERY: Describe visual elements, icons, and graphics
+**Analysis Framework:**
+1. INDIVIDUAL SCREENSHOT MESSAGE: What specific message does THIS screenshot communicate?
+2. PSYCHOLOGICAL TRIGGERS: What psychological element does this leverage? (trust, curiosity, urgency, fear, desire, social_validation)
+3. ASO FLOW ROLE: What role does this screenshot play in the app store sequence? (hook, feature, proof, CTA, onboarding)
+4. ATTENTION OPTIMIZATION: Rate attention-grabbing power (0-100) and suggest improvements
 
-From this analysis, determine:
-1) PRIMARY MESSAGE: What is the main message being communicated?
-2) MESSAGE TYPE: Classify as one of: feature, benefit, social_proof, emotional, functional
-3) VISUAL HIERARCHY: What draws attention first, second, third?
+**App Context:** ${screenshot.appName}
 
-Also identify:
-- Design patterns (material design, iOS guidelines, custom)
-- UI elements (buttons, cards, navigation, etc.)
-- Layout type (grid, list, hero, onboarding, etc.)
+**Required Analysis:**
+- Extract all visible text and UI elements
+- Identify the primary message and psychological trigger
+- Assess visual hierarchy and attention flow
+- Provide specific ASO optimization recommendations
+- Determine this screenshot's role in the overall app store narrative
 
-Return ONLY a valid JSON response with this exact structure:
+Return ONLY valid JSON with this structure:
 {
-  "colorPalette": {
-    "primary": "color description",
-    "secondary": "color description", 
-    "accent": "color description",
-    "background": "color description",
-    "text": "color description"
-  },
   "messageAnalysis": {
-    "primaryMessage": "main message",
+    "primaryMessage": "specific message this screenshot conveys",
     "messageType": "feature|benefit|social_proof|emotional|functional",
+    "psychologicalTrigger": "trust|curiosity|urgency|fear|desire|social_validation",
+    "attentionScore": 85,
     "confidence": 0.95,
-    "keywords": ["key", "words"]
+    "keywords": ["key", "words", "from", "screenshot"]
+  },
+  "colorPalette": {
+    "primary": "dominant color description",
+    "secondary": "secondary color description", 
+    "accent": "accent color description",
+    "background": "background color description",
+    "text": "text color description"
   },
   "visualHierarchy": {
     "focal_point": "what draws attention first",
-    "visual_flow": ["first", "second", "third"],
-    "ui_elements": ["button", "card", "etc"],
-    "layout_type": "grid|list|hero|onboarding|etc"
+    "visual_flow": ["first element seen", "second element", "third element"],
+    "ui_elements": ["button", "text", "icon", "etc"],
+    "layout_type": "grid|list|hero|onboarding|feature_showcase|social_proof"
   },
-  "textContent": ["extracted", "text", "elements"],
-  "designPatterns": ["pattern1", "pattern2"],
+  "textContent": ["all", "visible", "text", "elements"],
+  "designPatterns": ["iOS_guidelines", "material_design", "custom_design"],
+  "flowRole": "hook|feature|proof|CTA|onboarding",
+  "recommendations": [
+    "Specific ASO optimization suggestion 1",
+    "Specific ASO optimization suggestion 2"
+  ],
   "confidence": 0.9
 }`;
 
@@ -114,7 +126,7 @@ Return ONLY a valid JSON response with this exact structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // Using faster, cheaper model
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'user',
@@ -124,8 +136,9 @@ Return ONLY a valid JSON response with this exact structure:
             ]
           }
         ],
-        max_tokens: 1500,
+        max_tokens: 2000,
         temperature: 0.1,
+        response_format: { type: "json_object" }
       }),
     });
 
