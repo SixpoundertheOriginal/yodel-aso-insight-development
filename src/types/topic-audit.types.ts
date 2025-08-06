@@ -78,6 +78,12 @@ export interface EntityAnalysis {
   sentiment: 'positive' | 'neutral' | 'negative';
 }
 
+export interface CompetitorInfo {
+  name: string;
+  positioning?: string;
+  weakness?: string;
+}
+
 export interface EntityIntelligence {
   entityName: string;
   description: string;
@@ -86,6 +92,7 @@ export interface EntityIntelligence {
   competitors: string[];
   marketPosition: string;
   industryFocus: string[];
+  competitorDetails?: CompetitorInfo[];
   confidenceScore?: number;
   target_personas?: any[];
   pain_points_solved?: string[];
