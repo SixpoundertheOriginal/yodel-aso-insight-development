@@ -59,13 +59,13 @@ async function scrapeEntityBasics(entityName: string) {
     // Try to find and scrape the entity's website
     const websiteData = await scrapeEntityWebsite(entityName);
     
-    // Get search results for the entity
-    const searchData = await getEntitySearchData(entityName);
-    
+    // Get categorized search snippets for the entity
+    const searchSnippets = await fetchSearchSnippetsByIntent(entityName);
+
     return {
       entityName,
       websiteData,
-      searchData,
+      searchSnippets,
       timestamp: new Date().toISOString()
     };
   } catch (error) {
@@ -83,10 +83,12 @@ async function scrapeEntityBasics(entityName: string) {
 
     return {
       entityName,
-      searchResults: searchQueries.map(query => ({
-        query,
-        results: [`Result for ${query}`, `Another result for ${query}`]
-      })),
+      searchSnippets: {
+        services: [],
+        clients: [],
+        positioning: [],
+        competitors: []
+      },
       timestamp: new Date().toISOString()
     };
   }
@@ -206,27 +208,51 @@ async function extractMetadataFromHtml(html: string, url: string) {
   return metadata;
 }
 
-async function getEntitySearchData(entityName: string) {
+const smartQueries = [
+  { label: 'services', query: (name: string) => `${name} services OR solutions` },
+  { label: 'clients', query: (name: string) => `${name} clients OR industries` },
+  { label: 'positioning', query: (name: string) => `${name} market position` },
+  { label: 'competitors', query: (name: string) => `${name} competitors OR alternatives` },
+];
+
+async function fetchSearchSnippetsByIntent(entityName: string) {
   console.log('🔍 Getting search data for:', entityName);
-  
-  // Simulate search data - in real implementation, you would use a search API
-  return {
-    searchQueries: [
-      `${entityName} company overview`,
-      `${entityName} services and solutions`,
-      `${entityName} client testimonials`,
-      `${entityName} competitors and alternatives`,
-      `${entityName} recent news and updates`,
-      `${entityName} company culture and values`
-    ],
-    searchVolume: Math.floor(Math.random() * 1000) + 100,
-    relatedTerms: [
-      `${entityName} reviews`,
-      `${entityName} pricing`,
-      `${entityName} contact`,
-      `${entityName} careers`
-    ]
+
+  const apiKey = Deno.env.get('GOOGLE_CSE_API_KEY');
+  const searchEngineId = Deno.env.get('GOOGLE_CSE_ID');
+  const resultsByIntent: Record<string, any[]> = {
+    services: [],
+    clients: [],
+    positioning: [],
+    competitors: [],
   };
+
+  for (const { label, query } of smartQueries) {
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query(entityName))}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.items) {
+      resultsByIntent[label].push(...data.items.slice(0, 2));
+    }
+  }
+
+  return resultsByIntent;
+}
+
+function buildSearchSummary(searchSnippets: Record<string, any[]>): string {
+  return `
+## Services & Solutions:
+${(searchSnippets.services || []).map(s => `- ${s.title}: ${s.snippet}`).join('\n')}
+
+## Target Clients:
+${(searchSnippets.clients || []).map(s => `- ${s.title}: ${s.snippet}`).join('\n')}
+
+## Market Positioning:
+${(searchSnippets.positioning || []).map(s => `- ${s.title}: ${s.snippet}`).join('\n')}
+
+## Competitors:
+${(searchSnippets.competitors || []).map(s => `- ${s.title}: ${s.snippet}`).join('\n')}
+  `.trim();
 }
 
 async function enhanceWithAI(entityName: string, scrapedData: any) {
@@ -236,35 +262,29 @@ async function enhanceWithAI(entityName: string, scrapedData: any) {
     throw new Error('OpenAI API key not configured');
   }
 
-  const prompt = `Analyze the following entity and provide structured intelligence:
+  const searchSummary = buildSearchSummary(scrapedData.searchSnippets || {
+    services: [],
+    clients: [],
+    positioning: [],
+    competitors: []
+  });
 
-Entity Name: ${entityName}
+  const prompt = `
+You're analyzing the company "${entityName}" using the following search results:
 
-Based on your knowledge, provide detailed information about this entity in the following JSON format:
+${searchSummary}
 
+Based only on the above information, return structured intelligence in this JSON format:
 {
   "entityName": "${entityName}",
-  "website": "official website URL if known",
-  "description": "comprehensive description of the entity and what they do",
-  "services": ["service1", "service2", "service3"],
-  "targetClients": ["client type 1", "client type 2"],
-  "competitors": ["competitor1", "competitor2", "competitor3"],
-  "recentNews": ["recent development 1", "recent development 2"],
-  "marketPosition": "startup|established|leader|emerging",
-  "industryFocus": ["industry1", "industry2"],
-  "founded": "year if known",
-  "size": "startup|small|medium|large|enterprise",
+  "description": "...",
+  "services": [...],
+  "targetClients": [...],
+  "marketPosition": "...",
+  "competitors": [...],
   "confidenceScore": 0.85
 }
-
-Provide accurate, factual information. If you're unsure about specific details, indicate lower confidence scores. Focus on:
-1. What services/products they offer
-2. Who their typical clients are
-3. Main competitors in their space
-4. Their position in the market
-5. Recent developments or news
-
-Return only valid JSON.`;
+`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
