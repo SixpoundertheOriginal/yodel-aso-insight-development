@@ -80,16 +80,14 @@ export interface EntityAnalysis {
 
 export interface EntityIntelligence {
   entityName: string;
-  website?: string;
   description: string;
   services: string[];
   targetClients: string[];
   competitors: string[];
-  recentNews: string[];
   marketPosition: string;
   industryFocus: string[];
-  founded?: string;
-  size?: string;
-  confidenceScore: number;
-  scrapedAt: string;
+  confidenceScore?: number;
+  target_personas?: any[];
+  pain_points_solved?: string[];
+  scrapedAt?: string;
 }
