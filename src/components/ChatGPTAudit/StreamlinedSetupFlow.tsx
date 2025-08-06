@@ -21,7 +21,7 @@ import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AppSearchResultsModal } from '@/components/AsoAiHub/MetadataCopilot/AppSearchResultsModal';
 import { AuditMode, TopicAuditData, GeneratedTopicQuery, EntityIntelligence } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
-import { normalizeEntityToAuditFields } from '@/utils/entity-normalizer';
+import { normalizeEntityToAuditFields } from '@/utils/normalizeEntityToAuditFields';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Target, 
