@@ -6,12 +6,12 @@ export class EntityIntelligenceService {
     try {
       console.log('🔍 EntityIntelligenceService: Fetching intelligence for entity:', entityName);
       
-      // Check cache first
-      const cachedIntelligence = await this.getCachedIntelligence(entityName, organizationId);
-      if (cachedIntelligence) {
-        console.log('✅ Found cached entity intelligence');
-        return cachedIntelligence;
-      }
+      // Temporarily bypass cache to ensure fresh entity intelligence during testing
+      // const cachedIntelligence = await this.getCachedIntelligence(entityName, organizationId);
+      // if (cachedIntelligence) {
+      //   console.log('✅ Found cached entity intelligence');
+      //   return cachedIntelligence;
+      // }
 
       // Call the entity intelligence scraper edge function
       const { data, error } = await supabase.functions.invoke('entity-intelligence-scraper', {

@@ -19,8 +19,9 @@ import { AmbiguousSearchError } from '@/types/search-errors';
 import { AppIntelligenceAnalyzer } from './AppIntelligenceAnalyzer';
 import { TopicEntityConfirmation } from './TopicEntityConfirmation';
 import { AppSearchResultsModal } from '@/components/AsoAiHub/MetadataCopilot/AppSearchResultsModal';
-import { AuditMode, TopicAuditData, GeneratedTopicQuery } from '@/types/topic-audit.types';
+import { AuditMode, TopicAuditData, GeneratedTopicQuery, EntityIntelligence } from '@/types/topic-audit.types';
 import { TopicQueryGeneratorService } from '@/services/topic-query-generator.service';
+import { normalizeEntityToAuditFields } from '@/utils/entity-normalizer';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Target, 
@@ -212,7 +213,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   const [generatedQueries, setGeneratedQueries] = useState<GeneratedTopicQuery[]>([]);
   const [appIntelligence, setAppIntelligence] = useState<any>(null);
   const [entityIntelligence, setEntityIntelligence] = useState<any>(null);
-  const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<any>(null);
+  const [enhancedEntityIntelligence, setEnhancedEntityIntelligence] = useState<EntityIntelligence | null>(null);
   const [showEntityAnalyzer, setShowEntityAnalyzer] = useState(false);
   
   // Auto-population state
@@ -617,7 +618,6 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
           services: simpleInputs.serviceType?.services || [],
           targetClients: [simpleInputs.targetMarket?.label || 'general users'],
           competitors: [],
-          recentNews: [],
           marketPosition: 'unknown',
           industryFocus: [serviceType],
           confidenceScore: 0.8,
@@ -855,7 +855,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     });
   };
 
-  const generateQueriesFromEnhancedEntity = async (entityIntelligence: any) => {
+  const generateQueriesFromEnhancedEntity = async (entityIntelligence: EntityIntelligence) => {
     try {
       console.log('🚀 Generating queries from enhanced entity intelligence:', entityIntelligence);
       
@@ -880,7 +880,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     }
   };
 
-  const generateBaseQueries = async (entityIntelligence: any): Promise<GeneratedTopicQuery[]> => {
+  const generateBaseQueries = async (entityIntelligence: EntityIntelligence): Promise<GeneratedTopicQuery[]> => {
     // Try AI-enhanced query generation with enhanced intelligence
     try {
       const { data: aiResponse } = await supabase.functions.invoke('query-enhancer', {
@@ -898,11 +898,12 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
             description: entityIntelligence.description,
             services: entityIntelligence.services,
             targetClients: entityIntelligence.targetClients,
-            competitors: entityIntelligence.competitors.map((comp: any) => comp.name),
+            competitors: entityIntelligence.competitors,
             marketPosition: entityIntelligence.marketPosition,
             industryFocus: entityIntelligence.industryFocus,
-            recentNews: entityIntelligence.recentNews,
-            confidenceScore: entityIntelligence.confidence_score,
+            confidenceScore: entityIntelligence.confidenceScore,
+            target_personas: entityIntelligence.target_personas,
+            pain_points_solved: entityIntelligence.pain_points_solved,
             scrapedAt: entityIntelligence.scrapedAt
           },
           queryCount: 15
@@ -1154,34 +1155,20 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
   };
 
   // Auto-population logic using entity intelligence
-  const autoPopulateFromEntity = (intelligence: any) => {
+  const autoPopulateFromEntity = (intelligence: EntityIntelligence) => {
     console.log('🤖 Auto-populating from entity intelligence:', intelligence);
-    
-    // Simple mapping rules as specified in requirements
+
+    const normalized = normalizeEntityToAuditFields(intelligence);
+
     const mapTopicFromServices = (services: string[]): string => {
       if (!services || services.length === 0) return intelligence.entityName + " services";
-      
+
       const firstService = services[0].toLowerCase();
       if (firstService.includes('marketing')) return "mobile marketing agencies";
       if (firstService.includes('fitness')) return "fitness apps";
       if (firstService.includes('language')) return "language learning apps";
-      
-      return services[0] + " providers";
-    };
 
-    const mapIndustryFromFocus = (industryFocus: string[], services: string[]): string => {
-      if (industryFocus && industryFocus.length > 0) {
-        return industryFocus[0];
-      }
-      if (services && services.length > 0) {
-        const service = services[0].toLowerCase();
-        if (service.includes('tech') || service.includes('software')) return "Technology";
-        if (service.includes('health') || service.includes('fitness')) return "Healthcare";
-        if (service.includes('finance')) return "Financial Services";
-        if (service.includes('education')) return "Education";
-        if (service.includes('marketing')) return "Marketing & Advertising";
-      }
-      return "Technology"; // Default
+      return services[0] + " providers";
     };
 
     const mapTargetAudience = (targetClients: string[], services: string[], isAppAudit: boolean = false): string => {
@@ -1223,10 +1210,6 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       return "businesses"; // Default
     };
 
-    const mapSolutionsFromServices = (services: string[]): string[] => {
-      return services.map(service => service.includes('services') ? service : `${service} services`);
-    };
-
     const mapQueryStrategy = (services: string[]): 'competitive_discovery' | 'market_research' | 'mixed' => {
       if (!services || services.length === 0) return 'market_research';
       
@@ -1240,37 +1223,22 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       return hasServiceKeywords ? 'competitive_discovery' : 'market_research';
     };
 
-    const mapSubVertical = (services: string[], industry: string): string => {
-      if (!services || services.length === 0) return '';
-      
-      const service = services[0].toLowerCase();
-      if (service.includes('aso')) return 'App Store Optimization';
-      if (service.includes('fitness')) return 'Fitness & Wellness Apps';
-      if (service.includes('language')) return 'Language Learning';
-      if (service.includes('marketing')) return 'Digital Marketing';
-      if (service.includes('fintech')) return 'Financial Technology';
-      
-      return '';
-    };
-
     const autoPopulated: TopicAuditData = {
       topic: mapTopicFromServices(intelligence.services || []),
-      industry: mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || []),
+      industry: normalized.industry,
       target_audience: mapTargetAudience(intelligence.targetClients || [], intelligence.services || [], auditMode === 'app'),
-      context_description: intelligence.description || `Visibility analysis for ${intelligence.entityName}`,
-      known_players: intelligence.competitors ? intelligence.competitors.map((comp: any) => 
-        typeof comp === 'string' ? comp : comp.name
-      ).slice(0, 5) : [],
+      context_description: normalized.contextDescription || `Visibility analysis for ${intelligence.entityName}`,
+      known_players: normalized.knownPlayers.slice(0, 5),
       geographic_focus: '',
       entityToTrack: intelligence.entityName,
       entityAliases: [],
       queryStrategy: mapQueryStrategy(intelligence.services || []),
       competitorFocus: true,
       intentLevel: 'high', // Default to high for competitive discovery
-      solutionsOffered: mapSolutionsFromServices(intelligence.services || []),
+      solutionsOffered: normalized.solutionsOffered,
       keyFeatures: isAppEnabled && appStoreData ? extractKeyFeatures(appStoreData) : undefined,
       analysisDepth: 'standard', // Default to 20 queries
-      industrySubVertical: mapSubVertical(intelligence.services || [], mapIndustryFromFocus(intelligence.industryFocus || [], intelligence.services || [])),
+      industrySubVertical: normalized.subVertical || '',
       entityIntelligence: intelligence
     };
 
@@ -1770,9 +1738,22 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
                           }
                         }}
                         onIntelligenceGenerated={(intelligence) => {
-                          setEnhancedEntityIntelligence(intelligence);
+                          const formatted: EntityIntelligence = {
+                            entityName: intelligence.entityName,
+                            description: intelligence.description,
+                            services: intelligence.services || [],
+                            targetClients: intelligence.targetClients || [],
+                            competitors: intelligence.competitors?.map((comp: any) => typeof comp === 'string' ? comp : comp.name) || [],
+                            marketPosition: intelligence.marketPosition,
+                            industryFocus: intelligence.industryFocus || [],
+                            confidenceScore: intelligence.confidence_score,
+                            target_personas: intelligence.target_personas,
+                            pain_points_solved: intelligence.pain_points_solved,
+                            scrapedAt: intelligence.scrapedAt
+                          };
+                          setEnhancedEntityIntelligence(formatted);
                           // Auto-populate fields from entity intelligence
-                          autoPopulateFromEntity(intelligence);
+                          autoPopulateFromEntity(formatted);
                         }}
                         onAnalysisComplete={() => {
                           setIsAnalyzingEntity(false);
