@@ -50,9 +50,16 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
   };
 
   const handleConfirm = () => {
+    const finalEntity: EntityIntelligence | undefined = editedEntityData
+      ? {
+          ...editedEntityData,
+          competitors: editedEntityData.competitors?.map((name: string) => ({ name })) || [],
+          confidenceScore: editedEntityData.confidence
+        }
+      : enhancedEntityIntelligence || entityIntelligence;
     const confirmedData = {
       topicData,
-      entityIntelligence: editedEntityData || enhancedEntityIntelligence || entityIntelligence
+      entityIntelligence: finalEntity
     };
     onConfirm(confirmedData);
   };
@@ -66,11 +73,11 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
         entityName: currentData.entityName || topicData.entityToTrack,
         description: currentData.description || '',
         services: currentData.services || [],
-        competitors: currentData.competitors ? currentData.competitors.map((comp: any) => 
+        competitors: currentData.competitors?.map((comp: any) =>
           typeof comp === 'string' ? comp : comp.name
-        ) : [],
+        ) || [],
         targetClients: currentData.targetClients || [],
-        confidence: currentData.confidence_score || 0.5
+        confidence: currentData.confidenceScore || 0.5
       });
     } else {
       setEditedEntityData({
@@ -337,7 +344,7 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                 <div className="flex items-center gap-2">
                   <Badge variant="default">Analysis Complete</Badge>
                   <Badge variant="outline">
-                    {Math.round(enhancedEntityIntelligence.confidence_score * 100)}% Confidence
+                    {Math.round(enhancedEntityIntelligence.confidenceScore * 100)}% Confidence
                   </Badge>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleEditEntity}>

@@ -131,7 +131,7 @@ export const EntityAnalysisPreview: React.FC<EntityAnalysisPreviewProps> = ({
             <div className="flex flex-wrap gap-2">
               {entityIntelligence.competitors.slice(0, 5).map((competitor, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
-                  {competitor}
+                  {typeof competitor === 'string' ? competitor : competitor.name}
                 </Badge>
               ))}
               {entityIntelligence.competitors.length > 5 && (
