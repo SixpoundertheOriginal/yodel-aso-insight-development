@@ -546,68 +546,80 @@ serve(async (req) => {
     // **PHASE 1 CRITICAL: Build response metadata with ALL available traffic sources**
     console.log('✅ [Phase 1] Step 3: Building enhanced metadata with all available traffic sources');
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: transformedData,
-        meta: {
-          rowCount: transformedData.length,
-          totalRows: parseInt(queryResult.totalRows || '0'),
-          executionTimeMs,
-          queryParams: {
-            organizationId,
-            dateRange: body.dateRange || null,
-            selectedApps: body.selectedApps || null,
-            trafficSources: normalizedTrafficSources || null,
-            limit
+    const responsePayload = {
+      success: true,
+      data: transformedData,
+      meta: {
+        rowCount: transformedData.length,
+        totalRows: parseInt(queryResult.totalRows || '0'),
+        executionTimeMs,
+        queryParams: {
+          organizationId,
+          dateRange: body.dateRange || null,
+          selectedApps: body.selectedApps || null,
+          trafficSources: normalizedTrafficSources || null,
+          limit
+        },
+        // **PHASE 1 KEY CHANGE: Always return all discovered traffic sources**
+        availableTrafficSources, // This now comes from discovery query, not filtered data
+        filteredBySelection: !!(body.selectedApps && body.selectedApps.length > 0),
+        filteredByTrafficSource: normalizedTrafficSources.length > 0,
+        projectId,
+        timestamp: new Date().toISOString(),
+        approvedApps: approvedAppIdentifiers,
+        queriedClients: clientsToQuery,
+        emergencyBypass: shouldAutoApprove,
+        autoApprovalTriggered: shouldAutoApprove && transformedData.length > 0,
+        // **PHASE 1 ARCHITECTURE INFO**
+        dataArchitecture: {
+          phase: 'Phase 1 - Two-Pass Discovery',
+          discoveryQuery: {
+            executed: true,
+            sourcesFound: availableTrafficSources.length,
+            sources: availableTrafficSources
           },
-          // **PHASE 1 KEY CHANGE: Always return all discovered traffic sources**
-          availableTrafficSources, // This now comes from discovery query, not filtered data
-          filteredBySelection: !!(body.selectedApps && body.selectedApps.length > 0),
-          filteredByTrafficSource: normalizedTrafficSources.length > 0,
-          projectId,
-          timestamp: new Date().toISOString(),
-          approvedApps: approvedAppIdentifiers,
-          queriedClients: clientsToQuery,
-          emergencyBypass: shouldAutoApprove,
-          autoApprovalTriggered: shouldAutoApprove && transformedData.length > 0,
-          // **PHASE 1 ARCHITECTURE INFO**
-          dataArchitecture: {
-            phase: 'Phase 1 - Two-Pass Discovery',
-            discoveryQuery: {
-              executed: true,
-              sourcesFound: availableTrafficSources.length,
-              sources: availableTrafficSources
-            },
-            mainQuery: {
-              executed: true,
-              filtered: normalizedTrafficSources.length > 0,
-              rowsReturned: transformedData.length
+          mainQuery: {
+            executed: true,
+            filtered: normalizedTrafficSources.length > 0,
+            rowsReturned: transformedData.length
+          }
+        },
+        ...(isDevelopment() && {
+          debug: {
+            queryPreview: query.replace(/\s+/g, ' ').trim(),
+            discoveryQueryPreview: discoveryQuery.replace(/\s+/g, ' ').trim(),
+            parameterCount: queryParams.length,
+            jobComplete: !!queryResult.jobComplete,
+            trafficSourceMapping: { ...TRAFFIC_SOURCE_MAPPING },
+            filteringDecision: {
+              originalRequest: body.trafficSources,
+              normalizedSources: normalizedTrafficSources,
+              filterApplied: normalizedTrafficSources.length > 0,
+              queryClause: trafficSourceFilter || 'NO_FILTER'
             }
-          },
-          ...(isDevelopment() && {
-            debug: {
-              queryPreview: query.replace(/\s+/g, ' ').trim(),
-              discoveryQueryPreview: discoveryQuery.replace(/\s+/g, ' ').trim(),
-              parameterCount: queryParams.length,
-              jobComplete: queryResult.jobComplete,
-              trafficSourceMapping: TRAFFIC_SOURCE_MAPPING,
-              filteringDecision: {
-                originalRequest: body.trafficSources,
-                normalizedSources: normalizedTrafficSources,
-                filterApplied: normalizedTrafficSources.length > 0,
-                queryClause: trafficSourceFilter || 'NO_FILTER'
-              }
-            }
-          })
-        }
-      }),
-      {
+          }
+        })
+      }
+    };
+
+    try {
+      const body = JSON.stringify(responsePayload);
+      console.log('✅ [BigQuery] JSON serialization succeeded');
+      return new Response(body, {
         // ✅ Required to ensure Supabase Edge returns valid response
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+      });
+    } catch (jsonError: any) {
+      console.error('💥 [BigQuery] JSON serialization failed:', jsonError);
+      return new Response(
+        JSON.stringify({ success: false, error: jsonError.message }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
   } catch (error: any) {
     const executionTimeMs = Date.now() - startTime;
