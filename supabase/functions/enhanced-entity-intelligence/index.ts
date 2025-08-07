@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { scrapeEntity } from './lib/scrapeEntity.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -86,8 +87,32 @@ serve(async (req) => {
       });
     }
 
+    // Scrape entity if websiteData not provided
+    let enrichedEntityData = entityData;
+    if (!entityData.websiteData) {
+      console.log('🔍 No websiteData provided, scraping entity...');
+      try {
+        const scrapedData = await scrapeEntity(entityData.entityName);
+        enrichedEntityData = {
+          ...entityData,
+          websiteData: scrapedData.websiteData || {},
+          searchData: scrapedData.searchSnippets || {}
+        };
+        console.log('✅ Entity scraping completed');
+      } catch (scrapeError) {
+        console.log('❌ Entity scraping failed, proceeding with empty websiteData:', scrapeError.message);
+        enrichedEntityData = {
+          ...entityData,
+          websiteData: {},
+          searchData: {}
+        };
+      }
+    } else {
+      console.log('✅ Using provided websiteData, skipping scrape');
+    }
+
     // Perform AI analysis
-    const enhancedIntelligence = await analyzeEntityWithAI(entityData);
+    const enhancedIntelligence = await analyzeEntityWithAI(enrichedEntityData);
     
     // Cache the result
     await cacheAnalysis(cacheKey, enhancedIntelligence);
@@ -302,7 +327,11 @@ function validateAndEnhanceEntityResponse(response: any): EnhancedEntityIntellig
 }
 
 function generateCacheKey(entityData: EntityData): string {
-  const hash = btoa(`${entityData.entityName}-${JSON.stringify(entityData.websiteData || {})}`);
+  // Include audit context in cache key for more specific caching
+  const contextHash = entityData.auditContext ? 
+    `${entityData.auditContext.industry}-${entityData.auditContext.topic}` : 
+    'general';
+  const hash = btoa(`${entityData.entityName}-${contextHash}-${JSON.stringify(entityData.websiteData || {})}`);
   return `enhanced_entity_intelligence_${hash}`;
 }
 
