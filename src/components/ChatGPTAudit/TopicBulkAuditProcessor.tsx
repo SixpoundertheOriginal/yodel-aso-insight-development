@@ -28,6 +28,18 @@ interface TopicBulkAuditProcessorProps {
   organizationId: string;
 }
 
+const getAuditQueriesByRunId = async (auditRunId: string) => {
+  const { data, error } = await supabase
+    .from('chatgpt_queries')
+    .select('*')
+    .eq('audit_run_id', auditRunId);
+  if (error) {
+    console.error('getAuditQueriesByRunId: Error fetching queries:', error);
+    return [];
+  }
+  return data || [];
+};
+
 export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = ({
   selectedAuditRun,
   onStatusChange,
@@ -238,18 +250,13 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
     try {
       console.log('TopicBulkAuditProcessor: Starting processing for audit run:', selectedAuditRun.id);
 
-      // Check if queries already exist
-      console.log('TopicBulkAuditProcessor: Checking existing queries for audit run:', selectedAuditRun.id);
-      const existingQueries = await supabase
-        .from('chatgpt_queries')
-        .select('id')
-        .eq('audit_run_id', selectedAuditRun.id);
+      const auditRunId = selectedAuditRun.id;
+      let existingQueries = await getAuditQueriesByRunId(auditRunId);
+      console.log(`[Audit Resume] Found ${existingQueries.length} existing queries for audit ${auditRunId}`);
 
-      console.log('TopicBulkAuditProcessor: Found existing queries:', existingQueries.data?.length || 0);
-
-      if (!existingQueries.data || existingQueries.data.length === 0) {
+      if (existingQueries.length === 0) {
         console.log('TopicBulkAuditProcessor: No existing queries found, generating new ones');
-        
+
         // Fetch entity intelligence first if entity is specified
         let enhancedTopicData = selectedAuditRun.topic_data;
         if (selectedAuditRun.topic_data.entityToTrack) {
@@ -258,7 +265,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
             selectedAuditRun.topic_data.entityToTrack,
             organizationId
           );
-          
+
           if (entityIntelligence) {
             enhancedTopicData = {
               ...selectedAuditRun.topic_data,
@@ -269,15 +276,15 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
             console.log('TopicBulkAuditProcessor: Failed to fetch entity intelligence, proceeding without');
           }
         }
-        
+
         // Generate queries using the enhanced topic data
         const queries = TopicQueryGeneratorService.generateQueries(enhancedTopicData, 10);
         console.log('TopicBulkAuditProcessor: Generated queries:', queries.length);
-        
+
         const queryInserts = queries.map(query => ({
           id: query.id,
           organization_id: organizationId,
-          audit_run_id: selectedAuditRun.id,
+          audit_run_id: auditRunId,
           query_text: query.query_text,
           query_type: query.query_type,
           priority: query.priority,
@@ -299,37 +306,33 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         const { error: updateError } = await supabase
           .from('chatgpt_audit_runs')
           .update({ total_queries: queries.length })
-          .eq('id', selectedAuditRun.id);
+          .eq('id', auditRunId);
 
         if (updateError) {
           console.error('TopicBulkAuditProcessor: Error updating total queries count:', updateError);
         }
+
+        existingQueries = await getAuditQueriesByRunId(auditRunId);
       } else {
         console.log('TopicBulkAuditProcessor: Using existing queries');
       }
 
-      // Verify queries exist before starting processing
-      const allQueries = await supabase
-        .from('chatgpt_queries')
-        .select('*')
-        .eq('audit_run_id', selectedAuditRun.id);
-
-      if (!allQueries.data || allQueries.data.length === 0) {
+      if (existingQueries.length === 0) {
         throw new Error('No queries found for this audit run');
       }
 
-      console.log('TopicBulkAuditProcessor: Found total queries:', allQueries.data.length);
-      setProcessingStats(prev => ({ ...prev, total: allQueries.data.length }));
+      console.log('TopicBulkAuditProcessor: Found total queries:', existingQueries.length);
+      setProcessingStats(prev => ({ ...prev, total: existingQueries.length }));
 
       // Update audit status to running only after queries are confirmed
       console.log('TopicBulkAuditProcessor: Updating audit status to running');
       await supabase
         .from('chatgpt_audit_runs')
-        .update({ 
+        .update({
           status: 'running',
           started_at: new Date().toISOString()
         })
-        .eq('id', selectedAuditRun.id);
+        .eq('id', auditRunId);
 
       // Process queries
       const pendingQueries = await supabase
