@@ -90,69 +90,73 @@ async function scrapeEntityWebsite(entityName: string) {
 
 async function extractMetadataFromHtml(html: string, url: string) {
   console.log('📄 Extracting metadata from HTML');
-  
+
   const metadata: any = {
     url,
     title: '',
     description: '',
-    services: [],
-    aboutText: '',
-    contactInfo: {},
-    structured_data: {}
+    h1: '',
+    services: []
   };
-  
+
   try {
+    // Remove scripts, JSON-LD and styles
+    let cleanedHtml = html
+      .replace(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
     // Extract title
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const titleMatch = cleanedHtml.match(/<title[^>]*>([^<]*)<\/title>/i);
     if (titleMatch) {
-      metadata.title = titleMatch[1].trim();
+      metadata.title = titleMatch[1].trim().slice(0, 200);
     }
-    
+
     // Extract meta description
-    const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+    const descMatch = cleanedHtml.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
     if (descMatch) {
-      metadata.description = descMatch[1];
+      metadata.description = descMatch[1].trim().slice(0, 200);
     }
-    
-    // Extract Open Graph data
-    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
-    const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
-    
-    if (ogTitleMatch) metadata.og_title = ogTitleMatch[1];
-    if (ogDescMatch) metadata.og_description = ogDescMatch[1];
-    
-    // Extract JSON-LD structured data
-    const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gi);
-    if (jsonLdMatches) {
-      jsonLdMatches.forEach((match, index) => {
-        try {
-          const jsonContent = match.replace(/<script[^>]*>/, '').replace(/<\/script>/, '');
-          const parsed = JSON.parse(jsonContent);
-          metadata.structured_data[`jsonld_${index}`] = parsed;
-        } catch (e) {
-          console.log('Failed to parse JSON-LD:', e);
+
+    // Extract first h1
+    const h1Match = cleanedHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match) {
+      metadata.h1 = h1Match[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    }
+
+    // Extract bullet list items
+    const liMatches = cleanedHtml.match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+    if (liMatches) {
+      const keywordFiltered = liMatches.filter(li => /(services?|solutions?|offerings?)/i.test(li));
+      const items = keywordFiltered.length ? keywordFiltered : liMatches;
+      for (const li of items) {
+        const text = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text) {
+          metadata.services.push(text.slice(0, 200));
         }
-      });
-    }
-    
-    // Extract potential service keywords
-    const serviceKeywords = [
-      'services', 'solutions', 'products', 'offerings', 'consulting',
-      'development', 'design', 'marketing', 'strategy', 'support'
-    ];
-    
-    serviceKeywords.forEach(keyword => {
-      const regex = new RegExp(`${keyword}[^<]*`, 'gi');
-      const matches = html.match(regex);
-      if (matches) {
-        metadata.services.push(...matches.slice(0, 3));
+        if (metadata.services.length >= 3) break;
       }
-    });
-    
+    }
+
+    // Ensure final combined length under 4000 characters
+    let combined = [metadata.title, metadata.description, metadata.h1, ...metadata.services].join(' ');
+    if (combined.length > 4000) {
+      const allowedServices = [] as string[];
+      for (const svc of metadata.services) {
+        const testCombined = [metadata.title, metadata.description, metadata.h1, ...allowedServices, svc].join(' ');
+        if (testCombined.length <= 4000) {
+          allowedServices.push(svc);
+        } else {
+          break;
+        }
+      }
+      metadata.services = allowedServices;
+    }
+
   } catch (error) {
     console.error('Error extracting metadata:', error);
   }
-  
+
   return metadata;
 }
 
