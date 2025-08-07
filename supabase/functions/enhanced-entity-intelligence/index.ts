@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { scrapeEntity } from './lib/scrapeEntity.ts';
+import { parseOpenAIResponse } from '../_shared/parseOpenAIResponse.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -298,21 +299,12 @@ Return ONLY valid JSON:
     const data = JSON.parse(raw);
     const content = data.choices[0].message.content;
 
-    try {
-      // Handle markdown-wrapped JSON
-      let cleanContent = content;
-      if (content.includes('```json')) {
-        cleanContent = content.replace(/```json\n?/, '').replace(/\n?```$/, '');
-      } else if (content.includes('```')) {
-        cleanContent = content.replace(/```\n?/, '').replace(/\n?```$/, '');
-      }
-
-      const parsed = JSON.parse(cleanContent.trim());
+    const parsed = parseOpenAIResponse(content);
+    if (parsed) {
       return validateAndEnhanceEntityResponse(parsed);
-    } catch (e) {
-      console.error('Failed to parse OpenAI response:', content);
-      throw new Error('Invalid AI response format');
     }
+
+    throw new Error('Invalid AI response format');
   } catch (error) {
     console.error('OpenAI request failed:', error);
     throw error;
