@@ -319,9 +319,10 @@ Based only on the above information, return structured intelligence in this JSON
 
     const aiResponse = data.choices[0].message.content;
     console.log('🤖 AI Response received:', aiResponse.substring(0, 200) + '...');
-    
+
     try {
       // Handle markdown-wrapped JSON responses
+      console.log('🧾 Raw AI response:\n', aiResponse);
       let cleanResponse = aiResponse.trim();
       if (cleanResponse.includes('```json')) {
         cleanResponse = cleanResponse.replace(/```json\n?/, '').replace(/\n?```$/, '');
