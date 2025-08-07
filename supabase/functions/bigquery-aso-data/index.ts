@@ -602,7 +602,11 @@ serve(async (req) => {
           })
         }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        // ✅ Required to ensure Supabase Edge returns valid response
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
 
   } catch (error: any) {
