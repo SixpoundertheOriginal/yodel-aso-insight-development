@@ -870,7 +870,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
         const allQueries = [...baseQueries, ...enhancedQueries];
         const uniqueQueries = removeDuplicateQueries(allQueries);
         
-        setGeneratedQueries(uniqueQueries.slice(0, 20)); // Limit to 20 total queries
+        setGeneratedQueries(uniqueQueries);
       } else {
         setGeneratedQueries(baseQueries);
       }
@@ -1237,7 +1237,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
       intentLevel: 'high', // Default to high for competitive discovery
       solutionsOffered: normalized.solutionsOffered,
       keyFeatures: isAppEnabled && appStoreData ? extractKeyFeatures(appStoreData) : undefined,
-      analysisDepth: 'standard', // Default to 20 queries
+      analysisDepth: 'standard', // Default analysis depth
       industrySubVertical: normalized.subVertical || '',
       entityIntelligence: intelligence
     };
