@@ -16,8 +16,8 @@ const corsHeaders = {
 
 interface EntityData {
   entityName: string;
-  websiteData?: any;
-  searchData?: any;
+  websiteData?: Record<string, unknown>;
+  searchData?: Record<string, unknown>;
   context?: string;
   // Enhanced context for competitive research
   auditContext?: {
@@ -63,9 +63,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let entityData: EntityData | undefined;
   try {
-    const { entityData } = await req.json();
-    
+    const body = await req.json();
+    entityData = body.entityData;
+
     if (!entityData) {
       throw new Error('Entity data is required');
     }
@@ -127,10 +129,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Enhanced entity intelligence error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
+    const fallbackData = buildPlaceholder(entityData?.entityName || 'Unknown');
+    return new Response(JSON.stringify({
+      success: false,
       error: error.message,
-      fallback: true 
+      data: fallbackData,
+      fallback: true
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -142,17 +146,23 @@ async function analyzeEntityWithAI(entityData: EntityData): Promise<EnhancedEnti
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
+  if (!entityData?.entityName || typeof entityData.entityName !== 'string' ||
+      !entityData.websiteData || typeof entityData.websiteData !== 'object') {
+    throw new Error('Invalid entity data');
+  }
+
+  const sanitizedWebsiteData = sanitizeData(entityData.websiteData);
 
   // Build context-driven prompt based on audit data
   const buildContextualPrompt = () => {
     const auditContext = entityData.auditContext;
-    
+
     // Base research prompt
     let prompt = `
 You are a business intelligence researcher analyzing "${entityData.entityName}" for competitive analysis. Use real-world business context to make this analysis highly accurate.
 
 Entity to Research: ${entityData.entityName}
-Basic Data: ${JSON.stringify(entityData.websiteData || {}, null, 2)}
+Basic Data: ${JSON.stringify(sanitizedWebsiteData, null, 2)}
 `;
 
     // Add competitive context if available
@@ -251,79 +261,96 @@ Return ONLY valid JSON:
     return prompt;
   };
 
-  const prompt = buildContextualPrompt();
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a business intelligence expert who analyzes entities for ChatGPT visibility optimization. Return only valid JSON.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 2500,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+  let prompt = buildContextualPrompt();
+  const MAX_PROMPT_LENGTH = 15000;
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    console.warn(`Prompt length ${prompt.length} exceeds max ${MAX_PROMPT_LENGTH}, truncating.`);
+    prompt = prompt.slice(0, MAX_PROMPT_LENGTH);
   }
 
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  
+  const requestPayload = {
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'You are a business intelligence expert who analyzes entities for ChatGPT visibility optimization. Return only valid JSON.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 2500,
+  };
+  console.log('OpenAI request payload:', JSON.stringify(requestPayload));
+
   try {
-    // Handle markdown-wrapped JSON
-    let cleanContent = content;
-    if (content.includes('```json')) {
-      cleanContent = content.replace(/```json\n?/, '').replace(/\n?```$/, '');
-    } else if (content.includes('```')) {
-      cleanContent = content.replace(/```\n?/, '').replace(/\n?```$/, '');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestPayload),
+    });
+
+    const raw = await response.text();
+    if (!response.ok) {
+      console.error('OpenAI API error', { status: response.status, body: raw });
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
-    
-    const parsed = JSON.parse(cleanContent.trim());
-    return validateAndEnhanceEntityResponse(parsed);
-  } catch (e) {
-    console.error('Failed to parse OpenAI response:', content);
-    throw new Error('Invalid AI response format');
+
+    const data = JSON.parse(raw);
+    const content = data.choices[0].message.content;
+
+    try {
+      // Handle markdown-wrapped JSON
+      let cleanContent = content;
+      if (content.includes('```json')) {
+        cleanContent = content.replace(/```json\n?/, '').replace(/\n?```$/, '');
+      } else if (content.includes('```')) {
+        cleanContent = content.replace(/```\n?/, '').replace(/\n?```$/, '');
+      }
+
+      const parsed = JSON.parse(cleanContent.trim());
+      return validateAndEnhanceEntityResponse(parsed);
+    } catch (e) {
+      console.error('Failed to parse OpenAI response:', content);
+      throw new Error('Invalid AI response format');
+    }
+  } catch (error) {
+    console.error('OpenAI request failed:', error);
+    throw error;
   }
 }
 
-function validateAndEnhanceEntityResponse(response: any): EnhancedEntityIntelligence {
+function validateAndEnhanceEntityResponse(response: Record<string, unknown>): EnhancedEntityIntelligence {
+  const r = response as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
   // Validate required fields
-  if (!response.entityName || !response.description) {
+  if (!r.entityName || !r.description) {
     throw new Error('Invalid AI response structure');
   }
 
   // Calculate confidence score based on data completeness
-  response.confidence_score = calculateEnhancedConfidenceScore(response);
+  r.confidence_score = calculateEnhancedConfidenceScore(r);
 
   // Ensure all personas have typical_queries
-  if (Array.isArray(response.target_personas)) {
-    response.target_personas = response.target_personas.map((persona: any) => ({
-      ...persona,
-      typical_queries: persona.typical_queries || []
+  if (Array.isArray(r.target_personas)) {
+    r.target_personas = r.target_personas.map((persona: Record<string, unknown>) => ({
+      ...(persona as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+      typical_queries: (persona as any).typical_queries || [] // eslint-disable-line @typescript-eslint/no-explicit-any
     }));
   } else {
-    response.target_personas = [];
+    r.target_personas = [];
   }
 
   // Ensure arrays exist
-  response.services = response.services || [];
-  response.targetClients = response.targetClients || [];
-  response.authentic_use_cases = response.authentic_use_cases || [];
-  response.pain_points_solved = response.pain_points_solved || [];
-  response.competitors = response.competitors || [];
-  response.industryFocus = response.industryFocus || [];
-  response.recentNews = response.recentNews || [];
-  response.user_language = response.user_language || [];
+  r.services = r.services || [];
+  r.targetClients = r.targetClients || [];
+  r.authentic_use_cases = r.authentic_use_cases || [];
+  r.pain_points_solved = r.pain_points_solved || [];
+  r.competitors = r.competitors || [];
+  r.industryFocus = r.industryFocus || [];
+  r.recentNews = r.recentNews || [];
+  r.user_language = r.user_language || [];
 
-  return response as EnhancedEntityIntelligence;
+  return r as EnhancedEntityIntelligence;
 }
 
 function generateCacheKey(entityData: EntityData): string {
@@ -363,37 +390,65 @@ async function cacheAnalysis(cacheKey: string, analysis: EnhancedEntityIntellige
     });
 }
 
-function calculateEnhancedConfidenceScore(response: any): number {
+function calculateEnhancedConfidenceScore(response: Record<string, unknown>): number {
+  const r = response as any; // eslint-disable-line @typescript-eslint/no-explicit-any
   let score = 0.5; // Base score for enhanced analysis
-  
+
   // Data completeness factors
   const completenessFactors = [
-    response.description?.length > 50,
-    response.services?.length > 0,
-    response.targetClients?.length > 0,
-    response.competitors?.length > 0,
-    response.target_personas?.length > 0,
-    response.authentic_use_cases?.length > 0,
-    response.pain_points_solved?.length > 0,
-    response.industryFocus?.length > 0
+    r.description?.length > 50,
+    r.services?.length > 0,
+    r.targetClients?.length > 0,
+    r.competitors?.length > 0,
+    r.target_personas?.length > 0,
+    r.authentic_use_cases?.length > 0,
+    r.pain_points_solved?.length > 0,
+    r.industryFocus?.length > 0
   ];
-  
+
   const completenessScore = completenessFactors.filter(Boolean).length / completenessFactors.length;
   score += completenessScore * 0.3;
-  
+
   // Quality indicators
-  if (response.description?.length > 100) score += 0.1;
-  if (response.specific_category && response.specific_category !== 'Unknown') score += 0.05;
-  if (response.website && response.website.startsWith('http')) score += 0.05;
-  
+  if (r.description?.length > 100) score += 0.1;
+  if (r.specific_category && r.specific_category !== 'Unknown') score += 0.05;
+  if (r.website && r.website.startsWith('http')) score += 0.05;
+
   // Persona quality
-  if (response.target_personas?.some((p: any) => p.typical_queries?.length > 0)) {
+  if (r.target_personas?.some((p: Record<string, unknown>) => (p as any).typical_queries?.length > 0)) { // eslint-disable-line @typescript-eslint/no-explicit-any
     score += 0.1;
   }
-  
+
   return Math.min(0.95, Math.max(0.4, score));
 }
 
-function isStale(cached: any): boolean {
+function isStale(cached: { expires_at: string }): boolean {
   return new Date(cached.expires_at) < new Date();
+}
+
+function sanitizeData(data: unknown) {
+  return JSON.parse(JSON.stringify(data ?? {}, (key, value) =>
+    value === null || value === undefined ? undefined : value
+  ));
+}
+
+function buildPlaceholder(entityName: string): EnhancedEntityIntelligence {
+  return {
+    entityName: entityName || 'Unknown',
+    website: '',
+    description: 'Data unavailable',
+    specific_category: 'Unknown',
+    target_personas: [],
+    services: [],
+    targetClients: [],
+    authentic_use_cases: [],
+    pain_points_solved: [],
+    competitors: [],
+    marketPosition: 'unknown',
+    industryFocus: [],
+    recentNews: [],
+    user_language: [],
+    confidence_score: 0,
+    scrapedAt: new Date().toISOString(),
+  };
 }
