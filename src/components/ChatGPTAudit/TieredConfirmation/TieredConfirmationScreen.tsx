@@ -31,8 +31,12 @@ export const TieredConfirmationScreen: React.FC<TieredConfirmationScreenProps> =
   const [editingField, setEditingField] = useState<string | null>(null);
 
   const handleContinue = () => {
+    // Apply any additional normalization if needed
     setTopicData(autoPopulatedData);
-    handleConfirmation({ entityIntelligence: enhancedEntityIntelligence });
+    handleConfirmation({ 
+      topicData: autoPopulatedData,
+      entityIntelligence: enhancedEntityIntelligence 
+    });
   };
 
   return (

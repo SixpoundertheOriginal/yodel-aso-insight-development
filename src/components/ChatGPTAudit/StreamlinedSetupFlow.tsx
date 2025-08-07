@@ -1226,7 +1226,7 @@ export const StreamlinedSetupFlow: React.FC<StreamlinedSetupFlowProps> = ({
     const autoPopulated: TopicAuditData = {
       topic: mapTopicFromServices(intelligence.services || []),
       industry: normalized.industry,
-      target_audience: mapTargetAudience(intelligence.targetClients || [], intelligence.services || [], auditMode === 'app'),
+      target_audience: normalized.targetAudience,
       context_description: normalized.contextDescription || `Visibility analysis for ${intelligence.entityName}`,
       known_players: normalized.knownPlayers.slice(0, 5),
       geographic_focus: '',

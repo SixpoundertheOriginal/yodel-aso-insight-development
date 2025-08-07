@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { EntityIntelligenceAnalyzer } from './EntityIntelligenceAnalyzer';
 import { EditableEntityDetails } from './EditableEntityDetails';
 import { TopicAuditData, EntityIntelligence } from '@/types/topic-audit.types';
+import { normalizeEntityToAuditFields } from '@/utils/entity-normalizer';
 import { 
   Target, 
   Brain, 
@@ -53,8 +54,21 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
     const finalEntity: EntityIntelligence | undefined = editedEntityData
       ? { ...editedEntityData, confidenceScore: editedEntityData.confidence }
       : enhancedEntityIntelligence || entityIntelligence;
+    
+    // Apply normalized entity fields to topicData
+    const normalizedEntity = finalEntity ? normalizeEntityToAuditFields(finalEntity) : null;
+    const updatedTopicData = normalizedEntity ? {
+      ...topicData,
+      target_audience: normalizedEntity.targetAudience,
+      known_players: normalizedEntity.knownPlayers,
+      context_description: normalizedEntity.contextDescription || topicData.context_description,
+      industry: normalizedEntity.industry || topicData.industry,
+      solutionsOffered: normalizedEntity.solutionsOffered,
+      industrySubVertical: normalizedEntity.subVertical || topicData.industrySubVertical
+    } : topicData;
+    
     const confirmedData = {
-      topicData,
+      topicData: updatedTopicData,
       entityIntelligence: finalEntity
     };
     onConfirm(confirmedData);
@@ -91,14 +105,17 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
   };
 
   const getDataQualityScore = () => {
+    const currentEntity = enhancedEntityIntelligence || entityIntelligence;
+    const normalizedEntity = currentEntity ? normalizeEntityToAuditFields(currentEntity) : null;
+    
     let score = 0;
     let maxScore = 6;
 
     if (topicData.topic) score += 1;
-    if (topicData.industry) score += 1;
-    if (topicData.target_audience) score += 1;
+    if (normalizedEntity?.industry || topicData.industry) score += 1;
+    if (normalizedEntity?.targetAudience || topicData.target_audience) score += 1;
     if (topicData.entityToTrack) score += 1;
-    if (entityIntelligence) score += 1;
+    if (currentEntity) score += 1;
     if (enhancedEntityIntelligence) score += 1;
 
     return { score, maxScore, percentage: Math.round((score / maxScore) * 100) };
@@ -184,7 +201,13 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                   <Users className="h-4 w-4" />
                   Target Audience
                 </h4>
-                <p className="text-sm">{topicData.target_audience}</p>
+                <p className="text-sm">
+                  {(() => {
+                    const currentEntity = enhancedEntityIntelligence || entityIntelligence;
+                    const normalizedEntity = currentEntity ? normalizeEntityToAuditFields(currentEntity) : null;
+                    return normalizedEntity?.targetAudience || topicData.target_audience;
+                  })()}
+                </p>
               </div>
             </div>
 
@@ -217,23 +240,29 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                 </div>
               )}
 
-              {topicData.known_players && topicData.known_players.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Known Players</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {topicData.known_players.slice(0, 4).map((player, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {player}
-                      </Badge>
-                    ))}
-                    {topicData.known_players.length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{topicData.known_players.length - 4} more
-                      </Badge>
-                    )}
+              {(() => {
+                const currentEntity = enhancedEntityIntelligence || entityIntelligence;
+                const normalizedEntity = currentEntity ? normalizeEntityToAuditFields(currentEntity) : null;
+                const knownPlayers = normalizedEntity?.knownPlayers || topicData.known_players || [];
+                
+                return knownPlayers.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Known Players</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {knownPlayers.slice(0, 4).map((player, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {player}
+                        </Badge>
+                      ))}
+                      {knownPlayers.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{knownPlayers.length - 4} more
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 
@@ -317,8 +346,16 @@ export const TopicEntityConfirmation: React.FC<TopicEntityConfirmationProps> = (
                   auditContext: {
                     industry: topicData.industry,
                     topic: topicData.topic,
-                    target_audience: topicData.target_audience,
-                    known_competitors: topicData.known_players || [],
+                    target_audience: (() => {
+                      const currentEntity = enhancedEntityIntelligence || entityIntelligence;
+                      const normalizedEntity = currentEntity ? normalizeEntityToAuditFields(currentEntity) : null;
+                      return normalizedEntity?.targetAudience || topicData.target_audience;
+                    })(),
+                    known_competitors: (() => {
+                      const currentEntity = enhancedEntityIntelligence || entityIntelligence;
+                      const normalizedEntity = currentEntity ? normalizeEntityToAuditFields(currentEntity) : null;
+                      return normalizedEntity?.knownPlayers || topicData.known_players || [];
+                    })(),
                     geographic_focus: topicData.geographic_focus,
                     queryStrategy: topicData.queryStrategy
                   }
