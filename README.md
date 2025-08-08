@@ -71,3 +71,10 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Environment Configuration
+
+The Creative Vision Analyzer Supabase function uses the OpenAI API. Configure it with the following environment variables:
+
+- `OPENAI_API_KEY`: your OpenAI API key.
+- `OPENAI_MODEL` (optional): the OpenAI model identifier. Defaults to `gpt-4.1-2025-04-14` if not set.

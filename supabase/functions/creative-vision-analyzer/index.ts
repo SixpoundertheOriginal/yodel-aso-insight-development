@@ -2,18 +2,21 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-2025-04-14';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface ScreenshotInput {
+  url: string;
+  appName: string;
+  appId: string;
+}
+
 interface ScreenshotAnalysisRequest {
-  screenshots: Array<{
-    url: string;
-    appName: string;
-    appId: string;
-  }>;
+  screenshots: ScreenshotInput[];
   analysisType?: 'individual' | 'batch';
 }
 
@@ -55,7 +58,7 @@ interface ScreenshotAnalysis {
   confidence: number;
 }
 
-const analyzeScreenshotWithVision = async (screenshot: any): Promise<ScreenshotAnalysis> => {
+const analyzeScreenshotWithVision = async (screenshot: ScreenshotInput): Promise<ScreenshotAnalysis> => {
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
@@ -126,7 +129,7 @@ Return ONLY valid JSON with this structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: openAIModel,
         messages: [
           {
             role: 'user',
@@ -209,9 +212,9 @@ Return ONLY valid JSON with this structure:
   }
 };
 
-const processBatchAnalysis = async (screenshots: any[]): Promise<{
+const processBatchAnalysis = async (screenshots: ScreenshotInput[]): Promise<{
   individual: ScreenshotAnalysis[];
-  patterns: any;
+  patterns: ReturnType<typeof analyzePatterns>;
 }> => {
   // Process screenshots in batches to respect rate limits
   const batchSize = 3;
