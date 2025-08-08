@@ -18,6 +18,32 @@ interface ScreenshotInput {
 interface ScreenshotAnalysisRequest {
   screenshots: ScreenshotInput[];
   analysisType?: 'individual' | 'batch';
+  organizationId?: string;
+  sessionId?: string;
+  analyzeNarrativeFlow?: boolean;
+}
+
+interface NarrativeFlowAnalysis {
+  coherenceScore: number;
+  storyArc:
+    | 'problem-solution'
+    | 'feature-showcase'
+    | 'social-proof'
+    | 'lifestyle'
+    | 'onboarding'
+    | 'mixed';
+  narrativeStrength: 'excellent' | 'good' | 'weak' | 'disconnected';
+  userJourneyFlow: {
+    screenshot1Role: 'hook' | 'problem' | 'feature' | 'social-proof';
+    screenshot2Role: 'development' | 'solution' | 'benefits' | 'proof';
+    screenshot3Role: 'reinforcement' | 'cta' | 'outcome' | 'social-validation';
+  };
+  recommendations: {
+    messaging: string[];
+    visualFlow: string[];
+    userExperience: string[];
+  };
+  confidence: number;
 }
 
 interface ColorPalette {
@@ -285,13 +311,118 @@ const generateInsights = (analyses: ScreenshotAnalysis[]) => {
   return insights;
 };
 
+const validateNarrativeAnalysis = (analysis: any): NarrativeFlowAnalysis => {
+  return {
+    coherenceScore: Math.min(100, Math.max(0, analysis?.coherenceScore || 0)),
+    storyArc: ['problem-solution', 'feature-showcase', 'social-proof', 'lifestyle', 'onboarding', 'mixed'].includes(
+      analysis?.storyArc
+    )
+      ? analysis.storyArc
+      : 'mixed',
+    narrativeStrength: ['excellent', 'good', 'weak', 'disconnected'].includes(analysis?.narrativeStrength)
+      ? analysis.narrativeStrength
+      : 'disconnected',
+    userJourneyFlow: {
+      screenshot1Role: analysis?.userJourneyFlow?.screenshot1Role || 'hook',
+      screenshot2Role: analysis?.userJourneyFlow?.screenshot2Role || 'development',
+      screenshot3Role: analysis?.userJourneyFlow?.screenshot3Role || 'reinforcement',
+    },
+    recommendations: {
+      messaging: Array.isArray(analysis?.recommendations?.messaging)
+        ? analysis.recommendations.messaging.slice(0, 5)
+        : [],
+      visualFlow: Array.isArray(analysis?.recommendations?.visualFlow)
+        ? analysis.recommendations.visualFlow.slice(0, 5)
+        : [],
+      userExperience: Array.isArray(analysis?.recommendations?.userExperience)
+        ? analysis.recommendations.userExperience.slice(0, 5)
+        : [],
+    },
+    confidence: Math.min(100, Math.max(0, analysis?.confidence || 0)),
+  };
+};
+
+const analyzeNarrativeFlow = async (
+  screenshotUrls: string[],
+  apiKey: string
+): Promise<NarrativeFlowAnalysis> => {
+  const prompt = `Analyze these 3 app store screenshots as a narrative sequence. Consider:
+
+1. STORY COHERENCE: How well do these screenshots tell a cohesive story?
+2. USER JOURNEY: What journey does a user experience viewing these in sequence?
+3. NARRATIVE ARC: What type of story structure is being used?
+4. MESSAGING FLOW: How does the messaging develop from screen 1 → 2 → 3?
+5. VISUAL PROGRESSION: How does the visual complexity/focus change?
+
+Provide analysis in this exact JSON format:
+{
+  "coherenceScore": number,
+  "storyArc": "problem-solution" | "feature-showcase" | "social-proof" | "lifestyle" | "onboarding" | "mixed",
+  "narrativeStrength": "excellent" | "good" | "weak" | "disconnected",
+  "userJourneyFlow": {
+    "screenshot1Role": "hook" | "problem" | "feature" | "social-proof",
+    "screenshot2Role": "development" | "solution" | "benefits" | "proof",
+    "screenshot3Role": "reinforcement" | "cta" | "outcome" | "social-validation"
+  },
+  "recommendations": {
+    "messaging": ["specific messaging improvement suggestions"],
+    "visualFlow": ["visual design flow improvements"],
+    "userExperience": ["user experience enhancement suggestions"]
+  },
+  "confidence": number
+}`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: openAIModel,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            ...screenshotUrls.map((url) => ({ type: 'image_url', image_url: { url } })),
+          ],
+        },
+      ],
+      max_tokens: 1000,
+      temperature: 0.1,
+    }),
+  });
+
+  const result = await response.json();
+
+  if (!result.choices?.[0]?.message?.content) {
+    throw new Error('Invalid OpenAI response structure');
+  }
+
+  const content: string = result.choices[0].message.content;
+  const jsonMatch = content.match(/```json\n?(.*?)\n?```/s) || content.match(/({.*})/s);
+  const jsonString = jsonMatch ? jsonMatch[1] : content;
+  let analysis;
+  try {
+    analysis = JSON.parse(jsonString);
+  } catch (error) {
+    throw new Error('Failed to parse narrative analysis JSON');
+  }
+  return validateNarrativeAnalysis(analysis);
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { screenshots, analysisType = 'individual' }: ScreenshotAnalysisRequest = await req.json();
+    const {
+      screenshots,
+      analysisType = 'individual',
+      analyzeNarrativeFlow: shouldAnalyzeNarrativeFlow,
+    }: ScreenshotAnalysisRequest = await req.json();
 
     if (!screenshots || screenshots.length === 0) {
       throw new Error('No screenshots provided for analysis');
@@ -302,21 +433,44 @@ serve(async (req) => {
       result = await processBatchAnalysis(screenshots);
     } else {
       const individual = await Promise.all(
-        screenshots.map(screenshot => analyzeScreenshotWithVision(screenshot))
+        screenshots.map((screenshot) => analyzeScreenshotWithVision(screenshot))
       );
       result = { individual, patterns: null };
     }
 
-    return new Response(JSON.stringify(result), {
+    const responseBody: Record<string, unknown> = { success: true, ...result };
+
+    if (shouldAnalyzeNarrativeFlow && screenshots.length >= 3 && openAIApiKey) {
+      try {
+        const urls = screenshots.slice(0, 3).map((s) => s.url);
+        responseBody.narrativeFlow = await analyzeNarrativeFlow(urls, openAIApiKey);
+      } catch (error) {
+        console.error('Narrative flow analysis failed:', error);
+        responseBody.narrativeFlow = {
+          coherenceScore: 0,
+          storyArc: 'mixed',
+          narrativeStrength: 'disconnected',
+          userJourneyFlow: {
+            screenshot1Role: 'hook',
+            screenshot2Role: 'development',
+            screenshot3Role: 'reinforcement',
+          },
+          recommendations: { messaging: [], visualFlow: [], userExperience: [] },
+          confidence: 0,
+        } as NarrativeFlowAnalysis;
+      }
+    }
+
+    return new Response(JSON.stringify(responseBody), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Creative vision analyzer error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
-      }), 
+      JSON.stringify({
+        error: (error as Error).message,
+        success: false,
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

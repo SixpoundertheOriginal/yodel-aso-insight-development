@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   CreativeAnalysisWithAI,
   type AppInfo,
@@ -28,6 +29,29 @@ interface PositioningInsights {
   }[];
   recommendedStrategy: string;
   opportunityGaps: string[];
+}
+
+interface NarrativeFlowAnalysis {
+  coherenceScore: number;
+  storyArc:
+    | 'problem-solution'
+    | 'feature-showcase'
+    | 'social-proof'
+    | 'lifestyle'
+    | 'onboarding'
+    | 'mixed';
+  narrativeStrength: 'excellent' | 'good' | 'weak' | 'disconnected';
+  userJourneyFlow: {
+    screenshot1Role: 'hook' | 'problem' | 'feature' | 'social-proof';
+    screenshot2Role: 'development' | 'solution' | 'benefits' | 'proof';
+    screenshot3Role: 'reinforcement' | 'cta' | 'outcome' | 'social-validation';
+  };
+  recommendations: {
+    messaging: string[];
+    visualFlow: string[];
+    userExperience: string[];
+  };
+  confidence: number;
 }
 
 function compareMessaging(analyses: CreativeAnalysisWithAI[]): MessagingComparison {
@@ -193,6 +217,34 @@ export const FirstImpressionPanel: React.FC<FirstImpressionPanelProps> = ({
   competitorAppInfo = [],
 }) => {
   const singleView = competitorAnalyses.length === 0;
+  const [narrativeAnalysis, setNarrativeAnalysis] = useState<NarrativeFlowAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
+
+  const handleAnalyzeFlow = async () => {
+    const firstThreeScreenshots = analysis.individual.slice(0, 3);
+    setAnalyzing(true);
+    setNarrativeError(null);
+    try {
+      const response = await fetch('/api/creative-vision-analyzer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          screenshots: firstThreeScreenshots.map(s => s.screenshotUrl),
+          organizationId: '',
+          sessionId: '',
+          analyzeNarrativeFlow: true,
+        }),
+      });
+      const result = await response.json();
+      setNarrativeAnalysis(result.narrativeFlow);
+    } catch (error) {
+      console.error('Narrative analysis error:', error);
+      setNarrativeError('Failed to analyze narrative flow. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   if (singleView) {
     const firstThree = analysis.individual.slice(0, 3);
@@ -293,6 +345,74 @@ export const FirstImpressionPanel: React.FC<FirstImpressionPanelProps> = ({
 
   return (
     <div className="space-y-6">
+      <Button
+        onClick={handleAnalyzeFlow}
+        disabled={analyzing || allAnalyses.length === 0}
+        className="mb-4"
+      >
+        {analyzing ? 'Analyzing Flow...' : 'Analyze First Impression Flow'}
+      </Button>
+      {narrativeError && (
+        <div className="text-red-400 text-sm mt-2">{narrativeError}</div>
+      )}
+      {narrativeAnalysis && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-foreground">Narrative Flow Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-zinc-100">
+                  {narrativeAnalysis.coherenceScore}%
+                </p>
+                <p className="text-sm text-zinc-400">Story Coherence</p>
+                <Badge
+                  variant={
+                    narrativeAnalysis.narrativeStrength === 'excellent'
+                      ? 'default'
+                      : 'secondary'
+                  }
+                >
+                  {narrativeAnalysis.narrativeStrength}
+                </Badge>
+              </div>
+              <div>
+                <h4 className="font-semibold text-zinc-200 mb-2">Story Arc</h4>
+                <p className="text-zinc-300 capitalize">
+                  {narrativeAnalysis.storyArc.replace('-', ' ')}
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-zinc-400">
+                  <p>Screen 1: {narrativeAnalysis.userJourneyFlow.screenshot1Role}</p>
+                  <p>Screen 2: {narrativeAnalysis.userJourneyFlow.screenshot2Role}</p>
+                  <p>Screen 3: {narrativeAnalysis.userJourneyFlow.screenshot3Role}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div>
+                <h4 className="font-semibold text-zinc-200 mb-2">Messaging Recommendations</h4>
+                <ul className="space-y-1 text-sm text-zinc-300">
+                  {narrativeAnalysis.recommendations.messaging.map((rec, idx) => (
+                    <li key={idx}>• {rec}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-zinc-200 mb-2">Visual Flow Improvements</h4>
+                <ul className="space-y-1 text-sm text-zinc-300">
+                  {narrativeAnalysis.recommendations.visualFlow.map((rec, idx) => (
+                    <li key={idx}>• {rec}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {allAnalyses.map((a, idx) => (
