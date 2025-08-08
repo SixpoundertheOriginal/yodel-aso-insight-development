@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreativeAnalysisWithAI } from '@/services/creative-analysis.service';
+import { CreativeAnalysisWithAI, type AppInfo } from '@/services/creative-analysis.service';
 import { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
 import { PatternRecognitionSummary } from './PatternRecognitionSummary';
 import { FirstImpressionPanel } from './FirstImpressionPanel';
@@ -10,12 +10,45 @@ import { FirstImpressionPanel } from './FirstImpressionPanel';
 interface CreativeAnalysisResultsProps {
   analysis: CreativeAnalysisWithAI;
   keyword: string;
+  apps?: AppInfo[];
 }
 
 export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = ({
   analysis,
-  keyword
+  keyword,
+  apps
 }) => {
+  const { primaryAnalysis, competitorAnalyses, primaryAppInfo, competitorAppInfo } = useMemo(() => {
+    if (!apps || apps.length === 0) {
+      return {
+        primaryAnalysis: analysis,
+        competitorAnalyses: [],
+        primaryAppInfo: undefined,
+        competitorAppInfo: undefined,
+      };
+    }
+
+    const analysisMap = new Map<string, CreativeAnalysisWithAI>();
+    apps.forEach(app => {
+      analysisMap.set(app.appId, { success: true, individual: [] });
+    });
+
+    analysis.individual.forEach(item => {
+      const appAnalysis = analysisMap.get(item.appId);
+      if (appAnalysis) {
+        appAnalysis.individual.push(item);
+      }
+    });
+
+    const orderedAnalyses = apps.map(app => analysisMap.get(app.appId) || { success: true, individual: [] });
+
+    return {
+      primaryAnalysis: orderedAnalyses[0],
+      competitorAnalyses: orderedAnalyses.slice(1),
+      primaryAppInfo: apps[0],
+      competitorAppInfo: apps.slice(1),
+    };
+  }, [analysis, apps]);
   if (!analysis.success || analysis.individual.length === 0) {
     return (
       <Card className="border-destructive bg-destructive/10">
@@ -65,7 +98,12 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
         </div>
       </TabsContent>
       <TabsContent value="first" className="mt-6">
-        <FirstImpressionPanel analysis={analysis} />
+        <FirstImpressionPanel
+          analysis={primaryAnalysis}
+          competitorAnalyses={competitorAnalyses}
+          appInfo={primaryAppInfo}
+          competitorAppInfo={competitorAppInfo}
+        />
       </TabsContent>
     </Tabs>
   );

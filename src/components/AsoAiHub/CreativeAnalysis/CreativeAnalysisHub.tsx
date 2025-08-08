@@ -260,9 +260,10 @@ export const CreativeAnalysisHub: React.FC = () => {
           {/* AI Analysis Results */}
           {aiAnalysis && (
             <div className="mt-8">
-              <CreativeAnalysisResults 
-                analysis={aiAnalysis} 
+              <CreativeAnalysisResults
+                analysis={aiAnalysis}
                 keyword={keyword}
+                apps={results.apps}
               />
             </div>
           )}
