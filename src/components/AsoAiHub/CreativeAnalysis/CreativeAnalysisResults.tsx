@@ -1,11 +1,11 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CreativeAnalysisWithAI, ScreenshotAnalysis } from '@/services/creative-analysis.service';
-import { ColorPaletteDisplay } from './ColorPaletteDisplay';
-import { MessageAnalysisPanel } from './MessageAnalysisPanel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreativeAnalysisWithAI } from '@/services/creative-analysis.service';
 import { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
 import { PatternRecognitionSummary } from './PatternRecognitionSummary';
+import { FirstImpressionPanel } from './FirstImpressionPanel';
 
 interface CreativeAnalysisResultsProps {
   analysis: CreativeAnalysisWithAI;
@@ -32,30 +32,41 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
   }
 
   return (
-    <div className="space-y-6">
-      {/* Pattern Recognition Summary */}
-      {analysis.patterns && (
-        <PatternRecognitionSummary 
-          patterns={analysis.patterns} 
-          keyword={keyword}
-          analysisCount={analysis.individual.length}
-        />
-      )}
-
-      {/* Individual Screenshot Analysis */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-semibold text-zinc-100">
-          Screenshot Analysis Results
-        </h3>
-        
-        {analysis.individual.map((screenshot, index) => (
-          <ScreenshotAnalysisCard 
-            key={`${screenshot.appId}-${index}`}
-            analysis={screenshot}
-            index={index}
+    <Tabs defaultValue="analysis" className="w-full">
+      <TabsList className="grid w-full grid-cols-2 bg-zinc-800">
+        <TabsTrigger value="analysis" className="data-[state=active]:bg-zinc-700">
+          Analysis
+        </TabsTrigger>
+        <TabsTrigger value="first" className="data-[state=active]:bg-zinc-700">
+          First Impression
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="analysis" className="space-y-6 mt-6">
+        {analysis.patterns && (
+          <PatternRecognitionSummary
+            patterns={analysis.patterns}
+            keyword={keyword}
+            analysisCount={analysis.individual.length}
           />
-        ))}
-      </div>
-    </div>
+        )}
+
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold text-zinc-100">
+            Screenshot Analysis Results
+          </h3>
+
+          {analysis.individual.map((screenshot, index) => (
+            <ScreenshotAnalysisCard
+              key={`${screenshot.appId}-${index}`}
+              analysis={screenshot}
+              index={index}
+            />
+          ))}
+        </div>
+      </TabsContent>
+      <TabsContent value="first" className="mt-6">
+        <FirstImpressionPanel analysis={analysis} />
+      </TabsContent>
+    </Tabs>
   );
 };

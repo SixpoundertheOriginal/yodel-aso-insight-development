@@ -6,3 +6,4 @@ export { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
 export { ColorPaletteDisplay } from './ColorPaletteDisplay';
 export { MessageAnalysisPanel } from './MessageAnalysisPanel';
 export { PatternRecognitionSummary } from './PatternRecognitionSummary';
+export { FirstImpressionPanel } from './FirstImpressionPanel';
