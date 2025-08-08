@@ -282,7 +282,7 @@ export const TopicBulkAuditProcessor: React.FC<TopicBulkAuditProcessorProps> = (
         console.log('TopicBulkAuditProcessor: Generated queries:', queries.length);
 
         const queryInserts = queries.map(query => ({
-          id: query.id,
+          // id omitted to allow DB to auto-generate UUID
           organization_id: organizationId,
           audit_run_id: auditRunId,
           query_text: query.query_text,

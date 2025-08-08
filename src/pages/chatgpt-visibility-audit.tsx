@@ -285,7 +285,7 @@ function ChatGPTVisibilityAudit() {
         console.log('ChatGPTVisibilityAudit: Inserting queries:', auditData.queries.length);
         
         const queryInserts = auditData.queries.map(query => ({
-          id: query.id,
+          // id omitted to allow DB to auto-generate UUID
           organization_id: organizationId,
           audit_run_id: data.id,
           query_text: query.query_text,
