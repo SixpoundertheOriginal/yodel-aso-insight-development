@@ -27,6 +27,24 @@ interface BigQueryDataPoint {
   data_source: string;
 }
 
+interface PeriodTotals {
+  impressions: number;
+  downloads: number;
+  product_page_views: number;
+  from?: string;
+  to?: string;
+}
+
+interface PeriodComparison {
+  current: PeriodTotals;
+  previous: PeriodTotals | null;
+  delta?: {
+    impressions: number;
+    downloads: number;
+    product_page_views: number;
+  } | null;
+}
+
 interface BigQueryMeta {
   rowCount: number;
   totalRows: number;
@@ -42,6 +60,7 @@ interface BigQueryMeta {
   filteredByTrafficSource?: boolean;
   projectId: string;
   timestamp: string;
+  periodComparison?: PeriodComparison;
   dataArchitecture?: {
     phase: string;
     discoveryQuery: {
@@ -353,28 +372,45 @@ function transformBigQueryToAsoData(
     (sum, item) => ({
       impressions: sum.impressions + item.impressions,
       downloads: sum.downloads + item.downloads,
-      product_page_views: item.product_page_views !== null ? 
-        sum.product_page_views + item.product_page_views : 
+      product_page_views: item.product_page_views !== null ?
+        sum.product_page_views + item.product_page_views :
         sum.product_page_views
     }),
     { impressions: 0, downloads: 0, product_page_views: 0 }
   );
 
-  const generateMockDelta = (): number => (Math.random() * 40) - 20;
+  const calculateRealDelta = (current: number, previous?: number | null): number => {
+    if (!previous || previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const previousTotals = meta.periodComparison?.previous || null;
+
+  const currentProductPageCVR = totals.product_page_views > 0
+    ? (totals.downloads / totals.product_page_views) * 100
+    : 0;
+  const previousProductPageCVR = previousTotals && previousTotals.product_page_views > 0
+    ? (previousTotals.downloads / previousTotals.product_page_views) * 100
+    : 0;
+
+  const currentImpressionsCVR = totals.impressions > 0
+    ? (totals.downloads / totals.impressions) * 100
+    : 0;
+  const previousImpressionsCVR = previousTotals && previousTotals.impressions > 0
+    ? (previousTotals.downloads / previousTotals.impressions) * 100
+    : 0;
 
   const summary = {
-    impressions: { value: totals.impressions, delta: generateMockDelta() },
-    downloads: { value: totals.downloads, delta: generateMockDelta() },
-    product_page_views: { value: totals.product_page_views, delta: generateMockDelta() },
+    impressions: { value: totals.impressions, delta: calculateRealDelta(totals.impressions, previousTotals?.impressions) },
+    downloads: { value: totals.downloads, delta: calculateRealDelta(totals.downloads, previousTotals?.downloads) },
+    product_page_views: { value: totals.product_page_views, delta: calculateRealDelta(totals.product_page_views, previousTotals?.product_page_views) },
     product_page_cvr: {
-      value: totals.product_page_views > 0 ?
-        (totals.downloads / totals.product_page_views) * 100 : 0,
-      delta: generateMockDelta()
+      value: currentProductPageCVR,
+      delta: calculateRealDelta(currentProductPageCVR, previousProductPageCVR)
     },
     impressions_cvr: {
-      value: totals.impressions > 0 ?
-        (totals.downloads / totals.impressions) * 100 : 0,
-      delta: generateMockDelta()
+      value: currentImpressionsCVR,
+      delta: calculateRealDelta(currentImpressionsCVR, previousImpressionsCVR)
     }
   };
 
@@ -398,10 +434,6 @@ function transformBigQueryToAsoData(
     acc[source].value += item.downloads;
     return acc;
   }, {} as Record<string, { value: number; delta: number }>);
-
-  Object.keys(trafficSourceGroups).forEach(source => {
-    trafficSourceGroups[source].delta = generateMockDelta();
-  });
 
   console.log('🔍 [Transform] Traffic source groups:', {
     allGroups: Object.keys(trafficSourceGroups),
