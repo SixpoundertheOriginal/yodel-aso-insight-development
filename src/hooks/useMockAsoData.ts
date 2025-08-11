@@ -15,7 +15,8 @@ export interface AsoMetrics {
   impressions: MetricSummary;
   downloads: MetricSummary;
   product_page_views: MetricSummary; // Renamed from 'pageViews' to match App Store Connect
-  cvr: MetricSummary;
+  product_page_cvr: MetricSummary;
+  impressions_cvr: MetricSummary;
 }
 
 export interface TrafficSource {
@@ -75,8 +76,12 @@ export const useMockAsoData = (
           impressions: generateMetric(),
           downloads: generateMetric(),
           product_page_views: generateMetric(), // Renamed from 'pageViews'
-          cvr: { 
-            value: parseFloat((Math.random() * 10).toFixed(2)), // 0 to 10%
+          product_page_cvr: {
+            value: parseFloat((Math.random() * 100).toFixed(2)), // 0 to 100%
+            delta: parseFloat((Math.random() * 40 - 20).toFixed(1)) // -20% to +20%
+          },
+          impressions_cvr: {
+            value: parseFloat((Math.random() * 100).toFixed(2)), // 0 to 100%
             delta: parseFloat((Math.random() * 40 - 20).toFixed(1)) // -20% to +20%
           }
         };
