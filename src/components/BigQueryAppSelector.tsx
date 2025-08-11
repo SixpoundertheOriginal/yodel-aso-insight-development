@@ -41,7 +41,10 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
       return "No apps available";
     }
 
-    if (selectedApps.length === 0 || selectedApps.length === bigQueryApps.length) {
+    if (
+      selectedApps.length === 0 ||
+      (selectedApps.length === bigQueryApps.length && bigQueryApps.length > 1)
+    ) {
       return `All Apps (${bigQueryApps.length})`;
     }
 
@@ -85,7 +88,12 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
     <div className={`flex items-center gap-2 ${className}`}>
       <Database className="h-4 w-4 text-blue-400" />
       <Select
-        value={selectedApps.length === bigQueryApps.length || selectedApps.length === 0 ? 'all' : selectedApps[0]}
+        value={
+          selectedApps.length === 0 ||
+          (selectedApps.length === bigQueryApps.length && bigQueryApps.length > 1)
+            ? 'all'
+            : selectedApps[0]
+        }
         onValueChange={handleSelectionChange}
       >
         <SelectTrigger className="w-[180px] h-8 bg-zinc-800 border-zinc-700 text-foreground">
