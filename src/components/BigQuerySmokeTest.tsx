@@ -33,8 +33,7 @@ export const BigQuerySmokeTest: React.FC = () => {
           to: "2025-07-01"
         },
         selectedApps: ["AppOne", "AppTwo"],
-        trafficSources: [],
-        limit: 10
+        trafficSources: []
       };
 
       console.log('📤 [SmokeTest] Sending payload:', testPayload);

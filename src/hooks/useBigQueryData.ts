@@ -90,6 +90,7 @@ export const useBigQueryData = (
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   const [meta, setMeta] = useState<BigQueryMeta | undefined>(undefined);
+  const availableSourcesRef = useRef<string[]>([]);
   
   // Get selected apps from BigQuery app selector
   const { selectedApps } = useBigQueryAppSelection();
@@ -160,12 +161,18 @@ export const useBigQueryData = (
     setMeta(undefined);
 
     try {
+      const requestTrafficSources =
+        stableFilters.trafficSources.length > 0
+          ? stableFilters.trafficSources
+          : availableSourcesRef.current.length > 0
+            ? [...availableSourcesRef.current]
+            : [];
+
       const requestBody = {
         organizationId: stableFilters.organizationId,
         dateRange: stableFilters.dateRange,
         selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
-        trafficSources: stableFilters.trafficSources.length > 0 ? stableFilters.trafficSources : undefined,
-        limit: 100
+        trafficSources: requestTrafficSources
       };
 
       debugLog.verbose('Making request to edge function', { requestBody });
@@ -204,10 +211,11 @@ export const useBigQueryData = (
       });
 
       setMeta(bigQueryResponse.meta);
+      availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
 
       const transformedData = transformBigQueryToAsoData(
         bigQueryResponse.data || [],
-        stableFilters.trafficSources,
+        requestTrafficSources,
         bigQueryResponse.meta
       );
 

@@ -175,7 +175,7 @@ serve(async (req) => {
     // Parse request body
     let body: BigQueryRequest;
     if (req.method === 'GET') {
-      body = { organizationId: "84728f94-91db-4f9c-b025-5221fbed4065", limit: 100 };
+      body = { organizationId: "84728f94-91db-4f9c-b025-5221fbed4065" };
     } else {
       try {
         const rawBody = await req.text();
@@ -285,13 +285,14 @@ serve(async (req) => {
     const tokenResponse = await getGoogleOAuthToken(credentials);
     const accessToken = tokenResponse.access_token;
 
-    const limit = body.limit || 100;
+    const limit = body.limit || 1000;
     
     // Build query components
     const clientsFilter = clientsToQuery.map(app => `'${app}'`).join(', ');
     const clientsFilterUpper = clientsToQuery.map(app => `UPPER('${app}')`).join(', ');
 
     const normalizedTrafficSources = normalizeTrafficSourcesArray(body.trafficSources);
+    console.log('[BigQuery] Final trafficSources used in query:', normalizedTrafficSources);
 
     console.log('🔄 [Edge Function] Traffic source normalization:', {
       originalTrafficSources: body.trafficSources,
