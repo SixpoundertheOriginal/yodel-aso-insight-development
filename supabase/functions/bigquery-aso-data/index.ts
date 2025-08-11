@@ -123,6 +123,114 @@ function normalizeTrafficSourcesArray(trafficSources: any): string[] {
   return [];
 }
 
+// Calculate previous period given current date range
+function calculatePreviousPeriod(from: string, to: string): { from: string; to: string } | null {
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || fromDate > toDate) {
+    return null;
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diffDays = Math.floor((toDate.getTime() - fromDate.getTime()) / dayMs) + 1;
+
+  const prevFrom = new Date(fromDate.getTime() - diffDays * dayMs);
+  const prevTo = new Date(toDate.getTime() - diffDays * dayMs);
+
+  return {
+    from: prevFrom.toISOString().split('T')[0],
+    to: prevTo.toISOString().split('T')[0]
+  }
+}
+
+interface PeriodTotals {
+  impressions: number
+  downloads: number
+  product_page_views: number
+  hasData: boolean
+}
+
+// Execute aggregation query for a specific period
+async function executePeriodQuery(
+  projectId: string,
+  accessToken: string,
+  clientsFilterUpper: string,
+  dateFrom: string,
+  dateTo: string,
+  trafficSourceFilter: string,
+  bigQueryTrafficSources: string[]
+): Promise<PeriodTotals> {
+  const params: any[] = [
+    {
+      name: 'dateFrom',
+      parameterType: { type: 'DATE' },
+      parameterValue: { value: dateFrom }
+    },
+    {
+      name: 'dateTo',
+      parameterType: { type: 'DATE' },
+      parameterValue: { value: dateTo }
+    }
+  ];
+
+  if (trafficSourceFilter) {
+    params.push({
+      name: 'trafficSourcesArray',
+      parameterType: {
+        type: 'ARRAY',
+        arrayType: { type: 'STRING' }
+      },
+      parameterValue: {
+        arrayValues: bigQueryTrafficSources.map(src => ({ value: src }))
+      }
+    });
+  }
+
+  const query = `
+      SELECT
+        SUM(impressions) AS impressions,
+        SUM(downloads) AS downloads,
+        SUM(product_page_views) AS product_page_views
+      FROM \`${projectId}.client_reports.aso_all_apple\`
+      WHERE UPPER(client) IN (${clientsFilterUpper})
+      AND date BETWEEN @dateFrom AND @dateTo
+      ${trafficSourceFilter}
+    `
+
+  const requestBody = {
+    query,
+    parameterMode: 'NAMED',
+    queryParameters: params,
+    useLegacySql: false
+  };
+
+  const response = await fetch(
+    `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`BigQuery period query error: ${response.status} - ${errorText}`);
+  }
+  const result = await response.json();
+  const row = result.rows && result.rows[0] ? result.rows[0].f : [];
+
+  return {
+    impressions: row[0]?.v ? Number(row[0].v) : 0,
+    downloads: row[1]?.v ? Number(row[1].v) : 0,
+    product_page_views: row[2]?.v ? Number(row[2].v) : 0,
+    hasData: result.totalRows ? Number(result.totalRows) > 0 : false
+  };
+}
+
 serve(async (req) => {
   const startTime = Date.now();
   
@@ -390,10 +498,11 @@ serve(async (req) => {
     
     let trafficSourceFilter = '';
     const queryParams: any[] = [];
-    
+    let bigQueryTrafficSources: string[] = [];
+
     if (normalizedTrafficSources.length > 0) {
       // Map display names to BigQuery format
-      const bigQueryTrafficSources = normalizedTrafficSources.map(source =>
+      bigQueryTrafficSources = normalizedTrafficSources.map(source =>
         mapTrafficSourceToBigQuery(source)
       );
 
@@ -649,6 +758,40 @@ serve(async (req) => {
       });
     }
 
+    // Aggregate current and previous period totals
+    let periodComparison: any = null;
+    try {
+      const today = new Date();
+      const defaultTo = today.toISOString().split('T')[0];
+      const defaultFrom = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const currentRange = body.dateRange || { from: defaultFrom, to: defaultTo };
+      const previousRange = calculatePreviousPeriod(currentRange.from, currentRange.to);
+
+      const [currentTotals, previousTotals] = await Promise.all([
+        executePeriodQuery(projectId, accessToken, clientsFilterUpper, currentRange.from, currentRange.to, trafficSourceFilter, bigQueryTrafficSources),
+        previousRange
+          ? executePeriodQuery(projectId, accessToken, clientsFilterUpper, previousRange.from, previousRange.to, trafficSourceFilter, bigQueryTrafficSources)
+          : Promise.resolve({ impressions: 0, downloads: 0, product_page_views: 0, hasData: false })
+      ]);
+
+      periodComparison = {
+        current: { ...currentTotals, from: currentRange.from, to: currentRange.to },
+        previous: previousRange && previousTotals.hasData
+          ? { ...previousTotals, from: previousRange.from, to: previousRange.to }
+          : null,
+        delta: previousRange && previousTotals.hasData
+          ? {
+              impressions: currentTotals.impressions - previousTotals.impressions,
+              downloads: currentTotals.downloads - previousTotals.downloads,
+              product_page_views: currentTotals.product_page_views - previousTotals.product_page_views
+            }
+          : null
+      };
+    } catch (periodError) {
+      console.error('❌ [BigQuery] Period comparison failed:', periodError);
+    }
+
     // **PHASE 1 CRITICAL: Build response metadata with ALL available traffic sources**
     console.log('✅ [Phase 1] Step 3: Building enhanced metadata with all available traffic sources');
 
@@ -676,6 +819,7 @@ serve(async (req) => {
         queriedClients: clientsToQuery,
         emergencyBypass: shouldAutoApprove,
         autoApprovalTriggered: shouldAutoApprove && transformedData.length > 0,
+        periodComparison,
         // **PHASE 1 ARCHITECTURE INFO**
         dataArchitecture: {
           phase: 'Phase 1 - Two-Pass Discovery',
