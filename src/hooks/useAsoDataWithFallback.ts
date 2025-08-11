@@ -135,18 +135,49 @@ export const useAsoDataWithFallback = (
       return;
     }
 
-    // BigQuery failed, fall back to mock
+    // BigQuery failed, attempt mock fallback
     if (bigQueryResult.error) {
-      debugLog.warn('⚠️ [Fallback] BigQuery failed, using mock data:', bigQueryResult.error.message);
+      debugLog.warn(
+        '⚠️ [Fallback] BigQuery failed, using mock data:',
+        bigQueryResult.error.message
+      );
       setCurrentDataSource('mock');
       setDataSourceStatus('bigquery-failed-fallback');
-      setFinalResult((prev) => ({
-        data: mockResult.data ?? prev.data,
-        loading: mockResult.loading,
-        error: mockResult.loading ? bigQueryResult.error : null, // Show error until mock data loads
-        availableTrafficSources:
-          mockResult.data?.trafficSources?.map((s) => s.name) || prev.availableTrafficSources
-      }));
+
+      // While mock is loading, keep previous data but surface BigQuery error
+      if (mockResult.loading) {
+        setFinalResult((prev) => ({
+          data: prev.data,
+          loading: true,
+          error: bigQueryResult.error,
+          availableTrafficSources: prev.availableTrafficSources
+        }));
+        return;
+      }
+
+      // Mock succeeded - use its data
+      if (mockResult.data && !mockResult.error) {
+        setFinalResult({
+          data: mockResult.data,
+          loading: false,
+          error: null,
+          availableTrafficSources:
+            mockResult.data.trafficSources?.map((s) => s.name) || []
+        });
+        return;
+      }
+
+      // Mock failed - surface mock error while preserving previous data
+      if (mockResult.error) {
+        setFinalResult((prev) => ({
+          data: prev.data,
+          loading: false,
+          error: mockResult.error,
+          availableTrafficSources: prev.availableTrafficSources
+        }));
+        return;
+      }
+
       return;
     }
 

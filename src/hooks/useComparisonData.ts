@@ -1,10 +1,9 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAsoData } from '../context/AsoDataContext';
 import { useBigQueryData } from './useBigQueryData';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
 import { standardizeChartData } from '../utils/format';
 import { getPreviousPeriod, calculateDeltas } from '../utils/dateCalculations';
 import { AsoData } from './useMockAsoData';
@@ -75,7 +74,11 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
   }, [filters.dateRange, type]);
 
   // Fetch current period data (using existing context data)
-  const { data: currentData, loading: currentLoading, error: currentError } = useAsoData();
+  const {
+    data: currentData,
+    loading: currentLoading,
+    error: currentError
+  } = useAsoData();
 
   // Fetch previous period data
   const {
@@ -89,27 +92,32 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
     organizationId.length > 0
   );
 
-  const comparisonData = useMemo(() => {
-    if (!currentData || !previousRawData) {
-      return {
-        current: currentData,
-        previous: null,
-        deltas: null
-      };
-    }
+  const [cachedComparison, setCachedComparison] = useState<{
+    current: AsoData | null;
+    previous: AsoData | null;
+    deltas: {
+      impressions: number;
+      downloads: number;
+      product_page_views: number;
+      product_page_cvr: number;
+      impressions_cvr: number;
+    } | null;
+  }>({ current: null, previous: null, deltas: null });
+
+  useEffect(() => {
+    if (!currentData || !previousRawData) return;
 
     // Standardize both datasets
     const current = {
       ...currentData,
-      timeseriesData: standardizeChartData(currentData.timeseriesData),
+      timeseriesData: standardizeChartData(currentData.timeseriesData)
     };
 
     const previous = {
       ...previousRawData,
-      timeseriesData: standardizeChartData(previousRawData.timeseriesData),
+      timeseriesData: standardizeChartData(previousRawData.timeseriesData)
     };
 
-    // Calculate real deltas
     const currentTotals = {
       impressions: current.summary.impressions.value,
       downloads: current.summary.downloads.value,
@@ -124,17 +132,13 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
 
     const deltas = calculateDeltas(currentTotals, previousTotals);
 
-    return {
-      current,
-      previous,
-      deltas
-    };
+    setCachedComparison({ current, previous, deltas });
   }, [currentData, previousRawData]);
 
   return {
-    ...comparisonData,
+    ...cachedComparison,
     loading: currentLoading || previousLoading,
-    error: currentError || previousError,
+    error: currentError || previousError
   };
 };
 
