@@ -7,14 +7,13 @@ import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import KpiCard from "../components/KpiCard";
-import { 
-  PremiumCard, 
-  PremiumCardHeader, 
-  PremiumCardContent, 
+import {
+  PremiumCard,
+  PremiumCardHeader,
+  PremiumCardContent,
   PremiumTypography,
   LayoutSection,
   ResponsiveGrid,
-  AnimatedCounter,
   StatusIndicator
 } from "@/components/ui/premium";
 
@@ -30,46 +29,11 @@ const OverviewPage: React.FC = () => {
       trafficSources: sources
     }));
   };
-
-  const isLoading = loading;
-
-  console.log('📊 [Overview Detailed Debug]', { 
-    loading: isLoading, 
-    hasData: !!data, 
-    dataLength: data?.timeseriesData?.length || 'no timeseries',
-    dataStructure: data ? Object.keys(data) : 'no data',
-    dataType: typeof data,
-    summaryData: data?.summary,
-    trafficSources: data?.trafficSources?.length || 'no traffic sources',
-    selectedTrafficSources: filters.trafficSources,
-    selectedTrafficSourcesCount: filters.trafficSources.length,
-    firstTimeseriesItem: data?.timeseriesData?.[0]
-  });
-
-  return (
-    <MainLayout>
-      <LayoutSection spacing="md">
-        {/* AI Insights Panel - Top Priority */}
-        <div className="mb-8">
-          <AiInsightsPanel maxDisplayed={3} />
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <PremiumTypography.PageTitle gradient="orange" animated>
-            Performance Overview
-          </PremiumTypography.PageTitle>
-          
-          <div className="flex gap-4">
-            <StatusIndicator status="success" pulse label="Live Data" />
-            <AnalyticsTrafficSourceFilter 
-              selectedSources={filters.trafficSources}
-              onChange={handleSourceChange}
-            />
-          </div>
-        </div>
-        
-        {/* Loading State */}
-        {isLoading && (
+  // Show skeleton only on initial load when there's no data yet
+  if (loading && !data) {
+    return (
+      <MainLayout>
+        <LayoutSection spacing="md">
           <ResponsiveGrid cols={{ default: 1, lg: 2, xl: 3 }} gap="lg">
             {[1, 2, 3].map((_, index) => (
               <PremiumCard key={index} variant="glass" intensity="medium" animated>
@@ -82,10 +46,49 @@ const OverviewPage: React.FC = () => {
               </PremiumCard>
             ))}
           </ResponsiveGrid>
-        )}
-        
-        {/* Data Display like Store Performance */}
-        {!isLoading && data && (
+        </LayoutSection>
+      </MainLayout>
+    );
+  }
+
+  const isUpdating = loading && !!data;
+
+  console.log('📊 [Overview Detailed Debug]', {
+    loading,
+    hasData: !!data,
+    dataLength: data?.timeseriesData?.length || 'no timeseries',
+    dataStructure: data ? Object.keys(data) : 'no data',
+    dataType: typeof data,
+    summaryData: data?.summary,
+    trafficSources: data?.trafficSources?.length || 'no traffic sources',
+    selectedTrafficSources: filters.trafficSources,
+    selectedTrafficSourcesCount: filters.trafficSources.length,
+    firstTimeseriesItem: data?.timeseriesData?.[0]
+  });
+
+  return (
+    <MainLayout>
+      <LayoutSection spacing="md" className="relative">
+        {/* AI Insights Panel - Top Priority */}
+        <div className="mb-8">
+          <AiInsightsPanel maxDisplayed={3} />
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <PremiumTypography.PageTitle gradient="orange" animated>
+            Performance Overview
+          </PremiumTypography.PageTitle>
+
+          <div className="flex gap-4">
+            <StatusIndicator status="success" pulse label="Live Data" />
+            <AnalyticsTrafficSourceFilter
+              selectedSources={filters.trafficSources}
+              onChange={handleSourceChange}
+            />
+          </div>
+        </div>
+
+        {data && (
           <div className="flex flex-col space-y-8">
             
             {/* KPI Cards Section */}
@@ -167,6 +170,15 @@ const OverviewPage: React.FC = () => {
                 </PremiumCardContent>
               </PremiumCard>
             )}
+          </div>
+        )}
+
+        {isUpdating && (
+          <div className="absolute top-4 right-4 bg-white rounded px-3 py-1 shadow-sm border">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 animate-spin rounded-full border border-gray-300 border-t-blue-600" />
+              <span className="text-sm text-gray-600">Updating...</span>
+            </div>
           </div>
         )}
       </LayoutSection>
