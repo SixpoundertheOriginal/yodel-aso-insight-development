@@ -10,9 +10,9 @@ import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import { AnalyticsTrafficSourceFilter } from "../components/Filters";
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
-import { Toggle } from "@/components/ui/toggle";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toggleTrafficSourceExclusion } from "@/utils/trafficSources";
 import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
@@ -63,27 +63,19 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Update exclude ASA logic to work with clear filter state
-  useEffect(() => {
-    if (excludeAsa) {
-      setUserTouchedFilters(true);
-      setFilters(prev => ({
-        ...prev,
-        trafficSources: prev.trafficSources.filter(src => src !== "Apple Search Ads"),
-      }));
-      console.debug('🚫 [Dashboard] Excluding Apple Search Ads from filter');
-    } else {
-      // Only add ASA back if it was previously filtered and we have other sources selected
-      setUserTouchedFilters(true);
-      setFilters(prev => {
-        if (prev.trafficSources.length > 0 && !prev.trafficSources.includes("Apple Search Ads")) {
-          return { ...prev, trafficSources: [...prev.trafficSources, "Apple Search Ads"] };
-        }
-        return prev;
-      });
-      console.debug('✅ [Dashboard] Including Apple Search Ads in filter');
-    }
-  }, [excludeAsa, setFilters, setUserTouchedFilters]);
+  const handleExcludeAsaToggle = (exclude: boolean) => {
+    setExcludeAsa(exclude);
+    setUserTouchedFilters(true);
+    setFilters((prev) => ({
+      ...prev,
+      trafficSources: toggleTrafficSourceExclusion(
+        prev.trafficSources,
+        "Apple Search Ads",
+        exclude
+      ),
+    }));
+  };
+
 
   const periodComparison = useComparisonData("period");
   const yearComparison = useComparisonData("year");
@@ -233,12 +225,14 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="flex items-center">
-          <span className="text-sm text-zinc-400 mr-2">Exclude ASA</span>
-          <Toggle
-            pressed={excludeAsa}
-            onPressedChange={setExcludeAsa}
-            aria-label="Exclude Apple Search Ads"
-          />
+          <Button
+            variant={excludeAsa ? "destructive" : "outline"}
+            size="sm"
+            aria-pressed={excludeAsa}
+            onClick={() => handleExcludeAsaToggle(!excludeAsa)}
+          >
+            Exclude ASA
+          </Button>
         </div>
       </div>
 
