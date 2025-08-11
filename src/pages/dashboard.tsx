@@ -140,8 +140,10 @@ const Dashboard: React.FC = () => {
   const downloadsDelta = data.summary?.downloads?.delta || 0;
   const pageViewsValue = data.summary?.product_page_views?.value || 0;
   const pageViewsDelta = data.summary?.product_page_views?.delta || 0;
-  const cvrValue = data.summary?.cvr?.value || 0;
-  const cvrDelta = data.summary?.cvr?.delta || 0;
+  const productPageCvrValue = data.summary?.product_page_cvr?.value || 0;
+  const productPageCvrDelta = data.summary?.product_page_cvr?.delta || 0;
+  const impressionsCvrValue = data.summary?.impressions_cvr?.value || 0;
+  const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
 
   return (
     <MainLayout>
@@ -151,8 +153,15 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* KPI Cards with Data Source Indicator */}
+      {/*
+        Responsive Grid Breakdown:
+        - Mobile (default): 1 column (stacked)
+        - Small (sm): 2 columns 
+        - Large (lg): 3 columns
+        - Extra Large (xl): 5 columns (all cards in one row)
+      */}
       <div className="flex justify-between items-start mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 flex-1">
           <KpiCard
             title="Impressions"
             value={impressionsValue}
@@ -168,10 +177,17 @@ const Dashboard: React.FC = () => {
             value={pageViewsValue}
             delta={pageViewsDelta}
           />
-          <KpiCard 
-            title="CVR" 
-            value={cvrValue} 
-            delta={cvrDelta} 
+          <KpiCard
+            title="Product Page CVR"
+            value={productPageCvrValue}
+            delta={productPageCvrDelta}
+            isPercentage
+          />
+          <KpiCard
+            title="Impressions CVR"
+            value={impressionsCvrValue}
+            delta={impressionsCvrDelta}
+            isPercentage
           />
         </div>
         
