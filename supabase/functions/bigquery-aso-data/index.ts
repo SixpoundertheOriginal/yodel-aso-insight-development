@@ -63,6 +63,30 @@ function mapTrafficSourceToBigQuery(displaySource: string): string {
   return REVERSE_TRAFFIC_SOURCE_MAPPING[displaySource] || displaySource;
 }
 
+// Phase 3.2: verification helper
+function verifyTrafficSourceMapping(requestedSources: string[], availableSources: string[]) {
+  const normalizedAvailable = availableSources.map(s => s.toUpperCase());
+  const mappingResults = requestedSources.map(source => {
+    const bigQueryName = mapTrafficSourceToBigQuery(source).toUpperCase();
+    const exists = normalizedAvailable.includes(bigQueryName);
+    return {
+      displayName: source,
+      bigQueryName,
+      existsInData: exists
+    };
+  });
+
+  console.log('🔍 [Edge Function] Traffic source mapping verification:', {
+    requestedCount: requestedSources.length,
+    availableCount: availableSources.length,
+    mappingResults,
+    validMappings: mappingResults.filter(r => r.existsInData).length,
+    invalidMappings: mappingResults.filter(r => !r.existsInData)
+  });
+
+  return mappingResults;
+}
+
 // Defensive array normalization helper
 function normalizeTrafficSourcesArray(trafficSources: any): string[] {
   console.log('🔧 [BigQuery] Raw trafficSources input:', trafficSources, typeof trafficSources);
@@ -159,6 +183,16 @@ serve(async (req) => {
           hasDateRange: !!(body as any).dateRange,
           keys: Object.keys(body as any)
         });
+        // Phase 1.1: request reception logging
+        console.log('📥 [Edge Function] Request received:', {
+          organizationId: (body as any).organizationId,
+          trafficSources: (body as any).trafficSources,
+          trafficSourcesType: typeof (body as any).trafficSources,
+          trafficSourcesLength: (body as any).trafficSources?.length || 0,
+          trafficSourcesActual: (body as any).trafficSources,
+          dateRange: (body as any).dateRange,
+          timestamp: new Date().toISOString()
+        });
       } catch (parseError) {
         console.error('❌ [HTTP] JSON parse failed:', (parseError as any).message);
         return new Response(
@@ -249,6 +283,16 @@ serve(async (req) => {
     const clientsFilter = clientsToQuery.map(app => `'${app}'`).join(', ');
     const clientsFilterUpper = clientsToQuery.map(app => `UPPER('${app}')`).join(', ');
 
+    const normalizedTrafficSources = normalizeTrafficSourcesArray(body.trafficSources);
+
+    console.log('🔄 [Edge Function] Traffic source normalization:', {
+      originalTrafficSources: body.trafficSources,
+      normalizedTrafficSources,
+      normalizedLength: normalizedTrafficSources.length,
+      willApplyFilter: normalizedTrafficSources.length > 0,
+      filterDecision: normalizedTrafficSources.length > 0 ? 'APPLY_SPECIFIC_FILTER' : 'NO_FILTER_ALL_SOURCES'
+    });
+
     // **PHASE 1 IMPLEMENTATION: Two-Pass Data Architecture**
     
     // STEP 1: Get ALL available traffic sources (discovery query)
@@ -310,66 +354,68 @@ serve(async (req) => {
     }
 
     const discoveryResult = await discoveryResponse.json();
-    const availableTrafficSources = (discoveryResult.rows || [])
-      .map((row: any) => mapTrafficSourceToDisplay(row.f[0]?.v || 'Unknown'))
+    const discoveredSources = (discoveryResult.rows || [])
+      .map((row: any) => row.f[0]?.v || 'Unknown')
+      .filter(Boolean);
+    const availableTrafficSources = discoveredSources
+      .map((src: string) => mapTrafficSourceToDisplay(src))
       .filter(Boolean)
       .sort();
 
     console.log('✅ [Phase 1] Step 1 Complete - Available traffic sources:', availableTrafficSources);
 
+    console.log('🔍 [Edge Function] Discovery query results:', {
+      discoveredSources,
+      sourceCount: discoveredSources.length,
+      matchesRequested: normalizedTrafficSources.length > 0 ?
+        normalizedTrafficSources.filter(source => discoveredSources.includes(mapTrafficSourceToBigQuery(source))) :
+        'ALL_SOURCES_REQUESTED'
+    });
+
+    if (normalizedTrafficSources.length > 0) {
+      verifyTrafficSourceMapping(normalizedTrafficSources, discoveredSources);
+    }
+
     // STEP 2: Get filtered data (main query with optional traffic source filtering)
     console.log('🔍 [Phase 1] Step 2: Fetching filtered data...');
-    
-    const normalizedTrafficSources = normalizeTrafficSourcesArray(body.trafficSources);
-    
-    console.log('🔍 [BigQuery] Traffic source filtering debug:', {
-      rawInput: body.trafficSources,
-      normalizedResult: normalizedTrafficSources,
-      willApplyFilter: normalizedTrafficSources.length > 0,
-      filterDecision: normalizedTrafficSources.length > 0 ? 'APPLY_FILTER' : 'NO_FILTER_ALL_SOURCES'
-    });
     
     let trafficSourceFilter = '';
     const queryParams: any[] = [];
     
     if (normalizedTrafficSources.length > 0) {
       // Map display names to BigQuery format
-      const bigQueryTrafficSources = normalizedTrafficSources.map(source => 
+      const bigQueryTrafficSources = normalizedTrafficSources.map(source =>
         mapTrafficSourceToBigQuery(source)
       );
-      
+
+      console.log('🔍 [Edge Function] BigQuery parameter construction:', {
+        displayNames: normalizedTrafficSources,
+        bigQueryNames: bigQueryTrafficSources,
+        parameterValue: bigQueryTrafficSources.map(source => ({ value: source })),
+        expectedMatches: 'Will verify in database'
+      });
+
       console.log('🔄 [BigQuery] Traffic source mapping applied:', {
         displaySources: normalizedTrafficSources,
         bigQuerySources: bigQueryTrafficSources,
         filterWillBeApplied: true
       });
-      
+
       // Apply traffic source filter
-      trafficSourceFilter = 'AND traffic_source IN UNNEST(@trafficSourcesArray)';
-      
+      trafficSourceFilter = 'AND UPPER(traffic_source) IN UNNEST(@trafficSourcesArray)';
+
       queryParams.push({
         name: 'trafficSourcesArray',
-        parameterType: { 
+        parameterType: {
           type: 'ARRAY',
           arrayType: { type: 'STRING' }
         },
-        parameterValue: { 
-          arrayValues: bigQueryTrafficSources.map(source => ({ value: source }))
+        parameterValue: {
+          arrayValues: bigQueryTrafficSources.map(source => ({ value: source.toUpperCase() }))
         }
       });
     } else {
-      console.log('✅ [BigQuery] No traffic source filter - returning ALL sources as requested');
-      // Add empty array parameter to prevent query parameter errors
-      queryParams.push({
-        name: 'trafficSourcesArray',
-        parameterType: { 
-          type: 'ARRAY',
-          arrayType: { type: 'STRING' }
-        },
-        parameterValue: { 
-          arrayValues: []
-        }
-      });
+      console.log('✅ [Edge Function] No traffic source filter - returning ALL sources');
     }
     
     // Add date range parameters if provided
@@ -413,6 +459,13 @@ serve(async (req) => {
       maxResults: limit
     };
 
+    console.log('🗃️ [Edge Function] BigQuery query construction:', {
+      trafficSourceFilter: trafficSourceFilter || 'NO_FILTER',
+      queryParams: queryParams.map(p => ({ name: p.name, type: p.parameterType.type, value: p.parameterValue })),
+      queryPreview: query.substring(0, 200) + '...',
+      willFilterTrafficSources: !!trafficSourceFilter
+    });
+
     if (isDevelopment()) {
       console.log('🔍 [BigQuery] Final Query Built:', query.replace(/\s+/g, ' ').trim());
       console.log('📊 [BigQuery] Query Parameters:', JSON.stringify(queryParams, null, 2));
@@ -440,8 +493,21 @@ serve(async (req) => {
 
     const queryResult = await bigQueryResponse.json();
     const executionTimeMs = Date.now() - startTime;
-    
+
     console.log(`✅ [BigQuery] Query completed: ${queryResult.totalRows || 0} rows in ${executionTimeMs}ms`);
+
+    console.log('📤 [Edge Function] BigQuery response analysis:', {
+      success: !!queryResult,
+      rowCount: (queryResult.rows || []).length,
+      uniqueTrafficSources: [...new Set((queryResult.rows || []).map((row: any) => row.f[2]?.v))],
+      sampleRows: (queryResult.rows || []).slice(0, 3).map((row: any) => ({
+        date: row.f[0]?.v,
+        traffic_source: row.f[2]?.v,
+        impressions: row.f[3]?.v,
+        downloads: row.f[4]?.v
+      })),
+      queryExecutionTime: executionTimeMs + 'ms'
+    });
 
     // Transform BigQuery response with proper NULL handling
     const rows = queryResult.rows || [];
