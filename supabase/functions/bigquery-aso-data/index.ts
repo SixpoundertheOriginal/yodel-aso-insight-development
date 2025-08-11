@@ -39,36 +39,44 @@ const isDevelopment = () => {
 // Known BigQuery clients for emergency bypass
 const KNOWN_BIGQUERY_CLIENTS = ['AppSeven', 'AppTwo', 'AppFour', 'AppOne', 'AppSix', 'AppThree', 'AppFive'];
 
-// Enhanced Traffic source mapping with missing sources
-const TRAFFIC_SOURCE_MAPPING = {
-  'Apple_Search_Ads': 'Apple Search Ads',
-  'App_Store_Search': 'App Store Search',
-  'App_Store_Browse': 'App Store Browse',
-  'App_Referrer': 'App Referrer',
-  'Web_Referrer': 'Web Referrer',
-  'Event_Notification': 'Event Notification',
-  'Institutional_Purchase': 'Institutional Purchase',
-  'Unavailable': 'Other'
+// Traffic source mapping between display names and BigQuery values
+const TRAFFIC_SOURCE_MAPPING: Record<string, string> = {
+  'App Referrer': 'App_Referrer',
+  'App Store Browse': 'App_Store_Browse',
+  'App Store Search': 'App_Store_Search',
+  'Apple Search Ads': 'Apple_Search_Ads',
+  'Event Notification': 'Event_Notification',
+  'Institutional Purchase': 'Institutional_Purchase',
+  'Other': 'Unavailable',
+  'Web Referrer': 'Web_Referrer'
 };
 
-const REVERSE_TRAFFIC_SOURCE_MAPPING = Object.fromEntries(
-  Object.entries(TRAFFIC_SOURCE_MAPPING).map(([key, value]) => [value, key])
+const BIGQUERY_TO_DISPLAY_MAPPING: Record<string, string> = Object.fromEntries(
+  Object.entries(TRAFFIC_SOURCE_MAPPING).map(([display, bigQuery]) => [bigQuery, display])
 );
 
-function mapTrafficSourceToDisplay(bigQuerySource: string): string {
-  return TRAFFIC_SOURCE_MAPPING[bigQuerySource as keyof typeof TRAFFIC_SOURCE_MAPPING] || bigQuerySource;
+function mapBigQueryToDisplay(bigQueryName: string): string {
+  return BIGQUERY_TO_DISPLAY_MAPPING[bigQueryName] || bigQueryName;
 }
 
-function mapTrafficSourceToBigQuery(displaySource: string): string {
-  return REVERSE_TRAFFIC_SOURCE_MAPPING[displaySource] || displaySource;
+function mapTrafficSourceToBigQuery(displayName: string): string {
+  const mapped = TRAFFIC_SOURCE_MAPPING[displayName];
+  if (!mapped) {
+    console.error(
+      `[Edge Function] Unknown traffic source: "${displayName}". Available sources:`,
+      Object.keys(TRAFFIC_SOURCE_MAPPING)
+    );
+    return displayName;
+  }
+  return mapped;
 }
 
 // Phase 3.2: verification helper
 function verifyTrafficSourceMapping(requestedSources: string[], availableSources: string[]) {
-  const normalizedAvailable = availableSources.map(s => s.toUpperCase());
+  const normalizedAvailable = availableSources.map(s => s.toLowerCase());
   const mappingResults = requestedSources.map(source => {
-    const bigQueryName = mapTrafficSourceToBigQuery(source).toUpperCase();
-    const exists = normalizedAvailable.includes(bigQueryName);
+    const bigQueryName = mapTrafficSourceToBigQuery(source);
+    const exists = normalizedAvailable.includes(bigQueryName.toLowerCase());
     return {
       displayName: source,
       bigQueryName,
@@ -358,7 +366,7 @@ serve(async (req) => {
       .map((row: any) => row.f[0]?.v || 'Unknown')
       .filter(Boolean);
     const availableTrafficSources = discoveredSources
-      .map((src: string) => mapTrafficSourceToDisplay(src))
+      .map((src: string) => mapBigQueryToDisplay(src))
       .filter(Boolean)
       .sort();
 
@@ -388,6 +396,15 @@ serve(async (req) => {
         mapTrafficSourceToBigQuery(source)
       );
 
+      console.log('🔍 [Edge Function] Traffic source mapping verification:', {
+        originalSources: normalizedTrafficSources,
+        mappedSources: normalizedTrafficSources.map(source => ({
+          display: source,
+          bigQuery: mapTrafficSourceToBigQuery(source),
+          correctFormat: !mapTrafficSourceToBigQuery(source).includes('UPPER')
+        }))
+      });
+
       console.log('🔍 [Edge Function] BigQuery parameter construction:', {
         displayNames: normalizedTrafficSources,
         bigQueryNames: bigQueryTrafficSources,
@@ -402,7 +419,7 @@ serve(async (req) => {
       });
 
       // Apply traffic source filter
-      trafficSourceFilter = 'AND UPPER(traffic_source) IN UNNEST(@trafficSourcesArray)';
+      trafficSourceFilter = 'AND traffic_source IN UNNEST(@trafficSourcesArray)';
 
       queryParams.push({
         name: 'trafficSourcesArray',
@@ -411,7 +428,7 @@ serve(async (req) => {
           arrayType: { type: 'STRING' }
         },
         parameterValue: {
-          arrayValues: bigQueryTrafficSources.map(source => ({ value: source.toUpperCase() }))
+          arrayValues: bigQueryTrafficSources.map(source => ({ value: source }))
         }
       });
     } else {
@@ -565,7 +582,7 @@ serve(async (req) => {
       return {
         date,
         organization_id: orgId,
-        traffic_source: mapTrafficSourceToDisplay(originalTrafficSource),
+        traffic_source: mapBigQueryToDisplay(originalTrafficSource),
         traffic_source_raw: originalTrafficSource,
         impressions,
         downloads,
