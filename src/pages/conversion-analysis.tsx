@@ -66,12 +66,21 @@ const ConversionAnalysisPage: React.FC = () => {
         {/* Cumulative Section */}
         <section>
           <h2 className="text-xl font-semibold mb-4">Cumulative</h2>
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-4">
             <div className="w-64">
               <KpiCard
-                title="Conversion Rate"
-                value={data.summary.cvr.value}
-                delta={data.summary.cvr.delta}
+                title="Product Page CVR"
+                value={data.summary.product_page_cvr.value}
+                delta={data.summary.product_page_cvr.delta}
+                isPercentage
+              />
+            </div>
+            <div className="w-64">
+              <KpiCard
+                title="Impressions CVR"
+                value={data.summary.impressions_cvr.value}
+                delta={data.summary.impressions_cvr.delta}
+                isPercentage
               />
             </div>
           </div>
@@ -79,7 +88,7 @@ const ConversionAnalysisPage: React.FC = () => {
         
         <section className="mt-8">
           <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
-            <h2 className="text-xl font-semibold">Conversion Rate Over Time</h2>
+            <h2 className="text-xl font-semibold">Conversion Rates Over Time</h2>
             <TrafficSourceSelect 
               selectedSources={selectedSources} 
               onSourceChange={setSelectedSources} 

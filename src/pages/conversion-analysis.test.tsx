@@ -53,15 +53,16 @@ describe('ConversionAnalysisPage', () => {
     summary: {
       impressions: { value: 100000, delta: 2.5 },
       downloads: { value: 50000, delta: 3.7 },
-      pageViews: { value: 75000, delta: 1.2 },
-      cvr: { value: 5.2, delta: 0.8 },
+      product_page_views: { value: 75000, delta: 1.2 },
+      product_page_cvr: { value: 66.7, delta: 2.1 },
+      impressions_cvr: { value: 5.2, delta: 0.8 },
     },
     timeseriesData: [
       {
         date: '2023-01-01',
         impressions: 1000,
         downloads: 500,
-        pageViews: 750,
+        product_page_views: 750,
       }
     ],
     trafficSources: [
@@ -79,14 +80,15 @@ describe('ConversionAnalysisPage', () => {
     });
   });
 
-  it('renders the main conversion rate card correctly', () => {
+  it('renders the main conversion rate cards correctly', () => {
     render(<ConversionAnalysisPage />);
-    
+
     // Check if the page title is rendered
     expect(screen.getByText('Conversion Analysis')).toBeInTheDocument();
-    
-    // Check if the main CVR card is rendered
-    expect(screen.getByTestId('kpi-card-Conversion Rate')).toBeInTheDocument();
+
+    // Check if both CVR cards are rendered
+    expect(screen.getByTestId('kpi-card-Product Page CVR')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-card-Impressions CVR')).toBeInTheDocument();
   });
 
   it('renders traffic source cards correctly', () => {
