@@ -234,7 +234,6 @@ export const useBigQueryData = (
 
       const transformedData = transformBigQueryToAsoData(
         bigQueryResponse.data || [],
-        requestTrafficSources,
         bigQueryResponse.meta
       );
 
@@ -315,27 +314,8 @@ export const useBigQueryData = (
 
 function transformBigQueryToAsoData(
   bigQueryData: BigQueryDataPoint[],
-  trafficSources: string[],
   meta: BigQueryMeta
 ): AsoData {
-  console.log('🔍 [Transform] Function called with:', {
-    dataPointsCount: bigQueryData.length,
-    trafficSourcesFilter: trafficSources,
-    filterIsEmpty: trafficSources.length === 0,
-    metaAvailableSources: meta.availableTrafficSources,
-    shouldShowAll: trafficSources.length === 0
-  });
-
-  console.log('🔍 [Transform] Input data analysis:', {
-    totalDataPoints: bigQueryData.length,
-    uniqueTrafficSources: [...new Set(bigQueryData.map(item => item.traffic_source))],
-    sampleDataPoints: bigQueryData.slice(0, 3).map(item => ({
-      date: item.date,
-      traffic_source: item.traffic_source,
-      impressions: item.impressions,
-      downloads: item.downloads
-    }))
-  });
 
   const dateGroups = bigQueryData.reduce((acc, item) => {
     const date = item.date;
@@ -414,18 +394,6 @@ function transformBigQueryToAsoData(
     }
   };
 
-  console.log('📊 [Transform] Dual CVR calculations:', {
-    totalImpressions: totals.impressions,
-    totalDownloads: totals.downloads,
-    totalPageViews: totals.product_page_views,
-    productPageCVR: summary.product_page_cvr.value,
-    impressionsCVR: summary.impressions_cvr.value,
-    expectedProductPageCVR: totals.product_page_views > 0 ?
-      ((totals.downloads / totals.product_page_views) * 100).toFixed(3) : '0.000',
-    expectedImpressionsCVR: totals.impressions > 0 ?
-      ((totals.downloads / totals.impressions) * 100).toFixed(3) : '0.000'
-  });
-
   const trafficSourceGroups = bigQueryData.reduce((acc, item) => {
     const source = item.traffic_source || 'Unknown';
     if (!acc[source]) {
@@ -435,69 +403,13 @@ function transformBigQueryToAsoData(
     return acc;
   }, {} as Record<string, { value: number; delta: number }>);
 
-  console.log('🔍 [Transform] Traffic source groups:', {
-    allGroups: Object.keys(trafficSourceGroups),
-    groupValues: Object.entries(trafficSourceGroups).map(([source, data]) => ({
-      source,
-      value: data.value
-    }))
-  });
+  const actualDataSources = Object.keys(trafficSourceGroups);
 
-  const availableTrafficSources = meta.availableTrafficSources || [];
-
-  console.log('🔧 [Transform] Before sourcesToShow logic:', {
-    trafficSourcesLength: trafficSources.length,
-    availableTrafficSourcesLength: availableTrafficSources.length,
-    willUseDefault: trafficSources.length === 0 && availableTrafficSources.length === 0
-  });
-
-  const DEFAULT_TRAFFIC_SOURCES = [
-    'App Referrer',
-    'App Store Browse',
-    'App Store Search',
-    'Apple Search Ads',
-    'Event Notification',
-    'Institutional Purchase',
-    'Other',
-    'Web Referrer'
-  ];
-
-  let sourcesToShow: string[];
-
-  if (trafficSources.length === 0) {
-    sourcesToShow = availableTrafficSources.length > 0
-      ? availableTrafficSources
-      : DEFAULT_TRAFFIC_SOURCES;
-
-    console.log('✅ [Transform] No filter mode - showing all sources:', {
-      availableFromMeta: availableTrafficSources.length,
-      usingDefault: availableTrafficSources.length === 0,
-      willShow: sourcesToShow,
-      reason: 'Empty trafficSources array = no filter applied'
-    });
-  } else {
-    sourcesToShow = trafficSources;
-
-    console.log('✅ [Transform] Filter mode - showing specific sources:', {
-      requestedSources: trafficSources,
-      willShow: sourcesToShow,
-      reason: 'Specific traffic sources requested'
-    });
-  }
-
-  console.log('🔧 [Transform] After sourcesToShow logic:', {
-    sourcesToShowCount: sourcesToShow.length,
-    sourcesToShowActual: sourcesToShow,
-    logicPath: trafficSources.length === 0 ? 'NO_FILTER_SHOW_ALL' : 'SPECIFIC_FILTER'
-  });
-
-  const trafficSourceData: TrafficSource[] = sourcesToShow.map(source => ({
+  const trafficSourceData: TrafficSource[] = actualDataSources.map(source => ({
     name: source,
     value: trafficSourceGroups[source]?.value || 0,
     delta: trafficSourceGroups[source]?.delta || 0
   }));
-
-  console.log('🔍 [Transform] Final traffic source data:', trafficSourceData);
 
   debugLog.verbose('Transform complete', {
     totalItems: bigQueryData.length,
