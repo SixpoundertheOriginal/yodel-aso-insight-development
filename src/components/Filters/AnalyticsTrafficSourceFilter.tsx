@@ -60,8 +60,6 @@ interface AnalyticsTrafficSourceFilterProps {
   allowSelectAll?: boolean;
   /** Whether to show Clear All button (default: true) */
   allowClear?: boolean;
-  /** Custom placeholder text for the trigger button */
-  placeholder?: string;
   /** Custom width class (default: w-full md:w-80) */
   widthClass?: string;
 }
@@ -72,7 +70,6 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
   disabledSources = [],
   allowSelectAll = true,
   allowClear = true,
-  placeholder = "All Traffic Sources",
   widthClass = "w-full md:w-80"
 }) => {
   const { data, availableTrafficSources, setUserTouchedFilters } = useAsoData();
@@ -141,7 +138,7 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
     if (disabledSources.includes(source)) return;
 
     const enabledSources = allAvailableSources.filter(s => !disabledSources.includes(s));
-    const currentSelection = selectedSources.length === 0 ? enabledSources : selectedSources;
+    const currentSelection = selectedSources;
 
     let newSelection = checked
       ? [...currentSelection, source]
@@ -173,26 +170,26 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
   
   // Memoized display text for performance
   const displayText = useMemo(() => {
-    if (selectedSources.length === 0) return placeholder;
-    
-    const enabledSources = allAvailableSources.filter(source => 
+    if (selectedSources.length === 0) return "All Sources";
+
+    const enabledSources = allAvailableSources.filter(source =>
       !disabledSources.includes(source)
     );
-    
+
     if (selectedSources.length > 0 && selectedSources.length === enabledSources.length) {
       return `All Sources (${enabledSources.length})`;
     }
-    
+
     if (selectedSources.length === 1) {
       return selectedSources[0];
     }
-    
+
     if (selectedSources.length <= 2) {
       return selectedSources.join(", ");
     }
-    
+
     return `${selectedSources.length} Sources Selected`;
-  }, [selectedSources, allAvailableSources, disabledSources, placeholder]);
+  }, [selectedSources, allAvailableSources, disabledSources]);
   
   // Don't render if no sources available
   if (allAvailableSources.length === 0) {
@@ -283,9 +280,9 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
                   No sources found matching "{searchTerm}"
                 </div>
               ) : (
-                filteredSources.map((source) => {
-                  const isSelected = selectedSources.length === 0 || selectedSources.includes(source);
-                  const isDisabled = disabledSources.includes(source);
+                  filteredSources.map((source) => {
+                    const isSelected = selectedSources.length > 0 && selectedSources.includes(source);
+                    const isDisabled = disabledSources.includes(source);
                   
                   return (
                     <div

@@ -196,12 +196,11 @@ const Dashboard: React.FC = () => {
       {/* Enhanced Filter Controls with better debugging */}
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="flex items-center gap-4">
-          <AnalyticsTrafficSourceFilter
-            selectedSources={filters.trafficSources}
-            onChange={handleTrafficSourceChange}
-            placeholder="Filter Traffic Sources"
-            widthClass="w-64"
-          />
+            <AnalyticsTrafficSourceFilter
+              selectedSources={filters.trafficSources}
+              onChange={handleTrafficSourceChange}
+              widthClass="w-64"
+            />
           {filters.trafficSources.length > 0 && (
             <div className="text-sm text-zinc-400">
               {filters.trafficSources.length === 1 
