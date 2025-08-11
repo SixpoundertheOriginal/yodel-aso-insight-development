@@ -366,13 +366,29 @@ function transformBigQueryToAsoData(
     impressions: { value: totals.impressions, delta: generateMockDelta() },
     downloads: { value: totals.downloads, delta: generateMockDelta() },
     product_page_views: { value: totals.product_page_views, delta: generateMockDelta() },
-    cvr: { 
-      value: totals.product_page_views > 0 ? 
-        (totals.downloads / totals.product_page_views) * 100 : 
-        (totals.impressions > 0 ? (totals.downloads / totals.impressions) * 100 : 0), 
-      delta: generateMockDelta() 
+    product_page_cvr: {
+      value: totals.product_page_views > 0 ?
+        (totals.downloads / totals.product_page_views) * 100 : 0,
+      delta: generateMockDelta()
+    },
+    impressions_cvr: {
+      value: totals.impressions > 0 ?
+        (totals.downloads / totals.impressions) * 100 : 0,
+      delta: generateMockDelta()
     }
   };
+
+  console.log('📊 [Transform] Dual CVR calculations:', {
+    totalImpressions: totals.impressions,
+    totalDownloads: totals.downloads,
+    totalPageViews: totals.product_page_views,
+    productPageCVR: summary.product_page_cvr.value,
+    impressionsCVR: summary.impressions_cvr.value,
+    expectedProductPageCVR: totals.product_page_views > 0 ?
+      ((totals.downloads / totals.product_page_views) * 100).toFixed(3) : '0.000',
+    expectedImpressionsCVR: totals.impressions > 0 ?
+      ((totals.downloads / totals.impressions) * 100).toFixed(3) : '0.000'
+  });
 
   const trafficSourceGroups = bigQueryData.reduce((acc, item) => {
     const source = item.traffic_source || 'Unknown';
