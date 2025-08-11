@@ -256,7 +256,7 @@ serve(async (req) => {
     
     const discoveryQuery = `
       SELECT DISTINCT traffic_source
-      FROM `${projectId}.client_reports.aso_all_apple`
+      FROM \`${projectId}.client_reports.aso_all_apple\`
       WHERE UPPER(client) IN (${clientsFilterUpper})
       ${body.dateRange ? 'AND date BETWEEN @dateFrom AND @dateTo' : 'AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)'}
       ORDER BY traffic_source
