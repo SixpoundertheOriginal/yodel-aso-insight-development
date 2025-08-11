@@ -138,7 +138,7 @@ const OverviewPage: React.FC = () => {
                   </PremiumTypography.SectionTitle>
                 </PremiumCardHeader>
                 <PremiumCardContent className="p-8">
-                  <ResponsiveGrid cols={{ default: 1, md: 3 }} gap="lg">
+                  <ResponsiveGrid cols={{ default: 1, md: 4 }} gap="lg">
                     <div className="text-center group">
                       <PremiumTypography.DataLabel className="mb-3 block">Total Impressions</PremiumTypography.DataLabel>
                       <PremiumTypography.MetricValue className="group-hover:text-blue-400 transition-colors">
@@ -152,9 +152,15 @@ const OverviewPage: React.FC = () => {
                       </PremiumTypography.MetricValue>
                     </div>
                     <div className="text-center group">
-                      <PremiumTypography.DataLabel className="mb-3 block">Conversion Rate</PremiumTypography.DataLabel>
+                      <PremiumTypography.DataLabel className="mb-3 block">Product Page CVR</PremiumTypography.DataLabel>
                       <PremiumTypography.MetricValue className="text-orange-500 group-hover:text-orange-400 transition-colors">
-                        {(data.summary.cvr ? data.summary.cvr.value : 0).toFixed(2)}%
+                        {(data.summary.product_page_cvr ? data.summary.product_page_cvr.value : 0).toFixed(2)}%
+                      </PremiumTypography.MetricValue>
+                    </div>
+                    <div className="text-center group">
+                      <PremiumTypography.DataLabel className="mb-3 block">Impressions CVR</PremiumTypography.DataLabel>
+                      <PremiumTypography.MetricValue className="text-orange-500 group-hover:text-orange-400 transition-colors">
+                        {(data.summary.impressions_cvr ? data.summary.impressions_cvr.value : 0).toFixed(2)}%
                       </PremiumTypography.MetricValue>
                     </div>
                   </ResponsiveGrid>

@@ -44,8 +44,10 @@ export const useAsoInsights = (config: Partial<InsightGenerationConfig> = {}) =>
     usingDashboardData: !!config.dashboardData,
     hasData: !!data,
     dataSource: config.dashboardData ? 'dashboard-direct' : 'context',
-    cvrValue: data?.summary?.cvr?.value,
-    cvrDelta: data?.summary?.cvr?.delta,
+    productPageCvrValue: data?.summary?.product_page_cvr?.value,
+    productPageCvrDelta: data?.summary?.product_page_cvr?.delta,
+    impressionsCvrValue: data?.summary?.impressions_cvr?.value,
+    impressionsCvrDelta: data?.summary?.impressions_cvr?.delta,
     timestamp: new Date().toISOString()
   });
   
@@ -139,8 +141,10 @@ export const useAsoInsights = (config: Partial<InsightGenerationConfig> = {}) =>
         timestamp: new Date().toISOString(),
         // Add debugging info
         debug: {
-          cvrValue: data.summary?.cvr?.value,
-          cvrDelta: data.summary?.cvr?.delta,
+          productPageCvrValue: data.summary?.product_page_cvr?.value,
+          productPageCvrDelta: data.summary?.product_page_cvr?.delta,
+          impressionsCvrValue: data.summary?.impressions_cvr?.value,
+          impressionsCvrDelta: data.summary?.impressions_cvr?.delta,
           impressionsValue: data.summary?.impressions?.value,
           impressionsDelta: data.summary?.impressions?.delta
         }

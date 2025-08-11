@@ -20,7 +20,8 @@ export interface ComparisonData {
     impressions: number;
     downloads: number;
     product_page_views: number;
-    cvr: number;
+    product_page_cvr: number;
+    impressions_cvr: number;
   } | null;
 }
 

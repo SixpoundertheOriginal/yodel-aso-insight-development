@@ -26,7 +26,8 @@ describe('useComparisonData', () => {
       impressions: { value: 210, delta: 5 },
       downloads: { value: 105, delta: 10 },
       product_page_views: { value: 420, delta: 7 },
-      cvr: { value: 50, delta: 3 },
+      product_page_cvr: { value: 50, delta: 3 },
+      impressions_cvr: { value: 25, delta: 2 },
     },
     timeseriesData: mockTimeseriesData,
     trafficSources: [

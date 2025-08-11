@@ -45,13 +45,34 @@ export const calculateDeltas = (
   current: { impressions: number; downloads: number; product_page_views: number },
   previous: { impressions: number; downloads: number; product_page_views: number }
 ) => {
+  const currentProductPageCvr =
+    current.product_page_views > 0
+      ? (current.downloads / current.product_page_views) * 100
+      : 0;
+  const previousProductPageCvr =
+    previous.product_page_views > 0
+      ? (previous.downloads / previous.product_page_views) * 100
+      : 0;
+
+  const currentImpressionsCvr =
+    current.impressions > 0 ? (current.downloads / current.impressions) * 100 : 0;
+  const previousImpressionsCvr =
+    previous.impressions > 0 ? (previous.downloads / previous.impressions) * 100 : 0;
+
   return {
     impressions: calculatePercentageChange(current.impressions, previous.impressions),
     downloads: calculatePercentageChange(current.downloads, previous.downloads),
-    product_page_views: calculatePercentageChange(current.product_page_views, previous.product_page_views),
-    cvr: calculatePercentageChange(
-      current.impressions > 0 ? (current.downloads / current.impressions) * 100 : 0,
-      previous.impressions > 0 ? (previous.downloads / previous.impressions) * 100 : 0
+    product_page_views: calculatePercentageChange(
+      current.product_page_views,
+      previous.product_page_views
+    ),
+    product_page_cvr: calculatePercentageChange(
+      currentProductPageCvr,
+      previousProductPageCvr
+    ),
+    impressions_cvr: calculatePercentageChange(
+      currentImpressionsCvr,
+      previousImpressionsCvr
     )
   };
 };
