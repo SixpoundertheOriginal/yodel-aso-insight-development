@@ -112,12 +112,12 @@ export const useAsoDataWithFallback = (
     // Handle BigQuery data states
     if (bigQueryResult.loading) {
       setDataSourceStatus('loading');
-      setFinalResult({
-        data: null,
+      setFinalResult((prev) => ({
+        ...prev,
         loading: true,
         error: null,
-        availableTrafficSources: undefined
-      });
+        availableTrafficSources: prev.availableTrafficSources
+      }));
       return;
     }
 
@@ -140,12 +140,13 @@ export const useAsoDataWithFallback = (
       debugLog.warn('⚠️ [Fallback] BigQuery failed, using mock data:', bigQueryResult.error.message);
       setCurrentDataSource('mock');
       setDataSourceStatus('bigquery-failed-fallback');
-      setFinalResult({
-        data: mockResult.data,
+      setFinalResult((prev) => ({
+        data: mockResult.data ?? prev.data,
         loading: mockResult.loading,
-        error: null, // Don't propagate BigQuery error when using fallback
-        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || []
-      });
+        error: mockResult.loading ? bigQueryResult.error : null, // Show error until mock data loads
+        availableTrafficSources:
+          mockResult.data?.trafficSources?.map((s) => s.name) || prev.availableTrafficSources
+      }));
       return;
     }
 
