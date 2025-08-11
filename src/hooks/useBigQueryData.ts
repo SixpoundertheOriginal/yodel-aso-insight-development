@@ -291,6 +291,17 @@ function transformBigQueryToAsoData(
   trafficSources: string[],
   meta: BigQueryMeta
 ): AsoData {
+  console.log('🔍 [Transform] Input data analysis:', {
+    totalDataPoints: bigQueryData.length,
+    uniqueTrafficSources: [...new Set(bigQueryData.map(item => item.traffic_source))],
+    sampleDataPoints: bigQueryData.slice(0, 3).map(item => ({
+      date: item.date,
+      traffic_source: item.traffic_source,
+      impressions: item.impressions,
+      downloads: item.downloads
+    }))
+  });
+
   const dateGroups = bigQueryData.reduce((acc, item) => {
     const date = item.date;
     if (!acc[date]) {
@@ -360,14 +371,24 @@ function transformBigQueryToAsoData(
     trafficSourceGroups[source].delta = generateMockDelta();
   });
 
+  console.log('🔍 [Transform] Traffic source groups:', {
+    allGroups: Object.keys(trafficSourceGroups),
+    groupValues: Object.entries(trafficSourceGroups).map(([source, data]) => ({
+      source,
+      value: data.value
+    }))
+  });
+
   const availableTrafficSources = meta.availableTrafficSources || [];
   const sourcesToShow = availableTrafficSources.length > 0 ? availableTrafficSources : trafficSources;
-  
+
   const trafficSourceData: TrafficSource[] = sourcesToShow.map(source => ({
     name: source,
     value: trafficSourceGroups[source]?.value || 0,
     delta: trafficSourceGroups[source]?.delta || 0
   }));
+
+  console.log('🔍 [Transform] Final traffic source data:', trafficSourceData);
 
   debugLog.verbose('Transform complete', {
     totalItems: bigQueryData.length,
