@@ -150,7 +150,9 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
     newSelection = newSelection.filter((s, i, arr) => arr.indexOf(s) === i);
 
     setUserTouchedFilters(true);
+    // Fix: When all sources are manually selected, convert to empty array
     if (newSelection.length === enabledSources.length) {
+      console.log('🔧 [Filter] All sources selected manually, converting to empty array');
       handleFilterChange([]);
     } else {
       handleFilterChange(newSelection);
