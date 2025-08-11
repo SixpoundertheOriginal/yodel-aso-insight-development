@@ -179,10 +179,7 @@ export const useBigQueryData = (
       const { data: response, error: functionError } = await supabase.functions.invoke(
         'bigquery-aso-data',
         {
-          body: requestBody,
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          body: requestBody
         }
       );
 

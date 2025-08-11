@@ -100,6 +100,13 @@ serve(async (req) => {
 
   try {
     console.log('🔍 [BigQuery] ASO Data request received');
+    console.log('🔍 [HTTP] Request received:', {
+      method: req.method,
+      contentType: req.headers.get('content-type'),
+      contentLength: req.headers.get('content-length'),
+      authorization: req.headers.get('authorization') ? 'PRESENT' : 'MISSING',
+      userAgent: req.headers.get('user-agent')
+    });
 
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -139,13 +146,26 @@ serve(async (req) => {
       body = { organizationId: "84728f94-91db-4f9c-b025-5221fbed4065", limit: 100 };
     } else {
       try {
-        body = await req.json();
+        const rawBody = await req.text();
+        console.log('📥 [HTTP] Raw body received:', {
+          length: rawBody.length,
+          preview: rawBody.substring(0, 200),
+          isEmpty: rawBody.length === 0,
+          startsWithBrace: rawBody.trim().startsWith('{')
+        });
+        body = JSON.parse(rawBody);
+        console.log('✅ [HTTP] JSON parse successful:', {
+          hasOrganizationId: !!(body as any).organizationId,
+          hasDateRange: !!(body as any).dateRange,
+          keys: Object.keys(body as any)
+        });
       } catch (parseError) {
+        console.error('❌ [HTTP] JSON parse failed:', (parseError as any).message);
         return new Response(
           JSON.stringify({
             success: false,
-            error: 'Invalid JSON in request body',
-            meta: { executionTimeMs: Date.now() - startTime }
+            error: `Invalid JSON in request body: ${(parseError as any).message}`,
+            meta: { executionTimeMs: Date.now() - startTime, parseError: (parseError as any).message }
           }),
           {
             status: 400,
@@ -186,7 +206,8 @@ serve(async (req) => {
     if (isDevelopment()) {
       console.log('🔍 [BigQuery] Approved apps retrieved:', {
         organizationId,
-        approvedAppsCount: approvedAppIdentifiers.length
+        approvedAppsCount: approvedAppIdentifiers.length,
+        approvedApps: approvedAppIdentifiers
       });
     }
 
@@ -226,7 +247,8 @@ serve(async (req) => {
     
     // Build query components
     const clientsFilter = clientsToQuery.map(app => `'${app}'`).join(', ');
-    
+    const clientsFilterUpper = clientsToQuery.map(app => `UPPER('${app}')`).join(', ');
+
     // **PHASE 1 IMPLEMENTATION: Two-Pass Data Architecture**
     
     // STEP 1: Get ALL available traffic sources (discovery query)
@@ -234,8 +256,8 @@ serve(async (req) => {
     
     const discoveryQuery = `
       SELECT DISTINCT traffic_source
-      FROM \`${projectId}.client_reports.aso_all_apple\`
-      WHERE client IN (${clientsFilter})
+      FROM `${projectId}.client_reports.aso_all_apple`
+      WHERE UPPER(client) IN (${clientsFilterUpper})
       ${body.dateRange ? 'AND date BETWEEN @dateFrom AND @dateTo' : 'AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)'}
       ORDER BY traffic_source
     `;
@@ -376,7 +398,7 @@ serve(async (req) => {
         downloads, 
         product_page_views
       FROM \`${projectId}.client_reports.aso_all_apple\`
-      WHERE client IN (${clientsFilter})
+      WHERE UPPER(client) IN (${clientsFilterUpper})
       ${body.dateRange ? 'AND date BETWEEN @dateFrom AND @dateTo' : 'AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)'}
       ${trafficSourceFilter}
       ORDER BY date DESC

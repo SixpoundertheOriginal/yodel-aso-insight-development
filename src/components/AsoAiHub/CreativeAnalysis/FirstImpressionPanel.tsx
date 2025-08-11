@@ -174,14 +174,14 @@ function generatePositioningInsights(
   messaging: MessagingComparison,
   appInfos: Array<AppInfo | undefined>
 ): PositioningInsights {
-  const positions = appInfos.map(info => ({
+  // Strongly type position to the literal union
+  type PositionType = PositioningInsights['marketPosition'][number]['position'];
+  const getPosition = (score: number): PositionType =>
+    score > 70 ? 'innovative' : score > 40 ? 'premium' : 'mass-market';
+
+  const positions: PositioningInsights['marketPosition'] = appInfos.map(info => ({
     appName: info?.title || 'App',
-    position:
-      messaging.differentiationScore > 70
-        ? 'innovative'
-        : messaging.differentiationScore > 40
-        ? 'premium'
-        : 'mass-market',
+    position: getPosition(messaging.differentiationScore),
     reasoning: 'Based on messaging differentiation and themes',
   }));
 
