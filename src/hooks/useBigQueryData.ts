@@ -291,6 +291,14 @@ function transformBigQueryToAsoData(
   trafficSources: string[],
   meta: BigQueryMeta
 ): AsoData {
+  console.log('🔍 [Transform] Function called with:', {
+    dataPointsCount: bigQueryData.length,
+    trafficSourcesFilter: trafficSources,
+    filterIsEmpty: trafficSources.length === 0,
+    metaAvailableSources: meta.availableTrafficSources,
+    shouldShowAll: trafficSources.length === 0
+  });
+
   console.log('🔍 [Transform] Input data analysis:', {
     totalDataPoints: bigQueryData.length,
     uniqueTrafficSources: [...new Set(bigQueryData.map(item => item.traffic_source))],
@@ -380,7 +388,52 @@ function transformBigQueryToAsoData(
   });
 
   const availableTrafficSources = meta.availableTrafficSources || [];
-  const sourcesToShow = availableTrafficSources.length > 0 ? availableTrafficSources : trafficSources;
+
+  console.log('🔧 [Transform] Before sourcesToShow logic:', {
+    trafficSourcesLength: trafficSources.length,
+    availableTrafficSourcesLength: availableTrafficSources.length,
+    willUseDefault: trafficSources.length === 0 && availableTrafficSources.length === 0
+  });
+
+  const DEFAULT_TRAFFIC_SOURCES = [
+    'App Referrer',
+    'App Store Browse',
+    'App Store Search',
+    'Apple Search Ads',
+    'Event Notification',
+    'Institutional Purchase',
+    'Other',
+    'Web Referrer'
+  ];
+
+  let sourcesToShow: string[];
+
+  if (trafficSources.length === 0) {
+    sourcesToShow = availableTrafficSources.length > 0
+      ? availableTrafficSources
+      : DEFAULT_TRAFFIC_SOURCES;
+
+    console.log('✅ [Transform] No filter mode - showing all sources:', {
+      availableFromMeta: availableTrafficSources.length,
+      usingDefault: availableTrafficSources.length === 0,
+      willShow: sourcesToShow,
+      reason: 'Empty trafficSources array = no filter applied'
+    });
+  } else {
+    sourcesToShow = trafficSources;
+
+    console.log('✅ [Transform] Filter mode - showing specific sources:', {
+      requestedSources: trafficSources,
+      willShow: sourcesToShow,
+      reason: 'Specific traffic sources requested'
+    });
+  }
+
+  console.log('🔧 [Transform] After sourcesToShow logic:', {
+    sourcesToShowCount: sourcesToShow.length,
+    sourcesToShowActual: sourcesToShow,
+    logicPath: trafficSources.length === 0 ? 'NO_FILTER_SHOW_ALL' : 'SPECIFIC_FILTER'
+  });
 
   const trafficSourceData: TrafficSource[] = sourcesToShow.map(source => ({
     name: source,
