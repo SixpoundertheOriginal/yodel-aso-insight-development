@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useAsoData } from "@/context/AsoDataContext";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import {
@@ -124,41 +124,50 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
       source.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [allAvailableSources, searchTerm]);
-  
-  // Memoized handlers for performance
-  const handleSourceToggle = useMemo(
-    () => (source: string, checked: boolean) => {
-      if (disabledSources.includes(source)) return;
 
-      const newSources = checked
-        ? [...selectedSources, source].filter((s, i, arr) => arr.indexOf(s) === i)
-        : selectedSources.filter(s => s !== source);
-      setUserTouchedFilters(true);
-      onChange(newSources);
-    },
-    [selectedSources, onChange, disabledSources, setUserTouchedFilters]
-  );
-  
-  const handleSelectAll = useMemo(
-    () => () => {
-      if (!allowSelectAll) return;
-      const enabledSources = allAvailableSources.filter(
-        source => !disabledSources.includes(source)
-      );
-      setUserTouchedFilters(true);
-      onChange([...enabledSources]);
-    },
-    [allowSelectAll, allAvailableSources, disabledSources, onChange, setUserTouchedFilters]
-  );
-  
-  const handleClearAll = useMemo(
-    () => () => {
-      if (!allowClear) return;
-      setUserTouchedFilters(true);
-      onChange([]);
-    },
-    [allowClear, onChange, setUserTouchedFilters]
-  );
+  const handleFilterChange = useCallback((newSources: string[]) => {
+    console.log('🎯 [TrafficSourceFilter] Filter change:', {
+      previousSources: selectedSources,
+      newSources,
+      isSelectAll: newSources.length === 0,
+      filterDecision: newSources.length === 0 ? 'NO_FILTER_SHOW_ALL' : 'APPLY_SPECIFIC_FILTER',
+      willSendToAPI: newSources.length === 0 ? 'undefined (show all)' : newSources
+    });
+
+    onChange(newSources);
+  }, [selectedSources, onChange]);
+
+  const handleSourceToggle = useCallback((source: string, checked: boolean) => {
+    if (disabledSources.includes(source)) return;
+
+    const enabledSources = allAvailableSources.filter(s => !disabledSources.includes(s));
+    const currentSelection = selectedSources.length === 0 ? enabledSources : selectedSources;
+
+    let newSelection = checked
+      ? [...currentSelection, source]
+      : currentSelection.filter(s => s !== source);
+
+    newSelection = newSelection.filter((s, i, arr) => arr.indexOf(s) === i);
+
+    setUserTouchedFilters(true);
+    if (newSelection.length === enabledSources.length) {
+      handleFilterChange([]);
+    } else {
+      handleFilterChange(newSelection);
+    }
+  }, [disabledSources, allAvailableSources, selectedSources, setUserTouchedFilters, handleFilterChange]);
+
+  const handleSelectAll = useCallback(() => {
+    if (!allowSelectAll) return;
+    setUserTouchedFilters(true);
+    handleFilterChange([]);
+  }, [allowSelectAll, setUserTouchedFilters, handleFilterChange]);
+
+  const handleClearAll = useCallback(() => {
+    if (!allowClear) return;
+    setUserTouchedFilters(true);
+    handleFilterChange([]);
+  }, [allowClear, setUserTouchedFilters, handleFilterChange]);
   
   // Memoized display text for performance
   const displayText = useMemo(() => {
@@ -168,7 +177,7 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
       !disabledSources.includes(source)
     );
     
-    if (selectedSources.length === enabledSources.length) {
+    if (selectedSources.length > 0 && selectedSources.length === enabledSources.length) {
       return `All Sources (${enabledSources.length})`;
     }
     
@@ -243,7 +252,7 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
                   size="sm"
                   onClick={handleSelectAll}
                   className="flex-1 text-zinc-300 hover:text-foreground hover:bg-zinc-700"
-                  disabled={selectedSources.length === allAvailableSources.filter(s => !disabledSources.includes(s)).length}
+                  disabled={selectedSources.length === 0}
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Select All
@@ -273,7 +282,7 @@ const AnalyticsTrafficSourceFilter: React.FC<AnalyticsTrafficSourceFilterProps> 
                 </div>
               ) : (
                 filteredSources.map((source) => {
-                  const isSelected = selectedSources.includes(source);
+                  const isSelected = selectedSources.length === 0 || selectedSources.includes(source);
                   const isDisabled = disabledSources.includes(source);
                   
                   return (
