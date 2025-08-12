@@ -29,7 +29,7 @@ const ConversionAnalysisPage: React.FC = () => {
         <div className="flex flex-col space-y-6">
           {/* AI Insights Loading State */}
           <div className="mb-6">
-            <AiInsightsPanel />
+            <AiInsightsPanel metricsData={data} />
           </div>
           
           <h1 className="text-2xl font-bold">Conversion Analysis</h1>
@@ -58,7 +58,7 @@ const ConversionAnalysisPage: React.FC = () => {
       <div className="flex flex-col space-y-6">
         {/* AI Insights Panel - Top Priority */}
         <div className="mb-6">
-          <AiInsightsPanel maxDisplayed={3} />
+          <AiInsightsPanel metricsData={data} />
         </div>
 
         <h1 className="text-2xl font-bold">Conversion Analysis</h1>

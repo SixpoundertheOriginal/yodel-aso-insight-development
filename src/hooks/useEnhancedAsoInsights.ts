@@ -2,45 +2,25 @@ import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
+export type { EnhancedAsoInsight } from '@/types/aso';
 
-export interface EnhancedAsoInsight {
-  id?: string;
-  title: string;
-  description: string;
-  type: 'cvr_analysis' | 'impression_trends' | 'traffic_source_performance' | 
-        'keyword_optimization' | 'competitive_analysis' | 'seasonal_pattern' | 
-        'performance_alert' | 'configuration';
-  priority: 'high' | 'medium' | 'low';
-  confidence: number;
-  actionable_recommendations: string[];
-  metrics_impact: {
-    impressions?: string;
-    downloads?: string;
-    conversion_rate?: string;
-  };
-  related_kpis: string[];
-  implementation_effort?: 'low' | 'medium' | 'high';
-  expected_timeline?: string;
-  is_user_requested?: boolean;
-  created_at?: string;
-}
-
-interface UseEnhancedAsoInsightsProps {
-  organizationId: string;
-  metricsData?: any;
-  enabled?: boolean;
-}
-
-export const useEnhancedAsoInsights = ({
-  organizationId,
-  metricsData,
-  enabled = true
-}: UseEnhancedAsoInsightsProps) => {
+export const useEnhancedAsoInsights = (
+  organizationId: string,
+  metricsData?: MetricsData,
+  filterContext?: FilterContext
+) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  const ready = true;
 
   // Fetch existing insights from database
-  const { data: existingInsights = [], isLoading, refetch } = useQuery({
+  const {
+    data: existingInsights = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
     queryKey: ['enhanced-aso-insights', organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -51,7 +31,7 @@ export const useEnhancedAsoInsights = ({
         .limit(10);
 
       if (error) throw error;
-      
+
       return data.map(insight => ({
         id: insight.id,
         title: insight.title,
@@ -62,7 +42,7 @@ export const useEnhancedAsoInsights = ({
         actionable_recommendations: insight.actionable_recommendations || [],
         metrics_impact: {
           impressions: 'See detailed analysis',
-          downloads: 'See detailed analysis', 
+          downloads: 'See detailed analysis',
           conversion_rate: 'See detailed analysis'
         },
         related_kpis: insight.related_kpis || [],
@@ -70,7 +50,11 @@ export const useEnhancedAsoInsights = ({
         created_at: insight.created_at
       })) as EnhancedAsoInsight[];
     },
-    enabled: enabled && !!organizationId
+    enabled: !!organizationId && ready,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
   // Generate AI insights for specific analysis type
@@ -90,7 +74,8 @@ export const useEnhancedAsoInsights = ({
           metricsData,
           organizationId,
           insightType,
-          userRequested
+          userRequested,
+          filterContext
         }
       });
 
@@ -161,11 +146,12 @@ export const useEnhancedAsoInsights = ({
     insights: existingInsights,
     highPriorityInsights,
     userRequestedInsights,
-    
+
     // State
     isLoading,
     isGenerating,
-    
+    error,
+
     // Actions
     generateConversionAnalysis,
     generateImpressionTrends,
@@ -173,8 +159,8 @@ export const useEnhancedAsoInsights = ({
     generateKeywordOptimization,
     generateSeasonalAnalysis,
     generateComprehensiveInsights,
-    refetch,
-    
+    refetchInsights: refetch,
+
     // Utilities
     hasInsightType
   };

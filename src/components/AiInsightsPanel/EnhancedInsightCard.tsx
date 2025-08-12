@@ -11,7 +11,7 @@ import {
   Lightbulb,
   ExternalLink
 } from 'lucide-react';
-import { EnhancedAsoInsight } from '@/hooks/useEnhancedAsoInsights';
+import type { EnhancedAsoInsight } from '@/types/aso';
 
 interface EnhancedInsightCardProps {
   insight: EnhancedAsoInsight;

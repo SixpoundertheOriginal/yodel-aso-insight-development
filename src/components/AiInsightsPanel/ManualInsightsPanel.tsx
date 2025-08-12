@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,17 +9,28 @@ import { InsightResults } from './InsightResults';
 import { HeroSection, YodelButton } from '@/components/ui/design-system';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { useAsoData } from '@/context/AsoDataContext';
+import type { MetricsData, FilterContext } from '@/types/aso';
 
 interface ManualInsightsPanelProps {
   className?: string;
   organizationId: string;
+  metricsData?: MetricsData;
 }
 
 export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
   className = '',
-  organizationId
+  organizationId,
+  metricsData
 }) => {
-  const { data: dashboardData } = useAsoData();
+  const { filters } = useAsoData();
+  const filterContext: FilterContext = {
+    dateRange: {
+      start: filters.dateRange.from.toISOString(),
+      end: filters.dateRange.to.toISOString()
+    },
+    trafficSources: filters.trafficSources,
+    selectedApps: filters.selectedApps
+  };
   const [showChoices, setShowChoices] = useState(false);
   const [currentAction, setCurrentAction] = useState<string>('');
   
@@ -33,12 +44,9 @@ export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
     generateKeywordOptimization,
     generateSeasonalAnalysis,
     generateComprehensiveInsights,
-    hasInsightType
-  } = useEnhancedAsoInsights({
-    organizationId,
-    metricsData: dashboardData,
-    enabled: true
-  });
+    hasInsightType,
+    refetchInsights
+  } = useEnhancedAsoInsights(organizationId, metricsData, filterContext);
 
   const handleRequestInsight = async (type: string) => {
     setCurrentAction(type);
@@ -79,6 +87,11 @@ export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
   const handleShowChoices = () => {
     setShowChoices(true);
   };
+
+  useEffect(() => {
+    // Invalidate insights when filters change
+    refetchInsights();
+  }, [filters.dateRange, filters.trafficSources, filters.selectedApps, refetchInsights]);
 
   // Loading state during insight generation
   if (isGenerating && currentAction) {
