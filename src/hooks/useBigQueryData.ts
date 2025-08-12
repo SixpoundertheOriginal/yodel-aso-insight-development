@@ -333,6 +333,20 @@ export const useBigQueryData = (
     setData(transformed);
   }, [trafficSources, rawData, meta, applyTrafficSourceFilter]);
 
+  useEffect(() => {
+    if (data) {
+      console.log('\uD83D\uDD0D Data Hook Output Validation:', {
+        hasTimeseriesData: !!data.timeseriesData?.length,
+        hasTrafficSourceTimeseries: !!data.trafficSourceTimeseriesData?.length,
+        sampleTimeseries: data.timeseriesData?.[0],
+        sampleTrafficSourceTimeseries: data.trafficSourceTimeseriesData?.[0],
+        trafficSourceKeys: data.trafficSourceTimeseriesData?.[0]
+          ? Object.keys(data.trafficSourceTimeseriesData[0]).filter(k => k !== 'date')
+          : []
+      });
+    }
+  }, [data]);
+
   debugLog.verbose('Hook returning', {
     instanceId,
     hasData: !!data,
@@ -340,14 +354,52 @@ export const useBigQueryData = (
     error: error?.message
   });
 
-  return { 
-    data, 
-    loading, 
-    error, 
-    meta, 
-    availableTrafficSources: meta?.availableTrafficSources 
+  return {
+    data,
+    loading,
+    error,
+    meta,
+    availableTrafficSources: meta?.availableTrafficSources
   };
 };
+
+function createTrafficSourceTimeSeries(bigQueryData: BigQueryDataPoint[]) {
+  const byDate = bigQueryData.reduce((acc, item) => {
+    if (!acc[item.date]) acc[item.date] = [];
+    acc[item.date].push(item);
+    return acc;
+  }, {} as Record<string, BigQueryDataPoint[]>);
+
+  return Object.keys(byDate)
+    .map(date => {
+      const dayRecords = byDate[date];
+      const bySource = dayRecords.reduce((acc, record) => {
+        const source = record.traffic_source;
+        acc[source] = (acc[source] || 0) + record.downloads;
+        return acc;
+      }, {} as Record<string, number>);
+      const totals = dayRecords.reduce(
+        (sum, item) => ({
+          impressions: sum.impressions + item.impressions,
+          downloads: sum.downloads + item.downloads,
+          product_page_views: sum.product_page_views + (item.product_page_views || 0),
+        }),
+        { impressions: 0, downloads: 0, product_page_views: 0 }
+      );
+      return {
+        date,
+        webReferrer: bySource['Web Referrer'] || 0,
+        appStoreSearch: bySource['App Store Search'] || 0,
+        appReferrer: bySource['App Referrer'] || 0,
+        appleSearchAds: bySource['Apple Search Ads'] || 0,
+        appStoreBrowse: bySource['App Store Browse'] || 0,
+        totalDownloads: totals.downloads,
+        totalImpressions: totals.impressions,
+        totalProductPageViews: totals.product_page_views,
+      };
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
 
 function transformBigQueryToAsoData(
   bigQueryData: BigQueryDataPoint[],
@@ -385,38 +437,7 @@ function transformBigQueryToAsoData(
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = Object.entries(dateGroups)
-    .map(([date, items]) => {
-      const sourceGroups = items.reduce((acc, item) => {
-        const source = item.traffic_source;
-        acc[source] = (acc[source] || 0) + item.downloads;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const dayTotals = items.reduce(
-        (sum, item) => ({
-          impressions: sum.impressions + item.impressions,
-          downloads: sum.downloads + item.downloads,
-          product_page_views: item.product_page_views !== null ?
-            sum.product_page_views + item.product_page_views :
-            sum.product_page_views
-        }),
-        { impressions: 0, downloads: 0, product_page_views: 0 }
-      );
-
-      return {
-        date,
-        webReferrer: sourceGroups['Web Referrer'] || 0,
-        appStoreSearch: sourceGroups['App Store Search'] || 0,
-        appReferrer: sourceGroups['App Referrer'] || 0,
-        appleSearchAds: sourceGroups['Apple Search Ads'] || 0,
-        appStoreBrowse: sourceGroups['App Store Browse'] || 0,
-        totalDownloads: dayTotals.downloads,
-        totalImpressions: dayTotals.impressions,
-        totalProductPageViews: dayTotals.product_page_views
-      };
-    })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = createTrafficSourceTimeSeries(bigQueryData);
 
   const totals = bigQueryData.reduce(
     (sum, item) => ({

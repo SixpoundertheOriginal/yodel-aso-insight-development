@@ -5,7 +5,6 @@ import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import ComparisonChart from "../components/ComparisonChart";
 import { DataSourceIndicator } from "../components/DataSourceIndicator";
-import { AnalyticsTrafficSourceFilter } from "../components/Filters";
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
@@ -234,23 +233,14 @@ const Dashboard: React.FC = () => {
       {/* Enhanced Filter Controls with better debugging */}
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="flex items-center gap-4">
-            <AnalyticsTrafficSourceFilter
-              selectedSources={filters.trafficSources}
-              onChange={handleTrafficSourceChange}
-              widthClass="w-64"
-            />
-          {filters.trafficSources.length > 0 && (
+          {filters.trafficSources.length > 0 ? (
             <div className="text-sm text-zinc-400">
               {filters.trafficSources.length === 1
                 ? `Showing: ${filters.trafficSources[0]}`
-                : `${filters.trafficSources.length} sources selected`
-              }
+                : `${filters.trafficSources.length} sources selected`}
             </div>
-          )}
-          {filters.trafficSources.length === 0 && (
-            <div className="text-sm text-zinc-500">
-              Showing all traffic sources
-            </div>
+          ) : (
+            <div className="text-sm text-zinc-500">Showing all traffic sources</div>
           )}
         </div>
 

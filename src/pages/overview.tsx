@@ -2,9 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
-import TimeSeriesChart from "../components/TimeSeriesChart";
-import { useSourceFiltering } from "@/hooks/useSourceFiltering";
+import { AnalyticsTimeSeriesChart } from "@/components/AnalyticsTimeSeriesChart";
 import KpiCard from "../components/KpiCard";
 import { KPISelector, KPI_OPTIONS } from "../components/KPISelector";
 import {
@@ -24,17 +22,12 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 const OverviewPage: React.FC = () => {
-  const { data, loading, filters, setFilters, setUserTouchedFilters } = useAsoData();
+  const { data, loading } = useAsoData();
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<string>('all');
-
-  const filteredTimeseriesData = useSourceFiltering(
-    data?.trafficSourceTimeseriesData || [],
-    filters.trafficSources
-  );
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -56,15 +49,6 @@ const OverviewPage: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Handle traffic source filter change - now supports multi-select
-  const handleSourceChange = (sources: string[]) => {
-    console.log('🎯 [Overview] Multi-select traffic source filter changed:', sources);
-    setUserTouchedFilters(true);
-    setFilters(prev => ({
-      ...prev,
-      trafficSources: sources
-    }));
-  };
   // Show skeleton only on initial load when there's no data yet
   if (loading && !data) {
     return (
@@ -131,9 +115,6 @@ const OverviewPage: React.FC = () => {
     dataStructure: data ? Object.keys(data) : 'no data',
     dataType: typeof data,
     summaryData: data?.summary,
-    trafficSources: data?.trafficSources?.length || 'no traffic sources',
-    selectedTrafficSources: filters.trafficSources,
-    selectedTrafficSourcesCount: filters.trafficSources.length,
     firstTimeseriesItem: data?.timeseriesData?.[0]
   });
 
@@ -191,10 +172,6 @@ const OverviewPage: React.FC = () => {
                 <div className="flex gap-4">
                   <KPISelector value={selectedKPI} onChange={setSelectedKPI} />
                   <StatusIndicator status="success" pulse label="Live Data" />
-                  <AnalyticsTrafficSourceFilter
-                    selectedSources={filters.trafficSources}
-                    onChange={handleSourceChange}
-                  />
                 </div>
               </div>
 
@@ -251,10 +228,10 @@ const OverviewPage: React.FC = () => {
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
                     <PremiumCardContent className="p-8">
-                      <TimeSeriesChart
-                        data={data.timeseriesData}
-                        selectedKPI={selectedKPI}
-                        trafficSourceTimeseriesData={filteredTimeseriesData}
+                      <AnalyticsTimeSeriesChart
+                        timeseriesData={data?.timeseriesData || []}
+                        trafficSourceTimeseriesData={data?.trafficSourceTimeseriesData || []}
+                        selectedMetric={selectedKPI}
                       />
                     </PremiumCardContent>
                   </PremiumCard>
