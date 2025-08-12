@@ -20,6 +20,7 @@ const TrafficSources = lazy(() => import("./pages/traffic-sources"));
 const ConversionAnalysis = lazy(() => import("./pages/conversion-analysis"));
 const Overview = lazy(() => import("./pages/overview"));
 const InsightsPage = lazy(() => import("./pages/insights"));
+const TrafficPerformanceMatrix = lazy(() => import("./pages/TrafficPerformanceMatrix"));
 
 const AsoAiHub = lazy(() => import("./pages/aso-ai-hub"));
 const ChatGPTVisibilityAudit = lazy(() => import("./pages/chatgpt-visibility-audit"));
@@ -63,6 +64,7 @@ function App() {
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/traffic-sources" element={<TrafficSources />} />
                           <Route path="/insights" element={<InsightsPage />} />
+                          <Route path="/insights/traffic-performance" element={<TrafficPerformanceMatrix />} />
                           <Route path="/conversion-analysis" element={<ConversionAnalysis />} />
                           <Route path="/overview" element={<Overview />} />
                           
