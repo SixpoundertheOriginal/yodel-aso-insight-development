@@ -30,6 +30,8 @@ export interface TimeSeriesPoint {
   impressions: number;
   downloads: number;
   product_page_views: number; // Renamed to be consistent with AsoMetrics
+  product_page_cvr?: number;
+  impressions_cvr?: number;
 }
 
 export interface AsoData {
@@ -95,12 +97,20 @@ export const useMockAsoData = (
         for (let i = 0; i < 30; i++) {
           const currentDate = new Date(startDate);
           currentDate.setDate(startDate.getDate() + i);
-          
+
+          const impressions = Math.floor(Math.random() * 5000) + 500;
+          const downloads = Math.floor(Math.random() * 1000) + 100;
+          const product_page_views = Math.floor(Math.random() * 3000) + 300; // Renamed from 'pageViews'
+          const product_page_cvr = product_page_views > 0 ? (downloads / product_page_views) * 100 : 0;
+          const impressions_cvr = impressions > 0 ? (downloads / impressions) * 100 : 0;
+
           timeseriesData.push({
             date: currentDate.toISOString().split('T')[0],
-            impressions: Math.floor(Math.random() * 5000) + 500,
-            downloads: Math.floor(Math.random() * 1000) + 100,
-            product_page_views: Math.floor(Math.random() * 3000) + 300, // Renamed from 'pageViews'
+            impressions,
+            downloads,
+            product_page_views,
+            product_page_cvr,
+            impressions_cvr,
           });
         }
         

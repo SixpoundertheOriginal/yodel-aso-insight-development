@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import KpiCard from "../components/KpiCard";
+import { KPISelector, KPI_OPTIONS } from "../components/KPISelector";
 import {
   PremiumCard,
   PremiumCardHeader,
@@ -27,6 +28,7 @@ const OverviewPage: React.FC = () => {
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedKPI, setSelectedKPI] = useState<string>('all');
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -129,6 +131,35 @@ const OverviewPage: React.FC = () => {
     firstTimeseriesItem: data?.timeseriesData?.[0]
   });
 
+  const impressionsValue = data?.summary?.impressions?.value || 0;
+  const impressionsDelta = data?.summary?.impressions?.delta || 0;
+  const downloadsValue = data?.summary?.downloads?.value || 0;
+  const downloadsDelta = data?.summary?.downloads?.delta || 0;
+  const pageViewsValue = data?.summary?.product_page_views?.value || 0;
+  const pageViewsDelta = data?.summary?.product_page_views?.delta || 0;
+  const productPageCvrValue = data?.summary?.product_page_cvr?.value || 0;
+  const productPageCvrDelta = data?.summary?.product_page_cvr?.delta || 0;
+  const impressionsCvrValue = data?.summary?.impressions_cvr?.value || 0;
+  const impressionsCvrDelta = data?.summary?.impressions_cvr?.delta || 0;
+
+  const shouldShowKPI = (kpiId: string) => selectedKPI === 'all' || selectedKPI === kpiId;
+
+  const visibleKPIs = selectedKPI === 'all'
+    ? ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr']
+    : [selectedKPI];
+
+  const gridColsClass: Record<number, string> = {
+    1: 'xl:grid-cols-1',
+    2: 'xl:grid-cols-2',
+    3: 'xl:grid-cols-3',
+    4: 'xl:grid-cols-4',
+    5: 'xl:grid-cols-5',
+  };
+
+  const gridCols = gridColsClass[visibleKPIs.length] || 'xl:grid-cols-5';
+
+  const getKpiLabel = (id: string) => KPI_OPTIONS.find(k => k.id === id)?.label || '';
+
   return (
     <MainLayout>
       <div className="flex min-h-screen">
@@ -152,6 +183,7 @@ const OverviewPage: React.FC = () => {
                 </PremiumTypography.PageTitle>
 
                 <div className="flex gap-4">
+                  <KPISelector value={selectedKPI} onChange={setSelectedKPI} />
                   <StatusIndicator status="success" pulse label="Live Data" />
                   <AnalyticsTrafficSourceFilter
                     selectedSources={filters.trafficSources}
@@ -164,43 +196,56 @@ const OverviewPage: React.FC = () => {
                 <div className="flex flex-col space-y-8">
 
                   {/* KPI Cards Section */}
-                  <ResponsiveGrid cols={{ default: 1, sm: 2, md: 3, lg: 4 }} gap="lg">
-                    {data.trafficSources && data.trafficSources.map((source, index) => (
-                      <PremiumCard
-                        key={source.name}
-                        variant="interactive"
-                        intensity="medium"
-                        glowColor="orange"
-                        className="group"
-                        style={{ animationDelay: `${index * 100}ms` }}
-                      >
-                        <PremiumCardContent className="p-6">
-                          <div className="text-center">
-                            <PremiumTypography.CardTitle className="mb-2 group-hover:text-orange-400 transition-colors">
-                              {source.name}
-                            </PremiumTypography.CardTitle>
-                            <PremiumTypography.MetricValue className="mb-1">
-                              {source.value.toLocaleString()}
-                            </PremiumTypography.MetricValue>
-                            <PremiumTypography.PercentageValue className={`${source.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {source.delta >= 0 ? '+' : ''}{source.delta}%
-                            </PremiumTypography.PercentageValue>
-                          </div>
-                        </PremiumCardContent>
-                      </PremiumCard>
-                    ))}
-                  </ResponsiveGrid>
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
+                    {shouldShowKPI('impressions') && (
+                      <KpiCard
+                        title="Impressions"
+                        value={impressionsValue}
+                        delta={impressionsDelta}
+                      />
+                    )}
+                    {shouldShowKPI('downloads') && (
+                      <KpiCard
+                        title="Downloads"
+                        value={downloadsValue}
+                        delta={downloadsDelta}
+                      />
+                    )}
+                    {shouldShowKPI('product_page_views') && (
+                      <KpiCard
+                        title="Product Page Views"
+                        value={pageViewsValue}
+                        delta={pageViewsDelta}
+                      />
+                    )}
+                    {shouldShowKPI('product_page_cvr') && (
+                      <KpiCard
+                        title="Product Page CVR"
+                        value={productPageCvrValue}
+                        delta={productPageCvrDelta}
+                        isPercentage
+                      />
+                    )}
+                    {shouldShowKPI('impressions_cvr') && (
+                      <KpiCard
+                        title="Impressions CVR"
+                        value={impressionsCvrValue}
+                        delta={impressionsCvrDelta}
+                        isPercentage
+                      />
+                    )}
+                  </div>
 
                   {/* Time Series Chart */}
                   <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
                     <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
                       <PremiumTypography.SectionTitle className="flex items-center gap-3">
-                        Performance Over Time
+                        {selectedKPI === 'all' ? 'Performance Over Time' : `${getKpiLabel(selectedKPI)} Over Time`}
                         <StatusIndicator status="info" size="sm" />
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
                     <PremiumCardContent className="p-8">
-                      <TimeSeriesChart data={data.timeseriesData} />
+                      <TimeSeriesChart data={data.timeseriesData} selectedKPI={selectedKPI} />
                     </PremiumCardContent>
                   </PremiumCard>
 
