@@ -15,7 +15,7 @@ import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
 
 interface ContextualInsightsSidebarProps {
-  metricsData?: MetricsData;
+  metricsData?: any;
   organizationId: string;
   isExpanded?: boolean;
   onToggleExpanded?: (expanded: boolean) => void;
@@ -111,10 +111,7 @@ const filterContext = useMemo((): FilterContext => ({
 
   const statusIndicators = useMemo(() => ({
     insightCount: insights?.length || 0,
-    hasAlerts:
-      insights?.some(
-        (insight) => insight.priority === 'high' || insight.priority === 'critical'
-      ) || false,
+    hasAlerts: insights?.some((insight) => insight.priority === 'high') || false,
     hasChatActivity: false,
   }), [insights]);
 
@@ -130,7 +127,7 @@ const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
 
 // Clear cache when filters change
 useEffect(() => {
-  queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
+  queryClient.removeQueries({ queryKey: ['enhanced-aso-insights', organizationId] });
   setShouldAutoGenerate(true);
 }, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
 
