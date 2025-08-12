@@ -24,6 +24,12 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 32 95% 85%;
+    --success: 142 76% 46%;
+    --success-foreground: 138 76% 85%;
+    --info: 221 83% 63%;
+    --info-foreground: 224 76% 85%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
@@ -67,6 +73,12 @@
     --accent-foreground-light: 0 0% 100%;
     --destructive-light: 0 84.2% 60.2%;
     --destructive-foreground-light: 0 0% 100%;
+    --warning-light: 38 92% 50%;
+    --warning-foreground-light: 32 95% 44%;
+    --success-light: 142 76% 36%;
+    --success-foreground-light: 138 76% 32%;
+    --info-light: 221 83% 53%;
+    --info-foreground-light: 224 76% 48%;
     --border-light: 240 5.9% 90%;
     --input-light: 240 5.9% 90%;
     --ring-light: 240 5.9% 10%;
@@ -110,6 +122,12 @@
     --accent-foreground: var(--accent-foreground-light);
     --destructive: var(--destructive-light);
     --destructive-foreground: var(--destructive-foreground-light);
+    --warning: var(--warning-light);
+    --warning-foreground: var(--warning-foreground-light);
+    --success: var(--success-light);
+    --success-foreground: var(--success-foreground-light);
+    --info: var(--info-light);
+    --info-foreground: var(--info-foreground-light);
     --border: var(--border-light);
     --input: var(--input-light);
     --ring: var(--ring-light);

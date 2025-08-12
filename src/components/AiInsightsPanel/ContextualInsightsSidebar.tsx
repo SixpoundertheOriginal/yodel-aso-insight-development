@@ -97,12 +97,12 @@ useEffect(() => {
             <Card className="border-warning bg-warning/10">
               <CardContent className="p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-warning mt-0.5" />
+                  <AlertTriangle className="w-4 h-4 text-warning-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-warning font-medium">
+                    <p className="text-sm text-warning-foreground font-medium">
                       Insights need updating
                     </p>
-                    <p className="text-xs text-warning mt-1">
+                    <p className="text-xs text-warning-foreground/80 mt-1">
                       Generate insights for your current view
                     </p>
                   </div>
@@ -153,7 +153,7 @@ useEffect(() => {
           <div className="px-4 pb-4">
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
+                <Button variant="ghost" className="w-full justify-between p-2 h-auto text-foreground">
                   <span className="text-sm font-medium">
                     {remainingInsights.length} more insights
                   </span>

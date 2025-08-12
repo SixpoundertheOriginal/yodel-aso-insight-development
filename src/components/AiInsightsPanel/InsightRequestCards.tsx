@@ -64,7 +64,7 @@ export const InsightRequestCards: React.FC<InsightRequestCardsProps> = ({
     : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
 
   const cardClass = layout === 'compact'
-    ? 'p-3 hover:bg-gray-50 transition-colors'
+    ? 'p-3 hover:bg-muted/50 transition-colors'
     : 'p-4 hover:shadow-md transition-shadow';
 
   return (
@@ -72,7 +72,7 @@ export const InsightRequestCards: React.FC<InsightRequestCardsProps> = ({
       {requestTypes.map((request) => (
         <Card
           key={request.type}
-          className={`cursor-pointer border border-gray-200 ${cardClass} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+          className={`cursor-pointer border border-border ${cardClass} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
           onClick={() => onRequestInsight(request.type)}
         >
           <div className="flex items-start gap-3">
@@ -80,11 +80,11 @@ export const InsightRequestCards: React.FC<InsightRequestCardsProps> = ({
               <request.icon className={`${layout === 'compact' ? 'w-4 h-4' : 'w-5 h-5'} text-white`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className={`font-semibold ${layout === 'compact' ? 'text-xs' : 'text-sm'} text-gray-900`}>
+              <h4 className={`font-semibold ${layout === 'compact' ? 'text-xs' : 'text-sm'} text-foreground`}>
                 {request.title}
               </h4>
               {layout !== 'compact' && (
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {request.description}
                 </p>
               )}

@@ -73,10 +73,10 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className="font-semibold text-sm text-gray-900 leading-tight">
+              <h4 className={`font-semibold ${compact ? 'text-sm' : 'text-base'} text-foreground leading-tight`}>
                 {insight.title}
               </h4>
-              <p className="text-xs mt-1 text-gray-600 leading-relaxed">
+              <p className={`${compact ? 'text-xs mt-1' : 'text-sm mt-2'} text-muted-foreground leading-relaxed`}>
                 {insight.description.length > 120 ? `${insight.description.slice(0, 120)}...` : insight.description}
               </p>
             </div>
@@ -95,8 +95,8 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
 
         {insight.actionable_recommendations && insight.actionable_recommendations.length > 0 && (
           <CardContent className="pt-0 pb-3">
-            <div className="text-xs text-gray-700">
-              <span className="font-medium">Key action:</span> {insight.actionable_recommendations[0]}
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Key action:</span> {insight.actionable_recommendations[0]}
             </div>
           </CardContent>
         )}
