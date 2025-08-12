@@ -38,8 +38,7 @@ const Dashboard: React.FC = () => {
   } = useAsoData();
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState('');
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -54,12 +53,6 @@ const Dashboard: React.FC = () => {
     fetchOrganizationId();
   }, [user]);
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Enhanced traffic source filter change handler with validation
   const handleTrafficSourceChange = (sources: string[]) => {
@@ -171,25 +164,9 @@ const Dashboard: React.FC = () => {
   return (
     <MainLayout>
       <div className="flex min-h-screen">
-        <div className={`flex-1 ${!isMobile ? 'pr-80' : ''}`}>
+        {/* Main Content - Responsive padding */}
+        <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'pr-80' : 'pr-15'} main-content`}>
           <div className="space-y-6 p-6">
-            {isMobile && (
-              <Button
-                onClick={() => setIsMobileSidebarOpen(true)}
-                variant="outline"
-                size="sm"
-                className="fixed top-4 right-4 z-50"
-              >
-                <Sparkles className="w-4 h-4 mr-1" />
-                Insights
-              </Button>
-            )}
-      {/* KPI Cards with Data Source Indicator */}
-      {/*
-        Responsive Grid Breakdown:
-        - Mobile (default): 1 column (stacked)
-        - Small (sm): 2 columns 
-        - Large (lg): 3 columns
         - Extra Large (xl): 5 columns (all cards in one row)
       */}
       <div className="flex justify-between items-start mb-6">
@@ -338,20 +315,17 @@ const Dashboard: React.FC = () => {
           </Card>
         )}
           </div>
+          </div>
         </div>
-        <div
-          className={
-            isMobile
-              ? `fixed inset-y-0 right-0 z-40 transform transition-transform duration-300 ${
-                  isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-                }`
-              : 'fixed right-0 top-0 h-full w-80 z-10'
-          }
-        >
+
+        {/* Sidebar - Pass collapse state */}
+        <div className="fixed right-0 top-0 h-full z-10">
           {isDashboardDataReady ? (
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}
+              isExpanded={isSidebarExpanded}
+              onToggleExpanded={setIsSidebarExpanded}
             />
           ) : (
             <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">
@@ -362,12 +336,6 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-        {isMobile && isMobileSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-        )}
       </div>
     </MainLayout>
   );

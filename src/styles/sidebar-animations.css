@@ -1,0 +1,42 @@
+/* Sidebar Animation Styles */
+.sidebar-container {
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+}
+
+.sidebar-content {
+  transition: opacity 200ms ease-in-out;
+}
+
+.sidebar-content.collapsing {
+  opacity: 0;
+}
+
+.main-content {
+  transition: padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: padding-right;
+}
+
+/* Indicator animations */
+.status-indicator {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+/* Mobile overlay animation */
+.mobile-overlay {
+  animation: fadeIn 200ms ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
