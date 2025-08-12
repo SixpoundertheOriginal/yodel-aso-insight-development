@@ -3,7 +3,11 @@ import { useAsoData } from '@/context/AsoDataContext';
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import type { TrafficSource, TimeSeriesPoint } from '@/hooks/useMockAsoData';
-import { processTimeBasedPatterns, detectAnomalies } from '@/utils/insightCalculations';
+import {
+  processTimeBasedPatterns,
+  detectAnomalies,
+  calculateKPICorrelations,
+} from '@/utils/insightCalculations';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 import TrafficSourceCard from '@/components/TrafficSourceCard';
 
@@ -17,7 +21,6 @@ const median = (values: number[]): number => {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-const KPI_KEYS = ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr'] as const;
 
 // View 1: Traffic Source Performance Matrix with quadrant layout
 const TrafficSourceMatrix: React.FC<{ trafficSources: TrafficSource[] }> = ({ trafficSources }) => {
@@ -148,39 +151,11 @@ const TrafficSourceMatrix: React.FC<{ trafficSources: TrafficSource[] }> = ({ tr
 
 // View 2: KPI Correlation Analysis with heatmap
 const KPICorrelationMatrix: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({ timeseriesData }) => {
-  const kpis = KPI_KEYS;
-
-  const calculateCorrelation = (a: number[], b: number[]): number => {
-    const n = a.length;
-    const meanA = a.reduce((s, v) => s + v, 0) / n;
-    const meanB = b.reduce((s, v) => s + v, 0) / n;
-    let num = 0;
-    let denA = 0;
-    let denB = 0;
-    for (let i = 0; i < n; i++) {
-      num += (a[i] - meanA) * (b[i] - meanB);
-      denA += (a[i] - meanA) ** 2;
-      denB += (b[i] - meanB) ** 2;
-    }
-    const denom = Math.sqrt(denA * denB);
-    return denom === 0 ? 0 : num / denom;
-  };
-
   const matrix = useMemo(
-    () =>
-      kpis.map((k1) =>
-        kpis.map((k2) => {
-          const vals1 = timeseriesData.map(
-            (d) => d[k1 as keyof TimeSeriesPoint] as number
-          );
-          const vals2 = timeseriesData.map(
-            (d) => d[k2 as keyof TimeSeriesPoint] as number
-          );
-          return calculateCorrelation(vals1, vals2);
-        })
-      ),
-    [timeseriesData, kpis]
+    () => calculateKPICorrelations(timeseriesData),
+    [timeseriesData],
   );
+  const kpis = Object.keys(matrix);
 
   const getCorrelationColor = (correlation: number) => {
     if (correlation >= 0.8) return 'bg-green-500 text-white';
@@ -209,7 +184,10 @@ const KPICorrelationMatrix: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-6 gap-1 mb-4">
+      <div
+        className="grid gap-1 mb-4"
+        style={{ gridTemplateColumns: `repeat(${kpis.length + 1}, minmax(0, 1fr))` }}
+      >
         <div className="text-xs font-medium text-gray-600 p-2"></div>
         {kpis.map((kpi) => (
           <div
@@ -220,24 +198,27 @@ const KPICorrelationMatrix: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({
           </div>
         ))}
 
-        {matrix.map((row, rowIndex) => (
-          <React.Fragment key={rowIndex}>
+        {kpis.map((rowKpi, rowIndex) => (
+          <React.Fragment key={rowKpi}>
             <div className="text-xs font-medium text-gray-600 p-2">
-              {kpis[rowIndex]}
+              {rowKpi}
             </div>
-            {row.map((correlation, colIndex) => (
-              <div
-                key={colIndex}
-                className={`relative p-2 rounded-md text-center text-xs font-bold transition-all duration-200 hover:scale-110 cursor-pointer ${getCorrelationColor(
-                  correlation
-                )}`}
-                onMouseEnter={() =>
-                  setHovered({ row: rowIndex, col: colIndex, value: correlation })
-                }
-              >
-                {correlation.toFixed(2)}
-              </div>
-            ))}
+            {kpis.map((colKpi, colIndex) => {
+              const correlation = matrix[rowKpi][colKpi];
+              return (
+                <div
+                  key={colKpi}
+                  className={`relative p-2 rounded-md text-center text-xs font-bold transition-all duration-200 hover:scale-110 cursor-pointer ${getCorrelationColor(
+                    correlation,
+                  )}`}
+                  onMouseEnter={() =>
+                    setHovered({ row: rowIndex, col: colIndex, value: correlation })
+                  }
+                >
+                  {correlation.toFixed(2)}
+                </div>
+              );
+            })}
           </React.Fragment>
         ))}
       </div>
