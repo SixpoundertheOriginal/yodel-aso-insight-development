@@ -55,6 +55,55 @@ Provide 1-2 actionable insights that specifically explain the performance shown 
 `;
 }
 
+function buildConversationalPrompt(
+  userQuestion: string,
+  metricsData: any,
+  filterContext: any
+): string {
+  const dateRangeText = filterContext?.dateRange
+    ? `${filterContext.dateRange.start} to ${filterContext.dateRange.end}`
+    : 'selected period';
+  const trafficSourcesText = filterContext?.trafficSources?.length > 0
+    ? filterContext.trafficSources.join(', ')
+    : 'all traffic sources';
+  const appsText = filterContext?.selectedApps?.length > 0
+    ? filterContext.selectedApps.join(', ')
+    : 'all apps';
+
+  return `
+You are an expert mobile marketing analyst helping a user understand their ASO performance.
+
+CURRENT DASHBOARD CONTEXT:
+- User is viewing: ${trafficSourcesText} for ${appsText}
+- Time period: ${dateRangeText}
+- Current KPIs:
+  * Downloads: ${metricsData?.summary?.downloads?.value || 'N/A'} (${metricsData?.summary?.downloads?.delta > 0 ? '+' : ''}${metricsData?.summary?.downloads?.delta || 'N/A'} change)
+  * Impressions: ${metricsData?.summary?.impressions?.value || 'N/A'} (${metricsData?.summary?.impressions?.delta > 0 ? '+' : ''}${metricsData?.summary?.impressions?.delta || 'N/A'} change)  
+  * Conversion Rate: ${metricsData?.summary?.cvr?.value || 'N/A'}% (${metricsData?.summary?.cvr?.delta > 0 ? '+' : ''}${metricsData?.summary?.cvr?.delta || 'N/A'}% change)
+  * Product Page Views: ${metricsData?.summary?.product_page_views?.value || 'N/A'} (${metricsData?.summary?.product_page_views?.delta > 0 ? '+' : ''}${metricsData?.summary?.product_page_views?.delta || 'N/A'} change)
+
+USER QUESTION: "${userQuestion}"
+
+INSTRUCTIONS:
+- Answer the user's specific question based on the data above
+- Reference the exact numbers they can see on their dashboard
+- Provide actionable insights and recommendations
+- Keep response conversational but professional
+- Focus on the specific filtered data they're viewing
+- If the question requires data not available, suggest what additional analysis would help
+
+RESPONSE GUIDELINES:
+- Be concise (2-3 paragraphs max)
+- Use specific numbers from their dashboard
+- Provide at least one actionable recommendation
+- Explain WHY trends are happening when possible
+- Sound like an expert mobile marketing consultant
+
+FULL FILTERED DATASET FOR REFERENCE:
+${JSON.stringify(metricsData, null, 2)}
+`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,7 +139,7 @@ serve(async (req) => {
       );
     }
 
-    const { organizationId, metricsData, filterContext, insightType, userRequested = false } = await req.json();
+    const { organizationId, metricsData, filterContext, insightType, userRequested = false, userQuestion } = await req.json();
 
     console.log('🐛 AI Generator received:', {
       organizationId,
@@ -100,6 +149,7 @@ serve(async (req) => {
         trafficSources: filterContext?.trafficSources?.length || 0,
         selectedApps: filterContext?.selectedApps?.length || 0
       },
+      userQuestion: userQuestion ? `"${userQuestion.substring(0, 50)}..."` : 'none',
       dashboardNumbers: {
         downloads: metricsData?.summary?.downloads?.value,
         downloadsChange: metricsData?.summary?.downloads?.delta,
@@ -110,10 +160,45 @@ serve(async (req) => {
     if (!metricsData || !organizationId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: metricsData and organizationId' }),
-        { 
+        {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
+      );
+    }
+
+    // Handle conversational chat requests
+    if (userQuestion) {
+      if (!openAIApiKey) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'OpenAI API key not configured' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const prompt = buildConversationalPrompt(userQuestion, metricsData, filterContext);
+      console.log('🔧 Using prompt type: conversational');
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert mobile marketing analyst. Provide conversational, actionable insights."
+          },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const responseContent = aiResponse.choices[0].message?.content || '';
+
+      return new Response(
+        JSON.stringify({ success: true, response: responseContent }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

@@ -7,6 +7,7 @@ export * from './useCopilotChat';
 export * from './useBigQueryData';
 export * from './useAsoDataWithFallback';
 export * from './useFeaturingValidation';
+export { useConversationalChat } from './useConversationalChat';
 
 // Re-export workflow context for convenience
 export { useWorkflow, WorkflowProvider } from '@/context/WorkflowContext';
