@@ -309,3 +309,57 @@ export const detectAnomalies = (timeseriesData: TimeSeriesPoint[]): AnomalyResul
   };
 };
 
+export const calculateKPICorrelations = (
+  timeseriesData: TimeSeriesPoint[],
+): Record<string, Record<string, number>> => {
+  const impressions = timeseriesData
+    .map((d) => d.impressions)
+    .filter((v): v is number => v != null && !isNaN(v));
+  const downloads = timeseriesData
+    .map((d) => d.downloads)
+    .filter((v): v is number => v != null && !isNaN(v));
+  const productPageViews = timeseriesData
+    .map((d) => d.product_page_views)
+    .filter((v): v is number => v != null && !isNaN(v));
+
+  const pearsonCorrelation = (x: number[], y: number[]): number => {
+    if (x.length !== y.length || x.length < 2) return 0;
+
+    const n = x.length;
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+    const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+    const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt(
+      (n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY),
+    );
+
+    if (denominator === 0) return 0;
+    const corr = numerator / denominator;
+    return Math.max(-1, Math.min(1, corr));
+  };
+
+  const metrics = {
+    impressions,
+    downloads,
+    product_page_views: productPageViews,
+  };
+
+  const correlationMatrix: Record<string, Record<string, number>> = {};
+
+  Object.keys(metrics).forEach((metric1) => {
+    correlationMatrix[metric1] = {};
+    Object.keys(metrics).forEach((metric2) => {
+      correlationMatrix[metric1][metric2] = pearsonCorrelation(
+        metrics[metric1 as keyof typeof metrics],
+        metrics[metric2 as keyof typeof metrics],
+      );
+    });
+  });
+
+  return correlationMatrix;
+};
+
