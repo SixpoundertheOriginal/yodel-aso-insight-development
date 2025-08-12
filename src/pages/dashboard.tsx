@@ -11,12 +11,14 @@ import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toggleTrafficSourceExclusion } from "@/utils/trafficSources";
-import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
+import { AlertCircle, Calendar, Database, Filter, TestTube, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
-import { DashboardWithSidebar } from '@/components/layouts/DashboardWithSidebar';
-import { useProfile } from '@/hooks/useProfile';
 import { MetricSelector } from '@/components/charts/MetricSelector';
+import { MainLayout } from '@/layouts';
+import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
@@ -32,7 +34,30 @@ const Dashboard: React.FC = () => {
     dataSourceStatus,
     meta
   } = useAsoData();
-  const { profile } = useProfile();
+  const { user } = useAuth();
+  const [organizationId, setOrganizationId] = useState('');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const fetchOrganizationId = async () => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+      setOrganizationId(profile?.organization_id || '');
+    };
+    fetchOrganizationId();
+  }, [user]);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Enhanced traffic source filter change handler with validation
   const handleTrafficSourceChange = (sources: string[]) => {
@@ -130,8 +155,22 @@ const Dashboard: React.FC = () => {
   const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
 
   return (
-    <DashboardWithSidebar metricsData={data} organizationId={profile?.organization_id || ''}>
-      <div className="space-y-6">      {/* KPI Cards with Data Source Indicator */}
+    <MainLayout>
+      <div className="flex min-h-screen">
+        <div className={`flex-1 ${!isMobile ? 'pr-80' : ''}`}>
+          <div className="space-y-6 p-6">
+            {isMobile && (
+              <Button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                variant="outline"
+                size="sm"
+                className="fixed top-4 right-4 z-50"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                Insights
+              </Button>
+            )}
+      {/* KPI Cards with Data Source Indicator */}
       {/*
         Responsive Grid Breakdown:
         - Mobile (default): 1 column (stacked)
@@ -273,8 +312,30 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
         )}
+          </div>
+        </div>
+        <div
+          className={
+            isMobile
+              ? `fixed inset-y-0 right-0 z-40 transform transition-transform duration-300 ${
+                  isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+                }`
+              : 'fixed right-0 top-0 h-full z-10'
+          }
+        >
+          <ContextualInsightsSidebar
+            metricsData={data}
+            organizationId={organizationId}
+          />
+        </div>
+        {isMobile && isMobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-30"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
       </div>
-    </DashboardWithSidebar>
+    </MainLayout>
   );
 };
 
