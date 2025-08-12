@@ -61,23 +61,11 @@ const Dashboard: React.FC = () => {
 
   // Enhanced traffic source filter change handler with validation
   const handleTrafficSourceChange = (sources: string[]) => {
-    console.log('🎯 [Dashboard] Traffic source filter changed:', {
-      previousSources: filters.trafficSources,
-      newSources: sources,
-      isEmpty: sources.length === 0,
-      filterDecision: sources.length === 0 ? 'CLEAR_FILTER_SHOW_ALL' : 'APPLY_SPECIFIC_FILTER'
-    });
-
     setUserTouchedFilters(true);
     setFilters(prev => ({
       ...prev,
       trafficSources: sources
     }));
-    
-    // Debug log for complete filter state validation
-    if (sources.length === 0) {
-      console.debug('✅ [Dashboard] Filter cleared → trafficSources = [], expecting ALL traffic sources in data');
-    }
   };
 
   const handleExcludeAsaToggle = (exclude: boolean) => {
@@ -108,14 +96,6 @@ const Dashboard: React.FC = () => {
   const hasAnyMetrics = impressionsValue > 0 || downloadsValue > 0;
 
   const isDashboardDataReady = !loading && data && data.summary;
-
-  console.log('🐛 Dashboard data readiness:', {
-    isLoading: loading,
-    hasData: !!data,
-    hasSummary: !!data?.summary,
-    downloadsValue: data?.summary?.downloads?.value,
-    isDashboardDataReady
-  });
 
   // Enhanced empty state component
   const EmptyDataState = () => (
@@ -330,7 +310,7 @@ const Dashboard: React.FC = () => {
               ? `fixed inset-y-0 right-0 z-40 transform transition-transform duration-300 ${
                   isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'
                 }`
-              : 'fixed right-0 top-0 h-full z-10'
+              : 'fixed right-0 top-0 h-full w-80 z-10'
           }
         >
           {isDashboardDataReady ? (
@@ -339,7 +319,7 @@ const Dashboard: React.FC = () => {
               organizationId={organizationId}
             />
           ) : (
-            <div className="w-80 min-h-screen bg-background/50 border-l border-border flex items-center justify-center">
+            <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
