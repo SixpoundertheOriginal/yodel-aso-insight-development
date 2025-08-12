@@ -6,7 +6,8 @@ import {
   AsoData,
   TimeSeriesPoint,
   MetricSummary,
-  TrafficSource
+  TrafficSource,
+  TrafficSourceTimeSeriesPoint
 } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
@@ -368,8 +369,8 @@ function transformBigQueryToAsoData(
         (sum, item) => ({
           impressions: sum.impressions + item.impressions,
           downloads: sum.downloads + item.downloads,
-          product_page_views: item.product_page_views !== null ? 
-            sum.product_page_views + item.product_page_views : 
+          product_page_views: item.product_page_views !== null ?
+            sum.product_page_views + item.product_page_views :
             sum.product_page_views
         }),
         { impressions: 0, downloads: 0, product_page_views: 0 }
@@ -380,6 +381,39 @@ function transformBigQueryToAsoData(
         impressions: dayTotals.impressions,
         downloads: dayTotals.downloads,
         product_page_views: dayTotals.product_page_views
+      };
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = Object.entries(dateGroups)
+    .map(([date, items]) => {
+      const sourceGroups = items.reduce((acc, item) => {
+        const source = item.traffic_source;
+        acc[source] = (acc[source] || 0) + item.downloads;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const dayTotals = items.reduce(
+        (sum, item) => ({
+          impressions: sum.impressions + item.impressions,
+          downloads: sum.downloads + item.downloads,
+          product_page_views: item.product_page_views !== null ?
+            sum.product_page_views + item.product_page_views :
+            sum.product_page_views
+        }),
+        { impressions: 0, downloads: 0, product_page_views: 0 }
+      );
+
+      return {
+        date,
+        webReferrer: sourceGroups['Web Referrer'] || 0,
+        appStoreSearch: sourceGroups['App Store Search'] || 0,
+        appReferrer: sourceGroups['App Referrer'] || 0,
+        appleSearchAds: sourceGroups['Apple Search Ads'] || 0,
+        appStoreBrowse: sourceGroups['App Store Browse'] || 0,
+        totalDownloads: dayTotals.downloads,
+        totalImpressions: dayTotals.impressions,
+        totalProductPageViews: dayTotals.product_page_views
       };
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -485,6 +519,7 @@ function transformBigQueryToAsoData(
   return {
     summary,
     timeseriesData,
+    trafficSourceTimeseriesData,
     trafficSources: trafficSourceData
   };
 }
