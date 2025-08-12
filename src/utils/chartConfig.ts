@@ -1,9 +1,11 @@
 
 // src/utils/chartConfig.ts
 export const chartColors = {
-  impressions: "#F97316", // Yodel orange for impressions 
+  impressions: "#F97316", // Yodel orange for impressions
   downloads: "#3B82F6",   // Yodel blue for downloads
   product_page_views: "#8B5CF6",   // Complementary purple
+  product_page_cvr: "#10B981",   // Emerald for product page conversion rate
+  impressions_cvr: "#EC4899",   // Pink for impressions conversion rate
   current: "#F97316",     // Yodel orange for current data
   previous: "#94A3B8",    // Grey for previous data
 };
