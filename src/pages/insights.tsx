@@ -3,7 +3,7 @@ import { useAsoData } from '@/context/AsoDataContext';
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import type { TrafficSource, TimeSeriesPoint } from '@/hooks/useMockAsoData';
-import { format, parseISO } from 'date-fns';
+import { processTimeBasedPatterns, detectAnomalies } from '@/utils/insightCalculations';
 
 // Utility functions
 const median = (values: number[]): number => {
@@ -14,6 +14,8 @@ const median = (values: number[]): number => {
     ? sorted[mid]
     : (sorted[mid - 1] + sorted[mid]) / 2;
 };
+
+const KPI_KEYS = ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr'] as const;
 
 // View 1: Traffic Source Performance Matrix
 const TrafficSourceMatrix: React.FC<{ trafficSources: TrafficSource[] }> = ({ trafficSources }) => {
@@ -44,7 +46,7 @@ const TrafficSourceMatrix: React.FC<{ trafficSources: TrafficSource[] }> = ({ tr
 
 // View 2: KPI Correlation Analysis
 const KPICorrelationMatrix: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({ timeseriesData }) => {
-  const kpis = ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr'];
+  const kpis = KPI_KEYS;
   const calculateCorrelation = (a: number[], b: number[]): number => {
     const n = a.length;
     const meanA = a.reduce((s, v) => s + v, 0) / n;
@@ -59,10 +61,10 @@ const KPICorrelationMatrix: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({
     return denom === 0 ? 0 : num / denom;
   };
   const matrix = useMemo(() => kpis.map(k1 => kpis.map(k2 => {
-    const vals1 = timeseriesData.map(d => (d as any)[k1] as number);
-    const vals2 = timeseriesData.map(d => (d as any)[k2] as number);
+    const vals1 = timeseriesData.map(d => d[k1 as keyof TimeSeriesPoint] as number);
+    const vals2 = timeseriesData.map(d => d[k2 as keyof TimeSeriesPoint] as number);
     return calculateCorrelation(vals1, vals2);
-  })), [timeseriesData]);
+  })), [timeseriesData, kpis]);
 
   return (
     <div>
@@ -133,53 +135,62 @@ const TrafficSourceEfficiency: React.FC<{ trafficSources: TrafficSource[] }> = (
 
 // View 4: Time-Based Pattern Recognition
 const TimeBasedPatterns: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({ timeseriesData }) => {
-  const dayPatterns = useMemo(() => {
-    const map: Record<string, { total: number; count: number }> = {};
-    timeseriesData.forEach(d => {
-      const day = format(parseISO(d.date), 'EEEE');
-      if (!map[day]) map[day] = { total: 0, count: 0 };
-      map[day].total += d.product_page_cvr || 0;
-      map[day].count += 1;
-    });
-    return Object.keys(map).map(day => ({ day, avgCVR: map[day].total / map[day].count }))
-      .sort((a, b) => b.avgCVR - a.avgCVR);
-  }, [timeseriesData]);
+  const { dayPerformance, bestDay, worstDay, weekendVsWeekday } = useMemo(
+    () => processTimeBasedPatterns(timeseriesData),
+    [timeseriesData]
+  );
 
   return (
     <div>
       <h2 className="text-lg font-semibold mb-2">Time-Based Patterns</h2>
-      <ul className="text-sm">
-        {dayPatterns.map(p => (
-          <li key={p.day}>{p.day}: {p.avgCVR.toFixed(2)}% avg CVR</li>
-        ))}
-      </ul>
+      {dayPerformance.length === 0 ? (
+        <p className="text-sm">Not enough data</p>
+      ) : (
+        <>
+          <ul className="text-sm">
+            {dayPerformance.map((p) => (
+              <li key={p.dayIndex}>
+                {p.dayName}: {p.avgCVR.toFixed(2)}% avg CVR ({p.trend})
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm mt-2">
+            Best day: {bestDay}, Worst day: {worstDay}
+          </p>
+          <p className="text-sm">
+            Weekend vs Weekday CVR: {weekendVsWeekday.weekend.avgCVR.toFixed(2)}% vs {weekendVsWeekday.weekday.avgCVR.toFixed(2)}% (Δ {weekendVsWeekday.deltaCVR.toFixed(2)} pts)
+          </p>
+        </>
+      )}
     </div>
   );
 };
 
 // View 5: Anomaly Detection & Alerts
 const AnomalyDetection: React.FC<{ timeseriesData: TimeSeriesPoint[] }> = ({ timeseriesData }) => {
-  const anomalies = useMemo(() => {
-    const values = timeseriesData.map(d => d.downloads);
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const stdDev = Math.sqrt(values.reduce((s, n) => s + Math.pow(n - mean, 2), 0) / values.length);
-    return timeseriesData.map(point => {
-      const zScore = Math.abs((point.downloads - mean) / stdDev);
-      return { date: point.date, value: point.downloads, zScore, isAnomaly: zScore > 2 };
-    }).filter(p => p.isAnomaly);
-  }, [timeseriesData]);
+  const { anomalies, summary, hasAnomalies } = useMemo(
+    () => detectAnomalies(timeseriesData),
+    [timeseriesData]
+  );
 
   return (
     <div>
       <h2 className="text-lg font-semibold mb-2">Anomaly Detection</h2>
-      {anomalies.length === 0 ? (
+      {!hasAnomalies ? (
         <p className="text-sm">No anomalies detected</p>
       ) : (
-        <ul className="text-sm">
-          {anomalies.map(a => (
-            <li key={a.date}>{a.date}: {a.value} (z={a.zScore.toFixed(2)})</li>
-          ))}
-        </ul>
+        <div className="text-sm">
+          <ul>
+            {anomalies.map((a, idx) => (
+              <li key={`${a.date}-${a.metric}-${idx}`}>
+                {a.date}: {a.metric} {a.explanation} (z={a.zScore.toFixed(2)}) [{a.severity}]
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            Total anomalies: {summary.totalAnomalies} (medium: {summary.bySeverity.medium}, high: {summary.bySeverity.high}, critical: {summary.bySeverity.critical})
+          </p>
+        </div>
       )}
     </div>
   );
