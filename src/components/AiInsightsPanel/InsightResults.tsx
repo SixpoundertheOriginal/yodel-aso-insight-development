@@ -105,7 +105,7 @@ export const InsightResults: React.FC<InsightResultsProps> = ({
         {highPriorityCount > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-500" />
+              <TrendingUp className="h-4 w-4 text-destructive" />
               <h3 className="font-medium text-sm">High Priority Actions</h3>
             </div>
             <div className="grid gap-4">
