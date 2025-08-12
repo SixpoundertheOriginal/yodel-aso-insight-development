@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,20 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   // Initialize theme to ensure theme state is active
   useTheme();
 
+  const getInsightFreshness = (insightCreatedAt: string, currentFilters: any) => {
+    if (!insightCreatedAt) return { status: 'unknown', message: 'No timestamp' };
+
+    const insightAge = Date.now() - new Date(insightCreatedAt).getTime();
+    const isOld = insightAge > 5 * 60 * 1000; // 5 minutes
+
+    return {
+      status: isOld ? 'stale' : 'fresh',
+      message: isOld
+        ? `Generated ${Math.round(insightAge / 60000)} minutes ago - may not reflect current filters`
+        : 'Current analysis'
+    };
+  };
+
 // Create filter context
 const filterContext: FilterContext = {
   dateRange: {
@@ -54,8 +68,21 @@ const {
 
 // Invalidate insights when filters change
 useEffect(() => {
-  queryClient.removeQueries({ queryKey: ['enhanced-aso-insights', organizationId] });
-}, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
+  console.log('🐛 Filters changed, clearing insights cache');
+
+  // Clear insights cache
+  queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
+
+  // Optional: Auto-generate fresh insights after short delay
+  const timer = setTimeout(() => {
+    if (metricsData && !isLoading) {
+      console.log('🐛 Auto-generating insights for new filters');
+      generateComprehensiveInsights();
+    }
+  }, 1000);
+
+  return () => clearTimeout(timer);
+}, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient, metricsData, isLoading, generateComprehensiveInsights]);
 
   // Get primary insight (highest priority)
   const primaryInsight = insights?.[0];
@@ -76,6 +103,12 @@ useEffect(() => {
   const hasInsights = insights && insights.length > 0;
   const needsGeneration = !hasInsights && !isLoading;
 
+  const hasFiltersChanged = useMemo(() => {
+    // Compare current filters with last insight generation
+    // This would need to track last generation context
+    return !hasInsights && !isLoading;
+  }, [hasInsights, isLoading]);
+
   return (
     <div className="w-80 min-h-screen bg-background/50 border-l border-border flex flex-col">
       {/* Header */}
@@ -92,7 +125,7 @@ useEffect(() => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Filter Change Alert */}
-        {!hasInsights && !isLoading && (
+        {hasFiltersChanged && (
           <div className="p-4">
             <Card className="border-warning bg-warning/10">
               <CardContent className="p-3">
@@ -103,7 +136,7 @@ useEffect(() => {
                       Insights need updating
                     </p>
                     <p className="text-xs text-warning-foreground/80 mt-1">
-                      Generate insights for your current view
+                      Generate insights for: {filterContext.trafficSources.join(', ') || 'all sources'} ({filterContext.dateRange.start} to {filterContext.dateRange.end})
                     </p>
                   </div>
                 </div>
@@ -136,12 +169,15 @@ useEffect(() => {
         {/* Primary Insight */}
         {primaryInsight && (
           <div className="p-4">
-            <div className="mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <Badge variant="secondary" className="text-xs">
                 Key Finding
               </Badge>
+              <div className="text-xs text-muted-foreground">
+                {getInsightFreshness(primaryInsight.created_at, filterContext).message}
+              </div>
             </div>
-            <EnhancedInsightCard 
+            <EnhancedInsightCard
               insight={primaryInsight}
               compact={true}
             />
