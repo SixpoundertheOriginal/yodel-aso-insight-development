@@ -42,6 +42,19 @@ interface PeriodTotals {
   to?: string;
 }
 
+interface SourceMetrics {
+  impressions: number;
+  downloads: number;
+  product_page_views: number;
+}
+
+interface TrafficSourceComparison {
+  name: string;
+  current: SourceMetrics;
+  previous: SourceMetrics;
+  delta: number;
+}
+
 interface PeriodComparison {
   current: PeriodTotals;
   previous: PeriodTotals | null;
@@ -50,6 +63,7 @@ interface PeriodComparison {
     downloads: number;
     product_page_views: number;
   } | null;
+  trafficSources?: TrafficSourceComparison[];
 }
 
 interface BigQueryMeta {
@@ -382,7 +396,7 @@ function transformBigQueryToAsoData(
   );
 
   const calculateRealDelta = (current: number, previous?: number | null): number => {
-    if (!previous || previous === 0) return 0;
+    if (!previous || previous === 0) return current > 0 ? 999 : 0;
     return ((current - previous) / previous) * 100;
   };
 
@@ -432,6 +446,7 @@ function transformBigQueryToAsoData(
   }, {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>);
 
   const trafficSourceData: TrafficSource[] = Object.entries(trafficSourceGroups).map(([source, values]) => {
+    const comparison = meta.periodComparison?.trafficSources?.find(ts => ts.name === source);
     const productPageCvr = values.product_page_views > 0
       ? (values.downloads / values.product_page_views) * 100
       : 0;
@@ -439,16 +454,24 @@ function transformBigQueryToAsoData(
       ? (values.downloads / values.impressions) * 100
       : 0;
 
+    const prev = comparison?.previous || { impressions: 0, downloads: 0, product_page_views: 0 };
+    const previousProductPageCvr = prev.product_page_views > 0
+      ? (prev.downloads / prev.product_page_views) * 100
+      : 0;
+    const previousImpressionsCvr = prev.impressions > 0
+      ? (prev.downloads / prev.impressions) * 100
+      : 0;
+
     return {
       name: source,
       value: values.downloads,
-      delta: 0,
+      delta: comparison?.delta ?? 0,
       metrics: {
-        impressions: { value: values.impressions, delta: 0 },
-        downloads: { value: values.downloads, delta: 0 },
-        product_page_views: { value: values.product_page_views, delta: 0 },
-        product_page_cvr: { value: productPageCvr, delta: 0 },
-        impressions_cvr: { value: impressionsCvr, delta: 0 }
+        impressions: { value: values.impressions, delta: calculateRealDelta(values.impressions, prev.impressions) },
+        downloads: { value: values.downloads, delta: comparison?.delta ?? 0 },
+        product_page_views: { value: values.product_page_views, delta: calculateRealDelta(values.product_page_views, prev.product_page_views) },
+        product_page_cvr: { value: productPageCvr, delta: calculateRealDelta(productPageCvr, previousProductPageCvr) },
+        impressions_cvr: { value: impressionsCvr, delta: calculateRealDelta(impressionsCvr, previousImpressionsCvr) }
       }
     };
   });
