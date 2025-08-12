@@ -1,15 +1,16 @@
 
 import React from "react";
-import { MainLayout } from "../layouts";
 import { useAsoData } from "../context/AsoDataContext";
 import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
-import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import useSourceFiltering from "../hooks/useSourceFiltering";
+import { DashboardWithSidebar } from '@/components/layouts/DashboardWithSidebar';
+import { useProfile } from '@/hooks/useProfile';
 
 const ConversionAnalysisPage: React.FC = () => {
   const { data, loading } = useAsoData();
+  const { profile } = useProfile();
   
   const {
     selectedSources,
@@ -25,42 +26,26 @@ const ConversionAnalysisPage: React.FC = () => {
   // Display a loading state when data is being fetched
   if (loading || !data) {
     return (
-      <MainLayout>
-        <div className="flex flex-col space-y-6">
-          {/* AI Insights Loading State */}
-          <div className="mb-6">
-            <AiInsightsPanel metricsData={data} />
-          </div>
-          
-          <h1 className="text-2xl font-bold">Conversion Analysis</h1>
-          {/* Loading state for the cumulative section */}
-          <div className="flex justify-center">
-            <div className="w-64 h-32 bg-zinc-800 animate-pulse rounded-md"></div>
-          </div>
-          {/* Loading state for the time series chart */}
-          <div className="h-64 bg-zinc-800 animate-pulse rounded-md"></div>
-          {/* Loading state for traffic source cards */}
-          <h2 className="text-xl font-semibold mt-6">By Traffic Source</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-zinc-800 animate-pulse rounded-md"></div>
-            ))}
-          </div>
-          {/* Loading state for the second time series chart */}
-          <div className="h-64 bg-zinc-800 animate-pulse rounded-md"></div>
+      <div className="flex flex-col space-y-6">
+        <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+        <div className="flex justify-center">
+          <div className="w-64 h-32 bg-zinc-800 animate-pulse rounded-md"></div>
         </div>
-      </MainLayout>
+        <div className="h-64 bg-zinc-800 animate-pulse rounded-md"></div>
+        <h2 className="text-xl font-semibold mt-6">By Traffic Source</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-zinc-800 animate-pulse rounded-md"></div>
+          ))}
+        </div>
+        <div className="h-64 bg-zinc-800 animate-pulse rounded-md"></div>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <DashboardWithSidebar metricsData={data} organizationId={profile?.organization_id || ''}>
       <div className="flex flex-col space-y-6">
-        {/* AI Insights Panel - Top Priority */}
-        <div className="mb-6">
-          <AiInsightsPanel metricsData={data} />
-        </div>
-
         <h1 className="text-2xl font-bold">Conversion Analysis</h1>
         
         {/* Cumulative Section */}
@@ -124,7 +109,7 @@ const ConversionAnalysisPage: React.FC = () => {
           )}
         </section>
       </div>
-    </MainLayout>
+    </DashboardWithSidebar>
   );
 };
 

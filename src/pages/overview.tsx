@@ -1,9 +1,9 @@
 
 import React from "react";
-import { MainLayout } from "../layouts";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AiInsightsPanel } from "../components/AiInsightsPanel";
+import { DashboardWithSidebar } from '@/components/layouts/DashboardWithSidebar';
+import { useProfile } from '@/hooks/useProfile';
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import KpiCard from "../components/KpiCard";
@@ -19,6 +19,7 @@ import {
 
 const OverviewPage: React.FC = () => {
   const { data, loading, filters, setFilters, setUserTouchedFilters } = useAsoData();
+  const { profile } = useProfile();
 
   // Handle traffic source filter change - now supports multi-select
   const handleSourceChange = (sources: string[]) => {
@@ -32,8 +33,7 @@ const OverviewPage: React.FC = () => {
   // Show skeleton only on initial load when there's no data yet
   if (loading && !data) {
     return (
-      <MainLayout>
-        <LayoutSection spacing="md">
+      <LayoutSection spacing="md">
           <ResponsiveGrid cols={{ default: 1, lg: 2, xl: 3 }} gap="lg">
             {[1, 2, 3].map((_, index) => (
               <PremiumCard key={index} variant="glass" intensity="medium" animated>
@@ -47,7 +47,6 @@ const OverviewPage: React.FC = () => {
             ))}
           </ResponsiveGrid>
         </LayoutSection>
-      </MainLayout>
     );
   }
 
@@ -67,13 +66,8 @@ const OverviewPage: React.FC = () => {
   });
 
   return (
-    <MainLayout>
+    <DashboardWithSidebar metricsData={data} organizationId={profile?.organization_id || ''}>
       <LayoutSection spacing="md" className="relative">
-        {/* AI Insights Panel - Top Priority */}
-        <div className="mb-8">
-          <AiInsightsPanel metricsData={data} />
-        </div>
-
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <PremiumTypography.PageTitle gradient="orange" animated>
             Performance Overview
@@ -182,7 +176,7 @@ const OverviewPage: React.FC = () => {
           </div>
         )}
       </LayoutSection>
-    </MainLayout>
+    </DashboardWithSidebar>
   );
 };
 

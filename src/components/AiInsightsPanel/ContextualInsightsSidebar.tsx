@@ -1,0 +1,235 @@
+import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronRight, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
+import { useAsoData } from '@/context/AsoDataContext';
+import { InsightRequestCards } from './InsightRequestCards';
+import { EnhancedInsightCard } from './EnhancedInsightCard';
+import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
+
+interface ContextualInsightsSidebarProps {
+  metricsData?: MetricsData;
+  organizationId: string;
+}
+
+export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps> = ({
+  metricsData,
+  organizationId
+}) => {
+  const queryClient = useQueryClient();
+  const { filters } = useAsoData();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showRequestCards, setShowRequestCards] = useState(false);
+
+  // Create filter context
+  const filterContext: FilterContext = {
+    dateRange: filters.dateRange,
+    trafficSources: filters.trafficSources,
+    selectedApps: filters.selectedApps
+  };
+
+  // Enhanced insights hook
+  const {
+    insights,
+    isLoading,
+    error,
+    generateAllInsights,
+    generateSpecificInsight,
+    refetchInsights
+  } = useEnhancedAsoInsights(organizationId, metricsData, filterContext);
+
+  // Invalidate insights when filters change
+  useEffect(() => {
+    queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
+  }, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
+
+  // Get primary insight (highest priority)
+  const primaryInsight = insights?.[0];
+  const remainingInsights = insights?.slice(1) || [];
+
+  // Filter context summary for display
+  const getFilterSummary = () => {
+    const parts: string[] = [];
+    if (filterContext.trafficSources.length > 0 && filterContext.trafficSources.length < 8) {
+      parts.push(`${filterContext.trafficSources.length} traffic source(s)`);
+    }
+    if (filterContext.selectedApps.length === 1) {
+      parts.push('single app');
+    }
+    return parts.length > 0 ? parts.join(', ') : 'all data';
+  };
+
+  const hasInsights = insights && insights.length > 0;
+  const needsGeneration = !hasInsights && !isLoading;
+
+  return (
+    <div className="w-80 min-h-screen bg-gray-50/50 border-l border-gray-200 flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="w-5 h-5 text-purple-600" />
+          <h3 className="font-semibold text-gray-900">AI Insights</h3>
+        </div>
+        <p className="text-xs text-gray-500">
+          Analyzing {getFilterSummary()}
+        </p>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Filter Change Alert */}
+        {!hasInsights && !isLoading && (
+          <div className="p-4">
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-amber-800 font-medium">
+                      Insights need updating
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Generate insights for your current view
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="p-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      Generating insights...
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Analyzing your current data view
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Primary Insight */}
+        {primaryInsight && (
+          <div className="p-4">
+            <div className="mb-2">
+              <Badge variant="secondary" className="text-xs">
+                Key Finding
+              </Badge>
+            </div>
+            <EnhancedInsightCard 
+              insight={primaryInsight}
+              compact={true}
+            />
+          </div>
+        )}
+
+        {/* Expandable Additional Insights */}
+        {remainingInsights.length > 0 && (
+          <div className="px-4 pb-4">
+            <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
+                  <span className="text-sm font-medium">
+                    {remainingInsights.length} more insights
+                  </span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 mt-3">
+                {remainingInsights.map((insight) => (
+                  <EnhancedInsightCard 
+                    key={insight.id} 
+                    insight={insight}
+                    compact={true}
+                  />
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
+
+        {/* Quick Request Cards */}
+        <div className="px-4 pb-4">
+          <Collapsible open={showRequestCards} onOpenChange={setShowRequestCards}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span className="text-sm">Request Specific Analysis</span>
+                {showRequestCards ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <InsightRequestCards 
+                onRequestInsight={generateSpecificInsight}
+                isLoading={isLoading}
+                layout="compact"
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      </div>
+
+      {/* Actions Footer */}
+      <div className="p-4 border-t border-gray-200 bg-white">
+        <div className="space-y-2">
+          {needsGeneration ? (
+            <Button 
+              onClick={() => generateAllInsights()}
+              disabled={isLoading || !metricsData}
+              className="w-full"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Generate Insights
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => refetchInsights()}
+              disabled={isLoading}
+              variant="outline"
+              className="w-full"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Refresh Analysis
+            </Button>
+          )}
+          
+          {hasInsights && (
+            <Button 
+              onClick={() => generateAllInsights()}
+              disabled={isLoading}
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+            >
+              Generate New Analysis
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ContextualInsightsSidebar;

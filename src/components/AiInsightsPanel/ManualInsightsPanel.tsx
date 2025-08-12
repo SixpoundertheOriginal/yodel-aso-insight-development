@@ -130,8 +130,7 @@ export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
 
         <InsightRequestCards
           onRequestInsight={handleRequestInsight}
-          isGenerating={isGenerating}
-          hasInsightType={hasInsightType}
+          isLoading={isGenerating}
         />
 
         <div className="flex justify-center gap-4">
