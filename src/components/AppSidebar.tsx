@@ -43,13 +43,18 @@ const analyticsItems = [
     icon: Home,
   },
   {
-    title: "Analytics", 
+    title: "Analytics",
     url: "/dashboard",
     icon: BarChart3,
   },
   {
+    title: "Insights",
+    url: "/insights",
+    icon: Brain,
+  },
+  {
     title: "Conversion Intelligence",
-    url: "/conversion-analysis", 
+    url: "/conversion-analysis",
     icon: Target,
   },
 ];
