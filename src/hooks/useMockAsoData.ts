@@ -47,10 +47,23 @@ export interface TimeSeriesPoint {
   impressions_cvr?: number;
 }
 
+export interface TrafficSourceTimeSeriesPoint {
+  date: string;
+  webReferrer: number;
+  appStoreSearch: number;
+  appReferrer: number;
+  appleSearchAds: number;
+  appStoreBrowse: number;
+  totalDownloads: number;
+  totalImpressions: number;
+  totalProductPageViews: number;
+}
+
 export interface AsoData {
   summary: AsoMetrics;
   timeseriesData: TimeSeriesPoint[];
   trafficSources: TrafficSource[];
+  trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[];
 }
 
 // Complete list of all available traffic sources - static and comprehensive
@@ -103,6 +116,7 @@ export const useMockAsoData = (
         
         // Generate timeseries data for the last 30 days
         const timeseriesData: TimeSeriesPoint[] = [];
+        const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = [];
         const endDate = dateRange.to;
         const startDate = new Date(endDate);
         startDate.setDate(startDate.getDate() - 29); // 30 days including the end date
@@ -112,18 +126,39 @@ export const useMockAsoData = (
           currentDate.setDate(startDate.getDate() + i);
 
           const impressions = Math.floor(Math.random() * 5000) + 500;
-          const downloads = Math.floor(Math.random() * 1000) + 100;
           const product_page_views = Math.floor(Math.random() * 3000) + 300; // Renamed from 'pageViews'
+
+          // Generate per-source downloads and derive totals
+          const webReferrer = Math.floor(Math.random() * 200);
+          const appStoreSearch = Math.floor(Math.random() * 200);
+          const appReferrer = Math.floor(Math.random() * 200);
+          const appleSearchAds = Math.floor(Math.random() * 200);
+          const appStoreBrowse = Math.floor(Math.random() * 200);
+          const totalDownloads = webReferrer + appStoreSearch + appReferrer + appleSearchAds + appStoreBrowse;
+
+          const downloads = totalDownloads;
           const product_page_cvr = product_page_views > 0 ? (downloads / product_page_views) * 100 : 0;
           const impressions_cvr = impressions > 0 ? (downloads / impressions) * 100 : 0;
 
+          const dateStr = currentDate.toISOString().split('T')[0];
           timeseriesData.push({
-            date: currentDate.toISOString().split('T')[0],
+            date: dateStr,
             impressions,
             downloads,
             product_page_views,
             product_page_cvr,
             impressions_cvr,
+          });
+          trafficSourceTimeseriesData.push({
+            date: dateStr,
+            webReferrer,
+            appStoreSearch,
+            appReferrer,
+            appleSearchAds,
+            appStoreBrowse,
+            totalDownloads,
+            totalImpressions: impressions,
+            totalProductPageViews: product_page_views,
           });
         }
         
@@ -159,7 +194,8 @@ export const useMockAsoData = (
         const mockData: AsoData = {
           summary,
           timeseriesData,
-          trafficSources: trafficSourceData // Always return all available sources
+          trafficSources: trafficSourceData, // Always return all available sources
+          trafficSourceTimeseriesData,
         };
         
         // Simulate API delay

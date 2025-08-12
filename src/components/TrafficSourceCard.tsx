@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import DeltaIndicator from './ui/DeltaIndicator';
+import { getTrafficSourceColor } from '@/utils/trafficSourceColors';
 
 interface TrafficSourceCardProps {
   source: {
@@ -12,24 +13,18 @@ interface TrafficSourceCardProps {
   quadrant: 'scale' | 'optimize' | 'investigate' | 'expand';
 }
 
-const colorMap: Record<string, string> = {
-  'App Store Search': 'bg-blue-500',
-  'App Store Browse': 'bg-green-500',
-  'Web Referrer': 'bg-purple-500',
-  'Apple Search Ads': 'bg-yellow-500',
-  'App Referrer': 'bg-red-500',
-};
-
-const getSourceColor = (name: string) => colorMap[name] || 'bg-gray-400';
-
 const formatNumber = (num: number): string => num.toLocaleString();
 
 export const TrafficSourceCard: React.FC<TrafficSourceCardProps> = ({ source }) => {
+  const cardColor = getTrafficSourceColor(source.name);
+
   return (
-    <div className="group bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer">
+    <div
+      className="group bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:shadow-md hover:scale-105 transition-all duration-200 cursor-pointer"
+      style={{ borderLeft: `4px solid ${cardColor}` }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${getSourceColor(source.name)}`}></div>
           <span className="font-medium text-gray-900 text-sm">
             {source.displayName || source.name}
           </span>

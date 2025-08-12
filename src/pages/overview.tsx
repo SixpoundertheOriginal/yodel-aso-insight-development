@@ -4,6 +4,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnalyticsTrafficSourceFilter } from "@/components/Filters";
 import TimeSeriesChart from "../components/TimeSeriesChart";
+import { useSourceFiltering } from "@/hooks/useSourceFiltering";
 import KpiCard from "../components/KpiCard";
 import { KPISelector, KPI_OPTIONS } from "../components/KPISelector";
 import {
@@ -29,6 +30,11 @@ const OverviewPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState<string>('all');
+
+  const filteredTimeseriesData = useSourceFiltering(
+    data?.trafficSourceTimeseriesData || [],
+    filters.trafficSources
+  );
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -245,7 +251,11 @@ const OverviewPage: React.FC = () => {
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
                     <PremiumCardContent className="p-8">
-                      <TimeSeriesChart data={data.timeseriesData} selectedKPI={selectedKPI} />
+                      <TimeSeriesChart
+                        data={data.timeseriesData}
+                        selectedKPI={selectedKPI}
+                        trafficSourceTimeseriesData={filteredTimeseriesData}
+                      />
                     </PremiumCardContent>
                   </PremiumCard>
 
