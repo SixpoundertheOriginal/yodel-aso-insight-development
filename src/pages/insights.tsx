@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAsoData } from '@/context/AsoDataContext';
-import { MainLayout } from '@/layouts/MainLayout';
+import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import type { TrafficSource, TimeSeriesPoint } from '@/hooks/useMockAsoData';
 import { format, parseISO } from 'date-fns';
