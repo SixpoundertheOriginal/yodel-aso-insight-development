@@ -1,3 +1,6 @@
+export { default as ConversationalChat } from './ConversationalChat';
+export { ChatMessage } from './ChatMessage';
+export { ChatInput } from './ChatInput';
 export { ManualInsightsPanel } from './ManualInsightsPanel';
 export { InsightRequestCards } from './InsightRequestCards';
 export { InsightResults } from './InsightResults';

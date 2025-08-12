@@ -7,9 +7,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronRight, Sparkles, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { useAsoData } from '@/context/AsoDataContext';
-import { InsightRequestCards } from './InsightRequestCards';
 import { EnhancedInsightCard } from './EnhancedInsightCard';
-import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
+import { ConversationalChat } from './ConversationalChat';
+import { useConversationalChat } from '@/hooks/useConversationalChat';
+import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
 
 interface ContextualInsightsSidebarProps {
@@ -24,7 +25,6 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const queryClient = useQueryClient();
   const { filters } = useAsoData();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showRequestCards, setShowRequestCards] = useState(false);
   // Initialize theme to ensure theme state is active
   useTheme();
 
@@ -56,15 +56,16 @@ const filterContext = useMemo((): FilterContext => ({
 const {
   insights,
   isLoading,
-  error,
   generateComprehensiveInsights,
-  generateConversionAnalysis,
-  generateImpressionTrends,
-  generateTrafficSourceAnalysis,
-  generateKeywordOptimization,
-  generateSeasonalAnalysis,
   refetchInsights
 } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext);
+
+// Conversational chat hook
+const { generateChatResponse, isGenerating: isChatGenerating } = useConversationalChat({
+  organizationId,
+  metricsData: metricsData as MetricsData,
+  filterContext
+});
 
 // Track when we should auto-generate insights after filters change
 const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
@@ -212,48 +213,16 @@ useEffect(() => {
           </div>
         )}
 
-{/* Quick Request Cards */}
-<div className="px-4 pb-4">
-  <Collapsible open={showRequestCards} onOpenChange={setShowRequestCards}>
-    <CollapsibleTrigger asChild>
-      <Button variant="outline" className="w-full justify-between">
-        <span className="text-sm">Request Specific Analysis</span>
-        {showRequestCards ? (
-          <ChevronDown className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-      </Button>
-    </CollapsibleTrigger>
-    <CollapsibleContent className="mt-3">
-      <InsightRequestCards 
-        onRequestInsight={(type) => {
-          switch (type) {
-            case 'cvr_analysis':
-              generateConversionAnalysis();
-              break;
-            case 'impression_trends':
-              generateImpressionTrends();
-              break;
-            case 'traffic_source_performance':
-              generateTrafficSourceAnalysis();
-              break;
-            case 'keyword_optimization':
-              generateKeywordOptimization();
-              break;
-            case 'seasonal_pattern':
-              generateSeasonalAnalysis();
-              break;
-            default:
-              generateComprehensiveInsights();
-          }
-        }}
-        isLoading={isLoading}
-        layout="compact"
-      />
-    </CollapsibleContent>
-  </Collapsible>
-</div>
+        {/* Conversational Chat */}
+        <div className="px-4 pb-4">
+          <ConversationalChat
+            metricsData={metricsData as MetricsData}
+            filterContext={filterContext}
+            organizationId={organizationId}
+            onGenerateInsight={generateChatResponse}
+            isGenerating={isChatGenerating}
+          />
+        </div>
       </div>
 
       {/* Actions Footer */}
