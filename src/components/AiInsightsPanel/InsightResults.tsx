@@ -14,7 +14,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { EnhancedInsightCard } from './EnhancedInsightCard';
-import { EnhancedAsoInsight } from '@/hooks/useEnhancedAsoInsights';
+import type { EnhancedAsoInsight } from '@/types/aso';
 
 interface InsightResultsProps {
   insights: EnhancedAsoInsight[];

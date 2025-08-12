@@ -141,7 +141,7 @@ const Dashboard: React.FC = () => {
     <MainLayout>
       {/* AI Insights Panel - Top Priority */}
       <div className="mb-6">
-        <AiInsightsPanel maxDisplayed={3} />
+        <AiInsightsPanel metricsData={data} />
       </div>
 
       {/* KPI Cards with Data Source Indicator */}

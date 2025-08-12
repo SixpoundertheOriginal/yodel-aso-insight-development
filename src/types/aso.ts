@@ -145,3 +145,69 @@ export interface SearchContext {
 // Re-export CPP types for convenience
 export type { ScreenshotAnalysis, CppTheme, CompetitorScreenshot, CppStrategyData, CppConfig } from './cpp';
 
+// Metrics and Insight Types
+export interface MetricsData {
+  summary: {
+    impressions: { value: number; delta: number };
+    downloads: { value: number; delta: number };
+    product_page_views: { value: number; delta: number };
+    cvr: { value: number; delta: number };
+  };
+  timeseriesData: TimeSeriesPoint[];
+  trafficSources: TrafficSource[];
+  metadata?: {
+    totalRows: number;
+    executionTime: number;
+    cacheHit: boolean;
+    availableTrafficSources: string[];
+  };
+}
+
+export interface TimeSeriesPoint {
+  date: string;
+  impressions: number;
+  downloads: number;
+  product_page_views: number | null;
+  conversion_rate: number;
+}
+
+export interface TrafficSource {
+  traffic_source: string;
+  traffic_source_display: string;
+  impressions: number;
+  downloads: number;
+  product_page_views: number | null;
+  conversion_rate: number;
+}
+
+export interface FilterContext {
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  trafficSources: string[];
+  selectedApps: string[];
+}
+
+export interface EnhancedAsoInsight {
+  id?: string;
+  title: string;
+  description: string;
+  type: 'cvr_analysis' | 'impression_trends' | 'traffic_source_performance' |
+        'keyword_optimization' | 'competitive_analysis' | 'seasonal_pattern' |
+        'performance_alert' | 'configuration';
+  priority: 'high' | 'medium' | 'low';
+  confidence: number;
+  actionable_recommendations: string[];
+  metrics_impact: {
+    impressions?: string;
+    downloads?: string;
+    conversion_rate?: string;
+  };
+  related_kpis: string[];
+  implementation_effort?: 'low' | 'medium' | 'high';
+  expected_timeline?: string;
+  is_user_requested?: boolean;
+  created_at?: string;
+}
+

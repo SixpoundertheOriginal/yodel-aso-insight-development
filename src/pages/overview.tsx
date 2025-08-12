@@ -71,7 +71,7 @@ const OverviewPage: React.FC = () => {
       <LayoutSection spacing="md" className="relative">
         {/* AI Insights Panel - Top Priority */}
         <div className="mb-8">
-          <AiInsightsPanel maxDisplayed={3} />
+          <AiInsightsPanel metricsData={data} />
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
