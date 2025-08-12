@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAsoData } from '@/context/AsoDataContext';
 import TrafficSourceCard from '@/components/TrafficSourceCard';
@@ -14,16 +14,8 @@ import {
   Search,
   Target,
   Lightbulb,
+  Info,
 } from 'lucide-react';
-
-const median = (values: number[]): number => {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
-};
 
 interface TrafficQuadrants {
   scale: TrafficSource[];
@@ -31,6 +23,41 @@ interface TrafficQuadrants {
   investigate: TrafficSource[];
   expand: TrafficSource[];
 }
+
+const categorizeTrafficSources = (trafficSources: TrafficSource[]) => {
+  const volumes = trafficSources.map((s) => s.value).sort((a, b) => b - a);
+  const volumeThreshold = volumes[Math.floor(volumes.length / 2)] || 0;
+  const growthThreshold = 0;
+
+  return trafficSources.map((source) => {
+    const highVolume = source.value > volumeThreshold;
+    const highGrowth = source.delta > growthThreshold;
+
+    let quadrant: 'scale' | 'optimize' | 'investigate' | 'expand';
+    let action: string;
+    let priority: 'high' | 'medium';
+
+    if (highVolume && highGrowth) {
+      quadrant = 'scale';
+      action = 'Increase budget allocation and expand campaigns';
+      priority = 'high';
+    } else if (highVolume && !highGrowth) {
+      quadrant = 'optimize';
+      action = 'Improve conversion rates and user experience';
+      priority = 'high';
+    } else if (!highVolume && !highGrowth) {
+      quadrant = 'investigate';
+      action = 'Analyze root causes and implement fixes';
+      priority = 'medium';
+    } else {
+      quadrant = 'expand';
+      action = 'Scale successful tactics and increase reach';
+      priority = 'medium';
+    }
+
+    return { ...source, quadrant, action, priority };
+  });
+};
 
 const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
   scale,
@@ -47,19 +74,35 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
           SCALE
         </div>
         <div className="mt-12 space-y-3">
-          {scale.map((source) => (
-            <TrafficSourceCard key={source.name} source={{
-              name: source.name,
-              displayName: source.name,
-              downloads: source.value,
-              trend: source.delta,
-            }} quadrant="scale" />
-          ))}
+          {scale.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">No sources in this category</div>
+              <div className="text-xs text-gray-500">No high-volume, high-growth sources detected</div>
+            </div>
+          ) : (
+            scale.map((source) => (
+              <TrafficSourceCard
+                key={source.name}
+                source={{
+                  name: source.name,
+                  displayName: source.name,
+                  downloads: source.value,
+                  trend: source.delta,
+                }}
+                quadrant="scale"
+              />
+            ))
+          )}
         </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
-            <div className="text-green-400 font-semibold text-sm">Strategic Action</div>
-            <div className="text-green-300 text-xs">Increase budget allocation and expand campaigns</div>
+        <div className="mt-4 bg-gray-600 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium text-sm">Recommended Action</div>
+              <div className="text-gray-300 text-xs">Increase budget allocation and expand campaigns</div>
+            </div>
+            <button className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded transition-colors">
+              Take Action
+            </button>
           </div>
         </div>
       </div>
@@ -71,19 +114,35 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
           OPTIMIZE
         </div>
         <div className="mt-12 space-y-3">
-          {optimize.map((source) => (
-            <TrafficSourceCard key={source.name} source={{
-              name: source.name,
-              displayName: source.name,
-              downloads: source.value,
-              trend: source.delta,
-            }} quadrant="optimize" />
-          ))}
+          {optimize.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">No sources in this category</div>
+              <div className="text-xs text-gray-500">No high-volume, declining sources detected</div>
+            </div>
+          ) : (
+            optimize.map((source) => (
+              <TrafficSourceCard
+                key={source.name}
+                source={{
+                  name: source.name,
+                  displayName: source.name,
+                  downloads: source.value,
+                  trend: source.delta,
+                }}
+                quadrant="optimize"
+              />
+            ))
+          )}
         </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-3">
-            <div className="text-orange-400 font-semibold text-sm">Strategic Action</div>
-            <div className="text-orange-300 text-xs">Improve conversion rates and user experience</div>
+        <div className="mt-4 bg-gray-600 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium text-sm">Recommended Action</div>
+              <div className="text-gray-300 text-xs">Improve conversion rates and user experience</div>
+            </div>
+            <button className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded transition-colors">
+              Take Action
+            </button>
           </div>
         </div>
       </div>
@@ -95,19 +154,35 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
           INVESTIGATE
         </div>
         <div className="mt-12 space-y-3">
-          {investigate.map((source) => (
-            <TrafficSourceCard key={source.name} source={{
-              name: source.name,
-              displayName: source.name,
-              downloads: source.value,
-              trend: source.delta,
-            }} quadrant="investigate" />
-          ))}
+          {investigate.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">No sources in this category</div>
+              <div className="text-xs text-gray-500">No low-volume, declining sources detected</div>
+            </div>
+          ) : (
+            investigate.map((source) => (
+              <TrafficSourceCard
+                key={source.name}
+                source={{
+                  name: source.name,
+                  displayName: source.name,
+                  downloads: source.value,
+                  trend: source.delta,
+                }}
+                quadrant="investigate"
+              />
+            ))
+          )}
         </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
-            <div className="text-red-400 font-semibold text-sm">Strategic Action</div>
-            <div className="text-red-300 text-xs">Analyze root causes and implement fixes</div>
+        <div className="mt-4 bg-gray-600 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium text-sm">Recommended Action</div>
+              <div className="text-gray-300 text-xs">Analyze root causes and implement fixes</div>
+            </div>
+            <button className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded transition-colors">
+              Take Action
+            </button>
           </div>
         </div>
       </div>
@@ -119,19 +194,35 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
           EXPAND
         </div>
         <div className="mt-12 space-y-3">
-          {expand.map((source) => (
-            <TrafficSourceCard key={source.name} source={{
-              name: source.name,
-              displayName: source.name,
-              downloads: source.value,
-              trend: source.delta,
-            }} quadrant="expand" />
-          ))}
+          {expand.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">No sources in this category</div>
+              <div className="text-xs text-gray-500">No low-volume, high-growth sources detected</div>
+            </div>
+          ) : (
+            expand.map((source) => (
+              <TrafficSourceCard
+                key={source.name}
+                source={{
+                  name: source.name,
+                  displayName: source.name,
+                  downloads: source.value,
+                  trend: source.delta,
+                }}
+                quadrant="expand"
+              />
+            ))
+          )}
         </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
-            <div className="text-blue-400 font-semibold text-sm">Strategic Action</div>
-            <div className="text-blue-300 text-xs">Scale successful tactics and increase reach</div>
+        <div className="mt-4 bg-gray-600 rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-medium text-sm">Recommended Action</div>
+              <div className="text-gray-300 text-xs">Scale successful tactics and increase reach</div>
+            </div>
+            <button className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded transition-colors">
+              Take Action
+            </button>
           </div>
         </div>
       </div>
@@ -180,28 +271,43 @@ const TrafficPerformanceMatrix: React.FC = () => {
   const { data } = useAsoData();
   const trafficSources = useMemo(() => data?.trafficSources ?? [], [data]);
 
-  const medianValue = useMemo(
-    () => median(trafficSources.map((s) => s.value)),
+  const categorizedSources = useMemo(
+    () => categorizeTrafficSources(trafficSources),
     [trafficSources]
   );
 
-  const categorized = useMemo(() => {
-    const scale: typeof trafficSources = [];
-    const optimize: typeof trafficSources = [];
-    const investigate: typeof trafficSources = [];
-    const expand: typeof trafficSources = [];
+  const categorized = useMemo(
+    () => ({
+      scale: categorizedSources.filter((s) => s.quadrant === 'scale'),
+      optimize: categorizedSources.filter((s) => s.quadrant === 'optimize'),
+      investigate: categorizedSources.filter((s) => s.quadrant === 'investigate'),
+      expand: categorizedSources.filter((s) => s.quadrant === 'expand'),
+    }),
+    [categorizedSources]
+  );
 
-    trafficSources.forEach((source) => {
-      const highVolume = source.value > medianValue;
-      const positiveGrowth = source.delta > 0;
-      if (highVolume && positiveGrowth) scale.push(source);
-      else if (highVolume && !positiveGrowth) optimize.push(source);
-      else if (!highVolume && !positiveGrowth) investigate.push(source);
-      else expand.push(source);
+  useEffect(() => {
+    console.log('Traffic Source Distribution:', {
+      scale: categorized.scale,
+      optimize: categorized.optimize,
+      investigate: categorized.investigate,
+      expand: categorized.expand,
     });
+  }, [categorized]);
 
-    return { scale, optimize, investigate, expand };
-  }, [trafficSources, medianValue]);
+  useEffect(() => {
+    if (data?.trafficSources) {
+      console.log('Traffic Sources Data:', data.trafficSources);
+      const hasRealisticData = data.trafficSources.some(
+        (source) =>
+          source.metrics.downloads.value > 0 &&
+          source.metrics.impressions.value > 0
+      );
+      if (!hasRealisticData) {
+        console.warn('Traffic source data appears to be mock/placeholder data');
+      }
+    }
+  }, [data]);
 
   const summary = {
     scale: categorized.scale.length,
@@ -262,6 +368,30 @@ const TrafficPerformanceMatrix: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-gray-700 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
+              <Info className="h-5 w-5 text-orange-400" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-white mb-2">How to Use This Matrix</h4>
+              <div className="text-gray-300 text-sm space-y-1">
+                <p>
+                  • <span className="text-green-400 font-medium">SCALE</span>: High volume + growth - increase investment
+                </p>
+                <p>
+                  • <span className="text-orange-400 font-medium">OPTIMIZE</span>: High volume but declining - improve performance
+                </p>
+                <p>
+                  • <span className="text-red-400 font-medium">INVESTIGATE</span>: Low volume + declining - find root causes
+                </p>
+                <p>
+                  • <span className="text-blue-400 font-medium">EXPAND</span>: Low volume but growing - increase reach
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           <div className="xl:col-span-2">
             <TrafficSourceQuadrantMatrix

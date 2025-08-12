@@ -50,6 +50,7 @@ const InsightsPage: React.FC = () => {
             preview={`${categorized.optimize.length} sources need optimization`}
             href="/insights/traffic-performance"
             icon={Target}
+            type="traffic-performance"
             status="optimization-needed"
             metrics={{
               scale: categorized.scale.length,
@@ -64,6 +65,7 @@ const InsightsPage: React.FC = () => {
             preview="7 critical anomalies detected"
             href="/insights/anomalies"
             icon={AlertTriangle}
+            type="anomaly-detection"
             status="critical"
           />
         </div>
