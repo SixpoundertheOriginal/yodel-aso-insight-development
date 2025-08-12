@@ -20,11 +20,12 @@ import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/Contextu
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { KPISelector } from '../components/KPISelector';
+import { TrafficSourceKpiCards } from '../components/TrafficSourceKpiCards';
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('downloads');
-  const [selectedKPI, setSelectedKPI] = useState<string>('all');
+  const [selectedKPI, setSelectedKPI] = useState<string>('downloads');
   const navigate = useNavigate();
   const {
     data,
@@ -78,6 +79,10 @@ const Dashboard: React.FC = () => {
 
   const handleKPIChange = (value: string) => {
     setSelectedKPI(value);
+  };
+
+  const handleTrafficSourceClick = (sourceName: string) => {
+    handleTrafficSourceChange([sourceName]);
   };
 
 
@@ -261,6 +266,16 @@ const Dashboard: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Traffic Source KPI Cards */}
+      {data.trafficSources && (
+        <TrafficSourceKpiCards
+          sources={data.trafficSources}
+          selectedKPI={selectedKPI === 'all' ? 'downloads' : selectedKPI}
+          onSourceClick={handleTrafficSourceClick}
+          summary={data.summary}
+        />
+      )}
 
       {/* Performance Metrics Chart or Empty State */}
       {hasNoData || !hasAnyMetrics ? (
