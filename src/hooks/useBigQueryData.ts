@@ -1,9 +1,16 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { DateRange, AsoData, TimeSeriesPoint, MetricSummary, TrafficSource } from './useMockAsoData';
+import {
+  DateRange,
+  AsoData,
+  TimeSeriesPoint,
+  MetricSummary,
+  TrafficSource
+} from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
+import { filterByTrafficSources } from '@/utils/filterByTrafficSources';
 
 // Development-only logging helper
 const devLog = (message: string, data?: any) => {
@@ -12,7 +19,7 @@ const devLog = (message: string, data?: any) => {
   }
 };
 
-interface BigQueryDataPoint {
+export interface BigQueryDataPoint {
   date: string;
   organization_id: string;
   traffic_source: string;
@@ -109,6 +116,7 @@ export const useBigQueryData = (
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   const [meta, setMeta] = useState<BigQueryMeta | undefined>(undefined);
+  const [rawData, setRawData] = useState<BigQueryDataPoint[]>([]);
   const availableSourcesRef = useRef<string[]>([]);
   
   // Get selected apps from BigQuery app selector
@@ -123,31 +131,35 @@ export const useBigQueryData = (
 
   // ✅ ENHANCED: Stable memoized filters with request deduplication
   const stableFilters = useMemo(() => {
-    // Ensure dates are properly formatted
-    const fromDate = typeof dateRange.from === 'string' 
-      ? dateRange.from 
-      : dateRange.from.toISOString().split('T')[0];
-    const toDate = typeof dateRange.to === 'string' 
-      ? dateRange.to 
-      : dateRange.to.toISOString().split('T')[0];
-    
+    const fromDate =
+      typeof dateRange.from === 'string'
+        ? dateRange.from
+        : dateRange.from.toISOString().split('T')[0];
+    const toDate =
+      typeof dateRange.to === 'string'
+        ? dateRange.to
+        : dateRange.to.toISOString().split('T')[0];
+
     return {
       organizationId,
       selectedApps: [...selectedApps],
-      dateRange: { from: fromDate, to: toDate },
-      trafficSources: [...trafficSources]
+      dateRange: { from: fromDate, to: toDate }
     };
   }, [
     organizationId,
-    selectedApps.join(','), 
-    typeof dateRange.from === 'string' ? dateRange.from : dateRange.from.toISOString().split('T')[0],
-    typeof dateRange.to === 'string' ? dateRange.to : dateRange.to.toISOString().split('T')[0],
-    trafficSources.join(',')
+    selectedApps.join(','),
+    typeof dateRange.from === 'string'
+      ? dateRange.from
+      : dateRange.from.toISOString().split('T')[0],
+    typeof dateRange.to === 'string'
+      ? dateRange.to
+      : dateRange.to.toISOString().split('T')[0]
   ]);
 
   // ✅ ENHANCED: Request deduplication key
-  const requestKey = useMemo(() => 
-    `${stableFilters.organizationId}-${stableFilters.selectedApps.join(',')}-${stableFilters.dateRange.from}-${stableFilters.dateRange.to}-${stableFilters.trafficSources.join(',')}`,
+  const requestKey = useMemo(
+    () =>
+      `${stableFilters.organizationId}-${stableFilters.selectedApps.join(',')}-${stableFilters.dateRange.from}-${stableFilters.dateRange.to}`,
     [stableFilters]
   );
 
@@ -159,123 +171,126 @@ export const useBigQueryData = (
     hasRegistration: !!registerHookInstance
   });
 
-  const fetchData = useCallback(async (abortSignal?: AbortSignal) => {
-    if (!stableFilters.organizationId || !ready) {
-      debugLog.verbose('Skipping fetch - not ready', {
-        hasOrganizationId: !!stableFilters.organizationId,
-        ready
-      });
-      return null;
-    }
+  const applyTrafficSourceFilter = useCallback(
+    (sourceData: BigQueryDataPoint[], selectedSources: string[], meta: BigQueryMeta) => {
+      const filtered = filterByTrafficSources(sourceData, selectedSources);
+      return transformBigQueryToAsoData(filtered, meta);
+    },
+    []
+  );
 
-    // Check if request was aborted before starting
-    if (abortSignal?.aborted) {
-      debugLog.verbose('Request aborted before fetch');
-      return null;
-    }
-
-    const startTime = Date.now();
-    setLoading(true);
-    setError(null);
-    setMeta(undefined);
-
-    try {
-      const requestTrafficSources =
-        stableFilters.trafficSources.length > 0
-          ? stableFilters.trafficSources
-          : availableSourcesRef.current.length > 0
-            ? [...availableSourcesRef.current]
-            : [];
-
-      const requestBody = {
-        organizationId: stableFilters.organizationId,
-        dateRange: stableFilters.dateRange,
-        selectedApps: stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
-        trafficSources: requestTrafficSources
-      };
-
-      debugLog.verbose('Making request to edge function', { requestBody });
-
-      // Check abort signal before making request
-      if (abortSignal?.aborted) {
-        debugLog.verbose('Request aborted before API call');
+  const fetchData = useCallback(
+    async (abortSignal?: AbortSignal) => {
+      if (!stableFilters.organizationId || !ready) {
+        debugLog.verbose('Skipping fetch - not ready', {
+          hasOrganizationId: !!stableFilters.organizationId,
+          ready
+        });
         return null;
       }
 
-      const { data: response, error: functionError } = await supabase.functions.invoke(
-        'bigquery-aso-data',
-        {
-          body: requestBody
+      if (abortSignal?.aborted) {
+        debugLog.verbose('Request aborted before fetch');
+        return null;
+      }
+
+      const startTime = Date.now();
+      setLoading(true);
+      setError(null);
+      setMeta(undefined);
+
+      try {
+        const requestBody = {
+          organizationId: stableFilters.organizationId,
+          dateRange: stableFilters.dateRange,
+          selectedApps:
+            stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
+          trafficSources: [] as string[]
+        };
+
+        debugLog.verbose('Making request to edge function', { requestBody });
+
+        if (abortSignal?.aborted) {
+          debugLog.verbose('Request aborted before API call');
+          return null;
         }
-      );
 
-      if (functionError) {
-        debugLog.error('Edge function error', functionError);
-        throw new Error(`BigQuery function error: ${functionError.message}`);
-      }
+        const { data: response, error: functionError } = await supabase.functions.invoke(
+          'bigquery-aso-data',
+          {
+            body: requestBody
+          }
+        );
 
-      const bigQueryResponse = response as BigQueryResponse;
+        if (functionError) {
+          debugLog.error('Edge function error', functionError);
+          throw new Error(`BigQuery function error: ${functionError.message}`);
+        }
 
-      if (!bigQueryResponse.success) {
-        debugLog.error('Service error', bigQueryResponse.error);
-        throw new Error(bigQueryResponse.error || 'BigQuery request failed');
-      }
+        const bigQueryResponse = response as BigQueryResponse;
 
-      const executionTime = Date.now() - startTime;
-      
-      debugLog.verbose('Response received', { 
-        recordCount: bigQueryResponse.data?.length,
-        executionTimeMs: executionTime,
-        availableTrafficSources: bigQueryResponse.meta.availableTrafficSources?.length
-      });
+        if (!bigQueryResponse.success) {
+          debugLog.error('Service error', bigQueryResponse.error);
+          throw new Error(bigQueryResponse.error || 'BigQuery request failed');
+        }
 
-      setMeta(bigQueryResponse.meta);
-      availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
+        const executionTime = Date.now() - startTime;
 
-      const transformedData = transformBigQueryToAsoData(
-        bigQueryResponse.data || [],
-        bigQueryResponse.meta
-      );
-
-      setData(transformedData);
-
-      // Register with context
-      if (registerHookInstance) {
-        registerHookInstance(instanceId, {
-          instanceId,
-          availableTrafficSources: bigQueryResponse.meta.availableTrafficSources || [],
-          sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
-          data: transformedData,
-          metadata: bigQueryResponse.meta,
-          loading: false,
-          lastUpdated: Date.now()
+        debugLog.verbose('Response received', {
+          recordCount: bigQueryResponse.data?.length,
+          executionTimeMs: executionTime,
+          availableTrafficSources: bigQueryResponse.meta.availableTrafficSources?.length
         });
-      }
 
-      return transformedData;
-    } catch (err) {
-      debugLog.error('Error fetching data', err);
-      const error = err instanceof Error ? err : new Error('Unknown BigQuery error');
-      setError(error);
-      
-      // Register error with context  
-      if (registerHookInstance) {
-        registerHookInstance(instanceId, {
-          instanceId,
-          availableTrafficSources: [],
-          sourcesCount: 0,
-          data: null,
-          metadata: null,
-          loading: false,
-          error,
-          lastUpdated: Date.now()
-        });
+        setMeta(bigQueryResponse.meta);
+        availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
+        setRawData(bigQueryResponse.data || []);
+
+        const transformedData = applyTrafficSourceFilter(
+          bigQueryResponse.data || [],
+          trafficSources,
+          bigQueryResponse.meta
+        );
+
+        setData(transformedData);
+
+        if (registerHookInstance) {
+          registerHookInstance(instanceId, {
+            instanceId,
+            availableTrafficSources: bigQueryResponse.meta.availableTrafficSources || [],
+            sourcesCount: bigQueryResponse.meta.availableTrafficSources?.length || 0,
+            data: transformedData,
+            metadata: bigQueryResponse.meta,
+            loading: false,
+            lastUpdated: Date.now()
+          });
+        }
+
+        return transformedData;
+      } catch (err) {
+        debugLog.error('Error fetching data', err);
+        const error = err instanceof Error ? err : new Error('Unknown BigQuery error');
+        setError(error);
+
+        if (registerHookInstance) {
+          registerHookInstance(instanceId, {
+            instanceId,
+            availableTrafficSources: [],
+            sourcesCount: 0,
+            data: null,
+            metadata: null,
+            loading: false,
+            error,
+            lastUpdated: Date.now()
+          });
+        }
+        return null;
+      } finally {
+        setLoading(false);
       }
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [stableFilters, ready, instanceId, registerHookInstance]);
+    },
+    [stableFilters, ready, instanceId, registerHookInstance, applyTrafficSourceFilter]
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -295,6 +310,13 @@ export const useBigQueryData = (
       abortController.abort();
     };
   }, [fetchData]);
+
+  // Recompute data when traffic source filter changes without refetching
+  useEffect(() => {
+    if (!meta) return;
+    const transformed = applyTrafficSourceFilter(rawData, trafficSources, meta);
+    setData(transformed);
+  }, [trafficSources, rawData, meta, applyTrafficSourceFilter]);
 
   debugLog.verbose('Hook returning', {
     instanceId,
