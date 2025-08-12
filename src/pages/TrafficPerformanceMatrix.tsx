@@ -177,7 +177,8 @@ const PlaceholderPanel: React.FC<{ title: string }> = ({ title }) => (
 
 const TrafficPerformanceMatrix: React.FC = () => {
   const navigate = useNavigate();
-  const { trafficSources } = useAsoData();
+  const { data } = useAsoData();
+  const trafficSources = useMemo(() => data?.trafficSources ?? [], [data]);
 
   const medianValue = useMemo(
     () => median(trafficSources.map((s) => s.value)),

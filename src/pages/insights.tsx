@@ -14,7 +14,8 @@ const median = (values: number[]): number => {
 };
 
 const InsightsPage: React.FC = () => {
-  const { trafficSources } = useAsoData();
+  const { data } = useAsoData();
+  const trafficSources = useMemo(() => data?.trafficSources ?? [], [data]);
 
   const medianValue = useMemo(
     () => median(trafficSources.map((s) => s.value)),
