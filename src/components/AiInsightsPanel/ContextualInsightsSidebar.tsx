@@ -42,15 +42,15 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
     };
   };
 
-// Create filter context
-const filterContext: FilterContext = {
+// Create filter context (memoized to avoid recreation on each render)
+const filterContext = useMemo((): FilterContext => ({
   dateRange: {
     start: filters.dateRange.from?.toISOString?.() || new Date().toISOString(),
     end: filters.dateRange.to?.toISOString?.() || new Date().toISOString(),
   },
   trafficSources: filters.trafficSources,
-  selectedApps: filters.selectedApps
-};
+  selectedApps: filters.selectedApps,
+}), [filters.dateRange, filters.trafficSources, filters.selectedApps]);
 
 // Enhanced insights hook
 const {
@@ -66,23 +66,24 @@ const {
   refetchInsights
 } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext);
 
-// Invalidate insights when filters change
+// Track when we should auto-generate insights after filters change
+const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
+
+// Clear cache when filters change
 useEffect(() => {
   console.log('🐛 Filters changed, clearing insights cache');
-
-  // Clear insights cache
   queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
+  setShouldAutoGenerate(true);
+}, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
 
-  // Optional: Auto-generate fresh insights after short delay
-  const timer = setTimeout(() => {
-    if (metricsData && !isLoading) {
-      console.log('🐛 Auto-generating insights for new filters');
-      generateComprehensiveInsights();
-    }
-  }, 1000);
-
-  return () => clearTimeout(timer);
-}, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient, metricsData, isLoading, generateComprehensiveInsights]);
+// Auto-generate insights once metrics are ready
+useEffect(() => {
+  if (shouldAutoGenerate && metricsData && !isLoading) {
+    console.log('🐛 Auto-generating insights for new filters');
+    setShouldAutoGenerate(false);
+    generateComprehensiveInsights();
+  }
+}, [shouldAutoGenerate, metricsData, isLoading, generateComprehensiveInsights]);
 
   // Get primary insight (highest priority)
   const primaryInsight = insights?.[0];

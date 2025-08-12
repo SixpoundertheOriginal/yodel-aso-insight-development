@@ -5,7 +5,8 @@ import React, {
   useState,
   ReactNode,
   useCallback,
-  useEffect
+  useEffect,
+  useMemo
 } from 'react';
 import { useAsoDataWithFallback, DataSource } from '../hooks/useAsoDataWithFallback';
 import { AsoData, DateRange } from '../hooks/useMockAsoData';
@@ -60,7 +61,12 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
   const { selectedApps } = useBigQueryAppSelection();
 
   useEffect(() => {
-    setFilters(prev => ({ ...prev, selectedApps }));
+    setFilters(prev => {
+      if (JSON.stringify(prev.selectedApps) !== JSON.stringify(selectedApps)) {
+        return { ...prev, selectedApps };
+      }
+      return prev;
+    });
   }, [selectedApps]);
 
   // Use the fallback hook with the current filters
@@ -81,21 +87,33 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     setFilters(newFilters);
   }, []);
 
+  const contextValue = useMemo(
+    () => ({
+      data,
+      loading,
+      error,
+      filters,
+      setFilters: updateFilters,
+      setUserTouchedFilters,
+      currentDataSource,
+      dataSourceStatus,
+      availableTrafficSources,
+      meta: undefined // Will be populated by BigQuery hook if needed
+    }),
+    [
+      data,
+      loading,
+      error,
+      filters,
+      updateFilters,
+      currentDataSource,
+      dataSourceStatus,
+      availableTrafficSources
+    ]
+  );
+
   return (
-    <AsoDataContext.Provider
-      value={{
-        data,
-        loading,
-        error,
-        filters,
-        setFilters: updateFilters,
-        setUserTouchedFilters,
-        currentDataSource,
-        dataSourceStatus,
-        availableTrafficSources,
-        meta: undefined // Will be populated by BigQuery hook if needed
-      }}
-    >
+    <AsoDataContext.Provider value={contextValue}>
       {children}
     </AsoDataContext.Provider>
   );
