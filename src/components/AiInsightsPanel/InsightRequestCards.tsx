@@ -1,179 +1,97 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
-  Eye, 
-  Target, 
-  Search, 
-  Calendar,
-  BarChart3,
-  Loader2,
-  CheckCircle
-} from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { TrendingUp, Eye, Target, Search, Calendar } from 'lucide-react';
 
-interface InsightRequestCard {
-  id: string;
+interface RequestType {
+  type: string;
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  type: string;
-  priority: 'high' | 'medium' | 'low';
-  estimatedTime: string;
-  hasExisting: boolean;
+  gradient: string;
 }
 
 interface InsightRequestCardsProps {
-  onRequestInsight: (type: string) => Promise<void>;
-  isGenerating: boolean;
-  hasInsightType: (type: string) => boolean;
+  onRequestInsight: (type: string) => void;
+  isLoading?: boolean;
+  layout?: 'default' | 'compact';
 }
+
+const requestTypes: RequestType[] = [
+  {
+    type: 'cvr_analysis',
+    title: 'Conversion Rate Analysis',
+    description: 'Analyze conversion rates by source',
+    icon: TrendingUp,
+    gradient: 'from-purple-500 to-indigo-500'
+  },
+  {
+    type: 'impression_trends',
+    title: 'Impression Trends',
+    description: 'Explore impression patterns',
+    icon: Eye,
+    gradient: 'from-blue-500 to-cyan-500'
+  },
+  {
+    type: 'traffic_source_performance',
+    title: 'Traffic Source Performance',
+    description: 'Compare sources and optimize',
+    icon: Target,
+    gradient: 'from-green-500 to-emerald-500'
+  },
+  {
+    type: 'keyword_optimization',
+    title: 'Keyword Optimization',
+    description: 'Improve keyword rankings',
+    icon: Search,
+    gradient: 'from-orange-500 to-amber-500'
+  },
+  {
+    type: 'seasonal_pattern',
+    title: 'Seasonal Patterns',
+    description: 'Identify seasonal trends',
+    icon: Calendar,
+    gradient: 'from-pink-500 to-rose-500'
+  }
+];
 
 export const InsightRequestCards: React.FC<InsightRequestCardsProps> = ({
   onRequestInsight,
-  isGenerating,
-  hasInsightType
+  isLoading = false,
+  layout = 'default'
 }) => {
-  const requestCards: InsightRequestCard[] = [
-    {
-      id: 'cvr_analysis',
-      title: 'Conversion Rate Deep Dive',
-      description: 'Analyze conversion rates by traffic source and identify optimization opportunities',
-      icon: TrendingUp,
-      type: 'cvr_analysis',
-      priority: 'high',
-      estimatedTime: '30 seconds',
-      hasExisting: hasInsightType('cvr_analysis')
-    },
-    {
-      id: 'impression_trends',
-      title: 'Impression Trend Analysis',
-      description: 'Examine impression patterns, seasonality, and visibility optimization strategies',
-      icon: Eye,
-      type: 'impression_trends', 
-      priority: 'high',
-      estimatedTime: '30 seconds',
-      hasExisting: hasInsightType('impression_trends')
-    },
-    {
-      id: 'traffic_source_performance',
-      title: 'Traffic Source Performance',
-      description: 'Compare App Store Search vs Browse vs Referral performance and optimization tactics',
-      icon: Target,
-      type: 'traffic_source_performance',
-      priority: 'medium',
-      estimatedTime: '45 seconds',
-      hasExisting: hasInsightType('traffic_source_performance')
-    },
-    {
-      id: 'keyword_optimization',
-      title: 'Keyword Optimization',
-      description: 'Get specific keyword ranking improvements and metadata optimization recommendations',
-      icon: Search,
-      type: 'keyword_optimization',
-      priority: 'high',
-      estimatedTime: '45 seconds',
-      hasExisting: hasInsightType('keyword_optimization')
-    },
-    {
-      id: 'seasonal_pattern',
-      title: 'Seasonal Trend Analysis',
-      description: 'Identify seasonal patterns, timing opportunities, and cyclical performance trends',
-      icon: Calendar,
-      type: 'seasonal_pattern',
-      priority: 'medium',
-      estimatedTime: '30 seconds',
-      hasExisting: hasInsightType('seasonal_pattern')
-    }
-  ];
+  const gridClass = layout === 'compact'
+    ? 'grid grid-cols-1 gap-2'
+    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  const cardClass = layout === 'compact'
+    ? 'p-3 hover:bg-gray-50 transition-colors'
+    : 'p-4 hover:shadow-md transition-shadow';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">Request Specific Insights</h3>
-        <Badge variant="outline" className="text-xs">
-          AI-Powered Analysis
-        </Badge>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {requestCards.map((card) => {
-          const IconComponent = card.icon;
-          const isDisabled = isGenerating;
-          
-          return (
-            <Card 
-              key={card.id} 
-              className={`relative transition-all duration-200 hover:shadow-md border ${
-                card.hasExisting ? 'border-green-200 bg-green-50/30' : 'border-border'
-              }`}
-            >
-              {card.hasExisting && (
-                <div className="absolute top-2 right-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                </div>
+    <div className={gridClass}>
+      {requestTypes.map((request) => (
+        <Card
+          key={request.type}
+          className={`cursor-pointer border border-gray-200 ${cardClass} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+          onClick={() => onRequestInsight(request.type)}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`${layout === 'compact' ? 'w-8 h-8' : 'w-10 h-10'} bg-gradient-to-br ${request.gradient} rounded-lg flex items-center justify-center`}>
+              <request.icon className={`${layout === 'compact' ? 'w-4 h-4' : 'w-5 h-5'} text-white`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className={`font-semibold ${layout === 'compact' ? 'text-xs' : 'text-sm'} text-gray-900`}>
+                {request.title}
+              </h4>
+              {layout !== 'compact' && (
+                <p className="text-xs text-gray-600 mt-1">
+                  {request.description}
+                </p>
               )}
-              
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <IconComponent className="h-5 w-5 text-primary" />
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${getPriorityColor(card.priority)}`}
-                  >
-                    {card.priority}
-                  </Badge>
-                </div>
-                <CardTitle className="text-base">{card.title}</CardTitle>
-                <CardDescription className="text-sm">
-                  {card.description}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <BarChart3 className="h-3 w-3" />
-                    {card.estimatedTime}
-                  </span>
-                  
-                  <Button
-                    size="sm"
-                    variant={card.hasExisting ? "outline" : "default"}
-                    className="text-xs"
-                    disabled={isDisabled}
-                    onClick={() => onRequestInsight(card.type)}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : card.hasExisting ? (
-                      'Refresh'
-                    ) : (
-                      'Analyze'
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-      
-      <div className="text-xs text-muted-foreground text-center bg-muted/30 p-3 rounded-lg">
-        💡 <strong>Pro Tip:</strong> Request specific insights to get targeted recommendations for your biggest optimization opportunities
-      </div>
+            </div>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 };

@@ -1,12 +1,10 @@
 
 // src/pages/dashboard.tsx
 import React, { useState, useEffect } from "react";
-import { MainLayout } from "../layouts";
 import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import ComparisonChart from "../components/ComparisonChart";
 import { DataSourceIndicator } from "../components/DataSourceIndicator";
-import { AiInsightsPanel } from "../components/AiInsightsPanel";
 import { AnalyticsTrafficSourceFilter } from "../components/Filters";
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
@@ -16,9 +14,13 @@ import { toggleTrafficSourceExclusion } from "@/utils/trafficSources";
 import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
+import { DashboardWithSidebar } from '@/components/layouts/DashboardWithSidebar';
+import { useProfile } from '@/hooks/useProfile';
+import { MetricSelector } from '@/components/charts/MetricSelector';
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState('downloads');
   const navigate = useNavigate();
   const {
     data,
@@ -30,17 +32,7 @@ const Dashboard: React.FC = () => {
     dataSourceStatus,
     meta
   } = useAsoData();
-
-  // Debounced filter updates to prevent excessive API calls
-  const [debouncedFilters, setDebouncedFilters] = useState(filters);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDebouncedFilters(filters);
-    }, 300); // 300ms debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [filters]);
+  const { profile } = useProfile();
 
   // Enhanced traffic source filter change handler with validation
   const handleTrafficSourceChange = (sources: string[]) => {
@@ -138,13 +130,8 @@ const Dashboard: React.FC = () => {
   const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
 
   return (
-    <MainLayout>
-      {/* AI Insights Panel - Top Priority */}
-      <div className="mb-6">
-        <AiInsightsPanel metricsData={data} />
-      </div>
-
-      {/* KPI Cards with Data Source Indicator */}
+    <DashboardWithSidebar metricsData={data} organizationId={profile?.organization_id || ''}>
+      <div className="space-y-6">      {/* KPI Cards with Data Source Indicator */}
       {/*
         Responsive Grid Breakdown:
         - Mobile (default): 1 column (stacked)
@@ -256,12 +243,15 @@ const Dashboard: React.FC = () => {
         periodComparison.previous && (
           <Card className="bg-zinc-800 rounded-md mb-8">
             <CardContent className="p-6">
-              <h2 className="text-lg font-medium mb-4">Previous Period</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">Previous Period</h2>
+                <MetricSelector value={selectedMetric} onChange={setSelectedMetric} />
+              </div>
               <ComparisonChart
                 currentData={periodComparison.current.timeseriesData}
                 previousData={periodComparison.previous.timeseriesData}
                 title="Previous Period"
-                metric="downloads"
+                metric={selectedMetric}
               />
             </CardContent>
           </Card>
@@ -278,12 +268,13 @@ const Dashboard: React.FC = () => {
                 currentData={yearComparison.current.timeseriesData}
                 previousData={yearComparison.previous.timeseriesData}
                 title="Previous Year"
-                metric="downloads"
+                metric={selectedMetric}
               />
             </CardContent>
           </Card>
         )}
-    </MainLayout>
+      </div>
+    </DashboardWithSidebar>
   );
 };
 

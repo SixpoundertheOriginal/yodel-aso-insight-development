@@ -2,25 +2,19 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle,
-  Clock,
-  Target,
-  Lightbulb,
-  ExternalLink
-} from 'lucide-react';
+import { TrendingUp, AlertTriangle, CheckCircle, Clock, Target, Lightbulb, ExternalLink } from 'lucide-react';
 import type { EnhancedAsoInsight } from '@/types/aso';
 
 interface EnhancedInsightCardProps {
   insight: EnhancedAsoInsight;
   onViewDetails?: (insight: EnhancedAsoInsight) => void;
+  compact?: boolean;
 }
 
 export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
   insight,
-  onViewDetails
+  onViewDetails,
+  compact = false
 }) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -73,10 +67,47 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
   const IconComponent = getTypeIcon(insight.type);
   const typeColor = getTypeColor(insight.type);
 
+  if (compact) {
+    return (
+      <Card className="relative border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm text-gray-900 leading-tight">
+                {insight.title}
+              </h4>
+              <p className="text-xs mt-1 text-gray-600 leading-relaxed">
+                {insight.description.length > 120 ? `${insight.description.slice(0, 120)}...` : insight.description}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 ml-3">
+              <Badge variant="outline" className={`text-xs px-1.5 py-0.5 ${getPriorityColor(insight.priority)}`}>
+                {insight.priority}
+              </Badge>
+              {insight.is_user_requested && (
+                <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                  Requested
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        {insight.actionable_recommendations && insight.actionable_recommendations.length > 0 && (
+          <CardContent className="pt-0 pb-3">
+            <div className="text-xs text-gray-700">
+              <span className="font-medium">Key action:</span> {insight.actionable_recommendations[0]}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  }
+
   return (
     <Card className={`transition-all duration-200 hover:shadow-md ${
-      insight.priority === 'high' ? 'border-l-4 border-l-red-500' : 
-      insight.priority === 'medium' ? 'border-l-4 border-l-yellow-500' : 
+      insight.priority === 'high' ? 'border-l-4 border-l-red-500' :
+      insight.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
       'border-l-4 border-l-green-500'
     }`}>
       <CardHeader className="pb-3">
@@ -92,23 +123,23 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
               </Badge>
             )}
           </div>
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className={`text-xs ${getPriorityColor(insight.priority)}`}
           >
             {insight.priority}
           </Badge>
         </div>
-        
+
         <CardTitle className="text-base leading-tight">
           {insight.title}
         </CardTitle>
-        
+
         <CardDescription className="text-sm leading-relaxed">
           {insight.description}
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="pt-0 space-y-4">
         {/* Recommendations */}
         {insight.actionable_recommendations.length > 0 && (
@@ -141,14 +172,14 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
                 Confidence: {Math.round(insight.confidence * 100)}%
               </span>
             )}
-            
+
             {insight.implementation_effort && (
               <div className={`px-2 py-1 rounded-full text-xs font-medium ${getEffortColor(insight.implementation_effort)}`}>
                 {insight.implementation_effort} effort
               </div>
             )}
           </div>
-          
+
           {insight.expected_timeline && (
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
