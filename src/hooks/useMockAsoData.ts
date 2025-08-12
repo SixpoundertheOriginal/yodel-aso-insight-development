@@ -21,8 +21,21 @@ export interface AsoMetrics {
 
 export interface TrafficSource {
   name: string;
+  /**
+   * @deprecated Use metrics.downloads.value instead. Kept for backwards compatibility
+   */
   value: number;
+  /**
+   * @deprecated Use metrics.downloads.delta instead. Kept for backwards compatibility
+   */
   delta: number;
+  metrics: {
+    impressions: MetricSummary;
+    downloads: MetricSummary;
+    product_page_views: MetricSummary;
+    product_page_cvr: MetricSummary;
+    impressions_cvr: MetricSummary;
+  };
 }
 
 export interface TimeSeriesPoint {
@@ -116,11 +129,32 @@ export const useMockAsoData = (
         
         // Generate traffic source data for ALL available sources, not just selected ones
         // This fixes the circular dependency issue where only selected sources were available
-        const trafficSourceData: TrafficSource[] = ALL_AVAILABLE_TRAFFIC_SOURCES.map((source) => ({
-          name: source,
-          value: Math.floor(Math.random() * 50000) + 5000,
-          delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
-        }));
+        const trafficSourceData: TrafficSource[] = ALL_AVAILABLE_TRAFFIC_SOURCES.map((source) => {
+          const impressions = generateMetric();
+          const downloads = generateMetric();
+          const product_page_views = generateMetric();
+          const product_page_cvr = {
+            value: parseFloat((Math.random() * 100).toFixed(2)),
+            delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
+          };
+          const impressions_cvr = {
+            value: parseFloat((Math.random() * 100).toFixed(2)),
+            delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
+          };
+
+          return {
+            name: source,
+            value: downloads.value,
+            delta: downloads.delta,
+            metrics: {
+              impressions,
+              downloads,
+              product_page_views,
+              product_page_cvr,
+              impressions_cvr
+            }
+          };
+        });
         
         const mockData: AsoData = {
           summary,

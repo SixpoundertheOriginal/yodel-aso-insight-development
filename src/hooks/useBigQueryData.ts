@@ -419,19 +419,39 @@ function transformBigQueryToAsoData(
   const trafficSourceGroups = bigQueryData.reduce((acc, item) => {
     const source = item.traffic_source || 'Unknown';
     if (!acc[source]) {
-      acc[source] = { value: 0, delta: 0 };
+      acc[source] = {
+        impressions: 0,
+        downloads: 0,
+        product_page_views: 0
+      };
     }
-    acc[source].value += item.downloads;
+    acc[source].impressions += item.impressions;
+    acc[source].downloads += item.downloads;
+    acc[source].product_page_views += item.product_page_views || 0;
     return acc;
-  }, {} as Record<string, { value: number; delta: number }>);
+  }, {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>);
 
-  const actualDataSources = Object.keys(trafficSourceGroups);
+  const trafficSourceData: TrafficSource[] = Object.entries(trafficSourceGroups).map(([source, values]) => {
+    const productPageCvr = values.product_page_views > 0
+      ? (values.downloads / values.product_page_views) * 100
+      : 0;
+    const impressionsCvr = values.impressions > 0
+      ? (values.downloads / values.impressions) * 100
+      : 0;
 
-  const trafficSourceData: TrafficSource[] = actualDataSources.map(source => ({
-    name: source,
-    value: trafficSourceGroups[source]?.value || 0,
-    delta: trafficSourceGroups[source]?.delta || 0
-  }));
+    return {
+      name: source,
+      value: values.downloads,
+      delta: 0,
+      metrics: {
+        impressions: { value: values.impressions, delta: 0 },
+        downloads: { value: values.downloads, delta: 0 },
+        product_page_views: { value: values.product_page_views, delta: 0 },
+        product_page_cvr: { value: productPageCvr, delta: 0 },
+        impressions_cvr: { value: impressionsCvr, delta: 0 }
+      }
+    };
+  });
 
   debugLog.verbose('Transform complete', {
     totalItems: bigQueryData.length,
