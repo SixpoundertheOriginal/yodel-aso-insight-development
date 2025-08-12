@@ -1,12 +1,13 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import DeltaIndicator from './ui/DeltaIndicator';
 
 interface TrafficSourceCardProps {
   source: {
     name: string;
     displayName?: string;
     downloads: number;
-    trend: number;
+    delta: number;
   };
   quadrant: 'scale' | 'optimize' | 'investigate' | 'expand';
 }
@@ -39,13 +40,7 @@ export const TrafficSourceCard: React.FC<TrafficSourceCardProps> = ({ source }) 
         <span className="text-gray-500">
           Downloads: {formatNumber(source.downloads)}
         </span>
-        <span
-          className={`font-bold ${
-            source.trend >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}
-        >
-          {source.trend >= 0 ? '↗' : '↘'} {Math.abs(source.trend)}%
-        </span>
+        <DeltaIndicator value={source.delta} />
       </div>
     </div>
   );

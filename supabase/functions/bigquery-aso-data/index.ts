@@ -150,6 +150,19 @@ interface PeriodTotals {
   hasData: boolean
 }
 
+interface BigQueryDataPoint {
+  traffic_source: string
+  impressions: number
+  downloads: number
+  product_page_views: number
+}
+
+interface SourceMetrics {
+  impressions: number
+  downloads: number
+  product_page_views: number
+}
+
 // Execute aggregation query for a specific period
 async function executePeriodQuery(
   projectId: string,
@@ -229,6 +242,106 @@ async function executePeriodQuery(
     product_page_views: row[2]?.v ? Number(row[2].v) : 0,
     hasData: result.totalRows ? Number(result.totalRows) > 0 : false
   };
+}
+
+async function executeSourcePeriodQuery(
+  projectId: string,
+  accessToken: string,
+  clientsFilterUpper: string,
+  dateFrom: string,
+  dateTo: string,
+  trafficSourceFilter: string,
+  bigQueryTrafficSources: string[]
+): Promise<BigQueryDataPoint[]> {
+  const params: any[] = [
+    {
+      name: 'dateFrom',
+      parameterType: { type: 'DATE' },
+      parameterValue: { value: dateFrom }
+    },
+    {
+      name: 'dateTo',
+      parameterType: { type: 'DATE' },
+      parameterValue: { value: dateTo }
+    }
+  ];
+
+  if (trafficSourceFilter) {
+    params.push({
+      name: 'trafficSourcesArray',
+      parameterType: {
+        type: 'ARRAY',
+        arrayType: { type: 'STRING' }
+      },
+      parameterValue: {
+        arrayValues: bigQueryTrafficSources.map(src => ({ value: src }))
+      }
+    });
+  }
+
+  const query = `
+      SELECT
+        traffic_source,
+        SUM(impressions) AS impressions,
+        SUM(downloads) AS downloads,
+        SUM(product_page_views) AS product_page_views
+      FROM \`${projectId}.client_reports.aso_all_apple\`
+      WHERE UPPER(client) IN (${clientsFilterUpper})
+      AND date BETWEEN @dateFrom AND @dateTo
+      ${trafficSourceFilter}
+      GROUP BY traffic_source
+    `;
+
+  const requestBody = {
+    query,
+    parameterMode: 'NAMED',
+    queryParameters: params,
+    useLegacySql: false
+  };
+
+  const response = await fetch(
+    `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`BigQuery traffic source query error: ${response.status} - ${errorText}`);
+  }
+  const result = await response.json();
+  const rows = result.rows || [];
+
+  return rows.map((row: any) => ({
+    traffic_source: mapBigQueryToDisplay(row.f[0]?.v || 'Unknown'),
+    impressions: row.f[1]?.v ? Number(row.f[1].v) : 0,
+    downloads: row.f[2]?.v ? Number(row.f[2].v) : 0,
+    product_page_views: row.f[3]?.v ? Number(row.f[3].v) : 0
+  }));
+}
+
+function groupByTrafficSource(data: BigQueryDataPoint[]): Record<string, SourceMetrics> {
+  return data.reduce((acc, record) => {
+    const source = record.traffic_source;
+    if (!acc[source]) {
+      acc[source] = { impressions: 0, downloads: 0, product_page_views: 0 };
+    }
+    acc[source].impressions += record.impressions;
+    acc[source].downloads += record.downloads;
+    acc[source].product_page_views += record.product_page_views;
+    return acc;
+  }, {} as Record<string, SourceMetrics>);
+}
+
+function calculateRealDelta(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 999 : 0;
+  return ((current - previous) / previous) * 100;
 }
 
 serve(async (req) => {
@@ -768,12 +881,28 @@ serve(async (req) => {
       const currentRange = body.dateRange || { from: defaultFrom, to: defaultTo };
       const previousRange = calculatePreviousPeriod(currentRange.from, currentRange.to);
 
-      const [currentTotals, previousTotals] = await Promise.all([
+      const [currentTotals, previousTotals, currentSources, previousSources] = await Promise.all([
         executePeriodQuery(projectId, accessToken, clientsFilterUpper, currentRange.from, currentRange.to, trafficSourceFilter, bigQueryTrafficSources),
         previousRange
           ? executePeriodQuery(projectId, accessToken, clientsFilterUpper, previousRange.from, previousRange.to, trafficSourceFilter, bigQueryTrafficSources)
-          : Promise.resolve({ impressions: 0, downloads: 0, product_page_views: 0, hasData: false })
+          : Promise.resolve({ impressions: 0, downloads: 0, product_page_views: 0, hasData: false }),
+        executeSourcePeriodQuery(projectId, accessToken, clientsFilterUpper, currentRange.from, currentRange.to, trafficSourceFilter, bigQueryTrafficSources),
+        previousRange
+          ? executeSourcePeriodQuery(projectId, accessToken, clientsFilterUpper, previousRange.from, previousRange.to, trafficSourceFilter, bigQueryTrafficSources)
+          : Promise.resolve([])
       ]);
+
+      const currentBySource = groupByTrafficSource(currentSources);
+      const previousBySource = groupByTrafficSource(previousSources);
+      const trafficSourceDeltas = Object.keys(currentBySource).map(source => ({
+        name: source,
+        current: currentBySource[source],
+        previous: previousBySource[source] || { impressions: 0, downloads: 0, product_page_views: 0 },
+        delta: calculateRealDelta(
+          currentBySource[source].downloads,
+          previousBySource[source]?.downloads || 0
+        )
+      }));
 
       periodComparison = {
         current: { ...currentTotals, from: currentRange.from, to: currentRange.to },
@@ -786,7 +915,8 @@ serve(async (req) => {
               downloads: currentTotals.downloads - previousTotals.downloads,
               product_page_views: currentTotals.product_page_views - previousTotals.product_page_views
             }
-          : null
+          : null,
+        trafficSources: trafficSourceDeltas
       };
     } catch (periodError) {
       console.error('❌ [BigQuery] Period comparison failed:', periodError);

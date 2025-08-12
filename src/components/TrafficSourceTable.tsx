@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { TrafficSource } from "@/hooks/useMockAsoData";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import { formatPercentage } from "@/utils/format";
+import DeltaIndicator from "./ui/DeltaIndicator";
 
 interface TrafficSourceTableProps {
   data: TrafficSource[];
@@ -95,26 +95,15 @@ const TrafficSourceTable: React.FC<TrafficSourceTableProps> = React.memo(({ data
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sortedData.map((source) => {
-          const isPositive = source.delta >= 0;
-          
-          return (
-            <TableRow key={source.name}>
-              <TableCell className="font-medium">{source.name}</TableCell>
-              <TableCell className="text-right">{source.value.toLocaleString()}</TableCell>
-              <TableCell className={`text-right ${isPositive ? "text-green-500" : "text-red-500"}`}>
-                <div className="flex items-center justify-end">
-                  {isPositive ? (
-                    <ArrowUp className="h-4 w-4 mr-1" />
-                  ) : (
-                    <ArrowDown className="h-4 w-4 mr-1" />
-                  )}
-                  <span>{formatPercentage(Math.abs(source.delta))}%</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        {sortedData.map((source) => (
+          <TableRow key={source.name}>
+            <TableCell className="font-medium">{source.name}</TableCell>
+            <TableCell className="text-right">{source.value.toLocaleString()}</TableCell>
+            <TableCell className="text-right">
+              <DeltaIndicator value={source.delta} />
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );

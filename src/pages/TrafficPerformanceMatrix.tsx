@@ -87,7 +87,7 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
                   name: source.name,
                   displayName: source.name,
                   downloads: source.value,
-                  trend: source.delta,
+                  delta: source.delta,
                 }}
                 quadrant="scale"
               />
@@ -127,7 +127,7 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
                   name: source.name,
                   displayName: source.name,
                   downloads: source.value,
-                  trend: source.delta,
+                  delta: source.delta,
                 }}
                 quadrant="optimize"
               />
@@ -167,7 +167,7 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
                   name: source.name,
                   displayName: source.name,
                   downloads: source.value,
-                  trend: source.delta,
+                  delta: source.delta,
                 }}
                 quadrant="investigate"
               />
@@ -207,7 +207,7 @@ const TrafficSourceQuadrantMatrix: React.FC<TrafficQuadrants> = ({
                   name: source.name,
                   displayName: source.name,
                   downloads: source.value,
-                  trend: source.delta,
+                  delta: source.delta,
                 }}
                 quadrant="expand"
               />
