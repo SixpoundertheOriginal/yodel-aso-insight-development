@@ -10,6 +10,7 @@ import { useAsoData } from '@/context/AsoDataContext';
 import { InsightRequestCards } from './InsightRequestCards';
 import { EnhancedInsightCard } from './EnhancedInsightCard';
 import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
+import { useTheme } from '@/hooks/useTheme';
 
 interface ContextualInsightsSidebarProps {
   metricsData?: any; // accept any and cast internally for the hook
@@ -24,6 +25,8 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const { filters } = useAsoData();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRequestCards, setShowRequestCards] = useState(false);
+  // Initialize theme to ensure theme state is active
+  useTheme();
 
 // Create filter context
 const filterContext: FilterContext = {
@@ -74,14 +77,14 @@ useEffect(() => {
   const needsGeneration = !hasInsights && !isLoading;
 
   return (
-    <div className="w-80 min-h-screen bg-gray-50/50 border-l border-gray-200 flex flex-col">
+    <div className="w-80 min-h-screen bg-background/50 border-l border-border flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-white">
+      <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
-          <h3 className="font-semibold text-gray-900">AI Insights</h3>
+          <h3 className="font-semibold text-foreground">AI Insights</h3>
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Analyzing {getFilterSummary()}
         </p>
       </div>
@@ -91,15 +94,15 @@ useEffect(() => {
         {/* Filter Change Alert */}
         {!hasInsights && !isLoading && (
           <div className="p-4">
-            <Card className="border-amber-200 bg-amber-50">
+            <Card className="border-warning bg-warning/10">
               <CardContent className="p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                  <AlertTriangle className="w-4 h-4 text-warning mt-0.5" />
                   <div>
-                    <p className="text-sm text-amber-800 font-medium">
+                    <p className="text-sm text-warning font-medium">
                       Insights need updating
                     </p>
-                    <p className="text-xs text-amber-700 mt-1">
+                    <p className="text-xs text-warning mt-1">
                       Generate insights for your current view
                     </p>
                   </div>
@@ -117,10 +120,10 @@ useEffect(() => {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       Generating insights...
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Analyzing your current data view
                     </p>
                   </div>
@@ -163,8 +166,8 @@ useEffect(() => {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 mt-3">
                 {remainingInsights.map((insight) => (
-                  <EnhancedInsightCard 
-                    key={insight.id} 
+                  <EnhancedInsightCard
+                    key={insight.id}
                     insight={insight}
                     compact={true}
                   />
@@ -219,10 +222,10 @@ useEffect(() => {
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-gray-200 bg-white">
+      <div className="p-4 border-t border-border bg-card">
         <div className="space-y-2">
 {needsGeneration ? (
-  <Button 
+  <Button
     onClick={() => generateComprehensiveInsights()}
     disabled={isLoading || !metricsData}
     className="w-full"
@@ -231,7 +234,7 @@ useEffect(() => {
     Generate Insights
   </Button>
 ) : (
-  <Button 
+  <Button
     onClick={() => refetchInsights()}
     disabled={isLoading}
     variant="outline"
