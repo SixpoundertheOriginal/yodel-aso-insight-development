@@ -28,7 +28,7 @@ describe('useAsoDataWithFallback', () => {
   it('preserves previous data during BigQuery refetch', async () => {
     const bigQueryData = { summary: { impressions: { value: 1 }, downloads: { value: 1 }, product_page_views: { value: 1 } }, timeseriesData: [], trafficSources: [] };
 
-    useBigQueryData
+    (useBigQueryData as any)
       .mockReturnValueOnce({
         data: bigQueryData,
         loading: false,
@@ -42,7 +42,7 @@ describe('useAsoDataWithFallback', () => {
         availableTrafficSources: []
       });
 
-    useMockAsoData.mockReturnValue({ data: null, loading: false, error: null });
+    (useMockAsoData as any).mockReturnValue({ data: null, loading: false, error: null });
 
     const { result, rerender } = renderHook(() =>
       useAsoDataWithFallback(dateRange, sources)
@@ -60,14 +60,14 @@ describe('useAsoDataWithFallback', () => {
     const bigQueryError = new Error('BigQuery failed');
     const mockError = new Error('Mock failed');
 
-    useBigQueryData.mockReturnValue({
+    (useBigQueryData as any).mockReturnValue({
       data: null,
       loading: false,
       error: bigQueryError,
       availableTrafficSources: []
     });
 
-    useMockAsoData.mockReturnValue({
+    (useMockAsoData as any).mockReturnValue({
       data: null,
       loading: false,
       error: mockError

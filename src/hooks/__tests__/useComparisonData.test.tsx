@@ -38,7 +38,7 @@ describe('useComparisonData - refetch preservation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    useAsoData.mockReturnValue({
+    (useAsoData as any).mockReturnValue({
       data: currentData,
       loading: false,
       error: null,
@@ -47,7 +47,7 @@ describe('useComparisonData - refetch preservation', () => {
   });
 
   it('keeps previous comparison data during refetch', async () => {
-    useBigQueryData
+    (useBigQueryData as any)
       .mockReturnValueOnce({
         data: previousData,
         loading: false,
