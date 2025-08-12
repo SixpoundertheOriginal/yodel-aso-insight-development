@@ -25,6 +25,8 @@ const TopBar: React.FC = React.memo(() => {
         return 'Store Performance';
       case '/conversion-analysis':
         return 'Conversion Analysis';
+      case '/insights':
+        return 'Insights';
       case '/aso-ai-hub':
         return 'ASO AI Hub';
       case '/apps':
@@ -43,7 +45,7 @@ const TopBar: React.FC = React.memo(() => {
   const showDateControls = ['/dashboard', '/overview', '/conversion-analysis'].includes(location.pathname);
   
   // Analytics pages use BigQuery data
-  const analyticsPages = ['/dashboard', '/overview', '/conversion-analysis'];
+  const analyticsPages = ['/dashboard', '/overview', '/conversion-analysis', '/insights'];
   const isAnalyticsPage = analyticsPages.includes(location.pathname);
   
   // Growth Accelerator pages don't need app selector (they work independently)
