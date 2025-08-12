@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { SidebarToggle } from '@/components/AiInsightsPanel/SidebarToggle';
-import type { MetricsData } from '@/types/aso';
 
 interface DashboardWithSidebarProps {
   children: React.ReactNode;
-  metricsData?: MetricsData;
+  metricsData?: any; // relaxed to accept various metric shapes
   organizationId: string;
   showSidebar?: boolean;
 }
+
 
 export const DashboardWithSidebar: React.FC<DashboardWithSidebarProps> = ({
   children,

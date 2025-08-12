@@ -251,7 +251,7 @@ const Dashboard: React.FC = () => {
                 currentData={periodComparison.current.timeseriesData}
                 previousData={periodComparison.previous.timeseriesData}
                 title="Previous Period"
-                metric={selectedMetric}
+                metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
               />
             </CardContent>
           </Card>
@@ -268,7 +268,7 @@ const Dashboard: React.FC = () => {
                 currentData={yearComparison.current.timeseriesData}
                 previousData={yearComparison.previous.timeseriesData}
                 title="Previous Year"
-                metric={selectedMetric}
+                metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
               />
             </CardContent>
           </Card>

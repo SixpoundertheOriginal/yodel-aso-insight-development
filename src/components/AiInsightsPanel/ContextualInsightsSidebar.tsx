@@ -12,7 +12,7 @@ import { EnhancedInsightCard } from './EnhancedInsightCard';
 import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
 
 interface ContextualInsightsSidebarProps {
-  metricsData?: MetricsData;
+  metricsData?: any; // accept any and cast internally for the hook
   organizationId: string;
 }
 
@@ -25,27 +25,34 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRequestCards, setShowRequestCards] = useState(false);
 
-  // Create filter context
-  const filterContext: FilterContext = {
-    dateRange: filters.dateRange,
-    trafficSources: filters.trafficSources,
-    selectedApps: filters.selectedApps
-  };
+// Create filter context
+const filterContext: FilterContext = {
+  dateRange: {
+    start: filters.dateRange.from?.toISOString?.() || new Date().toISOString(),
+    end: filters.dateRange.to?.toISOString?.() || new Date().toISOString(),
+  },
+  trafficSources: filters.trafficSources,
+  selectedApps: filters.selectedApps
+};
 
-  // Enhanced insights hook
-  const {
-    insights,
-    isLoading,
-    error,
-    generateAllInsights,
-    generateSpecificInsight,
-    refetchInsights
-  } = useEnhancedAsoInsights(organizationId, metricsData, filterContext);
+// Enhanced insights hook
+const {
+  insights,
+  isLoading,
+  error,
+  generateComprehensiveInsights,
+  generateConversionAnalysis,
+  generateImpressionTrends,
+  generateTrafficSourceAnalysis,
+  generateKeywordOptimization,
+  generateSeasonalAnalysis,
+  refetchInsights
+} = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext);
 
-  // Invalidate insights when filters change
-  useEffect(() => {
-    queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
-  }, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
+// Invalidate insights when filters change
+useEffect(() => {
+  queryClient.removeQueries({ queryKey: ['enhanced-aso-insights', organizationId] });
+}, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
 
   // Get primary insight (highest priority)
   const primaryInsight = insights?.[0];
@@ -167,57 +174,77 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
           </div>
         )}
 
-        {/* Quick Request Cards */}
-        <div className="px-4 pb-4">
-          <Collapsible open={showRequestCards} onOpenChange={setShowRequestCards}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <span className="text-sm">Request Specific Analysis</span>
-                {showRequestCards ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <InsightRequestCards 
-                onRequestInsight={generateSpecificInsight}
-                isLoading={isLoading}
-                layout="compact"
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
+{/* Quick Request Cards */}
+<div className="px-4 pb-4">
+  <Collapsible open={showRequestCards} onOpenChange={setShowRequestCards}>
+    <CollapsibleTrigger asChild>
+      <Button variant="outline" className="w-full justify-between">
+        <span className="text-sm">Request Specific Analysis</span>
+        {showRequestCards ? (
+          <ChevronDown className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
+      </Button>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="mt-3">
+      <InsightRequestCards 
+        onRequestInsight={(type) => {
+          switch (type) {
+            case 'cvr_analysis':
+              generateConversionAnalysis();
+              break;
+            case 'impression_trends':
+              generateImpressionTrends();
+              break;
+            case 'traffic_source_performance':
+              generateTrafficSourceAnalysis();
+              break;
+            case 'keyword_optimization':
+              generateKeywordOptimization();
+              break;
+            case 'seasonal_pattern':
+              generateSeasonalAnalysis();
+              break;
+            default:
+              generateComprehensiveInsights();
+          }
+        }}
+        isLoading={isLoading}
+        layout="compact"
+      />
+    </CollapsibleContent>
+  </Collapsible>
+</div>
       </div>
 
       {/* Actions Footer */}
       <div className="p-4 border-t border-gray-200 bg-white">
         <div className="space-y-2">
-          {needsGeneration ? (
-            <Button 
-              onClick={() => generateAllInsights()}
-              disabled={isLoading || !metricsData}
-              className="w-full"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Generate Insights
-            </Button>
-          ) : (
-            <Button 
-              onClick={() => refetchInsights()}
-              disabled={isLoading}
-              variant="outline"
-              className="w-full"
-            >
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Refresh Analysis
-            </Button>
-          )}
+{needsGeneration ? (
+  <Button 
+    onClick={() => generateComprehensiveInsights()}
+    disabled={isLoading || !metricsData}
+    className="w-full"
+  >
+    <Sparkles className="w-4 h-4 mr-2" />
+    Generate Insights
+  </Button>
+) : (
+  <Button 
+    onClick={() => refetchInsights()}
+    disabled={isLoading}
+    variant="outline"
+    className="w-full"
+  >
+    <TrendingUp className="w-4 h-4 mr-2" />
+    Refresh Analysis
+  </Button>
+)}
           
           {hasInsights && (
             <Button 
-              onClick={() => generateAllInsights()}
+              onClick={() => generateComprehensiveInsights()}
               disabled={isLoading}
               variant="ghost"
               size="sm"

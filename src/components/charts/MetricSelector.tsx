@@ -16,7 +16,6 @@ interface MetricSelectorProps {
 const METRIC_OPTIONS: MetricOption[] = [
   { value: 'downloads', label: 'Downloads', description: 'App installs and downloads' },
   { value: 'impressions', label: 'Impressions', description: 'Times your app was seen' },
-  { value: 'conversion_rate', label: 'Conversion Rate', description: 'Install rate from views' },
   { value: 'product_page_views', label: 'Product Page Views', description: 'App store page visits' }
 ];
 
