@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import OpenAI from "https://esm.sh/openai@5.11.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,70 +15,45 @@ const supabase = createClient(
 );
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const openai = new OpenAI({ apiKey: openAIApiKey });
 
-const systemPrompt = `You are an expert App Store Optimization (ASO) analyst with deep expertise in mobile app growth strategies. Analyze the provided app performance metrics and provide specific, actionable insights to improve the app's visibility, downloads, and revenue.
+function buildContextualPrompt(metricsData: any, filterContext: any, _insightType: string = 'comprehensive'): string {
+  const dateRangeText = filterContext?.dateRange
+    ? `${filterContext.dateRange.start} to ${filterContext.dateRange.end}`
+    : 'selected period';
 
-**CRITICAL DATA ACCURACY**: 
-- Use EXACT values from the provided data
-- Do not calculate or estimate different values  
-- Quote the exact CVR, delta percentages, and other metrics as provided
-- If data shows CVR: 0.24% with -10.5% change, use those EXACT numbers
+  const trafficSourcesText = filterContext?.trafficSources?.length > 0
+    ? filterContext.trafficSources.join(', ')
+    : 'all traffic sources';
 
-**DEBUGGING REQUIREMENTS**:
-- Always include the exact data values you're analyzing in your response
-- Reference the data source and timestamp if provided
-- Show your calculations clearly
+  const appsText = filterContext?.selectedApps?.length > 0
+    ? filterContext.selectedApps.join(', ')
+    : 'all apps';
 
-Your analysis MUST be:
-1. SPECIFIC to the exact metrics provided - reference actual numbers and trends
-2. ACTIONABLE with clear, implementable next steps
-3. ASO-FOCUSED on keywords, metadata, conversion optimization, and competitive positioning  
-4. DATA-DRIVEN with quantifiable recommendations and expected outcomes
-5. PRIORITIZED by potential impact and implementation difficulty
+  return `
+IMPORTANT: You are analyzing ONLY the filtered data shown in the user's current dashboard view.
 
-NEVER provide generic insights like "optimize your app store listing" or "improve your keywords". Instead, provide specific recommendations based on the actual data patterns you observe.
+CURRENT DASHBOARD CONTEXT:
+- Date Range: ${dateRangeText}
+- Traffic Sources: ${trafficSourcesText}  
+- Apps: ${appsText}
 
-For traffic source analysis, focus on:
-- App Store Search vs. Browse vs. Referral performance differences
-- Conversion rate optimization opportunities by source
-- Keyword ranking improvement strategies
-- Category positioning and competitive analysis
+CURRENT DASHBOARD METRICS (FILTERED DATA):
+- Downloads: ${metricsData?.summary?.downloads?.value || 'N/A'} (Change: ${metricsData?.summary?.downloads?.delta > 0 ? '+' : ''}${metricsData?.summary?.downloads?.delta || 'N/A'})
+- Impressions: ${metricsData?.summary?.impressions?.value || 'N/A'} (Change: ${metricsData?.summary?.impressions?.delta > 0 ? '+' : ''}${metricsData?.summary?.impressions?.delta || 'N/A'})
+- Conversion Rate: ${metricsData?.summary?.cvr?.value || 'N/A'}% (Change: ${metricsData?.summary?.cvr?.delta > 0 ? '+' : ''}${metricsData?.summary?.cvr?.delta || 'N/A'}%)
 
-For trend analysis, identify:
-- Seasonal patterns and timing opportunities
-- Performance drops that need immediate attention
-- Growth opportunities in underperforming metrics
-- Correlation between different metrics
+CRITICAL: Your analysis must explain these EXACT numbers shown in the dashboard. 
+If downloads show ${metricsData?.summary?.downloads?.value} with ${metricsData?.summary?.downloads?.delta} change, your insights must reference these specific values.
 
-Respond in JSON format with the following structure:
-{
-  "insights": [
-    {
-      "title": "Specific insight title with exact metrics",
-      "description": "Detailed explanation referencing specific data points and numbers from the provided metrics",
-      "type": "cvr_analysis|impression_trends|traffic_source_performance|keyword_optimization|competitive_analysis|seasonal_pattern|performance_alert",
-      "priority": "high|medium|low",
-      "confidence": 0.85,
-      "actionable_recommendations": [
-        "Specific action with expected outcome",
-        "Another specific action with measurable impact"
-      ],
-      "metrics_impact": {
-        "impressions": "Expected % change and timeframe",
-        "downloads": "Expected % change and timeframe", 
-        "conversion_rate": "Expected % change and timeframe"
-      },
-      "related_kpis": ["impressions", "downloads", "conversion_rate"],
-      "implementation_effort": "low|medium|high",
-      "expected_timeline": "1-2 weeks|1 month|2-3 months",
-      "data_validation": {
-        "source_cvr": "exact CVR from input",
-        "source_delta": "exact delta from input",
-        "data_source": "data source identifier"
-      }
-    }
-  ]
-}`;
+Do NOT analyze data outside this filtered view. Focus only on the performance of ${trafficSourcesText} for ${appsText} during ${dateRangeText}.
+
+FULL FILTERED DATASET:
+${JSON.stringify(metricsData, null, 2)}
+
+Provide 1-2 actionable insights that specifically explain the performance shown in this filtered dashboard view.
+`;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -114,15 +90,21 @@ serve(async (req) => {
       );
     }
 
-    const { metricsData, organizationId, insightType, userRequested = false } = await req.json();
-    
-    console.log('📊 [AI Insights] Received data:', {
+    const { organizationId, metricsData, filterContext, insightType, userRequested = false } = await req.json();
+
+    console.log('🐛 AI Generator received:', {
       organizationId,
-      insightType,
       hasMetricsData: !!metricsData,
-      dataSource: metricsData?.source,
-      timestamp: metricsData?.timestamp,
-      debug: metricsData?.debug
+      filterContext: {
+        dateRange: filterContext?.dateRange,
+        trafficSources: filterContext?.trafficSources?.length || 0,
+        selectedApps: filterContext?.selectedApps?.length || 0
+      },
+      dashboardNumbers: {
+        downloads: metricsData?.summary?.downloads?.value,
+        downloadsChange: metricsData?.summary?.downloads?.delta,
+        impressions: metricsData?.summary?.impressions?.value
+      }
     });
 
     if (!metricsData || !organizationId) {
@@ -135,8 +117,8 @@ serve(async (req) => {
       );
     }
 
-    // Create a fingerprint of the data for caching (include insight type for specificity)
-    const dataFingerprint = btoa(JSON.stringify({ metricsData, insightType })).slice(0, 32);
+    // Create a fingerprint of the data for caching (include insight type and filters for specificity)
+    const dataFingerprint = btoa(JSON.stringify({ metricsData, filterContext, insightType })).slice(0, 32);
 
     // Check if we have cached insights for this specific request
     const { data: cachedInsights } = await supabase
@@ -188,57 +170,18 @@ serve(async (req) => {
       );
     }
 
-    // Build context-specific prompt based on insight type and metrics
-    let specificPrompt = `Analyze these app performance metrics and provide specific ASO insights:
+      const prompt = buildContextualPrompt(metricsData, filterContext, insightType);
+      console.log('🐛 AI Prompt (first 300 chars):', prompt.substring(0, 300) + '...');
 
-**Metrics Data:**
-${JSON.stringify(metricsData, null, 2)}
-
-**Data Validation Check:**
-- Source: ${metricsData.source || 'unknown'}
-- Timestamp: ${metricsData.timestamp || 'unknown'}
-- CVR Value: ${metricsData.summary?.cvr?.value || 'not found'}
-- CVR Delta: ${metricsData.summary?.cvr?.delta || 'not found'}`;
-
-    if (insightType) {
-      const typePrompts = {
-        'cvr_analysis': 'Focus specifically on conversion rate optimization opportunities, identifying traffic sources with low conversion and specific strategies to improve them.',
-        'impression_trends': 'Analyze impression patterns, seasonal trends, and visibility optimization opportunities. Identify keyword and metadata improvements.',
-        'traffic_source_performance': 'Deep dive into traffic source performance differences. Analyze App Store Search vs Browse vs Referral patterns and optimization strategies.',
-        'keyword_optimization': 'Focus on keyword performance, ranking opportunities, and metadata optimization recommendations.',
-        'competitive_analysis': 'Analyze competitive positioning and market opportunity insights.',
-        'seasonal_pattern': 'Identify seasonal trends, timing opportunities, and cyclical patterns in the data.'
-      };
-      
-      specificPrompt += `\n\nSPECIFIC FOCUS: ${typePrompts[insightType] || 'Provide comprehensive ASO analysis covering all key areas.'}`;
-    }
-
-    specificPrompt += `\n\nCRITICAL: Use the exact CVR and delta values shown above in your analysis. Quote these exact numbers in your insights.`;
-
-    // Generate AI insights using OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: specificPrompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 2500
-      }),
-    });
+          { role: "system", content: "You are an ASO analytics expert. Analyze ONLY the provided filtered data." },
+          { role: "user", content: prompt }
+        ]
+      });
 
-    if (!openaiResponse.ok) {
-      throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
-    }
-
-    const openaiData = await openaiResponse.json();
-    const aiContent = openaiData.choices[0].message.content;
+      const aiContent = aiResponse.choices[0].message?.content || '';
 
     let parsedInsights;
     try {

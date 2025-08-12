@@ -107,6 +107,16 @@ const Dashboard: React.FC = () => {
   const downloadsValue = data.summary?.downloads?.value || 0;
   const hasAnyMetrics = impressionsValue > 0 || downloadsValue > 0;
 
+  const isDashboardDataReady = !loading && data && data.summary;
+
+  console.log('🐛 Dashboard data readiness:', {
+    isLoading: loading,
+    hasData: !!data,
+    hasSummary: !!data?.summary,
+    downloadsValue: data?.summary?.downloads?.value,
+    isDashboardDataReady
+  });
+
   // Enhanced empty state component
   const EmptyDataState = () => (
     <Card className="bg-zinc-900/50 border-zinc-800">
@@ -323,10 +333,19 @@ const Dashboard: React.FC = () => {
               : 'fixed right-0 top-0 h-full z-10'
           }
         >
-          <ContextualInsightsSidebar
-            metricsData={data}
-            organizationId={organizationId}
-          />
+          {isDashboardDataReady ? (
+            <ContextualInsightsSidebar
+              metricsData={data}
+              organizationId={organizationId}
+            />
+          ) : (
+            <div className="w-80 min-h-screen bg-background/50 border-l border-border flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
+              </div>
+            </div>
+          )}
         </div>
         {isMobile && isMobileSidebarOpen && (
           <div
