@@ -71,7 +71,6 @@ const [shouldAutoGenerate, setShouldAutoGenerate] = useState(false);
 
 // Clear cache when filters change
 useEffect(() => {
-  console.log('🐛 Filters changed, clearing insights cache');
   queryClient.removeQueries(['enhanced-aso-insights', organizationId]);
   setShouldAutoGenerate(true);
 }, [filters.dateRange, filters.trafficSources, filters.selectedApps, organizationId, queryClient]);
@@ -79,7 +78,6 @@ useEffect(() => {
 // Auto-generate insights once metrics are ready
 useEffect(() => {
   if (shouldAutoGenerate && metricsData && !isLoading) {
-    console.log('🐛 Auto-generating insights for new filters');
     setShouldAutoGenerate(false);
     generateComprehensiveInsights();
   }
@@ -111,9 +109,9 @@ useEffect(() => {
   }, [hasInsights, isLoading]);
 
   return (
-    <div className="w-80 min-h-screen bg-background/50 border-l border-border flex flex-col">
+    <div className="w-80 h-screen bg-background/50 border-l border-border flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-border bg-card">
+      <div className="flex-shrink-0 p-4 border-b border-border bg-card">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
           <h3 className="font-semibold text-foreground">AI Insights</h3>
@@ -259,7 +257,7 @@ useEffect(() => {
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-border bg-card">
+      <div className="flex-shrink-0 p-4 border-t border-border bg-card">
         <div className="space-y-2">
 {needsGeneration ? (
   <Button
