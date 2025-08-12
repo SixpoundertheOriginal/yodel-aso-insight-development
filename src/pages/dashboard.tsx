@@ -19,10 +19,12 @@ import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { KPISelector } from '../components/KPISelector';
 
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('downloads');
+  const [selectedKPI, setSelectedKPI] = useState<string>('all');
   const navigate = useNavigate();
   const {
     data,
@@ -79,6 +81,10 @@ const Dashboard: React.FC = () => {
         exclude
       ),
     }));
+  };
+
+  const handleKPIChange = (value: string) => {
+    setSelectedKPI(value);
   };
 
 
@@ -144,6 +150,24 @@ const Dashboard: React.FC = () => {
   const impressionsCvrValue = data.summary?.impressions_cvr?.value || 0;
   const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
 
+  const shouldShowKPI = (kpiId: string) => {
+    return selectedKPI === 'all' || selectedKPI === kpiId;
+  };
+
+  const visibleKPIs = selectedKPI === 'all'
+    ? ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr']
+    : [selectedKPI];
+
+  const gridColsClass: Record<number, string> = {
+    1: 'xl:grid-cols-1',
+    2: 'xl:grid-cols-2',
+    3: 'xl:grid-cols-3',
+    4: 'xl:grid-cols-4',
+    5: 'xl:grid-cols-5',
+  };
+
+  const gridCols = gridColsClass[visibleKPIs.length] || 'xl:grid-cols-5';
+
   return (
     <MainLayout>
       <div className="flex min-h-screen">
@@ -169,34 +193,44 @@ const Dashboard: React.FC = () => {
         - Extra Large (xl): 5 columns (all cards in one row)
       */}
       <div className="flex justify-between items-start mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 flex-1">
-          <KpiCard
-            title="Impressions"
-            value={impressionsValue}
-            delta={impressionsDelta}
-          />
-          <KpiCard
-            title="Downloads"
-            value={downloadsValue}
-            delta={downloadsDelta}
-          />
-          <KpiCard
-            title="Product Page Views"
-            value={pageViewsValue}
-            delta={pageViewsDelta}
-          />
-          <KpiCard
-            title="Product Page CVR"
-            value={productPageCvrValue}
-            delta={productPageCvrDelta}
-            isPercentage
-          />
-          <KpiCard
-            title="Impressions CVR"
-            value={impressionsCvrValue}
-            delta={impressionsCvrDelta}
-            isPercentage
-          />
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
+          {shouldShowKPI('impressions') && (
+            <KpiCard
+              title="Impressions"
+              value={impressionsValue}
+              delta={impressionsDelta}
+            />
+          )}
+          {shouldShowKPI('downloads') && (
+            <KpiCard
+              title="Downloads"
+              value={downloadsValue}
+              delta={downloadsDelta}
+            />
+          )}
+          {shouldShowKPI('product_page_views') && (
+            <KpiCard
+              title="Product Page Views"
+              value={pageViewsValue}
+              delta={pageViewsDelta}
+            />
+          )}
+          {shouldShowKPI('product_page_cvr') && (
+            <KpiCard
+              title="Product Page CVR"
+              value={productPageCvrValue}
+              delta={productPageCvrDelta}
+              isPercentage
+            />
+          )}
+          {shouldShowKPI('impressions_cvr') && (
+            <KpiCard
+              title="Impressions CVR"
+              value={impressionsCvrValue}
+              delta={impressionsCvrDelta}
+              isPercentage
+            />
+          )}
         </div>
         
         {/* Data Source Indicator with Test Button */}
@@ -227,7 +261,7 @@ const Dashboard: React.FC = () => {
             />
           {filters.trafficSources.length > 0 && (
             <div className="text-sm text-zinc-400">
-              {filters.trafficSources.length === 1 
+              {filters.trafficSources.length === 1
                 ? `Showing: ${filters.trafficSources[0]}`
                 : `${filters.trafficSources.length} sources selected`
               }
@@ -239,8 +273,9 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-        
-        <div className="flex items-center">
+
+        <div className="flex items-center gap-4">
+          <KPISelector value={selectedKPI} onChange={handleKPIChange} />
           <Button
             variant={excludeAsa ? "destructive" : "outline"}
             size="sm"
