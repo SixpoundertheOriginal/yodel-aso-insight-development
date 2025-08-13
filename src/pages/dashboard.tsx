@@ -2,7 +2,7 @@
 // src/pages/dashboard.tsx
 import React, { useState, useEffect } from "react";
 import KpiCard from "../components/KpiCard";
-import AnalyticsTimeSeriesChart from "../components/AnalyticsTimeSeriesChart";
+import AnalyticsTrafficSourceChart from "../components/AnalyticsTrafficSourceChart";
 import ComparisonChart from "../components/ComparisonChart";
 import { DataSourceIndicator } from "../components/DataSourceIndicator";
 import { useAsoData } from "../context/AsoDataContext";
@@ -276,8 +276,7 @@ const Dashboard: React.FC = () => {
         <Card className="bg-zinc-800 rounded-md mb-8">
           <CardContent className="p-6">
             <h2 className="text-lg font-medium mb-4">Performance Metrics</h2>
-            <AnalyticsTimeSeriesChart
-              timeseriesData={data.timeseriesData}
+            <AnalyticsTrafficSourceChart
               trafficSourceTimeseriesData={data.trafficSourceTimeseriesData || []}
               selectedMetric={selectedKPI}
             />

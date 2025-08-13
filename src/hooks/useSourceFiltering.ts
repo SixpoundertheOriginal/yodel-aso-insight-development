@@ -18,10 +18,13 @@ export function useSourceFiltering(
       };
 
       selectedSources.forEach(source => {
-        const key = camelCase(source) as keyof TrafficSourceTimeSeriesPoint;
-        if (key in dataPoint) {
-          filtered[key] = dataPoint[key];
-        }
+        const base = camelCase(source);
+        ['impressions', 'downloads', 'product_page_views'].forEach(metric => {
+          const key = `${base}_${metric}` as keyof TrafficSourceTimeSeriesPoint;
+          if (key in dataPoint) {
+            filtered[key] = dataPoint[key];
+          }
+        });
       });
 
       return filtered as TrafficSourceTimeSeriesPoint;

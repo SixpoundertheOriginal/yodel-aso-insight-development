@@ -373,11 +373,21 @@ function createTrafficSourceTimeSeries(bigQueryData: BigQueryDataPoint[]) {
   return Object.keys(byDate)
     .map(date => {
       const dayRecords = byDate[date];
-      const bySource = dayRecords.reduce((acc, record) => {
-        const source = record.traffic_source;
-        acc[source] = (acc[source] || 0) + record.downloads;
-        return acc;
-      }, {} as Record<string, number>);
+
+      const bySource = dayRecords.reduce(
+        (acc, record) => {
+          const source = record.traffic_source;
+          if (!acc[source]) {
+            acc[source] = { impressions: 0, downloads: 0, product_page_views: 0 };
+          }
+          acc[source].impressions += record.impressions;
+          acc[source].downloads += record.downloads;
+          acc[source].product_page_views += record.product_page_views || 0;
+          return acc;
+        },
+        {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>
+      );
+
       const totals = dayRecords.reduce(
         (sum, item) => ({
           impressions: sum.impressions + item.impressions,
@@ -386,13 +396,24 @@ function createTrafficSourceTimeSeries(bigQueryData: BigQueryDataPoint[]) {
         }),
         { impressions: 0, downloads: 0, product_page_views: 0 }
       );
+
       return {
         date,
-        webReferrer: bySource['Web Referrer'] || 0,
-        appStoreSearch: bySource['App Store Search'] || 0,
-        appReferrer: bySource['App Referrer'] || 0,
-        appleSearchAds: bySource['Apple Search Ads'] || 0,
-        appStoreBrowse: bySource['App Store Browse'] || 0,
+        webReferrer_impressions: bySource['Web Referrer']?.impressions || 0,
+        webReferrer_downloads: bySource['Web Referrer']?.downloads || 0,
+        webReferrer_product_page_views: bySource['Web Referrer']?.product_page_views || 0,
+        appStoreSearch_impressions: bySource['App Store Search']?.impressions || 0,
+        appStoreSearch_downloads: bySource['App Store Search']?.downloads || 0,
+        appStoreSearch_product_page_views: bySource['App Store Search']?.product_page_views || 0,
+        appReferrer_impressions: bySource['App Referrer']?.impressions || 0,
+        appReferrer_downloads: bySource['App Referrer']?.downloads || 0,
+        appReferrer_product_page_views: bySource['App Referrer']?.product_page_views || 0,
+        appleSearchAds_impressions: bySource['Apple Search Ads']?.impressions || 0,
+        appleSearchAds_downloads: bySource['Apple Search Ads']?.downloads || 0,
+        appleSearchAds_product_page_views: bySource['Apple Search Ads']?.product_page_views || 0,
+        appStoreBrowse_impressions: bySource['App Store Browse']?.impressions || 0,
+        appStoreBrowse_downloads: bySource['App Store Browse']?.downloads || 0,
+        appStoreBrowse_product_page_views: bySource['App Store Browse']?.product_page_views || 0,
         totalDownloads: totals.downloads,
         totalImpressions: totals.impressions,
         totalProductPageViews: totals.product_page_views,

@@ -29,10 +29,21 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
     };
   }), [data]);
 
-  const formattedTrafficData = useMemo(() => trafficSourceTimeseriesData.map(item => ({
-    ...item,
-    date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  })), [trafficSourceTimeseriesData]);
+  const formattedTrafficData = useMemo(
+    () =>
+      trafficSourceTimeseriesData.map((item) => ({
+        date: new Date(item.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        webReferrer: item.webReferrer_downloads,
+        appStoreSearch: item.appStoreSearch_downloads,
+        appReferrer: item.appReferrer_downloads,
+        appleSearchAds: item.appleSearchAds_downloads,
+        appStoreBrowse: item.appStoreBrowse_downloads,
+      })),
+    [trafficSourceTimeseriesData]
+  );
 
   const chartData = chartMode === 'breakdown' ? formattedTrafficData : formattedData;
 
