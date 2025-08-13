@@ -28,30 +28,29 @@ jest.mock('../components/TimeSeriesChart', () => ({
   default: ({ title }: { title: string }) => <div data-testid={`time-series-${title}`}>{title}</div>,
 }));
 
-// Mock the ConversionRateByTrafficSourceChart component
-jest.mock('../components/ConversionRateByTrafficSourceChart', () => ({
+// Mock the ConversionRateChart component
+jest.mock('../components/ConversionRateChart', () => ({
   __esModule: true,
   default: () => <div data-testid="conversion-rate-chart">Conversion Rate Chart</div>,
+}));
+
+// Mock the TrafficSourceCVRCard component
+jest.mock('../components/TrafficSourceCVRCard', () => ({
+  __esModule: true,
+  default: ({ data }: { data: any }) => (
+    <div data-testid={`traffic-source-card-${data.displayName}`}>{data.displayName}</div>
+  ),
+}));
+
+// Mock the CVRTypeToggle component
+jest.mock('../components/CVRTypeToggle', () => ({
+  __esModule: true,
+  default: () => <div data-testid="cvr-type-toggle">CVR Toggle</div>,
 }));
 
 // Mock the TrafficSourceSelect component
 jest.mock('../components/Filters', () => ({
   TrafficSourceSelect: () => <div data-testid="traffic-source-select">Traffic Source Select</div>,
-}));
-
-// Mock the useSourceFiltering hook
-jest.mock('../hooks/useSourceFiltering', () => ({
-  __esModule: true,
-  default: () => ({
-    selectedSources: ['App Store Search', 'Web Referrer'],
-    setSelectedSources: jest.fn(),
-    filteredData: [],
-    filteredSources: [
-      { name: 'App Store Search', value: 50000, delta: 5.2 },
-      { name: 'Web Referrer', value: 30000, delta: -2.8 },
-    ],
-    allSourceNames: ['App Store Search', 'Web Referrer', 'App Referrer', 'Unknown'],
-  }),
 }));
 
 describe('ConversionAnalysisPage', () => {
@@ -72,10 +71,54 @@ describe('ConversionAnalysisPage', () => {
       }
     ],
     trafficSources: [
-      { name: 'App Store Search', value: 50000, delta: 5.2 },
-      { name: 'Web Referrer', value: 30000, delta: -2.8 },
-      { name: 'App Referrer', value: 20000, delta: 1.7 },
-      { name: 'Unknown', value: 10000, delta: -4.5 },
+      {
+        name: 'App Store Search',
+        value: 50000,
+        delta: 5.2,
+        metrics: {
+          impressions: { value: 1000, delta: 0 },
+          downloads: { value: 200, delta: 0 },
+          product_page_views: { value: 800, delta: 0 },
+          product_page_cvr: { value: 25, delta: 0 },
+          impressions_cvr: { value: 20, delta: 0 },
+        },
+      },
+      {
+        name: 'Web Referrer',
+        value: 30000,
+        delta: -2.8,
+        metrics: {
+          impressions: { value: 800, delta: 0 },
+          downloads: { value: 120, delta: 0 },
+          product_page_views: { value: 400, delta: 0 },
+          product_page_cvr: { value: 30, delta: 0 },
+          impressions_cvr: { value: 15, delta: 0 },
+        },
+      },
+      {
+        name: 'App Referrer',
+        value: 20000,
+        delta: 1.7,
+        metrics: {
+          impressions: { value: 600, delta: 0 },
+          downloads: { value: 90, delta: 0 },
+          product_page_views: { value: 300, delta: 0 },
+          product_page_cvr: { value: 30, delta: 0 },
+          impressions_cvr: { value: 15, delta: 0 },
+        },
+      },
+      {
+        name: 'Unknown',
+        value: 10000,
+        delta: -4.5,
+        metrics: {
+          impressions: { value: 500, delta: 0 },
+          downloads: { value: 50, delta: 0 },
+          product_page_views: { value: 200, delta: 0 },
+          product_page_cvr: { value: 25, delta: 0 },
+          impressions_cvr: { value: 10, delta: 0 },
+        },
+      },
     ],
   };
 
@@ -99,13 +142,13 @@ describe('ConversionAnalysisPage', () => {
 
   it('renders traffic source cards correctly', () => {
     render(<ConversionAnalysisPage />);
-    
+
     // Check if the section title is rendered
     expect(screen.getByText('By Traffic Source')).toBeInTheDocument();
-    
+
     // Check if the filtered traffic source cards are rendered
-    expect(screen.getByTestId('kpi-card-App Store Search')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-card-Web Referrer')).toBeInTheDocument();
+    expect(screen.getByTestId('traffic-source-card-App Store Search')).toBeInTheDocument();
+    expect(screen.getByTestId('traffic-source-card-Web Referrer')).toBeInTheDocument();
   });
 
   it('shows loading state when data is loading', () => {
