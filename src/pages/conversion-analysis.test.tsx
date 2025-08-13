@@ -22,10 +22,12 @@ jest.mock('../components/KpiCard', () => ({
   default: ({ title }: { title: string }) => <div data-testid={`kpi-card-${title}`}>{title}</div>,
 }));
 
-// Mock the TimeSeriesChart component
-jest.mock('../components/TimeSeriesChart', () => ({
+// Mock the ConversionRateTimeSeriesChart component
+jest.mock('../components/ConversionRateTimeSeriesChart', () => ({
   __esModule: true,
-  default: ({ title }: { title: string }) => <div data-testid={`time-series-${title}`}>{title}</div>,
+  ConversionRateTimeSeriesChart: () => (
+    <div data-testid="conversion-rate-timeseries-chart">Conversion Rate Time Series Chart</div>
+  ),
 }));
 
 // Mock the ConversionRateChart component
@@ -69,6 +71,17 @@ describe('ConversionAnalysisPage', () => {
         downloads: 500,
         product_page_views: 750,
       }
+    ],
+    conversionRateTimeSeries: [
+      {
+        date: '2023-01-01',
+        traffic_source: 'App Store Search',
+        cvr_from_impressions: 20,
+        cvr_from_product_page_views: 25,
+        impressions: 1000,
+        downloads: 200,
+        product_page_views: 800,
+      },
     ],
     trafficSources: [
       {
@@ -148,7 +161,8 @@ describe('ConversionAnalysisPage', () => {
 
     // Check if the filtered traffic source cards are rendered
     expect(screen.getByTestId('traffic-source-card-App Store Search')).toBeInTheDocument();
-    expect(screen.getByTestId('traffic-source-card-Web Referrer')).toBeInTheDocument();
+    expect(screen.queryByTestId('traffic-source-card-Web Referrer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('traffic-source-card-App Referrer')).not.toBeInTheDocument();
   });
 
   it('shows loading state when data is loading', () => {

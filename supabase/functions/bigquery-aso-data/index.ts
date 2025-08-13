@@ -28,6 +28,7 @@ interface BigQueryRequest {
   };
   selectedApps?: string[];
   trafficSources?: string[];
+  context?: 'conversion' | 'visibility' | 'general';
   limit?: number;
 }
 
@@ -69,6 +70,16 @@ function mapTrafficSourceToBigQuery(displayName: string): string {
     return displayName;
   }
   return mapped;
+}
+
+function processDataForContext(data: any[], context: string) {
+  const CVR_EXCLUDED_SOURCES = ['App_Referrer', 'Web_Referrer'];
+  if (context === 'conversion') {
+    return data.filter(
+      item => !CVR_EXCLUDED_SOURCES.includes(item.traffic_source_raw)
+    );
+  }
+  return data;
 }
 
 // Phase 3.2: verification helper
@@ -817,9 +828,23 @@ serve(async (req) => {
       };
     });
 
+    const context = body.context || 'general';
+    const processedRows = processDataForContext(transformedData, context);
+    const enhancedData = processedRows.map(item => {
+      const cvrFromImpressions = item.impressions > 0 ? (item.downloads / item.impressions) * 100 : 0;
+      const cvrFromProductPage = item.product_page_views && item.product_page_views > 0
+        ? (item.downloads / item.product_page_views) * 100
+        : null;
+      return {
+        ...item,
+        cvr_from_impressions: cvrFromImpressions,
+        cvr_from_product_page_views: cvrFromProductPage
+      };
+    });
+
     // Auto-approval logic
-    if (shouldAutoApprove && transformedData.length > 0) {
-      const discoveredClients = [...new Set(transformedData.map(row => row.organization_id))];
+    if (shouldAutoApprove && enhancedData.length > 0) {
+      const discoveredClients = [...new Set(enhancedData.map(row => row.organization_id))];
       
       try {
         for (const client of discoveredClients) {
@@ -853,19 +878,19 @@ serve(async (req) => {
       }
     }
 
-    if (isDevelopment() && transformedData.length > 0) {
-      console.log('📊 [BigQuery] Sample transformed data:', transformedData[0]);
+    if (isDevelopment() && enhancedData.length > 0) {
+      console.log('📊 [BigQuery] Sample transformed data:', enhancedData[0]);
       
       // **ENHANCED: Better statistics for debugging NULL handling**
-      const nonNullPageViews = transformedData.filter(d => d.product_page_views !== null);
-      const nullPageViews = transformedData.filter(d => d.product_page_views === null);
+      const nonNullPageViews = enhancedData.filter(d => d.product_page_views !== null);
+      const nullPageViews = enhancedData.filter(d => d.product_page_views === null);
       
       console.log('📊 [BigQuery] Product page views summary:', {
-        totalRows: transformedData.length,
+        totalRows: enhancedData.length,
         rowsWithNonNullPageViews: nonNullPageViews.length,
         rowsWithNullPageViews: nullPageViews.length,
         maxPageViews: nonNullPageViews.length > 0 ? Math.max(...nonNullPageViews.map(d => d.product_page_views)) : 0,
-        avgPageViews: nonNullPageViews.length > 0 ? 
+        avgPageViews: nonNullPageViews.length > 0 ?
           nonNullPageViews.reduce((sum, d) => sum + d.product_page_views, 0) / nonNullPageViews.length : 0,
         nullHandling: 'NULLs preserved for proper aggregation'
       });
@@ -927,9 +952,9 @@ serve(async (req) => {
 
     const responsePayload = {
       success: true,
-      data: transformedData,
+      data: enhancedData,
       meta: {
-        rowCount: transformedData.length,
+        rowCount: enhancedData.length,
         totalRows: parseInt(queryResult.totalRows || '0'),
         executionTimeMs,
         queryParams: {
@@ -937,6 +962,7 @@ serve(async (req) => {
           dateRange: body.dateRange || null,
           selectedApps: body.selectedApps || null,
           trafficSources: normalizedTrafficSources || null,
+          context,
           limit
         },
         // **PHASE 1 KEY CHANGE: Always return all discovered traffic sources**
@@ -948,7 +974,7 @@ serve(async (req) => {
         approvedApps: approvedAppIdentifiers,
         queriedClients: clientsToQuery,
         emergencyBypass: shouldAutoApprove,
-        autoApprovalTriggered: shouldAutoApprove && transformedData.length > 0,
+        autoApprovalTriggered: shouldAutoApprove && enhancedData.length > 0,
         periodComparison,
         // **PHASE 1 ARCHITECTURE INFO**
         dataArchitecture: {
@@ -961,7 +987,7 @@ serve(async (req) => {
           mainQuery: {
             executed: true,
             filtered: normalizedTrafficSources.length > 0,
-            rowsReturned: transformedData.length
+            rowsReturned: enhancedData.length
           }
         },
         ...(isDevelopment() && {
