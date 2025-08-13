@@ -36,6 +36,8 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const sidebarState = onStateChange ? state : internalState;
   const setSidebarState = onStateChange || setInternalState;
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
   // Initialize theme to ensure theme state is active
   useTheme();
 
@@ -82,6 +84,33 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
     document.addEventListener('keydown', handleKeyboard);
     return () => document.removeEventListener('keydown', handleKeyboard);
   }, [sidebarState, isMobile, setSidebarState]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth >= 280 && newWidth <= 800) {
+          setSidebarWidth(newWidth);
+        }
+      };
+
+      const handleMouseUp = () => {
+        setIsResizing(false);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing]);
 
   const getInsightFreshness = (insightCreatedAt: string) => {
     if (!insightCreatedAt) return { status: 'unknown', message: 'No timestamp' };
@@ -189,7 +218,11 @@ useEffect(() => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setSidebarState(sidebarState === 'expanded' ? 'normal' : 'expanded')}
+              onClick={() => {
+                const newState = sidebarState === 'expanded' ? 'normal' : 'expanded';
+                setSidebarState(newState);
+                setSidebarWidth(newState === 'expanded' ? 600 : 320);
+              }}
               className="p-1 hover:bg-muted"
               title={sidebarState === 'expanded' ? 'Shrink sidebar' : 'Expand sidebar'}
               aria-label={sidebarState === 'expanded' ? 'Shrink AI insights sidebar' : 'Expand AI insights sidebar'}
@@ -427,11 +460,18 @@ useEffect(() => {
     );
   }
 
-  const widthClass = sidebarState === 'expanded' ? 'w-[60vw] max-w-3xl' : 'w-80';
-
   return (
-    <div className={`${widthClass} h-screen bg-background/50 border-l border-border flex flex-col transition-all duration-300 ease-in-out sidebar-container`} role="complementary" aria-label="AI Insights Panel">
+    <div
+      className="h-screen bg-background/50 border-l border-border flex flex-col transition-all duration-300 ease-in-out sidebar-container relative"
+      style={{ width: sidebarWidth }}
+      role="complementary"
+      aria-label="AI Insights Panel"
+    >
       {sidebarContent}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize"
+        onMouseDown={handleMouseDown}
+      />
     </div>
   );
 };
