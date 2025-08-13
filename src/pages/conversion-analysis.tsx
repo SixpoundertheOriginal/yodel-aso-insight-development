@@ -66,14 +66,8 @@ const ConversionAnalysisPage: React.FC = () => {
     }));
   }, [data?.cvrTimeSeries, cvrType]);
 
-  const { data: benchmarkComparison, availableCategories } = useBenchmarkData(
-    selectedCategory,
-    data
-      ? {
-          impressions_to_page_views: data.summary.impressions_cvr.value,
-          page_views_to_installs: data.summary.product_page_cvr.value,
-        }
-      : undefined
+  const { data: benchmarkData, availableCategories } = useBenchmarkData(
+    selectedCategory
   );
 
   useEffect(() => {
@@ -206,10 +200,10 @@ const ConversionAnalysisPage: React.FC = () => {
                     delta={data.summary.product_page_cvr.delta}
                     isPercentage
                   />
-                  {benchmarkComparison && (
+                  {benchmarkData && (
                     <BenchmarkIndicator
                       clientValue={data.summary.product_page_cvr.value}
-                      benchmark={benchmarkComparison.benchmarks.page_views_to_installs}
+                      benchmark={benchmarkData.page_views_to_installs}
                     />
                   )}
                 </div>
@@ -220,10 +214,10 @@ const ConversionAnalysisPage: React.FC = () => {
                     delta={data.summary.impressions_cvr.delta}
                     isPercentage
                   />
-                  {benchmarkComparison && (
+                  {benchmarkData && (
                     <BenchmarkIndicator
                       clientValue={data.summary.impressions_cvr.value}
-                      benchmark={benchmarkComparison.benchmarks.impressions_to_page_views}
+                      benchmark={benchmarkData.impressions_to_page_views}
                     />
                   )}
                 </div>
