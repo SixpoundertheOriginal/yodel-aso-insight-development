@@ -7,7 +7,8 @@ import {
   TimeSeriesPoint,
   MetricSummary,
   TrafficSource,
-  TrafficSourceTimeSeriesPoint
+  TrafficSourceTimeSeriesPoint,
+  ConversionRateTimeSeriesPoint
 } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
@@ -125,6 +126,7 @@ export const useBigQueryData = (
   dateRange: DateRange,
   trafficSources: string[],
   ready: boolean = true,
+  context: 'conversion' | 'visibility' | 'general' = 'general',
   registerHookInstance?: (instanceId: string, data: any) => void
 ): BigQueryDataResult => {
   const [data, setData] = useState<AsoData | null>(null);
@@ -158,7 +160,8 @@ export const useBigQueryData = (
     return {
       organizationId,
       selectedApps: [...selectedApps],
-      dateRange: { from: fromDate, to: toDate }
+      dateRange: { from: fromDate, to: toDate },
+      context
     };
   }, [
     organizationId,
@@ -168,13 +171,14 @@ export const useBigQueryData = (
       : dateRange.from.toISOString().split('T')[0],
     typeof dateRange.to === 'string'
       ? dateRange.to
-      : dateRange.to.toISOString().split('T')[0]
+      : dateRange.to.toISOString().split('T')[0],
+    context
   ]);
 
   // ✅ ENHANCED: Request deduplication key
   const requestKey = useMemo(
     () =>
-      `${stableFilters.organizationId}-${stableFilters.selectedApps.join(',')}-${stableFilters.dateRange.from}-${stableFilters.dateRange.to}`,
+      `${stableFilters.organizationId}-${stableFilters.selectedApps.join(',')}-${stableFilters.dateRange.from}-${stableFilters.dateRange.to}-${stableFilters.context}`,
     [stableFilters]
   );
 
@@ -220,7 +224,8 @@ export const useBigQueryData = (
           dateRange: stableFilters.dateRange,
           selectedApps:
             stableFilters.selectedApps.length > 0 ? stableFilters.selectedApps : undefined,
-          trafficSources: [] as string[]
+          trafficSources: [] as string[],
+          context
         };
 
         debugLog.verbose('Making request to edge function', { requestBody });
@@ -426,6 +431,10 @@ function transformBigQueryToAsoData(
   bigQueryData: BigQueryDataPoint[],
   meta: BigQueryMeta
 ): AsoData {
+  const CVR_EXCLUDED_SOURCES = ['App Referrer', 'Web Referrer'];
+  const filteredData = bigQueryData.filter(
+    item => !CVR_EXCLUDED_SOURCES.includes(item.traffic_source)
+  );
 
   const dateGroups = bigQueryData.reduce((acc, item) => {
     const date = item.date;
@@ -471,6 +480,17 @@ function transformBigQueryToAsoData(
     { impressions: 0, downloads: 0, product_page_views: 0 }
   );
 
+  const cvrTotals = filteredData.reduce(
+    (sum, item) => ({
+      impressions: sum.impressions + item.impressions,
+      downloads: sum.downloads + item.downloads,
+      product_page_views: item.product_page_views !== null ?
+        sum.product_page_views + item.product_page_views :
+        sum.product_page_views
+    }),
+    { impressions: 0, downloads: 0, product_page_views: 0 }
+  );
+
   const calculateRealDelta = (current: number, previous?: number | null): number => {
     if (!previous || previous === 0) return current > 0 ? 999 : 0;
     return ((current - previous) / previous) * 100;
@@ -478,15 +498,15 @@ function transformBigQueryToAsoData(
 
   const previousTotals = meta.periodComparison?.previous || null;
 
-  const currentProductPageCVR = totals.product_page_views > 0
-    ? (totals.downloads / totals.product_page_views) * 100
+  const currentProductPageCVR = cvrTotals.product_page_views > 0
+    ? (cvrTotals.downloads / cvrTotals.product_page_views) * 100
     : 0;
   const previousProductPageCVR = previousTotals && previousTotals.product_page_views > 0
     ? (previousTotals.downloads / previousTotals.product_page_views) * 100
     : 0;
 
-  const currentImpressionsCVR = totals.impressions > 0
-    ? (totals.downloads / totals.impressions) * 100
+  const currentImpressionsCVR = cvrTotals.impressions > 0
+    ? (cvrTotals.downloads / cvrTotals.impressions) * 100
     : 0;
   const previousImpressionsCVR = previousTotals && previousTotals.impressions > 0
     ? (previousTotals.downloads / previousTotals.impressions) * 100
@@ -506,7 +526,7 @@ function transformBigQueryToAsoData(
     }
   };
 
-  const trafficSourceGroups = bigQueryData.reduce((acc, item) => {
+  const trafficSourceGroups = filteredData.reduce((acc, item) => {
     const source = item.traffic_source || 'Unknown';
     if (!acc[source]) {
       acc[source] = {
@@ -520,6 +540,22 @@ function transformBigQueryToAsoData(
     acc[source].product_page_views += item.product_page_views || 0;
     return acc;
   }, {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>);
+
+  const conversionRateTimeSeries: ConversionRateTimeSeriesPoint[] = filteredData.map(item => {
+    const cvrFromImpressions = item.impressions > 0 ? (item.downloads / item.impressions) * 100 : 0;
+    const cvrFromProductPage = item.product_page_views && item.product_page_views > 0
+      ? (item.downloads / item.product_page_views) * 100
+      : 0;
+    return {
+      date: item.date,
+      traffic_source: item.traffic_source,
+      cvr_from_impressions: cvrFromImpressions,
+      cvr_from_product_page_views: cvrFromProductPage,
+      impressions: item.impressions,
+      downloads: item.downloads,
+      product_page_views: item.product_page_views
+    };
+  });
 
   const trafficSourceData: TrafficSource[] = Object.entries(trafficSourceGroups).map(([source, values]) => {
     const comparison = meta.periodComparison?.trafficSources?.find(ts => ts.name === source);
@@ -562,6 +598,7 @@ function transformBigQueryToAsoData(
     summary,
     timeseriesData,
     trafficSourceTimeseriesData,
-    trafficSources: trafficSourceData
+    trafficSources: trafficSourceData,
+    conversionRateTimeSeries
   };
 }

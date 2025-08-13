@@ -28,9 +28,10 @@ const TrafficSourceSelect: React.FC<TrafficSourceSelectProps> = ({
   // Get stable list of all available traffic sources from BigQuery data
   const allAvailableSources = useMemo(() => {
     if (!data?.trafficSources) return [];
+    const excluded = ['App Referrer', 'Web Referrer'];
     return data.trafficSources
       .map(source => source.name)
-      .filter(Boolean)
+      .filter(name => name && !excluded.includes(name))
       .sort(); // Sort alphabetically for consistent display
   }, [data?.trafficSources]);
   

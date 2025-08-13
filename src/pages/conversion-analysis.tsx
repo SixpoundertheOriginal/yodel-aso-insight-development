@@ -2,10 +2,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import KpiCard from "../components/KpiCard";
-import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
 import CVRTypeToggle from "../components/CVRTypeToggle";
 import ConversionRateChart from "../components/ConversionRateChart";
+import { ConversionRateTimeSeriesChart } from "../components/ConversionRateTimeSeriesChart";
 import TrafficSourceCVRCard from "../components/TrafficSourceCVRCard";
 import { processTrafficSourceCVR, CVRType } from "../utils/processTrafficSourceCVR";
 import { MainLayout } from '@/layouts';
@@ -25,7 +25,9 @@ const ConversionAnalysisPage: React.FC = () => {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [cvrType, setCvrType] = useState<CVRType>('impression');
 
-  const trafficSources = data?.trafficSources || [];
+  const trafficSources = (data?.trafficSources || []).filter(
+    source => !['App Referrer', 'Web Referrer'].includes(source.name)
+  );
   const filteredSources = selectedSources.length > 0
     ? trafficSources.filter(source => selectedSources.includes(source.name))
     : trafficSources;
@@ -181,7 +183,12 @@ const ConversionAnalysisPage: React.FC = () => {
                     ))}
                   </div>
 
-                  <TimeSeriesChart data={data.timeseriesData} />
+                  <ConversionRateTimeSeriesChart
+                    data={data.conversionRateTimeSeries || []}
+                    trafficSources={trafficSources.map(s => s.name)}
+                    cvrType={cvrType}
+                    loading={loading}
+                  />
                 </>
               )}
             </section>

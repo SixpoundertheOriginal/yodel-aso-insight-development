@@ -69,11 +69,22 @@ export interface TrafficSourceTimeSeriesPoint {
   totalProductPageViews: number;
 }
 
+export interface ConversionRateTimeSeriesPoint {
+  date: string;
+  traffic_source: string;
+  cvr_from_impressions: number;
+  cvr_from_product_page_views: number;
+  impressions: number;
+  downloads: number;
+  product_page_views: number;
+}
+
 export interface AsoData {
   summary: AsoMetrics;
   timeseriesData: TimeSeriesPoint[];
   trafficSources: TrafficSource[];
   trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[];
+  conversionRateTimeSeries?: ConversionRateTimeSeriesPoint[];
 }
 
 // Complete list of all available traffic sources - static and comprehensive
@@ -127,6 +138,7 @@ export const useMockAsoData = (
         // Generate timeseries data for the last 30 days
         const timeseriesData: TimeSeriesPoint[] = [];
         const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = [];
+        const conversionRateTimeSeries: ConversionRateTimeSeriesPoint[] = [];
         const endDate = dateRange.to;
         const startDate = new Date(endDate);
         startDate.setDate(startDate.getDate() - 29); // 30 days including the end date
@@ -203,6 +215,29 @@ export const useMockAsoData = (
             totalImpressions,
             totalProductPageViews,
           });
+
+          const nameMap: Record<typeof sources[number], string> = {
+            webReferrer: 'Web Referrer',
+            appStoreSearch: 'App Store Search',
+            appReferrer: 'App Referrer',
+            appleSearchAds: 'Apple Search Ads',
+            appStoreBrowse: 'App Store Browse',
+          };
+
+          sources.forEach((src) => {
+            const m = sourceMetrics[src];
+            const cvrFromImpressions = m.impressions > 0 ? (m.downloads / m.impressions) * 100 : 0;
+            const cvrFromProductPage = m.product_page_views > 0 ? (m.downloads / m.product_page_views) * 100 : 0;
+            conversionRateTimeSeries.push({
+              date: dateStr,
+              traffic_source: nameMap[src],
+              cvr_from_impressions: cvrFromImpressions,
+              cvr_from_product_page_views: cvrFromProductPage,
+              impressions: m.impressions,
+              downloads: m.downloads,
+              product_page_views: m.product_page_views,
+            });
+          });
         }
         
         // Generate traffic source data for ALL available sources, not just selected ones
@@ -239,6 +274,7 @@ export const useMockAsoData = (
           timeseriesData,
           trafficSources: trafficSourceData, // Always return all available sources
           trafficSourceTimeseriesData,
+          conversionRateTimeSeries,
         };
         
         // Simulate API delay
