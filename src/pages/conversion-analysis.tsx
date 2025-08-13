@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import CategorySelector from '@/components/CategorySelector';
+import BenchmarkIndicator from '@/components/BenchmarkIndicator';
+import { useBenchmarkData } from '../hooks/useBenchmarkData';
 
 const ConversionAnalysisPage: React.FC = () => {
   const { data, loading } = useAsoData();
@@ -25,6 +28,7 @@ const ConversionAnalysisPage: React.FC = () => {
   
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [cvrType, setCvrType] = useState<CVRType>('impression');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Photo & Video');
 
   const trafficSources = data?.trafficSources || [];
   const filteredSources = selectedSources.length > 0
@@ -61,6 +65,16 @@ const ConversionAnalysisPage: React.FC = () => {
           : item.appStoreBrowse_product_page_cvr,
     }));
   }, [data?.cvrTimeSeries, cvrType]);
+
+  const { data: benchmarkComparison, availableCategories } = useBenchmarkData(
+    selectedCategory,
+    data
+      ? {
+          impressions_to_page_views: data.summary.impressions_cvr.value,
+          page_views_to_installs: data.summary.product_page_cvr.value,
+        }
+      : undefined
+  );
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -172,7 +186,14 @@ const ConversionAnalysisPage: React.FC = () => {
                 Insights
               </Button>
             )}
-            <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+              <CategorySelector
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                availableCategories={availableCategories}
+              />
+            </div>
 
             {/* Cumulative Section */}
             <section>
@@ -185,6 +206,12 @@ const ConversionAnalysisPage: React.FC = () => {
                     delta={data.summary.product_page_cvr.delta}
                     isPercentage
                   />
+                  {benchmarkComparison && (
+                    <BenchmarkIndicator
+                      clientValue={data.summary.product_page_cvr.value}
+                      benchmark={benchmarkComparison.benchmarks.page_views_to_installs}
+                    />
+                  )}
                 </div>
                 <div className="w-64">
                   <KpiCard
@@ -193,6 +220,12 @@ const ConversionAnalysisPage: React.FC = () => {
                     delta={data.summary.impressions_cvr.delta}
                     isPercentage
                   />
+                  {benchmarkComparison && (
+                    <BenchmarkIndicator
+                      clientValue={data.summary.impressions_cvr.value}
+                      benchmark={benchmarkComparison.benchmarks.impressions_to_page_views}
+                    />
+                  )}
                 </div>
               </div>
             </section>

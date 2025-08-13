@@ -11,6 +11,15 @@ jest.mock('../context/AsoDataContext', () => ({
   useAsoData: jest.fn(),
 }));
 
+jest.mock('../hooks/useBenchmarkData', () => ({
+  useBenchmarkData: jest.fn().mockReturnValue({
+    data: null,
+    loading: false,
+    error: null,
+    availableCategories: [],
+  }),
+}));
+
 // Mock the layout component to simplify testing
 jest.mock('../layouts', () => ({
   MainLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="main-layout">{children}</div>,
@@ -51,6 +60,16 @@ jest.mock('../components/CVRTypeToggle', () => ({
 // Mock the TrafficSourceSelect component
 jest.mock('../components/Filters', () => ({
   TrafficSourceSelect: () => <div data-testid="traffic-source-select">Traffic Source Select</div>,
+}));
+
+jest.mock('../components/CategorySelector', () => ({
+  __esModule: true,
+  default: () => <div data-testid="category-selector">Category Selector</div>,
+}));
+
+jest.mock('../components/BenchmarkIndicator', () => ({
+  __esModule: true,
+  default: () => <div data-testid="benchmark-indicator">Benchmark Indicator</div>,
 }));
 
 describe('ConversionAnalysisPage', () => {
