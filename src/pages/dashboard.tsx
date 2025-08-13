@@ -9,8 +9,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toggleTrafficSourceExclusion } from "@/utils/trafficSources";
-import { AlertCircle, Calendar, Database, Filter, TestTube, Sparkles } from "lucide-react";
+import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import { MetricSelector } from '@/components/charts/MetricSelector';
@@ -22,7 +21,6 @@ import { KPISelector } from '../components/KPISelector';
 import { TrafficSourceKpiCards } from '../components/TrafficSourceKpiCards';
 
 const Dashboard: React.FC = () => {
-  const [excludeAsa, setExcludeAsa] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('downloads');
   const [selectedKPI, setSelectedKPI] = useState<string>('impressions');
   const navigate = useNavigate();
@@ -68,19 +66,6 @@ const Dashboard: React.FC = () => {
     setFilters(prev => ({
       ...prev,
       trafficSources: sources
-    }));
-  };
-
-  const handleExcludeAsaToggle = (exclude: boolean) => {
-    setExcludeAsa(exclude);
-    setUserTouchedFilters(true);
-    setFilters((prev) => ({
-      ...prev,
-      trafficSources: toggleTrafficSourceExclusion(
-        prev.trafficSources,
-        "Apple Search Ads",
-        exclude
-      ),
     }));
   };
 
@@ -259,14 +244,6 @@ const Dashboard: React.FC = () => {
             onChange={handleKPIChange}
             includeAllOption={false}
           />
-          <Button
-            variant={excludeAsa ? "destructive" : "outline"}
-            size="sm"
-            aria-pressed={excludeAsa}
-            onClick={() => handleExcludeAsaToggle(!excludeAsa)}
-          >
-            Exclude ASA
-          </Button>
         </div>
       </div>
 
