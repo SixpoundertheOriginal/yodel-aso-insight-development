@@ -2,10 +2,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import TimeSeriesChart from "../components/TimeSeriesChart";
+import ExecutiveTimeSeriesChart from "../components/ExecutiveTimeSeriesChart";
 import KpiCard from "../components/KpiCard";
 import TrafficSourceSelector from "../components/TrafficSourceSelector";
-import { aggregateTrafficSources, trafficSourceGroups } from "@/utils/trafficSourceGroups";
+import {
+  aggregateTrafficSources,
+  executiveTrafficSourceGroups,
+  executiveTrafficSources,
+} from "@/utils/executiveTrafficSourceGroups";
 import {
   PremiumCard,
   PremiumCardHeader,
@@ -29,6 +33,7 @@ const OverviewPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [trafficSourceView, setTrafficSourceView] = useState<string>('all');
+  const [selectedSources, setSelectedSources] = useState<string[]>([...executiveTrafficSources]);
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -61,7 +66,9 @@ const OverviewPage: React.FC = () => {
     if (trafficSourceView === 'all' || trafficSourceView === 'individual') {
       return data.timeseriesData;
     }
-    const group = trafficSourceGroups[trafficSourceView as keyof typeof trafficSourceGroups];
+    const group = executiveTrafficSourceGroups[
+      trafficSourceView as keyof typeof executiveTrafficSourceGroups
+    ];
     return aggregateTrafficSources(trafficSourceTimeseries, group);
   }, [data, trafficSourceView, trafficSourceTimeseries]);
 
@@ -165,7 +172,13 @@ const OverviewPage: React.FC = () => {
                 </PremiumTypography.PageTitle>
 
                 <div className="flex gap-4">
-                  <TrafficSourceSelector value={trafficSourceView} onChange={setTrafficSourceView} />
+                  <TrafficSourceSelector
+                    value={trafficSourceView}
+                    onChange={setTrafficSourceView}
+                    selectedSources={selectedSources}
+                    onSelectedSourcesChange={setSelectedSources}
+                    availableSources={[...executiveTrafficSources]}
+                  />
                   <StatusIndicator status="success" pulse label="Live Data" />
                 </div>
               </div>
@@ -201,13 +214,14 @@ const OverviewPage: React.FC = () => {
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
                     <PremiumCardContent className="p-8">
-                      <TimeSeriesChart
+                      <ExecutiveTimeSeriesChart
                         data={chartData}
                         trafficSourceTimeseriesData={trafficSourceTimeseries}
                         mode={chartMode}
                         showModeToggle={false}
                         visibleMetrics={['impressions','downloads','product_page_views']}
                         breakdownMetric="downloads"
+                        selectedTrafficSources={selectedSources}
                       />
                     </PremiumCardContent>
                   </PremiumCard>
