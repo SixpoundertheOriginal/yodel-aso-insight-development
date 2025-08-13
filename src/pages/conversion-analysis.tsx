@@ -217,7 +217,7 @@ const ConversionAnalysisPage: React.FC = () => {
                       {benchmarkData && (
                         <BenchmarkIndicator
                           clientValue={data.summary.product_page_cvr.value}
-                          benchmark={benchmarkData.page_views_to_installs}
+                          benchmarkValue={benchmarkData.page_views_to_installs}
                         />
                       )}
                     </div>
@@ -231,7 +231,7 @@ const ConversionAnalysisPage: React.FC = () => {
                       {benchmarkData && (
                         <BenchmarkIndicator
                           clientValue={data.summary.impressions_cvr.value}
-                          benchmark={benchmarkData.impressions_to_page_views}
+                          benchmarkValue={benchmarkData.impressions_to_page_views}
                         />
                       )}
                     </div>

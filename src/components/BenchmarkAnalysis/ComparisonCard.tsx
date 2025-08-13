@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import BenchmarkIndicator from '@/components/BenchmarkIndicator';
 
 interface ComparisonCardProps {
   title: string;
@@ -14,13 +15,11 @@ const ComparisonCard: React.FC<ComparisonCardProps> = ({
   benchmarkValue,
   clientDelta,
 }) => {
-  const difference = benchmarkValue
-    ? ((clientValue - benchmarkValue) / benchmarkValue) * 100
-    : 0;
-  const isAbove = clientValue > benchmarkValue;
+  console.log(`${title} - Client: ${clientValue}, Benchmark: ${benchmarkValue}`);
   const deltaColor = clientDelta >= 0 ? 'text-green-500' : 'text-red-500';
   const deltaArrow = clientDelta >= 0 ? '↗' : '↘';
   const deltaSign = clientDelta >= 0 ? '+' : '';
+  const hasBenchmark = benchmarkValue && benchmarkValue > 0;
 
   return (
     <Card className="p-4">
@@ -34,17 +33,16 @@ const ComparisonCard: React.FC<ComparisonCardProps> = ({
       </div>
       <div className="border-t pt-3">
         <div className="text-xs text-muted-foreground mb-1">
-          Industry Average: {benchmarkValue.toFixed(1)}%
+          Industry Average: {hasBenchmark ? benchmarkValue.toFixed(1) : 'Loading...'}%
         </div>
-        <div
-          className={`text-xs flex items-center gap-1 ${
-            isAbove ? 'text-green-500' : 'text-red-500'
-          }`}
-        >
-          {isAbove ? '↗' : '↘'} {Math.abs(difference).toFixed(0)}% {
-            isAbove ? 'above' : 'below'
-          } industry
-        </div>
+        {hasBenchmark ? (
+          <BenchmarkIndicator
+            clientValue={clientValue}
+            benchmarkValue={benchmarkValue}
+          />
+        ) : (
+          <div className="text-xs text-muted-foreground">No benchmark data</div>
+        )}
       </div>
     </Card>
   );

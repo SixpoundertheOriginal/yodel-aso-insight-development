@@ -52,12 +52,14 @@ const BenchmarkComparisonChart: React.FC<BenchmarkComparisonChartProps> = ({
             name="Your Performance"
             dot={false}
           />
-          <ReferenceLine
-            y={benchmarkValue}
-            stroke="#6b7280"
-            strokeDasharray="5 5"
-            label={`Industry: ${benchmarkValue}%`}
-          />
+          {benchmarkValue > 0 && (
+            <ReferenceLine
+              y={benchmarkValue}
+              stroke="#6b7280"
+              strokeDasharray="5 5"
+              label={`Industry: ${benchmarkValue.toFixed(1)}%`}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </Card>
