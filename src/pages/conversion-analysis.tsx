@@ -1,11 +1,13 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
-import ConversionRateByTrafficSourceChart from "../components/ConversionRateByTrafficSourceChart";
-import TrafficSourceConversionCard from "../components/TrafficSourceConversionCard";
+import CVRTypeToggle from "../components/CVRTypeToggle";
+import ConversionRateChart from "../components/ConversionRateChart";
+import TrafficSourceCVRCard from "../components/TrafficSourceCVRCard";
+import { processTrafficSourceCVR, CVRType } from "../utils/processTrafficSourceCVR";
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { Button } from '@/components/ui/button';
@@ -21,11 +23,17 @@ const ConversionAnalysisPage: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
   
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [cvrType, setCvrType] = useState<CVRType>('impression');
 
   const trafficSources = data?.trafficSources || [];
-  const filteredSources = selectedSources.length > 0 
+  const filteredSources = selectedSources.length > 0
     ? trafficSources.filter(source => selectedSources.includes(source.name))
     : trafficSources;
+
+  const processedSources = useMemo(
+    () => processTrafficSourceCVR(filteredSources, cvrType),
+    [filteredSources, cvrType]
+  );
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -145,7 +153,9 @@ const ConversionAnalysisPage: React.FC = () => {
               </div>
             </section>
 
-            <section className="mt-8">
+            <CVRTypeToggle currentType={cvrType} onTypeChange={setCvrType} />
+
+            <section className="mt-4">
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
                 <h2 className="text-xl font-semibold">Conversion Rate by Traffic Source</h2>
                 <TrafficSourceSelect
@@ -153,21 +163,21 @@ const ConversionAnalysisPage: React.FC = () => {
                   onSourceChange={setSelectedSources}
                 />
               </div>
-              <ConversionRateByTrafficSourceChart data={filteredSources} />
+              <ConversionRateChart data={processedSources} cvrType={cvrType} />
             </section>
 
             <section className="mt-8">
               <h2 className="text-xl font-semibold mb-4">By Traffic Source</h2>
 
-              {filteredSources.length === 0 ? (
+              {processedSources.length === 0 ? (
                 <div className="bg-zinc-800 p-8 rounded-md text-center">
                   <p className="text-gray-400">No traffic source data available.</p>
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-                    {filteredSources.map((source) => (
-                      <TrafficSourceConversionCard key={source.name} source={source} />
+                    {processedSources.map((source) => (
+                      <TrafficSourceCVRCard key={source.trafficSource} data={source} />
                     ))}
                   </div>
 
