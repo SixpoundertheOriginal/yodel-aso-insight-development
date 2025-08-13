@@ -15,10 +15,16 @@ export const useBenchmarkData = (selectedCategory: string) => {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const { data: categories } = await supabase
+      console.log('📦 Fetching categories from Supabase...');
+      const { data: categories, error } = await supabase
         .from('conversion_benchmarks')
         .select('category')
         .order('category');
+      if (error) {
+        console.error('❌ Category fetch failed:', error);
+        return;
+      }
+      console.log('✅ Categories fetched:', categories?.length, categories);
       if (categories) {
         setAvailableCategories(categories.map((c) => c.category));
       }
@@ -29,12 +35,18 @@ export const useBenchmarkData = (selectedCategory: string) => {
   useEffect(() => {
     if (!selectedCategory) return;
     const fetchBenchmark = async () => {
+      console.log('🎯 Fetching benchmark for category:', selectedCategory);
       setLoading(true);
-      const { data: benchmark } = await supabase
+      const { data: benchmark, error } = await supabase
         .from('conversion_benchmarks')
-        .select('category, impressions_to_page_views, page_views_to_installs, impressions_to_installs')
+        .select('*')
         .eq('category', selectedCategory)
         .single();
+      if (error) {
+        console.error('❌ Benchmark fetch failed:', error);
+      } else {
+        console.log('✅ Benchmark data:', benchmark);
+      }
       setData(benchmark);
       setLoading(false);
     };
