@@ -28,6 +28,12 @@ jest.mock('../components/TimeSeriesChart', () => ({
   default: ({ title }: { title: string }) => <div data-testid={`time-series-${title}`}>{title}</div>,
 }));
 
+// Mock the ConversionRateByTrafficSourceChart component
+jest.mock('../components/ConversionRateByTrafficSourceChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="conversion-rate-chart">Conversion Rate Chart</div>,
+}));
+
 // Mock the TrafficSourceSelect component
 jest.mock('../components/Filters', () => ({
   TrafficSourceSelect: () => <div data-testid="traffic-source-select">Traffic Source Select</div>,
