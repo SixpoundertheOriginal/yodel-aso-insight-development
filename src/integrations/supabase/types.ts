@@ -940,6 +940,39 @@ export type Database = {
         }
         Relationships: []
       }
+      conversion_benchmarks: {
+        Row: {
+          category: string
+          created_at: string | null
+          data_source: string | null
+          id: string
+          impressions_to_installs: number | null
+          impressions_to_page_views: number | null
+          page_views_to_installs: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          impressions_to_installs?: number | null
+          impressions_to_page_views?: number | null
+          page_views_to_installs?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          impressions_to_installs?: number | null
+          impressions_to_page_views?: number | null
+          page_views_to_installs?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       creative_analysis_sessions: {
         Row: {
           analysis_status: string
