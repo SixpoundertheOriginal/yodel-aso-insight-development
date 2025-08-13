@@ -34,11 +34,13 @@ const KpiCard: React.FC<KpiCardProps> = React.memo(({
   }, [value, isPercentage, precision]);
 
   const displayDelta = useMemo(() => {
+    if (delta === 0) {
+      return "0%";
+    }
     const formattedDelta = Math.abs(delta).toFixed(1);
-    const sign = delta >= 0 ? "+" : "-";
-    const suffix = isPercentage ? "%" : "";
-    return `${sign}${formattedDelta}${suffix}`;
-  }, [delta, isPercentage]);
+    const sign = delta > 0 ? "+" : "-";
+    return `${sign}${formattedDelta}%`;
+  }, [delta]);
 
   return (
     <Card className={`border-l-4 border-l-orange-500 rounded-md shadow-md ${className}`}>
