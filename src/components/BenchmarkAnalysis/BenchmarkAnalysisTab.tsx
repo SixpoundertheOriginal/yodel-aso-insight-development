@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import CategorySelector from '@/components/CategorySelector';
 import ComparisonCard from './ComparisonCard';
 import BenchmarkComparisonChart from './BenchmarkComparisonChart';
@@ -19,6 +19,15 @@ const BenchmarkAnalysisTab: React.FC<BenchmarkAnalysisTabProps> = ({
   onCategoryChange,
   availableCategories,
 }) => {
+  console.log('Benchmark Debug:', {
+    selectedCategory,
+    benchmarkData,
+    availableCategories: availableCategories.length,
+  });
+
+  useEffect(() => {
+    console.log('Benchmark data changed:', benchmarkData);
+  }, [benchmarkData]);
   const clientMetrics = useMemo(() => {
     if (!clientData?.summary) return null;
     return {
