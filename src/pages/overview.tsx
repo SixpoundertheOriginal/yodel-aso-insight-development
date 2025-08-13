@@ -209,7 +209,42 @@ const OverviewPage: React.FC = () => {
     trafficSourceView === 'true-organic-search'
       ? 0
       : data?.summary?.product_page_views?.delta || 0;
-  const gridCols = 'xl:grid-cols-3';
+
+  const trueSearchImpressionsValue =
+    trueOrganicSummary?.metrics.impressions || 0;
+  const trueSearchDownloadsValue =
+    trueOrganicSummary?.metrics.downloads || 0;
+
+  const appStoreSearchSource = data?.trafficSources?.find(
+    (s) => s.name === 'App Store Search'
+  );
+  const appleSearchAdsSource = data?.trafficSources?.find(
+    (s) => s.name === 'Apple Search Ads'
+  );
+
+  const computeTrueDelta = (
+    appMetric?: { value: number; delta: number },
+    asaMetric?: { value: number; delta: number }
+  ): number => {
+    if (!appMetric || !asaMetric) return 0;
+    const prevApp = appMetric.value / (1 + appMetric.delta / 100);
+    const prevAsa = asaMetric.value / (1 + asaMetric.delta / 100);
+    const current = appMetric.value - asaMetric.value;
+    const previous = prevApp - prevAsa;
+    if (!isFinite(previous) || previous <= 0) return 0;
+    const delta = ((current - previous) / previous) * 100;
+    return isFinite(delta) ? delta : 0;
+  };
+
+  const trueSearchImpressionsDelta = computeTrueDelta(
+    appStoreSearchSource?.metrics.impressions,
+    appleSearchAdsSource?.metrics.impressions
+  );
+  const trueSearchDownloadsDelta = computeTrueDelta(
+    appStoreSearchSource?.metrics.downloads,
+    appleSearchAdsSource?.metrics.downloads
+  );
+  const gridCols = 'xl:grid-cols-5';
 
   return (
     <MainLayout>
@@ -265,6 +300,16 @@ const OverviewPage: React.FC = () => {
                       value={pageViewsValue}
                       delta={pageViewsDelta}
                     />
+                    <KpiCard
+                      title="True Search Impressions"
+                      value={trueSearchImpressionsValue}
+                      delta={trueSearchImpressionsDelta}
+                    />
+                    <KpiCard
+                      title="True Search Downloads"
+                      value={trueSearchDownloadsValue}
+                      delta={trueSearchDownloadsDelta}
+                    />
                   </div>
 
                   {/* Time Series Chart */}
@@ -297,7 +342,7 @@ const OverviewPage: React.FC = () => {
                         </PremiumTypography.SectionTitle>
                       </PremiumCardHeader>
                       <PremiumCardContent className="p-8">
-                        <ResponsiveGrid cols={{ default: 1, md: 4 }} gap="lg">
+                        <ResponsiveGrid cols={{ default: 1, md: 3, lg: 6 }} gap="lg">
                           <div className="text-center group">
                             <PremiumTypography.DataLabel className="mb-3 block">Total Impressions</PremiumTypography.DataLabel>
                             <PremiumTypography.MetricValue className="group-hover:text-blue-400 transition-colors">
@@ -308,6 +353,18 @@ const OverviewPage: React.FC = () => {
                             <PremiumTypography.DataLabel className="mb-3 block">Total Downloads</PremiumTypography.DataLabel>
                             <PremiumTypography.MetricValue className="group-hover:text-emerald-400 transition-colors">
                               {(data.summary.downloads ? data.summary.downloads.value : 0).toLocaleString()}
+                            </PremiumTypography.MetricValue>
+                          </div>
+                          <div className="text-center group">
+                            <PremiumTypography.DataLabel className="mb-3 block">Total True Search Impressions</PremiumTypography.DataLabel>
+                            <PremiumTypography.MetricValue className="group-hover:text-blue-400 transition-colors">
+                              {trueSearchImpressionsValue.toLocaleString()}
+                            </PremiumTypography.MetricValue>
+                          </div>
+                          <div className="text-center group">
+                            <PremiumTypography.DataLabel className="mb-3 block">Total True Search Downloads</PremiumTypography.DataLabel>
+                            <PremiumTypography.MetricValue className="group-hover:text-emerald-400 transition-colors">
+                              {trueSearchDownloadsValue.toLocaleString()}
                             </PremiumTypography.MetricValue>
                           </div>
                           <div className="text-center group">
