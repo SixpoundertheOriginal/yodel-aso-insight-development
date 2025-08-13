@@ -71,6 +71,11 @@ jest.mock('../components/BenchmarkIndicator', () => ({
   default: () => <div data-testid="benchmark-indicator">Benchmark Indicator</div>,
 }));
 
+jest.mock('../components/BenchmarkAnalysis/BenchmarkAnalysisTab', () => ({
+  __esModule: true,
+  default: () => <div data-testid="benchmark-analysis-tab">Benchmark Analysis Tab</div>,
+}));
+
 describe('ConversionAnalysisPage', () => {
   const mockData = {
     summary: {
