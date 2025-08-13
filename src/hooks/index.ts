@@ -35,3 +35,10 @@ export { keywordDiscoveryService } from '../services/keyword-discovery.service';
 
 // Add debounced filters hook
 export { useDebouncedFilters } from './useDebouncedFilters';
+
+// Derived KPI framework hooks
+export {
+  useDerivedKPIs,
+  getDerivedKPICategories,
+  validateDerivedKPIDependencies
+} from './useDerivedKPIs';
