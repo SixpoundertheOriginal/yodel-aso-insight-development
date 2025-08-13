@@ -1,11 +1,12 @@
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Import Design Tokens */
 @import './styles/design-tokens.css';
 @import './styles/sidebar-animations.css';
+@import './styles/analytics-complete.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {

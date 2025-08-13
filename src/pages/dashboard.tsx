@@ -147,18 +147,6 @@ const Dashboard: React.FC = () => {
     return selectedKPI === kpiId;
   };
 
-  const visibleKPIs = [selectedKPI];
-
-  const gridColsClass: Record<number, string> = {
-    1: 'xl:grid-cols-1',
-    2: 'xl:grid-cols-2',
-    3: 'xl:grid-cols-3',
-    4: 'xl:grid-cols-4',
-    5: 'xl:grid-cols-5',
-  };
-
-  const gridCols = gridColsClass[visibleKPIs.length] || 'xl:grid-cols-5';
-
   return (
     <MainLayout>
       <div className="flex min-h-screen">
@@ -166,7 +154,7 @@ const Dashboard: React.FC = () => {
         <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'pr-80' : 'pr-15'} main-content`}>
           <div className="space-y-6 p-6">
       <div className="flex justify-between items-start mb-6">
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
+        <div className="analytics-grid flex-1">
           {shouldShowKPI('impressions') && (
             <KpiCard
               title="Impressions"
@@ -271,52 +259,46 @@ const Dashboard: React.FC = () => {
           <EmptyDataState />
         </div>
       ) : (
-        <Card className="bg-zinc-800 rounded-md mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-medium mb-4">Performance Metrics</h2>
-            <AnalyticsTrafficSourceChart
-              trafficSourceTimeseriesData={data.trafficSourceTimeseriesData || []}
-              selectedMetric={selectedKPI}
-            />
-          </CardContent>
-        </Card>
+        <div className="analytics-chart-container mb-8">
+          <h3 className="analytics-chart-title mb-4">Performance Metrics</h3>
+          <AnalyticsTrafficSourceChart
+            trafficSourceTimeseriesData={data.trafficSourceTimeseriesData || []}
+            selectedMetric={selectedKPI}
+          />
+        </div>
       )}
 
       {/* Previous Period Comparison */}
       {!periodComparison.loading &&
         periodComparison.current &&
         periodComparison.previous && (
-          <Card className="bg-zinc-800 rounded-md mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium">Previous Period</h2>
-                <MetricSelector value={selectedMetric} onChange={setSelectedMetric} />
-              </div>
-              <ComparisonChart
-                currentData={periodComparison.current.timeseriesData}
-                previousData={periodComparison.previous.timeseriesData}
-                title="Previous Period"
-                metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
-              />
-            </CardContent>
-          </Card>
+          <div className="analytics-chart-container mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="analytics-chart-title">Previous Period</h3>
+              <MetricSelector value={selectedMetric} onChange={setSelectedMetric} />
+            </div>
+            <ComparisonChart
+              currentData={periodComparison.current.timeseriesData}
+              previousData={periodComparison.previous.timeseriesData}
+              title="Previous Period"
+              metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
+            />
+          </div>
         )}
 
       {/* Previous Year Comparison */}
       {!yearComparison.loading &&
         yearComparison.current &&
         yearComparison.previous && (
-          <Card className="bg-zinc-800 rounded-md mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-medium mb-4">Previous Year</h2>
-              <ComparisonChart
-                currentData={yearComparison.current.timeseriesData}
-                previousData={yearComparison.previous.timeseriesData}
-                title="Previous Year"
-                metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
-              />
-            </CardContent>
-          </Card>
+          <div className="analytics-chart-container mb-8">
+            <h3 className="analytics-chart-title mb-4">Previous Year</h3>
+            <ComparisonChart
+              currentData={yearComparison.current.timeseriesData}
+              previousData={yearComparison.previous.timeseriesData}
+              title="Previous Year"
+              metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
+            />
+          </div>
         )}
           </div>
           </div>
