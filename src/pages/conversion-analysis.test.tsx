@@ -15,7 +15,6 @@ jest.mock('../hooks/useBenchmarkData', () => ({
   useBenchmarkData: jest.fn().mockReturnValue({
     data: null,
     loading: false,
-    error: null,
     availableCategories: [],
   }),
 }));
