@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, Sparkles, TrendingUp, AlertTriangle, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Sparkles, TrendingUp, AlertTriangle, ChevronsLeft, ChevronsRight, Maximize2, Minimize2 } from 'lucide-react';
 import { CollapsedSidebar } from './CollapsedSidebar';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { useAsoData } from '@/context/AsoDataContext';
@@ -14,10 +14,10 @@ import { useConversationalChat } from '@/hooks/useConversationalChat';
 import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
 
-export type SidebarState = 'collapsed' | 'normal' | 'expanded';
+export type SidebarState = 'collapsed' | 'normal' | 'expanded' | 'fullscreen';
 
 interface ContextualInsightsSidebarProps {
-  metricsData?: any;
+  metricsData?: MetricsData;
   organizationId: string;
   state?: SidebarState;
   onStateChange?: (state: SidebarState) => void;
@@ -71,15 +71,19 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
         e.preventDefault();
         setSidebarState(sidebarState === 'collapsed' ? 'normal' : 'collapsed');
       }
-      if (e.key === 'Escape' && isMobile && sidebarState !== 'collapsed') {
-        setSidebarState('collapsed');
+      if (e.key === 'Escape') {
+        if (sidebarState === 'fullscreen') {
+          setSidebarState('normal');
+        } else if (isMobile && sidebarState !== 'collapsed') {
+          setSidebarState('collapsed');
+        }
       }
     };
     document.addEventListener('keydown', handleKeyboard);
     return () => document.removeEventListener('keydown', handleKeyboard);
   }, [sidebarState, isMobile, setSidebarState]);
 
-  const getInsightFreshness = (insightCreatedAt: string, currentFilters: any) => {
+  const getInsightFreshness = (insightCreatedAt: string) => {
     if (!insightCreatedAt) return { status: 'unknown', message: 'No timestamp' };
 
     const insightAge = Date.now() - new Date(insightCreatedAt).getTime();
@@ -166,6 +170,12 @@ useEffect(() => {
     return !hasInsights && !isLoading;
   }, [hasInsights, isLoading]);
 
+  const toggleFullscreen = () => {
+    setSidebarState(current =>
+      current === 'fullscreen' ? 'normal' : 'fullscreen'
+    );
+  };
+
   const sidebarContent = (
     <>
       {/* Header with Collapse Button */}
@@ -193,6 +203,20 @@ useEffect(() => {
             <Button
               variant="ghost"
               size="sm"
+              onClick={toggleFullscreen}
+              className="p-1 hover:bg-muted"
+              title={sidebarState === 'fullscreen' ? 'Exit fullscreen' : 'Expand fullscreen'}
+              aria-label={sidebarState === 'fullscreen' ? 'Exit fullscreen mode' : 'Expand AI insights fullscreen'}
+            >
+              {sidebarState === 'fullscreen' ? (
+                <Minimize2 className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-muted-foreground" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setSidebarState('collapsed')}
               className="p-1 hover:bg-muted"
               title="Collapse sidebar (Ctrl+\\)"
@@ -208,7 +232,7 @@ useEffect(() => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto sidebar-content">
+      <div className={`flex-1 overflow-y-auto sidebar-content ${sidebarState === 'fullscreen' ? 'flex flex-col' : ''}`}> 
         {/* Filter Change Alert */}
         {hasFiltersChanged && (
           <div className="p-4">
@@ -259,7 +283,7 @@ useEffect(() => {
                 Key Finding
               </Badge>
               <div className="text-xs text-muted-foreground">
-                {getInsightFreshness(primaryInsight.created_at, filterContext).message}
+                {getInsightFreshness(primaryInsight.created_at).message}
               </div>
             </div>
             <EnhancedInsightCard
@@ -299,13 +323,14 @@ useEffect(() => {
         )}
 
         {/* Conversational Chat */}
-        <div className="px-4 pb-4">
+        <div className={`px-4 pb-4 ${sidebarState === 'fullscreen' ? 'flex flex-col flex-1 min-h-0' : ''}`}>
           <ConversationalChat
             metricsData={metricsData as MetricsData}
             filterContext={filterContext}
             organizationId={organizationId}
             onGenerateInsight={generateChatResponse}
             isGenerating={isChatGenerating}
+            className={sidebarState === 'fullscreen' ? 'flex-1' : 'h-80'}
           />
         </div>
       </div>
@@ -368,6 +393,22 @@ useEffect(() => {
             <Sparkles className="w-5 h-5" />
           </Button>
         )}
+      </>
+    );
+  }
+
+  if (sidebarState === 'fullscreen') {
+    return (
+      <>
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={() => setSidebarState('normal')}
+        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="bg-background dark:bg-gray-900 w-3/4 h-3/4 mx-auto my-auto rounded-lg shadow-2xl overflow-hidden flex flex-col">
+            {sidebarContent}
+          </div>
+        </div>
       </>
     );
   }

@@ -19,6 +19,7 @@ interface ConversationalChatProps {
   organizationId: string;
   onGenerateInsight: (question: string) => Promise<string>;
   isGenerating?: boolean;
+  className?: string;
 }
 
 export const ConversationalChat: React.FC<ConversationalChatProps> = ({
@@ -26,7 +27,8 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   filterContext,
   organizationId,
   onGenerateInsight,
-  isGenerating = false
+  isGenerating = false,
+  className = 'h-80'
 }) => {
   void organizationId;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -105,7 +107,7 @@ export const ConversationalChat: React.FC<ConversationalChatProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-80">
+    <div className={`flex flex-col ${className}`}>
       {/* Chat Header */}
       <CardHeader className="flex-shrink-0 pb-3">
         <div className="flex items-center gap-2">
