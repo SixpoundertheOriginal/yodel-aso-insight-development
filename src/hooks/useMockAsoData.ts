@@ -69,11 +69,26 @@ export interface TrafficSourceTimeSeriesPoint {
   totalProductPageViews: number;
 }
 
+export interface TrafficSourceCVRTimeSeriesPoint {
+  date: string;
+  webReferrer_impression_cvr: number;
+  webReferrer_product_page_cvr: number;
+  other_impression_cvr: number;
+  other_product_page_cvr: number;
+  appleSearchAds_impression_cvr: number;
+  appleSearchAds_product_page_cvr: number;
+  appStoreSearch_impression_cvr: number;
+  appStoreSearch_product_page_cvr: number;
+  appStoreBrowse_impression_cvr: number;
+  appStoreBrowse_product_page_cvr: number;
+}
+
 export interface AsoData {
   summary: AsoMetrics;
   timeseriesData: TimeSeriesPoint[];
   trafficSources: TrafficSource[];
   trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[];
+  cvrTimeSeries?: TrafficSourceCVRTimeSeriesPoint[];
 }
 
 // Complete list of all available traffic sources - static and comprehensive
@@ -204,6 +219,38 @@ export const useMockAsoData = (
             totalProductPageViews,
           });
         }
+
+        const cvrTimeSeries: TrafficSourceCVRTimeSeriesPoint[] = trafficSourceTimeseriesData.map(item => {
+          const calc = (prefix: string) => {
+            const impressions = (item as any)[`${prefix}_impressions`] || 0;
+            const downloads = (item as any)[`${prefix}_downloads`] || 0;
+            const views = (item as any)[`${prefix}_product_page_views`] || 0;
+            return {
+              impression_cvr: impressions > 0 ? (downloads / impressions) * 100 : 0,
+              product_page_cvr: views > 0 ? (downloads / views) * 100 : 0,
+            };
+          };
+
+          const webReferrer = calc('webReferrer');
+          const other = { impression_cvr: 0, product_page_cvr: 0 };
+          const appleSearchAds = calc('appleSearchAds');
+          const appStoreSearch = calc('appStoreSearch');
+          const appStoreBrowse = calc('appStoreBrowse');
+
+          return {
+            date: item.date,
+            webReferrer_impression_cvr: webReferrer.impression_cvr,
+            webReferrer_product_page_cvr: webReferrer.product_page_cvr,
+            other_impression_cvr: other.impression_cvr,
+            other_product_page_cvr: other.product_page_cvr,
+            appleSearchAds_impression_cvr: appleSearchAds.impression_cvr,
+            appleSearchAds_product_page_cvr: appleSearchAds.product_page_cvr,
+            appStoreSearch_impression_cvr: appStoreSearch.impression_cvr,
+            appStoreSearch_product_page_cvr: appStoreSearch.product_page_cvr,
+            appStoreBrowse_impression_cvr: appStoreBrowse.impression_cvr,
+            appStoreBrowse_product_page_cvr: appStoreBrowse.product_page_cvr,
+          };
+        });
         
         // Generate traffic source data for ALL available sources, not just selected ones
         // This fixes the circular dependency issue where only selected sources were available
@@ -239,6 +286,7 @@ export const useMockAsoData = (
           timeseriesData,
           trafficSources: trafficSourceData, // Always return all available sources
           trafficSourceTimeseriesData,
+          cvrTimeSeries,
         };
         
         // Simulate API delay

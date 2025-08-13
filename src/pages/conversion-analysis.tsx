@@ -35,6 +35,32 @@ const ConversionAnalysisPage: React.FC = () => {
     [filteredSources, cvrType]
   );
 
+  const cvrChartData = useMemo(() => {
+    return (data?.cvrTimeSeries || []).map((item) => ({
+      date: item.date,
+      webReferrer_cvr:
+        cvrType === 'impression'
+          ? item.webReferrer_impression_cvr
+          : item.webReferrer_product_page_cvr,
+      other_cvr:
+        cvrType === 'impression'
+          ? item.other_impression_cvr
+          : item.other_product_page_cvr,
+      appleSearchAds_cvr:
+        cvrType === 'impression'
+          ? item.appleSearchAds_impression_cvr
+          : item.appleSearchAds_product_page_cvr,
+      appStoreSearch_cvr:
+        cvrType === 'impression'
+          ? item.appStoreSearch_impression_cvr
+          : item.appStoreSearch_product_page_cvr,
+      appStoreBrowse_cvr:
+        cvrType === 'impression'
+          ? item.appStoreBrowse_impression_cvr
+          : item.appStoreBrowse_product_page_cvr,
+    }));
+  }, [data?.cvrTimeSeries, cvrType]);
+
   useEffect(() => {
     const fetchOrganizationId = async () => {
       if (!user) return;
@@ -181,7 +207,13 @@ const ConversionAnalysisPage: React.FC = () => {
                     ))}
                   </div>
 
-                  <TimeSeriesChart data={data.timeseriesData} />
+                  <TimeSeriesChart
+                    data={data.timeseriesData}
+                    trafficSourceTimeseriesData={cvrChartData}
+                    mode="breakdown"
+                    showModeToggle={false}
+                    breakdownMetric="cvr"
+                  />
                 </>
               )}
             </section>

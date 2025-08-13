@@ -7,7 +7,8 @@ import {
   TimeSeriesPoint,
   MetricSummary,
   TrafficSource,
-  TrafficSourceTimeSeriesPoint
+  TrafficSourceTimeSeriesPoint,
+  TrafficSourceCVRTimeSeriesPoint
 } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
@@ -422,6 +423,61 @@ function createTrafficSourceTimeSeries(bigQueryData: BigQueryDataPoint[]) {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
+function createCVRTimeSeries(bigQueryData: BigQueryDataPoint[]): TrafficSourceCVRTimeSeriesPoint[] {
+  const byDate = bigQueryData.reduce((acc, item) => {
+    if (!acc[item.date]) acc[item.date] = [] as BigQueryDataPoint[];
+    acc[item.date].push(item);
+    return acc;
+  }, {} as Record<string, BigQueryDataPoint[]>);
+
+  return Object.keys(byDate)
+    .map(date => {
+      const dayRecords = byDate[date];
+      const bySource = dayRecords.reduce(
+        (acc, record) => {
+          const source = record.traffic_source;
+          if (!acc[source]) {
+            acc[source] = { impressions: 0, downloads: 0, product_page_views: 0 };
+          }
+          acc[source].impressions += record.impressions;
+          acc[source].downloads += record.downloads;
+          acc[source].product_page_views += record.product_page_views || 0;
+          return acc;
+        },
+        {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>
+      );
+
+      const calc = (name: string) => {
+        const m = bySource[name] || { impressions: 0, downloads: 0, product_page_views: 0 };
+        return {
+          impression_cvr: m.impressions > 0 ? (m.downloads / m.impressions) * 100 : 0,
+          product_page_cvr: m.product_page_views > 0 ? (m.downloads / m.product_page_views) * 100 : 0,
+        };
+      };
+
+      const webReferrer = calc('Web Referrer');
+      const other = calc('Other');
+      const appleSearchAds = calc('Apple Search Ads');
+      const appStoreSearch = calc('App Store Search');
+      const appStoreBrowse = calc('App Store Browse');
+
+      return {
+        date,
+        webReferrer_impression_cvr: webReferrer.impression_cvr,
+        webReferrer_product_page_cvr: webReferrer.product_page_cvr,
+        other_impression_cvr: other.impression_cvr,
+        other_product_page_cvr: other.product_page_cvr,
+        appleSearchAds_impression_cvr: appleSearchAds.impression_cvr,
+        appleSearchAds_product_page_cvr: appleSearchAds.product_page_cvr,
+        appStoreSearch_impression_cvr: appStoreSearch.impression_cvr,
+        appStoreSearch_product_page_cvr: appStoreSearch.product_page_cvr,
+        appStoreBrowse_impression_cvr: appStoreBrowse.impression_cvr,
+        appStoreBrowse_product_page_cvr: appStoreBrowse.product_page_cvr,
+      } as TrafficSourceCVRTimeSeriesPoint;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
 function transformBigQueryToAsoData(
   bigQueryData: BigQueryDataPoint[],
   meta: BigQueryMeta
@@ -459,6 +515,7 @@ function transformBigQueryToAsoData(
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[] = createTrafficSourceTimeSeries(bigQueryData);
+  const cvrTimeSeries: TrafficSourceCVRTimeSeriesPoint[] = createCVRTimeSeries(bigQueryData);
 
   const totals = bigQueryData.reduce(
     (sum, item) => ({
@@ -562,6 +619,7 @@ function transformBigQueryToAsoData(
     summary,
     timeseriesData,
     trafficSourceTimeseriesData,
-    trafficSources: trafficSourceData
+    trafficSources: trafficSourceData,
+    cvrTimeSeries,
   };
 }
