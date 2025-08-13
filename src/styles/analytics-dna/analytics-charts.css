@@ -1,0 +1,27 @@
+/* ANALYTICS CHART - Container and Colors */
+.analytics-chart-container {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem; /* rounded-lg */
+  padding: 1.5rem; /* p-6 */
+}
+
+.analytics-chart-title {
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600; /* font-semibold */
+  color: var(--foreground);
+}
+
+.analytics-chart-subtitle {
+  font-size: 0.875rem; /* text-sm */
+  color: var(--muted-foreground);
+}
+
+/* Chart Series Colors */
+:root {
+  --traffic-web-referrer: #FF6B6B;
+  --traffic-app-store-search: #4ECDC4;
+  --traffic-app-referrer: #45B7D1;
+  --traffic-apple-search-ads: #96CEB4;
+  --traffic-app-store-browse: #FFA726;
+}

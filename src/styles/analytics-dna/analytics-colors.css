@@ -1,0 +1,8 @@
+/* ANALYTICS COLOR PALETTE */
+:root {
+  --analytics-orange: #F97316; /* brand orange */
+  --analytics-green: #22c55e; /* success */
+  --analytics-red: #ef4444; /* error */
+  --analytics-gray-dark: #27272a; /* zinc-800 */
+  --analytics-gray-muted: #a1a1aa; /* zinc-400 */
+}
