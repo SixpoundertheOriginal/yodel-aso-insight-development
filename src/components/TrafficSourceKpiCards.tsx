@@ -6,8 +6,9 @@ import { formatPercentage } from '@/utils/format';
 interface TrafficSourceKpiCardsProps {
   sources: TrafficSource[];
   selectedKPI: string;
-  onSourceClick: (sourceName: string) => void;
   summary: AsoMetrics;
+  disableClicks?: boolean;
+  onSourceClick?: (sourceName: string) => void;
 }
 
 const getKPIValueForTrafficSource = (source: TrafficSource, kpiId: string): MetricSummary => {
@@ -26,7 +27,13 @@ const categorizeTrafficSource = (metric: MetricSummary, threshold: number) => {
   return { action: 'Monitor', color: 'text-zinc-500' };
 };
 
-export const TrafficSourceKpiCards: React.FC<TrafficSourceKpiCardsProps> = ({ sources, selectedKPI, onSourceClick, summary }) => {
+export const TrafficSourceKpiCards: React.FC<TrafficSourceKpiCardsProps> = ({
+  sources,
+  selectedKPI,
+  summary,
+  disableClicks = false,
+  onSourceClick,
+}) => {
   const threshold = summary && (summary as any)[selectedKPI]
     ? ((summary as any)[selectedKPI].value || 0) * 0.1
     : 0;
@@ -46,8 +53,13 @@ export const TrafficSourceKpiCards: React.FC<TrafficSourceKpiCardsProps> = ({ so
         const displayValue = isPercentage
           ? `${metric.value.toFixed(2)}%`
           : metric.value.toLocaleString();
+        const clickable = !disableClicks && !!onSourceClick;
         return (
-          <Card key={source.name} className="bg-zinc-800 hover:bg-zinc-700 cursor-pointer" onClick={() => onSourceClick(source.name)}>
+          <Card
+            key={source.name}
+            className={`bg-zinc-800 ${clickable ? 'hover:bg-zinc-700 cursor-pointer' : ''}`}
+            onClick={clickable ? () => onSourceClick!(source.name) : undefined}
+          >
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium">{source.name}</CardTitle>
               <span className={`text-xs font-semibold ${category.color}`}>{category.action}</span>

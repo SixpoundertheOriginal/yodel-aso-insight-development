@@ -24,7 +24,7 @@ import { TrafficSourceKpiCards } from '../components/TrafficSourceKpiCards';
 const Dashboard: React.FC = () => {
   const [excludeAsa, setExcludeAsa] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('downloads');
-  const [selectedKPI, setSelectedKPI] = useState<string>('downloads');
+  const [selectedKPI, setSelectedKPI] = useState<string>('impressions');
   const navigate = useNavigate();
   const {
     data,
@@ -78,10 +78,6 @@ const Dashboard: React.FC = () => {
 
   const handleKPIChange = (value: string) => {
     setSelectedKPI(value);
-  };
-
-  const handleTrafficSourceClick = (sourceName: string) => {
-    handleTrafficSourceChange([sourceName]);
   };
 
 
@@ -148,12 +144,10 @@ const Dashboard: React.FC = () => {
   const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
 
   const shouldShowKPI = (kpiId: string) => {
-    return selectedKPI === 'all' || selectedKPI === kpiId;
+    return selectedKPI === kpiId;
   };
 
-  const visibleKPIs = selectedKPI === 'all'
-    ? ['impressions', 'downloads', 'product_page_views', 'product_page_cvr', 'impressions_cvr']
-    : [selectedKPI];
+  const visibleKPIs = [selectedKPI];
 
   const gridColsClass: Record<number, string> = {
     1: 'xl:grid-cols-1',
@@ -245,7 +239,11 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <KPISelector value={selectedKPI} onChange={handleKPIChange} />
+          <KPISelector
+            value={selectedKPI}
+            onChange={handleKPIChange}
+            includeAllOption={false}
+          />
           <Button
             variant={excludeAsa ? "destructive" : "outline"}
             size="sm"
@@ -261,9 +259,9 @@ const Dashboard: React.FC = () => {
       {data.trafficSources && (
         <TrafficSourceKpiCards
           sources={data.trafficSources}
-          selectedKPI={selectedKPI === 'all' ? 'downloads' : selectedKPI}
-          onSourceClick={handleTrafficSourceClick}
+          selectedKPI={selectedKPI}
           summary={data.summary}
+          disableClicks
         />
       )}
 
