@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TimeSeriesPoint, TrafficSourceTimeSeriesPoint } from "@/hooks/useMockAsoData";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart";
@@ -9,10 +9,18 @@ interface TimeSeriesChartProps {
   data: TimeSeriesPoint[];
   selectedKPI?: string;
   trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[];
+  mode?: 'total' | 'breakdown';
+  showModeToggle?: boolean;
+  visibleMetrics?: string[];
+  breakdownMetric?: 'impressions' | 'downloads' | 'product_page_views';
 }
 
-const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, selectedKPI = 'all', trafficSourceTimeseriesData = [] }) => {
-  const [chartMode, setChartMode] = useState<'total' | 'breakdown'>('total');
+const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, selectedKPI = 'all', trafficSourceTimeseriesData = [], mode = 'total', showModeToggle = true, visibleMetrics = ['impressions','downloads','product_page_views','product_page_cvr','impressions_cvr'], breakdownMetric = 'downloads' }) => {
+  const [chartMode, setChartMode] = useState<'total' | 'breakdown'>(mode);
+
+  useEffect(() => {
+    setChartMode(mode);
+  }, [mode]);
 
   const formattedData = useMemo(() => data.map(item => {
     const product_page_cvr = item.product_page_views > 0
@@ -29,20 +37,22 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
     };
   }), [data]);
 
-  const formattedTrafficData = useMemo(
-    () =>
-      trafficSourceTimeseriesData.map((item) => ({
-        date: new Date(item.date).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-        }),
-        webReferrer: item.webReferrer_downloads,
-        appStoreSearch: item.appStoreSearch_downloads,
-        appReferrer: item.appReferrer_downloads,
-        appleSearchAds: item.appleSearchAds_downloads,
-        appStoreBrowse: item.appStoreBrowse_downloads,
-      })),
-    [trafficSourceTimeseriesData]
+  const formattedTrafficData = useMemo(() =>
+      trafficSourceTimeseriesData.map((item) => {
+        const record = item as unknown as Record<string, number>;
+        return {
+          date: new Date(item.date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }),
+          webReferrer: record[`webReferrer_${breakdownMetric}`] || 0,
+          appStoreSearch: record[`appStoreSearch_${breakdownMetric}`] || 0,
+          appReferrer: record[`appReferrer_${breakdownMetric}`] || 0,
+          appleSearchAds: record[`appleSearchAds_${breakdownMetric}`] || 0,
+          appStoreBrowse: record[`appStoreBrowse_${breakdownMetric}`] || 0,
+        };
+      }),
+    [trafficSourceTimeseriesData, breakdownMetric]
   );
 
   const chartData = chartMode === 'breakdown' ? formattedTrafficData : formattedData;
@@ -57,36 +67,42 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
         appStoreBrowse: { label: 'App Store Browse', color: TRAFFIC_SOURCE_COLORS['App Store Browse'] },
       } satisfies ChartConfig;
     }
-    return {
+    const base = {
       impressions: { label: "Impressions", color: chartColors.impressions },
       downloads: { label: "Downloads", color: chartColors.downloads },
       product_page_views: { label: "Product Page Views", color: chartColors.product_page_views },
       product_page_cvr: { label: "Product Page CVR", color: chartColors.product_page_cvr },
       impressions_cvr: { label: "Impressions CVR", color: chartColors.impressions_cvr },
-    } satisfies ChartConfig;
-  }, [chartMode]);
+    };
+    return Object.fromEntries(
+      Object.entries(base).filter(([key]) => visibleMetrics.includes(key))
+    ) as ChartConfig;
+  }, [chartMode, visibleMetrics]);
 
-  const showLine = (metric: string) => selectedKPI === 'all' || selectedKPI === metric;
-  const getOpacity = (metric: string) => (selectedKPI === 'all' || selectedKPI === metric ? 1 : 0.2);
+  const showLine = (metric: string) =>
+    visibleMetrics.includes(metric) && (selectedKPI === 'all' || selectedKPI === metric);
+  const getOpacity = (metric: string) => (showLine(metric) ? 1 : 0.2);
 
   return (
     <div className="w-full h-[450px] space-y-4">
-      <div className="flex justify-end">
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setChartMode('total')}
-            className={`px-3 py-1 rounded ${chartMode === 'total' ? 'bg-white shadow' : ''}`}
-          >
-            Total Performance
-          </button>
-          <button
-            onClick={() => setChartMode('breakdown')}
-            className={`px-3 py-1 rounded ${chartMode === 'breakdown' ? 'bg-white shadow' : ''}`}
-          >
-            By Traffic Source
-          </button>
+      {showModeToggle && (
+        <div className="flex justify-end">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setChartMode('total')}
+              className={`px-3 py-1 rounded ${chartMode === 'total' ? 'bg-white shadow' : ''}`}
+            >
+              Total Performance
+            </button>
+            <button
+              onClick={() => setChartMode('breakdown')}
+              className={`px-3 py-1 rounded ${chartMode === 'breakdown' ? 'bg-white shadow' : ''}`}
+            >
+              By Traffic Source
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       <ChartContainer config={chartConfigObj} className="w-full h-full">
         <LineChart data={chartData} accessibilityLayer>
           <CartesianGrid vertical={false} />
