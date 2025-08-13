@@ -13,11 +13,15 @@ interface TrafficSourceSelectorProps {
   className?: string;
 }
 
-const TRAFFIC_SOURCE_OPTIONS = [
+const BASE_OPTIONS = [
   { value: 'all', label: 'All Sources' },
+  { value: 'individual', label: 'Individual Sources' },
   { value: 'organic', label: 'Organic Sources' },
   { value: 'paid', label: 'Paid Sources' },
-  { value: 'individual', label: 'Individual Sources' },
+];
+
+const DERIVED_OPTIONS = [
+  { value: 'true-organic-search', label: 'True Organic Search' },
 ];
 
 export const TrafficSourceSelector: React.FC<TrafficSourceSelectorProps> = ({
@@ -51,8 +55,22 @@ export const TrafficSourceSelector: React.FC<TrafficSourceSelectorProps> = ({
           <SelectValue placeholder="Select Source" />
         </SelectTrigger>
         <SelectContent className="bg-zinc-800 border-zinc-700">
-          {TRAFFIC_SOURCE_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="text-foreground hover:bg-zinc-700">
+          {BASE_OPTIONS.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="text-foreground hover:bg-zinc-700"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+          <div className="px-2 py-1 text-xs text-zinc-400">─── Derived Metrics ───</div>
+          {DERIVED_OPTIONS.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="text-foreground hover:bg-zinc-700"
+            >
               {option.label}
             </SelectItem>
           ))}

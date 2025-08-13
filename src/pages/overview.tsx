@@ -11,6 +11,14 @@ import {
   executiveTrafficSources,
 } from "@/utils/executiveTrafficSourceGroups";
 import {
+  DERIVED_KPI_REGISTRY
+} from '@/utils/derivedKPIRegistry';
+import {
+  DerivedKPICalculator,
+  TrafficSourceData,
+} from '@/utils/derivedKPICalculator';
+import { useDerivedKPIs } from '@/hooks/useDerivedKPIs';
+import {
   PremiumCard,
   PremiumCardHeader,
   PremiumCardContent,
@@ -59,6 +67,39 @@ const OverviewPage: React.FC = () => {
     () => data?.trafficSourceTimeseriesData || [],
     [data]
   );
+  const derivedKPIs = useDerivedKPIs(data?.trafficSources || []);
+  const trueOrganicSummary = useMemo(
+    () => derivedKPIs.find((k) => k.id === 'true-organic-search'),
+    [derivedKPIs]
+  );
+
+  const trueOrganicTimeseries = useMemo(() => {
+    if (!trafficSourceTimeseries.length) return [];
+    const def = DERIVED_KPI_REGISTRY['true-organic-search'];
+    return trafficSourceTimeseries.map((point) => {
+      const sources: TrafficSourceData[] = [
+        {
+          id: 'App Store Search',
+          impressions: point.appStoreSearch_impressions || 0,
+          downloads: point.appStoreSearch_downloads || 0,
+          product_page_views: point.appStoreSearch_product_page_views || 0,
+        },
+        {
+          id: 'Apple Search Ads',
+          impressions: point.appleSearchAds_impressions || 0,
+          downloads: point.appleSearchAds_downloads || 0,
+          product_page_views: point.appleSearchAds_product_page_views || 0,
+        },
+      ];
+      const calc = DerivedKPICalculator.calculate(def, sources);
+      return {
+        date: point.date,
+        impressions: calc.metrics.impressions || 0,
+        downloads: calc.metrics.downloads || 0,
+        product_page_views: calc.metrics.product_page_views || 0,
+      };
+    });
+  }, [trafficSourceTimeseries]);
   const chartMode = trafficSourceView === 'individual' ? 'breakdown' : 'total';
 
   const chartData = useMemo(() => {
@@ -66,11 +107,14 @@ const OverviewPage: React.FC = () => {
     if (trafficSourceView === 'all' || trafficSourceView === 'individual') {
       return data.timeseriesData;
     }
+    if (trafficSourceView === 'true-organic-search') {
+      return trueOrganicTimeseries;
+    }
     const group = executiveTrafficSourceGroups[
       trafficSourceView as keyof typeof executiveTrafficSourceGroups
     ];
     return aggregateTrafficSources(trafficSourceTimeseries, group);
-  }, [data, trafficSourceView, trafficSourceTimeseries]);
+  }, [data, trafficSourceView, trafficSourceTimeseries, trueOrganicTimeseries]);
 
   // Show skeleton only on initial load when there's no data yet
   if (loading && !data) {
@@ -141,12 +185,30 @@ const OverviewPage: React.FC = () => {
     firstTimeseriesItem: data?.timeseriesData?.[0]
   });
 
-  const impressionsValue = data?.summary?.impressions?.value || 0;
-  const impressionsDelta = data?.summary?.impressions?.delta || 0;
-  const downloadsValue = data?.summary?.downloads?.value || 0;
-  const downloadsDelta = data?.summary?.downloads?.delta || 0;
-  const pageViewsValue = data?.summary?.product_page_views?.value || 0;
-  const pageViewsDelta = data?.summary?.product_page_views?.delta || 0;
+  const impressionsValue =
+    trafficSourceView === 'true-organic-search'
+      ? trueOrganicSummary?.metrics.impressions || 0
+      : data?.summary?.impressions?.value || 0;
+  const impressionsDelta =
+    trafficSourceView === 'true-organic-search'
+      ? 0
+      : data?.summary?.impressions?.delta || 0;
+  const downloadsValue =
+    trafficSourceView === 'true-organic-search'
+      ? trueOrganicSummary?.metrics.downloads || 0
+      : data?.summary?.downloads?.value || 0;
+  const downloadsDelta =
+    trafficSourceView === 'true-organic-search'
+      ? 0
+      : data?.summary?.downloads?.delta || 0;
+  const pageViewsValue =
+    trafficSourceView === 'true-organic-search'
+      ? trueOrganicSummary?.metrics.product_page_views || 0
+      : data?.summary?.product_page_views?.value || 0;
+  const pageViewsDelta =
+    trafficSourceView === 'true-organic-search'
+      ? 0
+      : data?.summary?.product_page_views?.delta || 0;
   const gridCols = 'xl:grid-cols-3';
 
   return (
