@@ -4,7 +4,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
-import useSourceFiltering from "../hooks/useSourceFiltering";
+import { useSourceFiltering } from "../hooks/useSourceFiltering";
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { Button } from '@/components/ui/button';
@@ -19,16 +19,12 @@ const ConversionAnalysisPage: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
-  const {
-    selectedSources,
-    setSelectedSources,
-    filteredData,
-    filteredSources,
-    allSourceNames
-  } = useSourceFiltering(
-    data?.timeseriesData,
-    data?.trafficSources
-  );
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+
+  const trafficSources = data?.trafficSources || [];
+  const filteredSources = selectedSources.length > 0 
+    ? trafficSources.filter(source => selectedSources.includes(source.name))
+    : trafficSources;
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -168,18 +164,18 @@ const ConversionAnalysisPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                     {filteredSources.map((source) => (
                       <KpiCard
                         key={source.name}
                         title={source.name}
-                        value={source.value}
-                        delta={source.delta}
+                        value={source.value || 0}
+                        delta={source.delta || 0}
                       />
                     ))}
                   </div>
 
-                  <TimeSeriesChart data={filteredData} />
+                  <TimeSeriesChart data={data.timeseriesData} />
                 </>
               )}
             </section>

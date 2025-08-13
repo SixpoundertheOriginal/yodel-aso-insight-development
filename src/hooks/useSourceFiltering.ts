@@ -10,7 +10,7 @@ export function useSourceFiltering(
     if (!selectedSources.length) return trafficSourceData;
 
     return trafficSourceData.map(dataPoint => {
-      const filtered: Partial<TrafficSourceTimeSeriesPoint> = {
+      const filtered: any = {
         date: dataPoint.date,
         totalDownloads: dataPoint.totalDownloads,
         totalImpressions: dataPoint.totalImpressions,
