@@ -115,17 +115,6 @@ const ConversionAnalysisPage: React.FC = () => {
         <div className="flex min-h-screen">
           <div className={`flex-1 ${!isMobile ? (sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80') : ''}`}>
             <div className="p-6 flex flex-col space-y-6">
-              {isMobile && (
-                <Button
-                  onClick={() => setIsMobileSidebarOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="fixed top-4 right-4 z-50"
-                >
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  Insights
-                </Button>
-              )}
               <h1 className="text-2xl font-bold">Conversion Analysis</h1>
               <div className="flex justify-center">
                 <div className="w-64 h-32 bg-zinc-800 animate-pulse rounded-md"></div>
@@ -172,17 +161,6 @@ const ConversionAnalysisPage: React.FC = () => {
       <div className="flex min-h-screen">
         <div className={`flex-1 ${!isMobile ? (sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80') : ''}`}>
           <div className="p-6 flex flex-col space-y-6">
-            {isMobile && (
-              <Button
-                onClick={() => setIsMobileSidebarOpen(true)}
-                variant="outline"
-                size="sm"
-                className="fixed top-4 right-4 z-50"
-              >
-                <Sparkles className="w-4 h-4 mr-1" />
-                Insights
-              </Button>
-            )}
             <Tabs
               value={activeTab}
               onValueChange={(value) =>
