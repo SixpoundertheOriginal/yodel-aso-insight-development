@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AnalyticsTimeSeriesChart } from "@/components/AnalyticsTimeSeriesChart";
+import TimeSeriesChart from "../components/TimeSeriesChart";
 import KpiCard from "../components/KpiCard";
 import { KPISelector, KPI_OPTIONS } from "../components/KPISelector";
 import {
@@ -228,10 +228,9 @@ const OverviewPage: React.FC = () => {
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
                     <PremiumCardContent className="p-8">
-                      <AnalyticsTimeSeriesChart
-                        timeseriesData={data?.timeseriesData || []}
-                        trafficSourceTimeseriesData={data?.trafficSourceTimeseriesData || []}
-                        selectedMetric={selectedKPI}
+                      <TimeSeriesChart
+                        data={data?.timeseriesData || []}
+                        selectedKPI={selectedKPI}
                       />
                     </PremiumCardContent>
                   </PremiumCard>
