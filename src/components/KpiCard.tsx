@@ -1,7 +1,7 @@
 
 import React, { useMemo } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import { formatCVR, formatNumber } from "@/utils/format";
+import { formatCVR, formatMetricValue } from "@/utils/format";
 import { EnterpriseMetricCard } from "@/lib/design-system";
 
 interface KpiCardProps {
@@ -30,7 +30,8 @@ const KpiCard: React.FC<KpiCardProps> = React.memo(({
     if (isPercentage) {
       return formatCVR(value, precision);
     }
-    return formatNumber(value);
+    // PHASE 1 FIX: Use metric formatting for large numbers
+    return formatMetricValue(value);
   }, [value, isPercentage, precision]);
 
   // Convert to enterprise metric card format

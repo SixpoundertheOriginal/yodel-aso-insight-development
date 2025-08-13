@@ -25,9 +25,9 @@ export const BaseCard: React.FC<BaseCardProps> = ({
 }) => {
   const variantStyles = {
     default: 'bg-card border-border',
-    metric: 'bg-gradient-to-br from-card/90 to-card/60 border-border/50 backdrop-blur-sm',
-    chart: 'bg-card/95 border-border/30 backdrop-blur-md',
-    summary: 'bg-gradient-to-r from-card via-card/90 to-card border-border',
+    metric: 'bg-gradient-to-br from-card/90 to-card/60 border-border/50 backdrop-blur-sm h-[140px]',
+    chart: 'bg-card/95 border-border/30 backdrop-blur-md min-h-[400px]',
+    summary: 'bg-gradient-to-r from-card via-card/90 to-card border-border h-[200px]',
     glass: 'bg-card/20 border-white/10 backdrop-blur-lg',
   };
 
@@ -86,7 +86,14 @@ export const EnterpriseMetricCard: React.FC<EnterpriseMetricCardProps> = ({
       case 'currency':
         return `$${val.toLocaleString()}`;
       default:
-        return val.toLocaleString();
+        // PHASE 1 FIX: Use metric formatting for large numbers
+        if (val >= 1000000) {
+          return `${(val / 1000000).toFixed(1)}M`;
+        }
+        if (val >= 1000) {
+          return `${(val / 1000).toFixed(1)}K`;
+        }
+        return val.toString();
     }
   };
 
@@ -132,29 +139,35 @@ export const EnterpriseMetricCard: React.FC<EnterpriseMetricCardProps> = ({
       <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
       <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Header - PHASE 1 FIX: Text overflow prevention */}
+        <div className="flex items-center justify-between mb-3">
           <h3 
-            className="text-sm font-medium text-muted-foreground uppercase tracking-wide"
-            style={{ fontSize: designTokens.typography.fontSize.sm }}
+            className="text-sm font-medium text-muted-foreground uppercase tracking-wide overflow-hidden text-ellipsis whitespace-nowrap"
+            style={{ 
+              fontSize: designTokens.typography.fontSize.sm,
+              maxWidth: '70%',
+            }}
+            title={title}
           >
             {title}
           </h3>
           {icon && (
-            <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary">
+            <div className="p-2 rounded-lg bg-brand-primary/10 text-brand-primary flex-shrink-0">
               {icon}
             </div>
           )}
         </div>
 
-        {/* Value */}
-        <div className="mb-4">
+        {/* Value - PHASE 1 FIX: Consistent sizing and overflow prevention */}
+        <div className="mb-3 flex-1 min-h-0">
           <div 
-            className="font-bold text-foreground mb-1 tabular-nums"
+            className="font-bold text-foreground tabular-nums overflow-hidden text-ellipsis leading-tight"
             style={{ 
-              fontSize: designTokens.typography.fontSize['3xl'],
+              fontSize: designTokens.typography.fontSize['2xl'], // Reduced from 3xl for consistency
               fontWeight: designTokens.typography.fontWeight.bold,
+              lineHeight: '1.2',
             }}
+            title={formatValue(value)}
           >
             {formatValue(value)}
           </div>

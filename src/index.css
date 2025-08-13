@@ -6,6 +6,7 @@
 /* Import Design Tokens */
 @import './styles/design-tokens.css';
 @import './styles/sidebar-animations.css';
+@import './styles/dashboard-fixes.css';
 
 @layer base {
   :root {
