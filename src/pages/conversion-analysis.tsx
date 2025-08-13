@@ -4,7 +4,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import KpiCard from "../components/KpiCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
-import { useSourceFiltering } from "../hooks/useSourceFiltering";
+import ConversionRateByTrafficSourceChart from "../components/ConversionRateByTrafficSourceChart";
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { Button } from '@/components/ui/button';
@@ -146,13 +146,13 @@ const ConversionAnalysisPage: React.FC = () => {
 
             <section className="mt-8">
               <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
-                <h2 className="text-xl font-semibold">Conversion Rates Over Time</h2>
+                <h2 className="text-xl font-semibold">Conversion Rate by Traffic Source</h2>
                 <TrafficSourceSelect
                   selectedSources={selectedSources}
                   onSourceChange={setSelectedSources}
                 />
               </div>
-              <TimeSeriesChart data={data.timeseriesData} />
+              <ConversionRateByTrafficSourceChart data={filteredSources} />
             </section>
 
             <section className="mt-8">
