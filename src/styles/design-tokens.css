@@ -1,19 +1,8 @@
 
-/* Enterprise ASO Dashboard Design System Tokens - Yodel Mobile Edition */
+/* Yodel Mobile Design System Tokens - Enhanced Enterprise Edition */
 
 :root {
-  /* Enterprise Brand Colors - Consistent across all components */
-  --brand-primary: #F97316;        /* Yodel Mobile orange - main brand color */
-  --brand-secondary: #1F2937;      /* Dark theme base */
-  --brand-accent: #F97316;         /* Chart and interactive elements */
-  
-  /* Semantic Colors - Enterprise grade */
-  --semantic-success: #10B981;
-  --semantic-warning: #F59E0B;
-  --semantic-error: #EF4444;
-  --semantic-info: #3B82F6;
-  
-  /* Yodel Mobile Enhanced Palette - Legacy support */
+  /* Brand Colors - Yodel Mobile Enhanced Palette */
   --yodel-orange: #F97316;
   --yodel-orange-50: #FFF7ED;
   --yodel-orange-100: #FFEDD5;
@@ -178,31 +167,31 @@
   --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Enterprise Theme System - Dark Mode */
+/* Dark Theme Enhancements */
 .dark {
   --background: var(--yodel-gray-950);
   --foreground: var(--yodel-gray-50);
   --sidebar: var(--yodel-gray-900);
   --sidebar-foreground: var(--yodel-gray-100);
-  --sidebar-primary: var(--brand-primary);
+  --sidebar-primary: var(--yodel-orange);
   --sidebar-primary-foreground: var(--yodel-gray-50);
   --sidebar-accent: var(--yodel-gray-800);
   --sidebar-accent-foreground: var(--yodel-gray-100);
   --sidebar-border: var(--yodel-gray-800);
-  --sidebar-ring: var(--brand-primary);
+  --sidebar-ring: var(--yodel-orange);
   --card: var(--yodel-gray-900);
   --card-foreground: var(--yodel-gray-50);
-  --primary: var(--brand-primary);
+  --primary: var(--yodel-orange);
   --primary-foreground: var(--yodel-gray-50);
   --secondary: var(--yodel-gray-800);
   --secondary-foreground: var(--yodel-gray-100);
   --muted: var(--yodel-gray-800);
   --muted-foreground: var(--yodel-gray-400);
-  --accent: var(--brand-accent);
+  --accent: var(--yodel-blue);
   --accent-foreground: var(--yodel-gray-50);
   --border: var(--yodel-gray-800);
   --input: var(--yodel-gray-800);
-  --ring: var(--brand-primary);
+  --ring: var(--yodel-orange);
 }
 
 /* Responsive Breakpoints */

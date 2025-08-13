@@ -39,22 +39,6 @@ export const formatNumber = (value: number): string => {
 };
 
 /**
- * PHASE 1 FIX: Enterprise metric value formatting with K/M notation
- * Formats large numbers for dashboard display with appropriate suffixes
- */
-export const formatMetricValue = (value: number): string => {
-  if (isNaN(value) || !isFinite(value)) return "0";
-  
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
-  }
-  return value.toString();
-};
-
-/**
  * Standardizes timeseries data for chart components, ensuring
  * consistent structure and handling missing values.
  */

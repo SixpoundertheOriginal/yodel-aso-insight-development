@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
         <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'pr-80' : 'pr-15'} main-content`}>
           <div className="space-y-6 p-6">
       <div className="flex justify-between items-start mb-6">
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-4 lg:gap-6 flex-1 items-start`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
           {shouldShowKPI('impressions') && (
             <KpiCard
               title="Impressions"

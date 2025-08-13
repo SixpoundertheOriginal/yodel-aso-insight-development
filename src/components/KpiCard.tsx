@@ -1,8 +1,8 @@
 
 import React, { useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import { formatCVR, formatMetricValue } from "@/utils/format";
-import { EnterpriseMetricCard } from "@/lib/design-system";
+import { formatCVR, formatNumber } from "@/utils/format";
 
 interface KpiCardProps {
   title: string;
@@ -30,37 +30,33 @@ const KpiCard: React.FC<KpiCardProps> = React.memo(({
     if (isPercentage) {
       return formatCVR(value, precision);
     }
-    // PHASE 1 FIX: Use metric formatting for large numbers
-    return formatMetricValue(value);
+    return formatNumber(value);
   }, [value, isPercentage, precision]);
 
-  // Convert to enterprise metric card format
-  const deltaFormatted = useMemo(() => ({
-    value: Math.abs(delta),
-    period: 'previous period',
-    trend: isPositive ? 'positive' : 'negative'
-  }), [delta, isPositive]) as { value: number; period: string; trend: 'positive' | 'negative' };
-
-  // Determine icon based on KPI type
-  const getIcon = () => {
-    if (title.toLowerCase().includes('download')) return <ArrowDown className="h-4 w-4" />;
-    if (title.toLowerCase().includes('impression')) return <ArrowUp className="h-4 w-4" />;
-    return undefined;
-  };
-
-  // Determine format based on isPercentage
-  const format = isPercentage ? 'percentage' : 'number';
+  const displayDelta = useMemo(() => {
+    const formattedDelta = Math.abs(delta).toFixed(1);
+    const sign = delta >= 0 ? "+" : "-";
+    const suffix = isPercentage ? "%" : "";
+    return `${sign}${formattedDelta}${suffix}`;
+  }, [delta, isPercentage]);
 
   return (
-    <EnterpriseMetricCard
-      title={title}
-      value={displayValue}
-      delta={deltaFormatted}
-      icon={getIcon()}
-      format={format}
-      variant="default"
-      className={className}
-    />
+    <Card className={`border-l-4 border-l-orange-500 rounded-md shadow-md ${className}`}>
+      <CardContent className="p-6">
+        <div className="text-center">
+          <h3 className="text-zinc-400 font-medium text-sm uppercase mb-2">{title}</h3>
+          <div className="text-2xl font-bold mb-2">{displayValue}</div>
+          <div className={`flex items-center justify-center text-sm ${isPositive ? "text-green-500" : "text-red-500"}`}>
+            {isPositive ? (
+              <ArrowUp className="h-4 w-4 mr-1" />
+            ) : (
+              <ArrowDown className="h-4 w-4 mr-1" />
+            )}
+            <span>{displayDelta}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 });
 
