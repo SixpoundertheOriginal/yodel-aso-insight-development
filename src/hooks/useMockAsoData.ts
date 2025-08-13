@@ -49,11 +49,21 @@ export interface TimeSeriesPoint {
 
 export interface TrafficSourceTimeSeriesPoint {
   date: string;
-  webReferrer: number;
-  appStoreSearch: number;
-  appReferrer: number;
-  appleSearchAds: number;
-  appStoreBrowse: number;
+  webReferrer_impressions: number;
+  webReferrer_downloads: number;
+  webReferrer_product_page_views: number;
+  appStoreSearch_impressions: number;
+  appStoreSearch_downloads: number;
+  appStoreSearch_product_page_views: number;
+  appReferrer_impressions: number;
+  appReferrer_downloads: number;
+  appReferrer_product_page_views: number;
+  appleSearchAds_impressions: number;
+  appleSearchAds_downloads: number;
+  appleSearchAds_product_page_views: number;
+  appStoreBrowse_impressions: number;
+  appStoreBrowse_downloads: number;
+  appStoreBrowse_product_page_views: number;
   totalDownloads: number;
   totalImpressions: number;
   totalProductPageViews: number;
@@ -125,40 +135,73 @@ export const useMockAsoData = (
           const currentDate = new Date(startDate);
           currentDate.setDate(startDate.getDate() + i);
 
-          const impressions = Math.floor(Math.random() * 5000) + 500;
-          const product_page_views = Math.floor(Math.random() * 3000) + 300; // Renamed from 'pageViews'
+          // Generate per-source metrics
+          const sources = ['webReferrer', 'appStoreSearch', 'appReferrer', 'appleSearchAds', 'appStoreBrowse'] as const;
+          const sourceMetrics: Record<typeof sources[number], { impressions: number; downloads: number; product_page_views: number }> = {
+            webReferrer: {
+              impressions: Math.floor(Math.random() * 1000),
+              downloads: Math.floor(Math.random() * 200),
+              product_page_views: Math.floor(Math.random() * 600)
+            },
+            appStoreSearch: {
+              impressions: Math.floor(Math.random() * 1000),
+              downloads: Math.floor(Math.random() * 200),
+              product_page_views: Math.floor(Math.random() * 600)
+            },
+            appReferrer: {
+              impressions: Math.floor(Math.random() * 1000),
+              downloads: Math.floor(Math.random() * 200),
+              product_page_views: Math.floor(Math.random() * 600)
+            },
+            appleSearchAds: {
+              impressions: Math.floor(Math.random() * 1000),
+              downloads: Math.floor(Math.random() * 200),
+              product_page_views: Math.floor(Math.random() * 600)
+            },
+            appStoreBrowse: {
+              impressions: Math.floor(Math.random() * 1000),
+              downloads: Math.floor(Math.random() * 200),
+              product_page_views: Math.floor(Math.random() * 600)
+            }
+          };
 
-          // Generate per-source downloads and derive totals
-          const webReferrer = Math.floor(Math.random() * 200);
-          const appStoreSearch = Math.floor(Math.random() * 200);
-          const appReferrer = Math.floor(Math.random() * 200);
-          const appleSearchAds = Math.floor(Math.random() * 200);
-          const appStoreBrowse = Math.floor(Math.random() * 200);
-          const totalDownloads = webReferrer + appStoreSearch + appReferrer + appleSearchAds + appStoreBrowse;
+          const totalImpressions = sources.reduce((sum, s) => sum + sourceMetrics[s].impressions, 0);
+          const totalDownloads = sources.reduce((sum, s) => sum + sourceMetrics[s].downloads, 0);
+          const totalProductPageViews = sources.reduce((sum, s) => sum + sourceMetrics[s].product_page_views, 0);
 
-          const downloads = totalDownloads;
-          const product_page_cvr = product_page_views > 0 ? (downloads / product_page_views) * 100 : 0;
-          const impressions_cvr = impressions > 0 ? (downloads / impressions) * 100 : 0;
+          const product_page_cvr = totalProductPageViews > 0 ? (totalDownloads / totalProductPageViews) * 100 : 0;
+          const impressions_cvr = totalImpressions > 0 ? (totalDownloads / totalImpressions) * 100 : 0;
 
           const dateStr = currentDate.toISOString().split('T')[0];
           timeseriesData.push({
             date: dateStr,
-            impressions,
-            downloads,
-            product_page_views,
+            impressions: totalImpressions,
+            downloads: totalDownloads,
+            product_page_views: totalProductPageViews,
             product_page_cvr,
             impressions_cvr,
           });
+
           trafficSourceTimeseriesData.push({
             date: dateStr,
-            webReferrer,
-            appStoreSearch,
-            appReferrer,
-            appleSearchAds,
-            appStoreBrowse,
+            webReferrer_impressions: sourceMetrics.webReferrer.impressions,
+            webReferrer_downloads: sourceMetrics.webReferrer.downloads,
+            webReferrer_product_page_views: sourceMetrics.webReferrer.product_page_views,
+            appStoreSearch_impressions: sourceMetrics.appStoreSearch.impressions,
+            appStoreSearch_downloads: sourceMetrics.appStoreSearch.downloads,
+            appStoreSearch_product_page_views: sourceMetrics.appStoreSearch.product_page_views,
+            appReferrer_impressions: sourceMetrics.appReferrer.impressions,
+            appReferrer_downloads: sourceMetrics.appReferrer.downloads,
+            appReferrer_product_page_views: sourceMetrics.appReferrer.product_page_views,
+            appleSearchAds_impressions: sourceMetrics.appleSearchAds.impressions,
+            appleSearchAds_downloads: sourceMetrics.appleSearchAds.downloads,
+            appleSearchAds_product_page_views: sourceMetrics.appleSearchAds.product_page_views,
+            appStoreBrowse_impressions: sourceMetrics.appStoreBrowse.impressions,
+            appStoreBrowse_downloads: sourceMetrics.appStoreBrowse.downloads,
+            appStoreBrowse_product_page_views: sourceMetrics.appStoreBrowse.product_page_views,
             totalDownloads,
-            totalImpressions: impressions,
-            totalProductPageViews: product_page_views,
+            totalImpressions,
+            totalProductPageViews,
           });
         }
         
