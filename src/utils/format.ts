@@ -1,4 +1,4 @@
-export function formatPercentage(value: number, decimals = 2): string {
+export function formatPercentage(value: number, decimals = 1): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -8,12 +8,12 @@ export function formatPercentage(value: number, decimals = 2): string {
 /**
  * Formats a number as a percentage with suffix
  * @param value - The percentage value (e.g., 58.752)
- * @param decimals - Number of decimal places (default: 2)
- * @returns Formatted string with % suffix (e.g., "58.75%")
+ * @param decimals - Number of decimal places (default: 1)
+ * @returns Formatted string with % suffix (e.g., "58.8%")
  */
 export const formatPercentageWithSuffix = (
   value: number,
-  decimals: number = 2
+  decimals: number = 1
 ): string => {
   if (isNaN(value) || !isFinite(value)) {
     return "0.0%";
@@ -24,10 +24,10 @@ export const formatPercentageWithSuffix = (
 /**
  * Formats CVR values specifically for dashboard display
  * @param cvr - CVR value from transform function
- * @param decimals - Decimal places (default: 2 for display)
+ * @param decimals - Decimal places (default: 1 for display)
  * @returns Formatted CVR string
  */
-export const formatCVR = (cvr: number, decimals: number = 2): string => {
+export const formatCVR = (cvr: number, decimals: number = 1): string => {
   return formatPercentageWithSuffix(cvr, decimals);
 };
 
