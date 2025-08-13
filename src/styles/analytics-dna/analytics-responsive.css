@@ -1,0 +1,12 @@
+/* ANALYTICS RESPONSIVE BEHAVIOR */
+@media (max-width: 767px) {
+  .analytics-card-container {
+    padding: 1rem; /* reduced padding on mobile */
+  }
+  .analytics-card-title {
+    font-size: 0.75rem; /* text-xs */
+  }
+  .analytics-card-value {
+    font-size: 1.25rem; /* text-xl */
+  }
+}
