@@ -307,26 +307,31 @@ const OverviewPage: React.FC = () => {
                       title="Impressions"
                       value={impressionsValue}
                       delta={impressionsDelta}
+                      className="bg-zinc-800 border border-zinc-700"
                     />
                     <KpiCard
                       title="Downloads"
                       value={downloadsValue}
                       delta={downloadsDelta}
+                      className="bg-zinc-800 border border-zinc-700"
                     />
                     <KpiCard
                       title="Product Page Views"
                       value={pageViewsValue}
                       delta={pageViewsDelta}
+                      className="bg-zinc-800 border border-zinc-700"
                     />
                     <KpiCard
                       title="True Search Impressions"
                       value={trueSearchImpressionsValue}
                       delta={trueSearchImpressionsDelta}
+                      className="bg-zinc-800 border border-zinc-700"
                     />
                     <KpiCard
                       title="True Search Downloads"
                       value={trueSearchDownloadsValue}
                       delta={trueSearchDownloadsDelta}
+                      className="bg-zinc-800 border border-zinc-700"
                     />
                   </div>
 
