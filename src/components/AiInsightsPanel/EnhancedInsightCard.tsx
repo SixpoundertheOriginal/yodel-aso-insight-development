@@ -69,15 +69,25 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
 
   if (compact) {
     return (
-      <Card className="relative border-0 shadow-sm">
-        <CardHeader className="pb-2">
+      <Card
+        className={`relative rounded-md shadow-md border-l-4 ${
+          insight.priority === 'high'
+            ? 'border-l-red-500'
+            : insight.priority === 'medium'
+            ? 'border-l-yellow-500'
+            : 'border-l-green-500'
+        }`}
+      >
+        <CardHeader className="p-6 pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h4 className={`font-semibold ${compact ? 'text-sm' : 'text-base'} text-foreground leading-tight`}>
+              <h4 className="font-semibold text-sm text-foreground leading-tight">
                 {insight.title}
               </h4>
-              <p className={`${compact ? 'text-xs mt-1' : 'text-sm mt-2'} text-muted-foreground leading-relaxed`}>
-                {insight.description.length > 120 ? `${insight.description.slice(0, 120)}...` : insight.description}
+              <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
+                {insight.description.length > 120
+                  ? `${insight.description.slice(0, 120)}...`
+                  : insight.description}
               </p>
             </div>
             <div className="flex items-center gap-2 ml-3">
@@ -94,9 +104,10 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
         </CardHeader>
 
         {insight.actionable_recommendations && insight.actionable_recommendations.length > 0 && (
-          <CardContent className="pt-0 pb-3">
+          <CardContent className="px-6 pt-0 pb-6">
             <div className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Key action:</span> {insight.actionable_recommendations[0]}
+              <span className="font-medium text-foreground">Key action:</span>{' '}
+              {insight.actionable_recommendations[0]}
             </div>
           </CardContent>
         )}
@@ -105,12 +116,16 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
   }
 
   return (
-    <Card className={`transition-all duration-200 hover:shadow-md ${
-      insight.priority === 'high' ? 'border-l-4 border-l-red-500' :
-      insight.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
-      'border-l-4 border-l-green-500'
-    }`}>
-      <CardHeader className="pb-3">
+    <Card
+      className={`rounded-md shadow-md border-l-4 ${
+        insight.priority === 'high'
+          ? 'border-l-red-500'
+          : insight.priority === 'medium'
+          ? 'border-l-yellow-500'
+          : 'border-l-green-500'
+      }`}
+    >
+      <CardHeader className="p-6 pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <IconComponent className={`h-5 w-5 ${typeColor}`} />
@@ -131,16 +146,16 @@ export const EnhancedInsightCard: React.FC<EnhancedInsightCardProps> = ({
           </Badge>
         </div>
 
-        <CardTitle className="text-base leading-tight">
+        <CardTitle className="text-zinc-400 font-medium text-sm uppercase mb-2">
           {insight.title}
         </CardTitle>
 
-        <CardDescription className="text-sm leading-relaxed">
+        <CardDescription className="text-base leading-relaxed text-foreground">
           {insight.description}
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-4">
+      <CardContent className="px-6 pt-0 pb-6 space-y-4">
         {/* Recommendations */}
         {insight.actionable_recommendations.length > 0 && (
           <div className="space-y-2">
