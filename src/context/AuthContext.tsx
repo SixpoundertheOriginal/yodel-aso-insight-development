@@ -114,12 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-      
+
       if (error) {
         throw error;
       }
-      
-      navigate('/dashboard');
+      // Restore navigation intent if present
+      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
+      navigate(redirectPath);
+      sessionStorage.removeItem('postLoginRedirect');
       return data;
     } catch (error: any) {
       toast({
@@ -150,17 +152,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithOAuth = async ({ provider }: { provider: 'google' | 'github' | 'twitter' }) => {
     try {
+      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}${redirectPath}`
         }
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       return data;
     } catch (error: any) {
       toast({

@@ -12,6 +12,7 @@ import { AsoAiHubProvider } from "./context/AsoAiHubContext";
 import { WorkflowProvider } from "./context/WorkflowContext";
 import { BigQueryAppProvider } from "./context/BigQueryAppContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
+import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 
 // Lazy load components
 const Index = lazy(() => import("./pages/Index"));
@@ -61,28 +62,88 @@ function App() {
                           <Route path="/auth/sign-in" element={<SignIn />} />
                           <Route path="/auth/sign-up" element={<SignUp />} />
                           <Route path="/" element={<Index />} />
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/traffic-sources" element={<TrafficSources />} />
-                          <Route path="/insights" element={<InsightsPage />} />
-                          <Route path="/insights/traffic-performance" element={<TrafficPerformanceMatrix />} />
-                          <Route path="/conversion-analysis" element={<ConversionAnalysis />} />
-                          <Route path="/overview" element={<Overview />} />
-                          
-                          <Route path="/aso-ai-hub" element={<AsoAiHub />} />
-                          <Route path="/chatgpt-visibility-audit" element={<ChatGPTVisibilityAudit />} />
-                          
-                          <Route path="/featuring-toolkit" element={<FeaturingToolkit />} />
-                          <Route path="/metadata-copilot" element={<MetadataCopilot />} />
-                          <Route path="/growth-gap-copilot" element={<GrowthGapCopilot />} />
-                          <Route path="/creative-analysis" element={<CreativeAnalysis />} />
-                          <Route path="/aso-knowledge-engine" element={<AsoKnowledgeEngine />} />
-                          <Route path="/aso-unified" element={<ASOUnified />} />
-                          <Route path="/apps" element={<Apps />} />
-                          <Route path="/app-discovery" element={<AppDiscovery />} />
-                          <Route path="/profile" element={<Profile />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="/admin" element={<Admin />} />
-                          <Route path="/smoke-test" element={<SmokeTest />} />
+                          <Route
+                            path="/dashboard"
+                            element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/traffic-sources"
+                            element={<ProtectedRoute><TrafficSources /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/insights"
+                            element={<ProtectedRoute><InsightsPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/insights/traffic-performance"
+                            element={<ProtectedRoute><TrafficPerformanceMatrix /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/conversion-analysis"
+                            element={<ProtectedRoute><ConversionAnalysis /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/overview"
+                            element={<ProtectedRoute><Overview /></ProtectedRoute>}
+                          />
+
+                          <Route
+                            path="/aso-ai-hub"
+                            element={<ProtectedRoute><AsoAiHub /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/chatgpt-visibility-audit"
+                            element={<ProtectedRoute><ChatGPTVisibilityAudit /></ProtectedRoute>}
+                          />
+
+                          <Route
+                            path="/featuring-toolkit"
+                            element={<ProtectedRoute><FeaturingToolkit /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/metadata-copilot"
+                            element={<ProtectedRoute><MetadataCopilot /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/growth-gap-copilot"
+                            element={<ProtectedRoute><GrowthGapCopilot /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/creative-analysis"
+                            element={<ProtectedRoute><CreativeAnalysis /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/aso-knowledge-engine"
+                            element={<ProtectedRoute><AsoKnowledgeEngine /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/aso-unified"
+                            element={<ProtectedRoute><ASOUnified /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/apps"
+                            element={<ProtectedRoute><Apps /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/app-discovery"
+                            element={<ProtectedRoute><AppDiscovery /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/profile"
+                            element={<ProtectedRoute><Profile /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/settings"
+                            element={<ProtectedRoute><Settings /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin"
+                            element={<ProtectedRoute><Admin /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/smoke-test"
+                            element={<ProtectedRoute><SmokeTest /></ProtectedRoute>}
+                          />
                           <Route path="/404" element={<NotFound />} />
                           <Route path="*" element={<Navigate to="/404" replace />} />
                         </Routes>
