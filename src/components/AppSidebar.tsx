@@ -1,25 +1,24 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Target, 
-  Bot, 
+import {
+  BarChart3,
+  TrendingUp,
+  Target,
+  Bot,
   Home,
-  Search,
   Shield,
   User,
   Settings as SettingsIcon,
   Smartphone,
   Database,
-  PieChart,
   Brain,
   FileEdit,
   Star,
-  Zap,
-  Palette
+  Palette,
+  type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Sidebar,
   SidebarContent,
@@ -35,8 +34,16 @@ import {
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/usePermissions";
 
+interface NavigationItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  status?: "active" | "coming_soon" | "under_development" | "beta";
+  statusLabel?: string;
+}
+
 // Performance Intelligence - Pure data visualization from BigQuery
-const analyticsItems = [
+const analyticsItems: NavigationItem[] = [
   {
     title: "Executive Dashboard",
     url: "/overview",
@@ -48,19 +55,21 @@ const analyticsItems = [
     icon: BarChart3,
   },
   {
-    title: "Insights",
-    url: "/insights",
-    icon: Brain,
-  },
-  {
     title: "Conversion Intelligence",
     url: "/conversion-analysis",
     icon: Target,
   },
+  {
+    title: "Insights",
+    url: "/insights",
+    icon: Brain,
+    status: "coming_soon",
+    statusLabel: "Coming Soon",
+  },
 ];
 
 // AI Command Center - Main AI-powered tools
-const aiToolsItems = [
+const aiToolsItems: NavigationItem[] = [
   {
     title: "Strategic Audit Engine",
     url: "/aso-ai-hub",
@@ -74,7 +83,7 @@ const aiToolsItems = [
 ];
 
 // Growth Accelerators - Dedicated copilot interfaces
-const aiCopilotsItems = [
+const aiCopilotsItems: NavigationItem[] = [
   {
     title: "Strategy Brain",
     url: "/aso-knowledge-engine",
@@ -103,7 +112,7 @@ const aiCopilotsItems = [
 ];
 
 // User account items
-const userItems = [
+const userItems: NavigationItem[] = [
   {
     title: "Profile",
     url: "/profile",
@@ -119,6 +128,115 @@ const userItems = [
 export function AppSidebar() {
   const location = useLocation();
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
+
+  const showDevelopmentNotification = (item: NavigationItem) => {
+    toast.info(
+      `${item.title} is currently under development. Check back soon for powerful ASO insights and analytics!`,
+      {
+        duration: 4000,
+        icon: "🚧",
+      }
+    );
+  };
+
+  const renderNavItem = (item: NavigationItem) => {
+    const isActive = location.pathname === item.url;
+    const isDisabled =
+      item.status === "coming_soon" || item.status === "under_development";
+
+    const statusTag = () => {
+      if (item.status === "coming_soon") {
+        return (
+          <span
+            className={`px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded-full border border-yellow-500/30 ${
+              isDisabled ? "animate-pulse" : ""
+            }`}
+          >
+            {item.statusLabel || "Coming Soon"}
+          </span>
+        );
+      }
+      if (item.status === "under_development") {
+        return (
+          <span
+            className={`px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30 ${
+              isDisabled ? "animate-pulse" : ""
+            }`}
+          >
+            {item.statusLabel || "In Development"}
+          </span>
+        );
+      }
+      if (item.status === "beta") {
+        return (
+          <span
+            className={`px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded-full border border-purple-500/30 ${
+              isDisabled ? "animate-pulse" : ""
+            }`}
+          >
+            {item.statusLabel || "Beta"}
+          </span>
+        );
+      }
+      return null;
+    };
+
+    const content = (
+      <>
+        <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+        <span className="truncate font-medium">{item.title}</span>
+        {statusTag()}
+      </>
+    );
+
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={item.title}
+          className={`h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg transition-all duration-200 ease-in-out group ${
+            isDisabled
+              ? "opacity-60 cursor-not-allowed hover:bg-zinc-800/30 hover:text-nav-text-secondary"
+              : "hover:bg-zinc-800/70 hover:text-nav-text"
+          }`}
+        >
+          {isDisabled ? (
+            <div
+              className="flex items-center gap-3"
+              onClick={() => showDevelopmentNotification(item)}
+            >
+              {content}
+            </div>
+          ) : (
+            <Link to={item.url} className="flex items-center gap-3">
+              {content}
+            </Link>
+          )}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
+  const controlCenterItems: NavigationItem[] = [
+    {
+      title: "App Intelligence",
+      url: "/app-discovery",
+      icon: Database,
+    },
+    {
+      title: "Portfolio Manager",
+      url: "/apps",
+      icon: Smartphone,
+    },
+  ];
+  if (isSuperAdmin) {
+    controlCenterItems.push({
+      title: "System Control",
+      url: "/admin",
+      icon: Shield,
+    });
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-footer-border">
@@ -145,24 +263,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {analyticsItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={isActive}
-                       tooltip={item.title}
-                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                     >
-                       <Link to={item.url} className="flex items-center gap-3">
-                         <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                         <span className="truncate font-medium">{item.title}</span>
-                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {analyticsItems.map(renderNavItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -177,24 +278,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {aiToolsItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={isActive}
-                       tooltip={item.title}
-                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                     >
-                       <Link to={item.url} className="flex items-center gap-3">
-                         <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                         <span className="truncate font-medium">{item.title}</span>
-                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {aiToolsItems.map(renderNavItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -209,24 +293,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {aiCopilotsItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={isActive}
-                       tooltip={item.title}
-                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                     >
-                       <Link to={item.url} className="flex items-center gap-3">
-                         <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                         <span className="truncate font-medium">{item.title}</span>
-                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {aiCopilotsItems.map(renderNavItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -242,49 +309,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === '/app-discovery'}
-                      tooltip="App Intelligence"
-                      className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                    >
-                      <Link to="/app-discovery" className="flex items-center gap-3">
-                        <Database className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                        <span className="truncate font-medium">App Intelligence</span>
-                      </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                     asChild
-                     isActive={location.pathname === '/apps'}
-                     tooltip="Portfolio Manager"
-                     className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                   >
-                     <Link to="/apps" className="flex items-center gap-3">
-                       <Smartphone className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                       <span className="truncate font-medium">Portfolio Manager</span>
-                     </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                {isSuperAdmin && (
-                  <SidebarMenuItem>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={location.pathname === '/admin'}
-                       tooltip="System Control"
-                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                     >
-                       <Link to="/admin" className="flex items-center gap-3">
-                         <Shield className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                         <span className="truncate font-medium">System Control</span>
-                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
+                {controlCenterItems.map(renderNavItem)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -300,24 +325,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {userItems.map((item) => {
-                const isActive = location.pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={isActive}
-                       tooltip={item.title}
-                       className="h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg hover:bg-zinc-800/70 hover:text-nav-text transition-all duration-200 ease-in-out group"
-                     >
-                       <Link to={item.url} className="flex items-center gap-3">
-                         <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                         <span className="truncate font-medium">{item.title}</span>
-                       </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {userItems.map(renderNavItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
