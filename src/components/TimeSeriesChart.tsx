@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import { TimeSeriesPoint, TrafficSourceTimeSeriesPoint } from "@/hooks/useMockAsoData";
+import { TimeSeriesPoint, TrafficSourceTimeSeriesPoint, TrafficSourceCVRTimeSeriesPoint } from "@/hooks/useMockAsoData";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart";
 import { chartColors } from "@/utils/chartConfig";
 import { TRAFFIC_SOURCE_COLORS } from "@/utils/trafficSourceColors";
@@ -8,11 +8,11 @@ import { TRAFFIC_SOURCE_COLORS } from "@/utils/trafficSourceColors";
 interface TimeSeriesChartProps {
   data: TimeSeriesPoint[];
   selectedKPI?: string;
-  trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[];
+  trafficSourceTimeseriesData?: TrafficSourceTimeSeriesPoint[] | TrafficSourceCVRTimeSeriesPoint[];
   mode?: 'total' | 'breakdown';
   showModeToggle?: boolean;
   visibleMetrics?: string[];
-  breakdownMetric?: 'impressions' | 'downloads' | 'product_page_views';
+  breakdownMetric?: 'impressions' | 'downloads' | 'product_page_views' | 'cvr';
 }
 
 const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, selectedKPI = 'all', trafficSourceTimeseriesData = [], mode = 'total', showModeToggle = true, visibleMetrics = ['impressions','downloads','product_page_views','product_page_cvr','impressions_cvr'], breakdownMetric = 'downloads' }) => {
@@ -47,9 +47,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
           }),
           webReferrer: record[`webReferrer_${breakdownMetric}`] || 0,
           appStoreSearch: record[`appStoreSearch_${breakdownMetric}`] || 0,
-          appReferrer: record[`appReferrer_${breakdownMetric}`] || 0,
           appleSearchAds: record[`appleSearchAds_${breakdownMetric}`] || 0,
           appStoreBrowse: record[`appStoreBrowse_${breakdownMetric}`] || 0,
+          other: record[`other_${breakdownMetric}`] || 0,
         };
       }),
     [trafficSourceTimeseriesData, breakdownMetric]
@@ -62,9 +62,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
       return {
         webReferrer: { label: 'Web Referrer', color: TRAFFIC_SOURCE_COLORS['Web Referrer'] },
         appStoreSearch: { label: 'App Store Search', color: TRAFFIC_SOURCE_COLORS['App Store Search'] },
-        appReferrer: { label: 'App Referrer', color: TRAFFIC_SOURCE_COLORS['App Referrer'] },
         appleSearchAds: { label: 'Apple Search Ads', color: TRAFFIC_SOURCE_COLORS['Apple Search Ads'] },
         appStoreBrowse: { label: 'App Store Browse', color: TRAFFIC_SOURCE_COLORS['App Store Browse'] },
+        other: { label: 'Other', color: TRAFFIC_SOURCE_COLORS['Other'] },
       } satisfies ChartConfig;
     }
     const base = {
@@ -192,9 +192,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = React.memo(({ data, sele
             <>
               <Line type="monotone" dataKey="webReferrer" stroke="var(--color-webReferrer)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
               <Line type="monotone" dataKey="appStoreSearch" stroke="var(--color-appStoreSearch)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="appReferrer" stroke="var(--color-appReferrer)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
               <Line type="monotone" dataKey="appleSearchAds" stroke="var(--color-appleSearchAds)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
               <Line type="monotone" dataKey="appStoreBrowse" stroke="var(--color-appStoreBrowse)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="other" stroke="var(--color-other)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
             </>
           )}
         </LineChart>
