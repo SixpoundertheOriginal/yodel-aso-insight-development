@@ -9,7 +9,7 @@ import ConversionRateChart from "../components/ConversionRateChart";
 import TrafficSourceCVRCard from "../components/TrafficSourceCVRCard";
 import { processTrafficSourceCVR, CVRType } from "../utils/processTrafficSourceCVR";
 import { MainLayout } from '@/layouts';
-import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
+import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +21,7 @@ const ConversionAnalysisPage: React.FC = () => {
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
   
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [cvrType, setCvrType] = useState<CVRType>('impression');
@@ -75,18 +76,33 @@ const ConversionAnalysisPage: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    if (!organizationId) return;
+    const saved = localStorage.getItem(`ai-sidebar-state-${organizationId}`);
+    if (saved) {
+      setSidebarState(saved as SidebarState);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const handleSidebarStateChange = (state: SidebarState) => {
+    setSidebarState(state);
+    if (organizationId) {
+      localStorage.setItem(`ai-sidebar-state-${organizationId}`, state);
+    }
+  };
+
   // Display a loading state when data is being fetched
   if (loading || !data) {
     return (
       <MainLayout>
         <div className="flex min-h-screen">
-          <div className={`flex-1 ${!isMobile ? 'pr-80' : ''}`}> 
+          <div className={`flex-1 ${!isMobile ? (sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80') : ''}`}>
             <div className="p-6 flex flex-col space-y-6">
               {isMobile && (
                 <Button
@@ -125,6 +141,8 @@ const ConversionAnalysisPage: React.FC = () => {
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}
+              state={sidebarState}
+              onStateChange={handleSidebarStateChange}
             />
           </div>
           {isMobile && isMobileSidebarOpen && (
@@ -141,7 +159,7 @@ const ConversionAnalysisPage: React.FC = () => {
   return (
     <MainLayout>
       <div className="flex min-h-screen">
-        <div className={`flex-1 ${!isMobile ? 'pr-80' : ''}`}> 
+        <div className={`flex-1 ${!isMobile ? (sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80') : ''}`}>
           <div className="p-6 flex flex-col space-y-6">
             {isMobile && (
               <Button
@@ -231,6 +249,8 @@ const ConversionAnalysisPage: React.FC = () => {
           <ContextualInsightsSidebar
             metricsData={data}
             organizationId={organizationId}
+            state={sidebarState}
+            onStateChange={handleSidebarStateChange}
           />
         </div>
         {isMobile && isMobileSidebarOpen && (

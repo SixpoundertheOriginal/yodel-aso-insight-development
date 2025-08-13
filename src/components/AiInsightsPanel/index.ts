@@ -6,4 +6,5 @@ export { InsightRequestCards } from './InsightRequestCards';
 export { InsightResults } from './InsightResults';
 export { EnhancedInsightCard } from './EnhancedInsightCard';
 export { default as ContextualInsightsSidebar } from './ContextualInsightsSidebar';
+export type { SidebarState } from './ContextualInsightsSidebar';
 export { SidebarToggle } from './SidebarToggle';

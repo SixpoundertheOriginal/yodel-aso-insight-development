@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import { MetricSelector } from '@/components/charts/MetricSelector';
 import { MainLayout } from '@/layouts';
-import { ContextualInsightsSidebar } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
+import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { KPISelector } from '../components/KPISelector';
@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
   } = useAsoData();
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState('');
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -52,6 +52,14 @@ const Dashboard: React.FC = () => {
     };
     fetchOrganizationId();
   }, [user]);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    const saved = localStorage.getItem(`ai-sidebar-state-${organizationId}`);
+    if (saved) {
+      setSidebarState(saved as SidebarState);
+    }
+  }, [organizationId]);
 
 
   // Enhanced traffic source filter change handler with validation
@@ -78,6 +86,13 @@ const Dashboard: React.FC = () => {
 
   const handleKPIChange = (value: string) => {
     setSelectedKPI(value);
+  };
+
+  const handleSidebarStateChange = (state: SidebarState) => {
+    setSidebarState(state);
+    if (organizationId) {
+      localStorage.setItem(`ai-sidebar-state-${organizationId}`, state);
+    }
   };
 
 
@@ -163,7 +178,7 @@ const Dashboard: React.FC = () => {
     <MainLayout>
       <div className="flex min-h-screen">
         {/* Main Content - Responsive padding */}
-        <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarExpanded ? 'pr-80' : 'pr-15'} main-content`}>
+        <div className={`flex-1 transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80'} main-content`}>
           <div className="space-y-6 p-6">
       <div className="flex justify-between items-start mb-6">
         <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
@@ -328,8 +343,8 @@ const Dashboard: React.FC = () => {
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}
-              isExpanded={isSidebarExpanded}
-              onToggleExpanded={setIsSidebarExpanded}
+              state={sidebarState}
+              onStateChange={handleSidebarStateChange}
             />
           ) : (
             <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">
