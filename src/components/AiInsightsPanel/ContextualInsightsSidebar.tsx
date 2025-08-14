@@ -1,15 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, Sparkles, TrendingUp, AlertTriangle, ChevronsLeft, ChevronsRight, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  TrendingUp,
+  AlertTriangle,
+  ChevronsLeft,
+  ChevronsRight,
+  Maximize2,
+  Minimize2,
+  Bookmark,
+  Download,
+  History
+} from 'lucide-react';
 import { CollapsedSidebar } from './CollapsedSidebar';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { useAsoData } from '@/context/AsoDataContext';
 import { EnhancedInsightCard } from './EnhancedInsightCard';
-import { ConversationalChat } from './ConversationalChat';
+import { ConversationalChat, ConversationalChatHandle } from './ConversationalChat';
 import { useConversationalChat } from '@/hooks/useConversationalChat';
 import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
@@ -38,6 +51,19 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const [isMobile, setIsMobile] = useState(false);
   const [chatPanelWidth, setChatPanelWidth] = useState(384);
   const [isResizing, setIsResizing] = useState(false);
+  const chatRef = useRef<ConversationalChatHandle>(null);
+
+  const handleSaveConversation = () => {
+    chatRef.current?.saveConversation();
+  };
+
+  const handleExportConversation = () => {
+    chatRef.current?.exportConversation();
+  };
+
+  const handleShowHistory = () => {
+    chatRef.current?.showHistory();
+  };
   // Initialize theme to ensure theme state is active
   useTheme();
 
@@ -356,15 +382,55 @@ useEffect(() => {
         )}
 
         {/* Conversational Chat */}
-        <div className={`px-4 pb-4 ${sidebarState === 'fullscreen' ? 'flex flex-col flex-1 min-h-0' : ''}`}>
-          <ConversationalChat
-            metricsData={metricsData as MetricsData}
-            filterContext={filterContext}
-            organizationId={organizationId}
-            onGenerateInsight={generateChatResponse}
-            isGenerating={isChatGenerating}
-            className={sidebarState === 'fullscreen' ? 'flex-1' : 'h-80'}
-          />
+        <div
+          className={`px-4 pb-4 ${
+            sidebarState === 'fullscreen' ? 'flex flex-col flex-1 min-h-0' : ''
+          }`}
+        >
+          <Card className="h-full flex flex-col">
+            <div className="flex items-center justify-between gap-2 p-3 border-b">
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium">Ask Your Marketing Expert</h3>
+                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                  AI
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleSaveConversation}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  title="Save conversation"
+                >
+                  <Bookmark className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleExportConversation}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  title="Export conversation"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleShowHistory}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  title="Conversation history"
+                >
+                  <History className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <CardContent className="flex-1 p-0 flex flex-col">
+              <ConversationalChat
+                ref={chatRef}
+                metricsData={metricsData as MetricsData}
+                filterContext={filterContext}
+                organizationId={organizationId}
+                onGenerateInsight={generateChatResponse}
+                isGenerating={isChatGenerating}
+                className="flex-1"
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
 
