@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -2185,20 +2185,20 @@ export type Database = {
       }
       calculate_rank_distribution: {
         Args: {
-          p_organization_id: string
-          p_app_id: string
           p_analysis_date?: string
+          p_app_id: string
+          p_organization_id: string
         }
         Returns: {
+          avg_rank: number
           top_1: number
+          top_10: number
+          top_100: number
+          top_20: number
           top_3: number
           top_5: number
-          top_10: number
-          top_20: number
           top_50: number
-          top_100: number
           total_tracked: number
-          avg_rank: number
           visibility_score: number
         }[]
       }
@@ -2246,59 +2246,59 @@ export type Database = {
       }
       get_keyword_gap_analysis: {
         Args: {
+          p_limit?: number
           p_organization_id: string
           p_target_app_id: string
-          p_limit?: number
         }
         Returns: {
-          keyword: string
-          target_rank: number
           best_competitor_rank: number
-          gap_opportunity: string
-          search_volume: number
           difficulty_score: number
+          gap_opportunity: string
+          keyword: string
+          search_volume: number
+          target_rank: number
         }[]
       }
       get_keyword_trends: {
         Args: {
-          p_organization_id: string
           p_app_id: string
           p_days_back?: number
+          p_organization_id: string
         }
         Returns: {
-          keyword: string
           current_rank: number
+          current_volume: number
+          keyword: string
           previous_rank: number
           rank_change: number
-          current_volume: number
-          volume_change_pct: number
           trend_direction: string
+          volume_change_pct: number
         }[]
       }
       get_keyword_volume_trends: {
         Args: {
-          p_organization_id: string
-          p_keyword: string
           p_days_back?: number
+          p_keyword: string
+          p_organization_id: string
         }
         Returns: {
+          popularity_score: number
           recorded_date: string
           search_volume: number
-          popularity_score: number
           trend_direction: string
         }[]
       }
       get_pending_app_discoveries: {
         Args: { p_organization_id: string }
         Returns: {
-          id: string
           app_identifier: string
           app_name: string
-          record_count: number
-          first_seen: string
-          last_seen: string
           days_with_data: number
           discovered_date: string
+          first_seen: string
+          id: string
+          last_seen: string
+          record_count: number
         }[]
       }
       get_user_organization_with_fallback: {
@@ -2311,10 +2311,10 @@ export type Database = {
       }
       log_scraper_request: {
         Args: {
+          p_ip_address?: unknown
           p_organization_id: string
           p_search_term: string
           p_user_agent?: string
-          p_ip_address?: unknown
         }
         Returns: boolean
       }
@@ -2323,14 +2323,14 @@ export type Database = {
         Returns: undefined
       }
       update_app_approval_status: {
-        Args: { p_app_id: string; p_status: string; p_approved_by?: string }
+        Args: { p_app_id: string; p_approved_by?: string; p_status: string }
         Returns: boolean
       }
       update_keyword_usage: {
         Args: {
-          p_organization_id: string
-          p_keywords_processed?: number
           p_api_calls?: number
+          p_keywords_processed?: number
+          p_organization_id: string
         }
         Returns: undefined
       }
