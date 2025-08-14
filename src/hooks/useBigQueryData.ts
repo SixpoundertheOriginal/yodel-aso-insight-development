@@ -623,3 +623,111 @@ function transformBigQueryToAsoData(
     cvrTimeSeries,
   };
 }
+
+export interface BenchmarkMetric {
+  id: 'product_page_cvr' | 'impressions_cvr' | 'search_cvr' | 'browse_cvr';
+  name: string;
+  currentValue: number;
+  benchmarkValue: number;
+  industryAverage: number;
+  trend: number;
+  unit: '%' | '$' | 'count';
+  description: string;
+}
+
+export interface GraphDataPoint {
+  date: string;
+  current: number;
+  benchmark: number;
+  industryAverage?: number;
+}
+
+interface BenchmarkDataParams {
+  organizationId: string;
+  selectedMetric: BenchmarkMetric['id'];
+  dateRange: { startDate: string; endDate: string };
+  trafficSources?: string[];
+}
+
+export const useBenchmarkData = ({
+  organizationId,
+  selectedMetric,
+  dateRange,
+  trafficSources = []
+}: BenchmarkDataParams) => {
+  const [data, setData] = useState<GraphDataPoint[]>([]);
+  const [metrics, setMetrics] = useState<BenchmarkMetric[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateInputs = useCallback(() => {
+    const ALLOWED_METRICS = ['product_page_cvr', 'impressions_cvr', 'search_cvr', 'browse_cvr'] as const;
+
+    if (!organizationId || typeof organizationId !== 'string') {
+      throw new Error('Invalid organization ID');
+    }
+
+    if (!ALLOWED_METRICS.includes(selectedMetric)) {
+      throw new Error('Invalid metric selection');
+    }
+
+    if (!dateRange.startDate || !dateRange.endDate) {
+      throw new Error('Invalid date range');
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(dateRange.startDate) || !dateRegex.test(dateRange.endDate)) {
+      throw new Error('Invalid date format');
+    }
+  }, [organizationId, selectedMetric, dateRange]);
+
+  const fetchBenchmarkData = useCallback(async (metricOverride?: BenchmarkMetric['id']) => {
+    try {
+      validateInputs();
+      setLoading(true);
+      setError(null);
+
+      const metric = metricOverride || selectedMetric;
+
+      const response = await supabase.functions.invoke('bigquery-benchmark-data', {
+        body: {
+          organizationId,
+          metric,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          trafficSources: trafficSources.length > 0 ? trafficSources : undefined
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to fetch benchmark data');
+      }
+
+      if (!response.data || !Array.isArray(response.data.timeseriesData)) {
+        throw new Error('Invalid response format');
+      }
+
+      setData(response.data.timeseriesData);
+      setMetrics(response.data.metricsData || []);
+    } catch (err) {
+      console.error('Benchmark data fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setData([]);
+      setMetrics([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId, selectedMetric, dateRange, trafficSources, validateInputs]);
+
+  useEffect(() => {
+    fetchBenchmarkData();
+  }, [fetchBenchmarkData]);
+
+  return {
+    data,
+    metrics,
+    loading,
+    error,
+    refetch: fetchBenchmarkData
+  };
+};
