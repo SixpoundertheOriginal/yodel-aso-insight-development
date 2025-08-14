@@ -35,7 +35,7 @@ const BenchmarkCard: React.FC<BenchmarkCardProps> = ({
       className={`
         benchmark-card relative cursor-pointer transition-all duration-200 ease-in-out
         ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'}
-        ${loading ? 'pointer-events-none opacity-60' : ''}
+        ${loading ? 'opacity-60' : ''}
         ${disabled ? 'pointer-events-none opacity-40' : ''}
         border rounded-lg p-4 min-h-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500
       `}
@@ -89,7 +89,7 @@ const BenchmarkCard: React.FC<BenchmarkCardProps> = ({
       </div>
 
       {loading && (
-        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+        <div className="pointer-events-none absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
