@@ -505,11 +505,13 @@ function transformBigQueryToAsoData(
         { impressions: 0, downloads: 0, product_page_views: 0 }
       );
 
+      const conversion_rate = dayTotals.impressions > 0 ? (dayTotals.downloads / dayTotals.impressions) * 100 : 0;
       return {
         date,
         impressions: dayTotals.impressions,
         downloads: dayTotals.downloads,
-        product_page_views: dayTotals.product_page_views
+        product_page_views: dayTotals.product_page_views,
+        conversion_rate
       };
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -553,6 +555,10 @@ function transformBigQueryToAsoData(
     impressions: { value: totals.impressions, delta: calculateRealDelta(totals.impressions, previousTotals?.impressions) },
     downloads: { value: totals.downloads, delta: calculateRealDelta(totals.downloads, previousTotals?.downloads) },
     product_page_views: { value: totals.product_page_views, delta: calculateRealDelta(totals.product_page_views, previousTotals?.product_page_views) },
+    cvr: { 
+      value: currentImpressionsCVR, 
+      delta: calculateRealDelta(currentImpressionsCVR, previousImpressionsCVR) 
+    },
     product_page_cvr: {
       value: currentProductPageCVR,
       delta: calculateRealDelta(currentProductPageCVR, previousProductPageCVR)
@@ -595,7 +601,16 @@ function transformBigQueryToAsoData(
       ? (prev.downloads / prev.impressions) * 100
       : 0;
 
+    const conversion_rate = values.impressions > 0 ? (values.downloads / values.impressions) * 100 : 0;
+    
     return {
+      traffic_source: source.toLowerCase().replace(/ /g, '_'),
+      traffic_source_display: source,
+      impressions: values.impressions,
+      downloads: values.downloads,
+      product_page_views: values.product_page_views,
+      conversion_rate,
+      // Legacy compatibility
       name: source,
       value: values.downloads,
       delta: comparison?.delta ?? 0,

@@ -15,21 +15,25 @@ export interface AsoMetrics {
   impressions: MetricSummary;
   downloads: MetricSummary;
   product_page_views: MetricSummary; // Renamed from 'pageViews' to match App Store Connect
+  cvr: MetricSummary; // Add this to match MetricsData type
   product_page_cvr: MetricSummary;
   impressions_cvr: MetricSummary;
 }
 
 export interface TrafficSource {
-  name: string;
+  traffic_source: string;
+  traffic_source_display: string; 
+  impressions: number;
+  downloads: number;
+  product_page_views: number | null;
+  conversion_rate: number;
   /**
-   * @deprecated Use metrics.downloads.value instead. Kept for backwards compatibility
+   * @deprecated Use metrics instead. Kept for backwards compatibility
    */
-  value: number;
-  /**
-   * @deprecated Use metrics.downloads.delta instead. Kept for backwards compatibility
-   */
-  delta: number;
-  metrics: {
+  name?: string;
+  value?: number;
+  delta?: number;
+  metrics?: {
     impressions: MetricSummary;
     downloads: MetricSummary;
     product_page_views: MetricSummary;
@@ -42,7 +46,8 @@ export interface TimeSeriesPoint {
   date: string;
   impressions: number;
   downloads: number;
-  product_page_views: number; // Renamed to be consistent with AsoMetrics
+  product_page_views: number | null; // Renamed to be consistent with AsoMetrics  
+  conversion_rate: number; // Add for compatibility with aso.ts type
   product_page_cvr?: number;
   impressions_cvr?: number;
 }
@@ -129,6 +134,10 @@ export const useMockAsoData = (
           impressions: generateMetric(),
           downloads: generateMetric(),
           product_page_views: generateMetric(), // Renamed from 'pageViews'
+          cvr: {
+            value: parseFloat((Math.random() * 100).toFixed(2)), // 0 to 100%
+            delta: parseFloat((Math.random() * 40 - 20).toFixed(1)) // -20% to +20%
+          },
           product_page_cvr: {
             value: parseFloat((Math.random() * 100).toFixed(2)), // 0 to 100%
             delta: parseFloat((Math.random() * 40 - 20).toFixed(1)) // -20% to +20%
@@ -188,11 +197,13 @@ export const useMockAsoData = (
           const impressions_cvr = totalImpressions > 0 ? (totalDownloads / totalImpressions) * 100 : 0;
 
           const dateStr = currentDate.toISOString().split('T')[0];
+          const conversion_rate = totalImpressions > 0 ? (totalDownloads / totalImpressions) * 100 : 0;
           timeseriesData.push({
             date: dateStr,
             impressions: totalImpressions,
             downloads: totalDownloads,
             product_page_views: totalProductPageViews,
+            conversion_rate,
             product_page_cvr,
             impressions_cvr,
           });
@@ -258,6 +269,8 @@ export const useMockAsoData = (
           const impressions = generateMetric();
           const downloads = generateMetric();
           const product_page_views = generateMetric();
+          const conversion_rate = impressions.value > 0 ? (downloads.value / impressions.value) * 100 : 0;
+          
           const product_page_cvr = {
             value: parseFloat((Math.random() * 100).toFixed(2)),
             delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
@@ -268,6 +281,13 @@ export const useMockAsoData = (
           };
 
           return {
+            traffic_source: source.toLowerCase().replace(/ /g, '_'),
+            traffic_source_display: source,
+            impressions: impressions.value,
+            downloads: downloads.value,
+            product_page_views: product_page_views.value,
+            conversion_rate,
+            // Legacy compatibility
             name: source,
             value: downloads.value,
             delta: downloads.delta,

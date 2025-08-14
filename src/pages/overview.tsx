@@ -108,11 +108,13 @@ const OverviewPage: React.FC = () => {
         },
       ];
       const calc = DerivedKPICalculator.calculate(def, sources);
+      const conversion_rate = calc.metrics.impressions > 0 ? (calc.metrics.downloads / calc.metrics.impressions) * 100 : 0;
       return {
         date: point.date,
         impressions: calc.metrics.impressions || 0,
         downloads: calc.metrics.downloads || 0,
         product_page_views: calc.metrics.product_page_views || 0,
+        conversion_rate,
       };
     });
   }, [trafficSourceTimeseries]);
@@ -346,7 +348,7 @@ const OverviewPage: React.FC = () => {
                     <PremiumCardContent className="p-8">
                       <ExecutiveTimeSeriesChart
                         data={chartData}
-                        trafficSourceTimeseriesData={trafficSourceTimeseries}
+                        trafficSourceTimeseriesData={trafficSourceTimeseries as any}
                         mode={chartMode}
                         showModeToggle={false}
                         visibleMetrics={['impressions','downloads','product_page_views']}

@@ -268,7 +268,7 @@ const ConversionAnalysisPage: React.FC = () => {
 
                       <TimeSeriesChart
                         data={data.timeseriesData}
-                        trafficSourceTimeseriesData={cvrChartData}
+                        trafficSourceTimeseriesData={cvrChartData as any}
                         mode="breakdown"
                         showModeToggle={false}
                         breakdownMetric="cvr"

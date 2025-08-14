@@ -47,7 +47,7 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const [isListExpanded, setIsListExpanded] = useState(false);
   const [internalState, setInternalState] = useState<SidebarState>('normal');
   const sidebarState = onStateChange ? state : internalState;
-  const setSidebarState = onStateChange || setInternalState;
+  const setSidebarState: React.Dispatch<React.SetStateAction<SidebarState>> = onStateChange || setInternalState;
   const [isMobile, setIsMobile] = useState(false);
   const [chatPanelWidth, setChatPanelWidth] = useState(384);
   const [isResizing, setIsResizing] = useState(false);

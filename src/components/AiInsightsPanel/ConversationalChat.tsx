@@ -159,7 +159,7 @@ const EnhancedMessageContent = ({
 
   return (
     <div className={`prose prose-sm max-w-none ${role === 'user' ? 'prose-invert' : ''}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown remarkPlugins={[remarkGfm as any]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>

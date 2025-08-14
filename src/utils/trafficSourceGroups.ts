@@ -40,11 +40,13 @@ export function aggregateTrafficSources(
     const impressions_cvr =
       impressions > 0 ? (downloads / impressions) * 100 : 0;
 
+    const conversion_rate = impressions > 0 ? (downloads / impressions) * 100 : 0;
     return {
       date: item.date,
       impressions,
       downloads,
       product_page_views,
+      conversion_rate,
       product_page_cvr,
       impressions_cvr,
     };
