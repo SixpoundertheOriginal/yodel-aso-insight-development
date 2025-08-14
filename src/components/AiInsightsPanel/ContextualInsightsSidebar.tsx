@@ -36,7 +36,7 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   const sidebarState = onStateChange ? state : internalState;
   const setSidebarState = onStateChange || setInternalState;
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [chatPanelWidth, setChatPanelWidth] = useState(384);
   const [isResizing, setIsResizing] = useState(false);
   // Initialize theme to ensure theme state is active
   useTheme();
@@ -85,7 +85,7 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
     return () => document.removeEventListener('keydown', handleKeyboard);
   }, [sidebarState, isMobile, setSidebarState]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleResizeStart = (e: React.MouseEvent) => {
     setIsResizing(true);
     e.preventDefault();
   };
@@ -94,8 +94,8 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
     if (isResizing) {
       const handleMouseMove = (e: MouseEvent) => {
         const newWidth = window.innerWidth - e.clientX;
-        if (newWidth >= 280 && newWidth <= 800) {
-          setSidebarWidth(newWidth);
+        if (newWidth >= 320 && newWidth <= 800) {
+          setChatPanelWidth(newWidth);
         }
       };
 
@@ -221,7 +221,7 @@ useEffect(() => {
               onClick={() => {
                 const newState = sidebarState === 'expanded' ? 'normal' : 'expanded';
                 setSidebarState(newState);
-                setSidebarWidth(newState === 'expanded' ? 600 : 320);
+                setChatPanelWidth(newState === 'expanded' ? 600 : 384);
               }}
               className="p-1 hover:bg-muted"
               title={sidebarState === 'expanded' ? 'Shrink sidebar' : 'Expand sidebar'}
@@ -463,15 +463,16 @@ useEffect(() => {
   return (
     <div
       className="h-screen bg-background/50 border-l border-border flex flex-col transition-all duration-300 ease-in-out sidebar-container relative"
-      style={{ width: sidebarWidth }}
+      style={{ width: `${chatPanelWidth}px` }}
       role="complementary"
       aria-label="AI Insights Panel"
     >
-      {sidebarContent}
       <div
-        className="absolute right-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize"
-        onMouseDown={handleMouseDown}
+        className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-orange-500 cursor-col-resize z-10"
+        onMouseDown={handleResizeStart}
+        title="Drag to resize AI chat panel"
       />
+      {sidebarContent}
     </div>
   );
 };
