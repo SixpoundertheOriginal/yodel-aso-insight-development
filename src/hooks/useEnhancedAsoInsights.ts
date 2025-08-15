@@ -21,9 +21,7 @@ export const useEnhancedAsoInsights = (
   
   // Regular users MUST have organization (maintain security)
   // Super admins can operate without organization for platform-wide view
-  if (!isSuperAdmin && !hasValidOrganization) {
-    throw new Error('Missing organization context');
-  }
+  const shouldReturnEmpty = !isSuperAdmin && !hasValidOrganization;
 
   // Fetch existing insights from database - always call this hook
   const {
@@ -168,8 +166,8 @@ export const useEnhancedAsoInsights = (
     insight => insight.is_user_requested
   );
 
-  // Super admin without organization - return empty state after hooks
-  if (isSuperAdmin && !hasValidOrganization) {
+  // Return empty state for users without valid organization context
+  if (shouldReturnEmpty) {
     return {
       insights: [],
       highPriorityInsights: [],
