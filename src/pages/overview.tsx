@@ -33,10 +33,12 @@ import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const OverviewPage: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -180,7 +182,7 @@ const OverviewPage: React.FC = () => {
               organizationId={organizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
-              isSuperAdmin={false}
+              isSuperAdmin={isSuperAdmin}
             />
           </div>
           {isMobile && isMobileSidebarOpen && (
@@ -436,7 +438,7 @@ const OverviewPage: React.FC = () => {
             organizationId={organizationId}
             state={sidebarState}
             onStateChange={handleSidebarStateChange}
-            isSuperAdmin={false}
+            isSuperAdmin={isSuperAdmin}
           />
         </div>
         {isMobile && isMobileSidebarOpen && (

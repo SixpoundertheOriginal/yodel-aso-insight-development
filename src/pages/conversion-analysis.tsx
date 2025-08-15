@@ -19,10 +19,12 @@ import BenchmarkIndicator from '@/components/BenchmarkIndicator';
 import { useBenchmarkData } from '../hooks/useBenchmarkData';
 import BenchmarkAnalysisTab from '@/components/BenchmarkAnalysis/BenchmarkAnalysisTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const ConversionAnalysisPage: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -154,7 +156,7 @@ const ConversionAnalysisPage: React.FC = () => {
               organizationId={organizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
-              isSuperAdmin={false}
+              isSuperAdmin={isSuperAdmin}
             />
           </div>
           {isMobile && isMobileSidebarOpen && (
@@ -304,7 +306,7 @@ const ConversionAnalysisPage: React.FC = () => {
             organizationId={organizationId}
             state={sidebarState}
             onStateChange={handleSidebarStateChange}
-            isSuperAdmin={false}
+            isSuperAdmin={isSuperAdmin}
           />
         </div>
         {isMobile && isMobileSidebarOpen && (
