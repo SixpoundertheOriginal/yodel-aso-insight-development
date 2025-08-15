@@ -154,6 +154,7 @@ const ConversionAnalysisPage: React.FC = () => {
               organizationId={organizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
+              isSuperAdmin={false}
             />
           </div>
           {isMobile && isMobileSidebarOpen && (
@@ -303,6 +304,7 @@ const ConversionAnalysisPage: React.FC = () => {
             organizationId={organizationId}
             state={sidebarState}
             onStateChange={handleSidebarStateChange}
+            isSuperAdmin={false}
           />
         </div>
         {isMobile && isMobileSidebarOpen && (

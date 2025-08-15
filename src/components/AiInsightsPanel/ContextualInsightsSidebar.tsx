@@ -26,21 +26,24 @@ import { ConversationalChat, ConversationalChatHandle } from './ConversationalCh
 import { useConversationalChat } from '@/hooks/useConversationalChat';
 import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
+import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 
 export type SidebarState = 'collapsed' | 'normal' | 'expanded' | 'fullscreen';
 
 interface ContextualInsightsSidebarProps {
   metricsData?: MetricsData;
-  organizationId: string;
+  organizationId: string | null;
   state?: SidebarState;
   onStateChange?: (state: SidebarState) => void;
+  isSuperAdmin?: boolean;
 }
 
 export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps> = ({
   metricsData,
   organizationId,
   state = 'normal',
-  onStateChange
+  onStateChange,
+  isSuperAdmin = false
 }) => {
   const queryClient = useQueryClient();
   const { filters } = useAsoData();
@@ -66,6 +69,15 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   };
   // Initialize theme to ensure theme state is active
   useTheme();
+
+  // Super admin without organization - show organization selector
+  if (isSuperAdmin && !organizationId) {
+    return (
+      <div className="h-screen bg-background/50 border-l border-border flex flex-col items-center justify-center p-6">
+        <SuperAdminOrganizationSelector className="w-full max-w-md" />
+      </div>
+    );
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem(`ai-sidebar-state-${organizationId}`);
@@ -162,13 +174,13 @@ const filterContext = useMemo((): FilterContext => ({
   selectedApps: filters.selectedApps,
 }), [filters.dateRange, filters.trafficSources, filters.selectedApps]);
 
-// Enhanced insights hook
+// Enhanced insights hook - handle super admin without organization
   const {
     insights,
     isLoading,
     generateComprehensiveInsights,
     refetchInsights
-  } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext);
+  } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext, { isSuperAdmin });
 
   const statusIndicators = useMemo(() => ({
     insightCount: insights?.length || 0,

@@ -13,14 +13,16 @@ import type { MetricsData, FilterContext } from '@/types/aso';
 
 interface ManualInsightsPanelProps {
   className?: string;
-  organizationId: string;
+  organizationId: string | null;
   metricsData?: MetricsData;
+  isSuperAdmin?: boolean;
 }
 
 export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
   className = '',
   organizationId,
-  metricsData
+  metricsData,
+  isSuperAdmin = false
 }) => {
   const { filters } = useAsoData();
   const filterContext: FilterContext = {
@@ -46,7 +48,7 @@ export const ManualInsightsPanel: React.FC<ManualInsightsPanelProps> = ({
     generateComprehensiveInsights,
     hasInsightType,
     refetchInsights
-  } = useEnhancedAsoInsights(organizationId, metricsData, filterContext);
+  } = useEnhancedAsoInsights(organizationId, metricsData, filterContext, { isSuperAdmin });
 
   const handleRequestInsight = async (type: string) => {
     setCurrentAction(type);

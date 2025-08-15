@@ -6,13 +6,40 @@ import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso
 export type { EnhancedAsoInsight } from '@/types/aso';
 
 export const useEnhancedAsoInsights = (
-  organizationId: string,
+  organizationId: string | null,
   metricsData?: MetricsData,
-  filterContext?: FilterContext
+  filterContext?: FilterContext,
+  options: { isSuperAdmin?: boolean } = {}
 ) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const ready = true;
+  const { isSuperAdmin = false } = options;
+
+  // Super admin without organization - return empty state
+  if (isSuperAdmin && !organizationId) {
+    return {
+      insights: [],
+      highPriorityInsights: [],
+      userRequestedInsights: [],
+      isLoading: false,
+      isGenerating: false,
+      error: null,
+      generateConversionAnalysis: async () => [],
+      generateImpressionTrends: async () => [],
+      generateTrafficSourceAnalysis: async () => [],
+      generateKeywordOptimization: async () => [],
+      generateSeasonalAnalysis: async () => [],
+      generateComprehensiveInsights: async () => [],
+      refetchInsights: async () => {},
+      hasInsightType: () => false
+    };
+  }
+
+  // Regular users MUST have organization (maintain security)
+  if (!isSuperAdmin && !organizationId) {
+    throw new Error('Missing organization context');
+  }
 
   // Fetch existing insights from database
   const {
@@ -62,6 +89,11 @@ export const useEnhancedAsoInsights = (
     insightType: string, 
     userRequested: boolean = true
   ): Promise<EnhancedAsoInsight[]> => {
+    // Super admin without organization - return empty
+    if (isSuperAdmin && !organizationId) {
+      return [];
+    }
+    
     if (!metricsData || !organizationId) {
       throw new Error('Missing metrics data or organization ID');
     }

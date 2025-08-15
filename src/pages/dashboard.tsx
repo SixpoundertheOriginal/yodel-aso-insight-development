@@ -367,6 +367,7 @@ const Dashboard: React.FC = () => {
               organizationId={organizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
+              isSuperAdmin={isSuperAdmin}
             />
           ) : (
             <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">

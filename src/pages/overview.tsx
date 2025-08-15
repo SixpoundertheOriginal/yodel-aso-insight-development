@@ -180,6 +180,7 @@ const OverviewPage: React.FC = () => {
               organizationId={organizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
+              isSuperAdmin={false}
             />
           </div>
           {isMobile && isMobileSidebarOpen && (
@@ -435,6 +436,7 @@ const OverviewPage: React.FC = () => {
             organizationId={organizationId}
             state={sidebarState}
             onStateChange={handleSidebarStateChange}
+            isSuperAdmin={false}
           />
         </div>
         {isMobile && isMobileSidebarOpen && (
