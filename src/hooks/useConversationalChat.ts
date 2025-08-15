@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { MetricsData, FilterContext } from '@/types/aso';
 
@@ -16,6 +16,13 @@ export const useConversationalChat = ({
   // Ensure stable initialization with proper guards
   const [isGenerating, setIsGenerating] = useState(() => false);
   const [error, setError] = useState<string | null>(() => null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const generateChatResponse = async (userQuestion: string): Promise<string> => {
     if (!metricsData) {
@@ -46,10 +53,14 @@ export const useConversationalChat = ({
       return data.response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate response';
-      setError(errorMessage);
+      if (isMounted.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsGenerating(false);
+      if (isMounted.current) {
+        setIsGenerating(false);
+      }
     }
   };
 
