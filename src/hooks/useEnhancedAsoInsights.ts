@@ -7,8 +7,8 @@ export type { EnhancedAsoInsight } from '@/types/aso';
 
 export const useEnhancedAsoInsights = (
   organizationId: string | null,
-  metricsData?: MetricsData,
-  filterContext?: FilterContext,
+  metricsData: MetricsData | undefined = undefined,
+  filterContext: FilterContext | undefined = undefined,
   options: { isSuperAdmin?: boolean } = {}
 ) => {
   const { toast } = useToast();
@@ -132,7 +132,7 @@ export const useEnhancedAsoInsights = (
     } finally {
       setIsGenerating(false);
     }
-  }, [metricsData, organizationId, refetch, toast]);
+  }, [metricsData, organizationId, filterContext, refetch, toast, isSuperAdmin]);
 
   // Generate comprehensive insights automatically
   const generateComprehensiveInsights = useCallback(async () => {
