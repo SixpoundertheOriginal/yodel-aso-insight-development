@@ -344,6 +344,74 @@ function calculateRealDelta(current: number, previous: number): number {
   return ((current - previous) / previous) * 100;
 }
 
+// Auto-discover apps from BigQuery and sync to Supabase
+async function discoverAndSyncApps(
+  organizationId: string,
+  projectId: string,
+  accessToken: string
+) {
+  const discoveryQuery = `
+    SELECT DISTINCT
+      client as app_identifier,
+      client as app_name,
+      'ios' as platform,
+      MIN(date) as first_seen,
+      MAX(date) as last_seen,
+      COUNT(*) as record_count
+    FROM \`${projectId}.client_reports.aso_all_apple\`
+    WHERE client IS NOT NULL
+    GROUP BY client
+  `;
+
+  const response = await fetch(
+    `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: discoveryQuery })
+    }
+  );
+
+  if (!response.ok) {
+    console.error('🚨 [BigQuery] App discovery failed:', await response.text());
+    return;
+  }
+
+  const result = await response.json();
+  const rows = result.rows || [];
+
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  for (const row of rows) {
+    const appIdentifier = row.f[0]?.v || '';
+    const appName = row.f[1]?.v || appIdentifier;
+    const platform = row.f[2]?.v || 'ios';
+    const firstSeen = row.f[3]?.v || null;
+    const lastSeen = row.f[4]?.v || null;
+
+    await supabaseAdmin.from('apps').upsert(
+      {
+        organization_id: organizationId,
+        app_identifier: appIdentifier,
+        app_name: appName,
+        platform,
+        bigquery_client_name: appIdentifier,
+        auto_discovered: true,
+        status: 'active',
+        first_seen: firstSeen,
+        last_seen: lastSeen
+      },
+      { onConflict: 'organization_id,app_identifier,platform' }
+    );
+  }
+}
+
 serve(async (req) => {
   const startTime = Date.now();
   
@@ -505,6 +573,9 @@ serve(async (req) => {
     const credentials: BigQueryCredentials = JSON.parse(credentialString);
     const tokenResponse = await getGoogleOAuthToken(credentials);
     const accessToken = tokenResponse.access_token;
+
+    // Auto-discover and sync apps for this organization
+    await discoverAndSyncApps(organizationId, projectId!, accessToken);
 
     const limit = body.limit || 1000;
     
