@@ -24,22 +24,8 @@ export const useEnhancedAsoInsights = (
   if (!isSuperAdmin && !hasValidOrganization) {
     throw new Error('Missing organization context');
   }
-  
-  // For super admins without organization, return empty state
-  if (isSuperAdmin && !hasValidOrganization) {
-    return {
-      insights: [],
-      isLoading: false,
-      error: null,
-      refetch: () => Promise.resolve(),
-      generateInsights: async () => { return []; },
-      generateComprehensiveInsights: async () => { return []; },
-      isGenerating,
-      ready
-    };
-  }
 
-  // Fetch existing insights from database
+  // Fetch existing insights from database - always call this hook
   const {
     data: existingInsights = [],
     isLoading,
@@ -77,7 +63,7 @@ export const useEnhancedAsoInsights = (
         created_at: insight.created_at
       })) as EnhancedAsoInsight[];
     },
-    enabled: !!organizationId && ready,
+    enabled: hasValidOrganization && ready,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,
@@ -85,7 +71,7 @@ export const useEnhancedAsoInsights = (
   });
 
   // Super admin without organization - return empty state after hooks
-  if (isSuperAdmin && !organizationId) {
+  if (isSuperAdmin && !hasValidOrganization) {
     return {
       insights: [],
       highPriorityInsights: [],
