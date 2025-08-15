@@ -16,26 +16,6 @@ export const useEnhancedAsoInsights = (
   const ready = true;
   const { isSuperAdmin = false } = options;
 
-  // Super admin without organization - return empty state
-  if (isSuperAdmin && !organizationId) {
-    return {
-      insights: [],
-      highPriorityInsights: [],
-      userRequestedInsights: [],
-      isLoading: false,
-      isGenerating: false,
-      error: null,
-      generateConversionAnalysis: async () => [],
-      generateImpressionTrends: async () => [],
-      generateTrafficSourceAnalysis: async () => [],
-      generateKeywordOptimization: async () => [],
-      generateSeasonalAnalysis: async () => [],
-      generateComprehensiveInsights: async () => [],
-      refetchInsights: async () => {},
-      hasInsightType: () => false
-    };
-  }
-
   // Regular users MUST have organization (maintain security)
   if (!isSuperAdmin && !organizationId) {
     throw new Error('Missing organization context');
@@ -50,6 +30,8 @@ export const useEnhancedAsoInsights = (
   } = useQuery({
     queryKey: ['enhanced-aso-insights', organizationId],
     queryFn: async () => {
+      if (!organizationId) return [];
+      
       const { data, error } = await supabase
         .from('ai_insights')
         .select('*')
@@ -83,6 +65,26 @@ export const useEnhancedAsoInsights = (
     retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
+
+  // Super admin without organization - return empty state after hooks
+  if (isSuperAdmin && !organizationId) {
+    return {
+      insights: [],
+      highPriorityInsights: [],
+      userRequestedInsights: [],
+      isLoading: false,
+      isGenerating: false,
+      error: null,
+      generateConversionAnalysis: async () => [],
+      generateImpressionTrends: async () => [],
+      generateTrafficSourceAnalysis: async () => [],
+      generateKeywordOptimization: async () => [],
+      generateSeasonalAnalysis: async () => [],
+      generateComprehensiveInsights: async () => [],
+      refetchInsights: async () => {},
+      hasInsightType: () => false
+    };
+  }
 
   // Generate AI insights for specific analysis type
   const generateInsight = useCallback(async (
