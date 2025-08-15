@@ -13,8 +13,9 @@ export const useConversationalChat = ({
   metricsData,
   filterContext
 }: UseConversationalChatProps) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Ensure stable initialization with proper guards
+  const [isGenerating, setIsGenerating] = useState(() => false);
+  const [error, setError] = useState<string | null>(() => null);
 
   const generateChatResponse = async (userQuestion: string): Promise<string> => {
     if (!metricsData) {

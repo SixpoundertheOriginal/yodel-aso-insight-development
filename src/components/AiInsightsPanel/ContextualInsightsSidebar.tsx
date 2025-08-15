@@ -179,11 +179,15 @@ const filterContext = useMemo((): FilterContext => ({
     hasChatActivity: false,
   }), [insights]);
 
-// Conversational chat hook
+// Conversational chat hook - only initialize when we have valid data
 const { generateChatResponse, isGenerating: isChatGenerating } = useConversationalChat({
-  organizationId,
+  organizationId: organizationId || '',
   metricsData: metricsData as MetricsData,
-  filterContext
+  filterContext: filterContext || {
+    dateRange: { start: new Date().toISOString(), end: new Date().toISOString() },
+    trafficSources: [],
+    selectedApps: []
+  }
 });
 
 // Track when we should auto-generate insights after filters change
