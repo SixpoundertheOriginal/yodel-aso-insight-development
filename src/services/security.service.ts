@@ -165,7 +165,13 @@ class SecurityService {
     return input
       .replace(/[<>]/g, '') // Remove angle brackets
       .replace(/javascript:/gi, '') // Remove javascript protocols
+      .replace(/vbscript:/gi, '') // Remove vbscript protocols
+      .replace(/data:/gi, '') // Remove data URIs
       .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+      .replace(/&#x[0-9a-fA-F]+;?/g, '') // Remove hex entities
+      .replace(/&#[0-9]+;?/g, '') // Remove decimal entities
       .trim()
       .substring(0, 1000); // Limit length
   }

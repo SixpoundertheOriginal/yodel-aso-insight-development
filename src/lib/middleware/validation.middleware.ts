@@ -67,7 +67,11 @@ function sanitizeInput(data: any): any {
     return data
       .replace(/[<>]/g, '') // Remove angle brackets
       .replace(/javascript:/gi, '') // Remove javascript protocols
+      .replace(/vbscript:/gi, '') // Remove vbscript protocols
+      .replace(/data:/gi, '') // Remove data URIs
       .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
       .trim();
   }
   

@@ -18,9 +18,9 @@ export interface SecurityValidationResult {
 
 export class SecurityService {
   constructor(private supabase?: any) {
-    // Make supabase client optional with graceful handling
+    // Require supabase client for security
     if (!this.supabase) {
-      console.warn('[SECURITY] Supabase client not provided - rate limiting will be bypassed');
+      console.error('[SECURITY] Supabase client not provided - security functions will fail');
     }
   }
 
@@ -43,11 +43,13 @@ export class SecurityService {
         };
       }
 
-      // Validate organization exists and is active (with fallback for development)
+      // Validate organization exists and is active
       const orgValidation = await this.validateOrganization(input.organizationId);
       if (!orgValidation.success) {
-        console.warn('[SECURITY] Organization validation failed:', orgValidation.error);
-        // In development/emergency mode, warn but don't block
+        return {
+          success: false,
+          error: `Organization validation failed: ${orgValidation.error}`
+        };
       }
 
       // Calculate risk score
@@ -64,14 +66,10 @@ export class SecurityService {
         }
       };
     } catch (error) {
-      console.warn('[SECURITY] Security validation error:', error);
-      // In emergency mode, don't fail - just warn and allow with default values
+      console.error('[SECURITY] Security validation error:', error);
       return {
-        success: true,
-        data: {
-          country: 'us',
-          riskScore: 0
-        }
+        success: false,
+        error: 'Security validation failed - request blocked'
       };
     }
   }
@@ -92,13 +90,13 @@ export class SecurityService {
 
   private async checkRateLimit(organizationId: string, ipAddress: string): Promise<{allowed: boolean; remaining?: number; message?: string}> {
     try {
-      // Handle missing Supabase client gracefully
+      // Require Supabase client for production security
       if (!this.supabase) {
-        console.warn('[SECURITY] Supabase client not available, allowing request');
+        console.error('[SECURITY] Supabase client not available - blocking request for security');
         return { 
-          allowed: true, 
-          remaining: 100,
-          message: 'Rate limiting bypassed - development mode'
+          allowed: false, 
+          remaining: 0,
+          message: 'Database connection required for rate limiting'
         };
       }
 
@@ -113,12 +111,12 @@ export class SecurityService {
         .gte('created_at', oneHourAgo.toISOString());
 
       if (error) {
-        console.warn('[SECURITY] Rate limit check failed:', error.message);
+        console.error('[SECURITY] Rate limit check failed:', error.message);
         return { 
-          allowed: true, 
-          remaining: 100,
-          message: 'Rate limit check failed, allowing request'
-        }; // Allow on error during emergency
+          allowed: false, 
+          remaining: 0,
+          message: 'Rate limit check failed - blocking for security'
+        }; // Block on error for security
       }
 
       const requestCount = count || 0;
@@ -130,12 +128,12 @@ export class SecurityService {
         message: `${requestCount}/100 requests used in last hour`
       };
     } catch (error) {
-      console.warn('[SECURITY] Rate limit check failed:', error.message);
+      console.error('[SECURITY] Rate limit check failed:', error);
       return { 
-        allowed: true, 
-        remaining: 100,
-        message: 'Rate limit exception, allowing request'
-      }; // Allow on error
+        allowed: false, 
+        remaining: 0,
+        message: 'Rate limit system error - blocking for security'
+      }; // Block on error for security
     }
   }
 
