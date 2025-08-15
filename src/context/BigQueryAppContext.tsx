@@ -29,8 +29,8 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           debugLog.verbose('[BigQueryAppContext] No user found, using fallback');
-          setAvailableApps(['TUI']);
-          setSelectedApps(['TUI']);
+          setAvailableApps(['Mixbook']);
+          setSelectedApps(['Mixbook']);
           setLoading(false);
           return;
         }
@@ -44,20 +44,24 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
         if (!profile?.organization_id) {
           debugLog.verbose('[BigQueryAppContext] No organization found, using fallback');
-          setAvailableApps(['TUI']);
-          setSelectedApps(['TUI']);
+          setAvailableApps(['Mixbook']);
+          setSelectedApps(['Mixbook']);
           setLoading(false);
           return;
         }
 
-        // Get approved apps for organization using RPC
+        // Get approved BigQuery apps for organization
         const { data: approvedApps, error } = await supabase
-          .rpc('get_approved_apps', { p_organization_id: profile.organization_id });
+          .from('organization_apps')
+          .select('app_identifier')
+          .eq('organization_id', profile.organization_id)
+          .eq('data_source', 'bigquery')
+          .eq('approval_status', 'approved');
 
         if (error) {
-          console.error('[BigQueryAppContext] Error loading approved apps:', error);
-          setAvailableApps(['TUI']);
-          setSelectedApps(['TUI']);
+          console.error('[BigQueryAppContext] Error loading approved BigQuery apps:', error);
+          setAvailableApps(['Mixbook']);
+          setSelectedApps(['Mixbook']);
           setLoading(false);
           return;
         }
@@ -73,14 +77,14 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
           setAvailableApps(appIdentifiers);
           setSelectedApps(appIdentifiers); // Select all by default
         } else {
-          setAvailableApps(['TUI']);
-          setSelectedApps(['TUI']);
+          setAvailableApps(['Mixbook']);
+          setSelectedApps(['Mixbook']);
         }
 
       } catch (err) {
         console.error('[BigQueryAppContext] Error in loadApprovedApps:', err);
-        setAvailableApps(['TUI']);
-        setSelectedApps(['TUI']);
+        setAvailableApps(['Mixbook']);
+        setSelectedApps(['Mixbook']);
       } finally {
         setLoading(false);
       }

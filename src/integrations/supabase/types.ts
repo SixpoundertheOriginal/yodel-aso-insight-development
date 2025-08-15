@@ -1687,6 +1687,65 @@ export type Database = {
           },
         ]
       }
+      organization_client_access: {
+        Row: {
+          access_level: string | null
+          bigquery_client_name: string
+          created_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          access_level?: string | null
+          bigquery_client_name: string
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          access_level?: string | null
+          bigquery_client_name?: string
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_client_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_client_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user_profile_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_client_access_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "organization_client_access_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_keyword_usage: {
         Row: {
           api_calls_made: number | null
