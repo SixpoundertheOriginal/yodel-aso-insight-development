@@ -132,7 +132,17 @@ export const useEnhancedAsoInsights = (
     } finally {
       setIsGenerating(false);
     }
-  }, [metricsData, organizationId, filterContext, refetch, toast, isSuperAdmin]);
+  }, [
+    metricsData, 
+    organizationId, 
+    filterContext?.dateRange?.start,
+    filterContext?.dateRange?.end,
+    filterContext?.trafficSources,
+    filterContext?.selectedApps,
+    refetch, 
+    toast, 
+    isSuperAdmin
+  ]);
 
   // Generate comprehensive insights automatically
   const generateComprehensiveInsights = useCallback(async () => {
