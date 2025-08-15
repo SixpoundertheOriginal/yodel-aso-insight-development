@@ -183,6 +183,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "apps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profile_with_role"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "apps_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -1658,6 +1665,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "organization_apps_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_profile_with_role"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "organization_apps_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -2104,6 +2118,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profile_with_role"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_usage: {
@@ -2177,6 +2198,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profile_with_role: {
+        Row: {
+          created_at: string | null
+          effective_organization_id: string | null
+          effective_role: string | null
+          email: string | null
+          first_name: string | null
+          id: string | null
+          is_super_admin: boolean | null
+          last_name: string | null
+          legacy_role: string | null
+          organization_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          effective_organization_id?: never
+          effective_role?: never
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          is_super_admin?: never
+          last_name?: string | null
+          legacy_role?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          effective_organization_id?: never
+          effective_role?: never
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          is_super_admin?: never
+          last_name?: string | null
+          legacy_role?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_super_admin_role: {
@@ -2237,6 +2315,10 @@ export type Database = {
         }[]
       }
       get_current_user_organization_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_user_organization_id_enhanced: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -2301,9 +2383,17 @@ export type Database = {
           record_count: number
         }[]
       }
+      get_user_frontend_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_user_organization_with_fallback: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      is_super_admin: {
+        Args: { user_id?: string }
+        Returns: boolean
       }
       lock_platform_admin_creation: {
         Args: Record<PropertyKey, never>
