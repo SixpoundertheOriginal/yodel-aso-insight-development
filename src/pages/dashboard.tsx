@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
     meta
   } = useAsoData();
   const { user } = useAuth();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
@@ -361,21 +361,23 @@ const Dashboard: React.FC = () => {
 
         {/* Sidebar - Pass collapse state */}
         <div className="fixed right-0 top-0 h-full z-10">
-          {isDashboardDataReady ? (
-            <ContextualInsightsSidebar
-              metricsData={data}
-              organizationId={organizationId}
-              state={sidebarState}
-              onStateChange={handleSidebarStateChange}
-              isSuperAdmin={isSuperAdmin}
-            />
-          ) : (
-            <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
+          {!permissionsLoading && (
+            isDashboardDataReady ? (
+              <ContextualInsightsSidebar
+                metricsData={data}
+                organizationId={organizationId}
+                state={sidebarState}
+                onStateChange={handleSidebarStateChange}
+                isSuperAdmin={isSuperAdmin}
+              />
+            ) : (
+              <div className="w-80 h-screen bg-background/50 border-l border-border flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
+                </div>
               </div>
-            </div>
+            )
           )}
         </div>
     </MainLayout>

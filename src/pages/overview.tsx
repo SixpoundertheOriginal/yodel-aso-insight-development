@@ -38,7 +38,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 const OverviewPage: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -177,13 +177,15 @@ const OverviewPage: React.FC = () => {
                 : 'fixed right-0 top-0 h-full z-10'
             }
           >
-            <ContextualInsightsSidebar
-              metricsData={data}
-              organizationId={organizationId}
-              state={sidebarState}
-              onStateChange={handleSidebarStateChange}
-              isSuperAdmin={isSuperAdmin}
-            />
+            {!permissionsLoading && (
+              <ContextualInsightsSidebar
+                metricsData={data}
+                organizationId={organizationId}
+                state={sidebarState}
+                onStateChange={handleSidebarStateChange}
+                isSuperAdmin={isSuperAdmin}
+              />
+            )}
           </div>
           {isMobile && isMobileSidebarOpen && (
             <div
@@ -433,13 +435,15 @@ const OverviewPage: React.FC = () => {
               : 'fixed right-0 top-0 h-full z-10'
           }
         >
-          <ContextualInsightsSidebar
-            metricsData={data}
-            organizationId={organizationId}
-            state={sidebarState}
-            onStateChange={handleSidebarStateChange}
-            isSuperAdmin={isSuperAdmin}
-          />
+          {!permissionsLoading && (
+            <ContextualInsightsSidebar
+              metricsData={data}
+              organizationId={organizationId}
+              state={sidebarState}
+              onStateChange={handleSidebarStateChange}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
         </div>
         {isMobile && isMobileSidebarOpen && (
           <div

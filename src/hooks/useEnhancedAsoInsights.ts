@@ -69,30 +69,9 @@ export const useEnhancedAsoInsights = (
     retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
-
-  // Super admin without organization - return empty state after hooks
-  if (isSuperAdmin && !hasValidOrganization) {
-    return {
-      insights: [],
-      highPriorityInsights: [],
-      userRequestedInsights: [],
-      isLoading: false,
-      isGenerating: false,
-      error: null,
-      generateConversionAnalysis: async () => [],
-      generateImpressionTrends: async () => [],
-      generateTrafficSourceAnalysis: async () => [],
-      generateKeywordOptimization: async () => [],
-      generateSeasonalAnalysis: async () => [],
-      generateComprehensiveInsights: async () => [],
-      refetchInsights: async () => {},
-      hasInsightType: () => false
-    };
-  }
-
   // Generate AI insights for specific analysis type
   const generateInsight = useCallback(async (
-    insightType: string, 
+    insightType: string,
     userRequested: boolean = true
   ): Promise<EnhancedAsoInsight[]> => {
     // Super admin without organization - return empty
@@ -188,6 +167,26 @@ export const useEnhancedAsoInsights = (
   const userRequestedInsights = existingInsights.filter(
     insight => insight.is_user_requested
   );
+
+  // Super admin without organization - return empty state after hooks
+  if (isSuperAdmin && !hasValidOrganization) {
+    return {
+      insights: [],
+      highPriorityInsights: [],
+      userRequestedInsights: [],
+      isLoading: false,
+      isGenerating: false,
+      error: null,
+      generateConversionAnalysis: async () => [],
+      generateImpressionTrends: async () => [],
+      generateTrafficSourceAnalysis: async () => [],
+      generateKeywordOptimization: async () => [],
+      generateSeasonalAnalysis: async () => [],
+      generateComprehensiveInsights: async () => [],
+      refetchInsights: async () => {},
+      hasInsightType: () => false
+    };
+  }
 
   return {
     // Data
