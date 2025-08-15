@@ -70,15 +70,6 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   // Initialize theme to ensure theme state is active
   useTheme();
 
-  // Super admin without organization - show organization selector
-  if (isSuperAdmin && !organizationId) {
-    return (
-      <div className="h-screen bg-background/50 border-l border-border flex flex-col items-center justify-center p-6">
-        <SuperAdminOrganizationSelector className="w-full max-w-md" />
-      </div>
-    );
-  }
-
   useEffect(() => {
     const saved = localStorage.getItem(`ai-sidebar-state-${organizationId}`);
     if (saved !== null && !onStateChange) {
@@ -485,6 +476,15 @@ useEffect(() => {
       </div>
     </>
   );
+
+  // Super admin without organization - show organization selector
+  if (isSuperAdmin && !organizationId) {
+    return (
+      <div className="h-screen bg-background/50 border-l border-border flex flex-col items-center justify-center p-6">
+        <SuperAdminOrganizationSelector className="w-full max-w-md" />
+      </div>
+    );
+  }
 
   if (sidebarState === 'collapsed') {
     return (
