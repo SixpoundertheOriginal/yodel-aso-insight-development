@@ -16,9 +16,27 @@ export const useEnhancedAsoInsights = (
   const ready = true;
   const { isSuperAdmin = false } = options;
 
+  // Handle missing organization context gracefully
+  const hasValidOrganization = !!(organizationId && organizationId.trim());
+  
   // Regular users MUST have organization (maintain security)
-  if (!isSuperAdmin && !organizationId) {
+  // Super admins can operate without organization for platform-wide view
+  if (!isSuperAdmin && !hasValidOrganization) {
     throw new Error('Missing organization context');
+  }
+  
+  // For super admins without organization, return empty state
+  if (isSuperAdmin && !hasValidOrganization) {
+    return {
+      insights: [],
+      isLoading: false,
+      error: null,
+      refetch: () => Promise.resolve(),
+      generateInsights: async () => { return []; },
+      generateComprehensiveInsights: async () => { return []; },
+      isGenerating,
+      ready
+    };
   }
 
   // Fetch existing insights from database
