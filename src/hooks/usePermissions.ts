@@ -26,7 +26,12 @@ export const usePermissions = () => {
         .eq('user_id', user.id);
 
       const roles = userRoles?.map(r => r.role) || [];
-      const organizationRoles = userRoles?.filter(r => r.organization_id === profile.organization_id).map(r => r.role) || [];
+      // ✅ ENHANCED: Handle null organization_id for Platform Super Admin
+      const organizationRoles = userRoles?.filter(r => 
+        profile.organization_id 
+          ? r.organization_id === profile.organization_id 
+          : r.organization_id === null
+      ).map(r => r.role) || [];
 
       // Define permission list based on roles
       const permissionsList = [];

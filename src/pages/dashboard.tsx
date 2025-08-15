@@ -9,7 +9,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Calendar, Database, Filter, TestTube } from "lucide-react";
+import { AlertCircle, Calendar, Database, Filter, TestTube, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import { MetricSelector } from '@/components/charts/MetricSelector';
@@ -19,6 +19,9 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { KPISelector } from '../components/KPISelector';
 import { TrafficSourceKpiCards } from '../components/TrafficSourceKpiCards';
+import { usePermissions } from '@/hooks/usePermissions';
+import { OrganizationSelector } from '@/components/Organization/OrganizationSelector';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 
 const Dashboard: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
@@ -35,21 +38,38 @@ const Dashboard: React.FC = () => {
     meta
   } = useAsoData();
   const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
+  const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
       if (!user) return;
+      
+      // ✅ ENHANCED: Use super admin selected organization or user's organization
+      if (isSuperAdmin && selectedOrganizationId) {
+        setOrganizationId(selectedOrganizationId);
+        return;
+      }
+      
       const { data: profile } = await supabase
         .from('profiles')
         .select('organization_id')
         .eq('id', user.id)
         .single();
-      setOrganizationId(profile?.organization_id || '');
+      
+      // ✅ ENHANCED: Handle Platform Super Admin with null organization_id
+      const orgId = profile?.organization_id || '';
+      setOrganizationId(orgId);
+      
+      // If super admin has no organization selected, keep it empty for platform-wide view
+      if (isSuperAdmin && !selectedOrganizationId && !profile?.organization_id) {
+        setOrganizationId('');
+      }
     };
     fetchOrganizationId();
-  }, [user]);
+  }, [user, isSuperAdmin, selectedOrganizationId]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -164,7 +184,32 @@ const Dashboard: React.FC = () => {
       <div className="flex min-h-screen">
         {/* Main Content - Responsive padding */}
         <div className={`flex-1 transition-all duration-300 ease-in-out ${sidebarState === 'collapsed' ? 'pr-15' : sidebarState === 'expanded' ? 'pr-[60vw]' : 'pr-80'} main-content`}>
-          <div className="space-y-6 p-6">
+      <div className="space-y-6 p-6">
+        {/* ✅ ENHANCED: Platform Super Admin Organization Selector */}
+        {isSuperAdmin && (
+          <div className="mb-6">
+            <OrganizationSelector
+              selectedOrganizationId={selectedOrganizationId}
+              onOrganizationChange={setSelectedOrganizationId}
+              isSuperAdmin={isSuperAdmin}
+            />
+          </div>
+        )}
+
+        {/* ✅ ENHANCED: Platform-wide mode message */}
+        {isPlatformWideMode && (
+          <Card className="bg-primary/5 border-primary/20 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-primary">
+                <Globe className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  Platform-Wide Mode: Showing aggregated demo data. Select an organization above to view real data.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       <div className="flex justify-between items-start mb-6">
         <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
           {shouldShowKPI('impressions') && (

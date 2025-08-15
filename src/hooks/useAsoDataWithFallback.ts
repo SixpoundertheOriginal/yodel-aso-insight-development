@@ -33,7 +33,7 @@ export const useAsoDataWithFallback = (
   const { user } = useAuth();
   const { selectedApps } = useBigQueryAppSelection();
 
-  // Get organization ID from user profile
+  // Get organization ID from user profile or super admin context
   useEffect(() => {
     const fetchOrganizationId = async () => {
       if (!user) {
@@ -57,7 +57,9 @@ export const useAsoDataWithFallback = (
           setOrganizationId(profile.organization_id);
           debugLog.info('✅ [Fallback] Organization ID retrieved:', profile.organization_id);
         } else {
-          debugLog.warn('⚠️ [Fallback] User has no organization ID');
+          // ✅ ENHANCED: Handle Platform Super Admin with null organization_id
+          debugLog.info('⚡ [Fallback] Platform Super Admin detected (null organization_id)');
+          setOrganizationId(''); // Empty string to trigger mock fallback
         }
       } catch (err) {
         debugLog.error('❌ [Fallback] Error fetching organization ID:', err);
@@ -67,13 +69,15 @@ export const useAsoDataWithFallback = (
     fetchOrganizationId();
   }, [user]);
 
-  // Always fetch BigQuery data (unless explicitly set to mock-only)
+  // ✅ ENHANCED: Skip BigQuery for Platform Super Admin, use mock data directly
   const bigQueryReady = organizationId.length > 0;
+  const shouldUseBigQuery = bigQueryReady && preferredDataSource !== 'mock';
+  
   const bigQueryResult = useBigQueryData(
-    organizationId,
+    shouldUseBigQuery ? organizationId : '',
     dateRange,
     trafficSources,
-    bigQueryReady
+    shouldUseBigQuery
   );
 
   // Always prepare mock data as fallback using selected apps for consistency
@@ -96,10 +100,11 @@ export const useAsoDataWithFallback = (
   });
 
   useEffect(() => {
-    // Handle explicit mock-only preference
-    if (preferredDataSource === 'mock') {
+    // ✅ ENHANCED: Handle Platform Super Admin (no organization) with mock data
+    if (preferredDataSource === 'mock' || !shouldUseBigQuery) {
+      debugLog.info('🎭 [Fallback] Using mock data (super admin or explicit preference)');
       setCurrentDataSource('mock');
-      setDataSourceStatus('mock-only');
+      setDataSourceStatus(!shouldUseBigQuery ? 'mock-only' : 'mock-only');
       setFinalResult({
         data: mockResult.data,
         loading: mockResult.loading,
@@ -189,7 +194,8 @@ export const useAsoDataWithFallback = (
     mockResult.data,
     mockResult.loading,
     mockResult.error,
-    preferredDataSource
+    preferredDataSource,
+    shouldUseBigQuery
   ]);
 
   return {

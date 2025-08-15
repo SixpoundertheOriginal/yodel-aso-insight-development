@@ -25,9 +25,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth/sign-in" replace />;
   }
 
-  // If user lacks organization, redirect to app selection/assignment
+  // ✅ ENHANCED: Only redirect non-super-admin users without organization
+  // Platform Super Admins can have null organization_id and should access dashboard
   if (profile && !profile.organization_id) {
-    return <Navigate to="/apps" replace />;
+    // Check if user is a super admin
+    const userRoles = profile.user_roles || [];
+    const isSuperAdmin = userRoles.some((role: any) => 
+      role.role === 'SUPER_ADMIN' && role.organization_id === null
+    );
+    
+    if (!isSuperAdmin) {
+      return <Navigate to="/apps" replace />;
+    }
   }
 
   // Clear any stored intent once authenticated and organization validated

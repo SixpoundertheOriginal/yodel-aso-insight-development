@@ -11,6 +11,7 @@ import { AppProvider } from "./context/AppContext";
 import { AsoAiHubProvider } from "./context/AsoAiHubContext";
 import { WorkflowProvider } from "./context/WorkflowContext";
 import { BigQueryAppProvider } from "./context/BigQueryAppContext";
+import { SuperAdminProvider } from "./context/SuperAdminContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 
@@ -52,8 +53,9 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <BigQueryAppProvider>
-              <AsoDataProvider>
+            <SuperAdminProvider>
+              <BigQueryAppProvider>
+                <AsoDataProvider>
                 <AppProvider>
                   <AsoAiHubProvider>
                     <WorkflowProvider>
@@ -153,6 +155,7 @@ function App() {
                 </AppProvider>
               </AsoDataProvider>
             </BigQueryAppProvider>
+            </SuperAdminProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

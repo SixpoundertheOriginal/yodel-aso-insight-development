@@ -18,7 +18,7 @@ export const useUserProfile = () => {
         .select(`
           *,
           organizations(name, subscription_tier),
-          user_roles(role)
+          user_roles(role, organization_id)
         `)
         .eq('id', user.id)
         .single();

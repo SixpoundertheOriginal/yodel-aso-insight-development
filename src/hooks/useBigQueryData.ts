@@ -197,11 +197,21 @@ export const useBigQueryData = (
 
   const fetchData = useCallback(
     async (abortSignal?: AbortSignal) => {
+      // ✅ ENHANCED: Handle null organizationId gracefully (Platform Super Admin)
       if (!stableFilters.organizationId || !ready) {
-        debugLog.verbose('Skipping fetch - not ready', {
+        debugLog.verbose('Skipping fetch - not ready or no organization', {
           hasOrganizationId: !!stableFilters.organizationId,
           ready
         });
+        
+        // For Platform Super Admin (null orgId), resolve as "no data" state instead of hanging
+        if (!stableFilters.organizationId && ready) {
+          setLoading(false);
+          setData(null);
+          setError(null);
+          return null;
+        }
+        
         return null;
       }
 
