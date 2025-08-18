@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/layouts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,25 +6,68 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Navigate } from 'react-router-dom';
+import { AdminDashboardResponse, AdminDashboardMetrics } from '@/types/admin';
 
 const AdminPage: React.FC = () => {
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
 
-  const { data: systemStats, isLoading: statsLoading } = useQuery({
-    queryKey: ['admin-system-stats'],
+  const { data: dashboardData, isLoading: metricsLoading } = useQuery<AdminDashboardResponse>({
+    queryKey: ['admin-dashboard-data'],
     queryFn: async () => {
-      const [orgsResult, usersResult, appsResult] = await Promise.all([
+      const [orgsResult, usersResult, appsResult, auditResult] = await Promise.all([
         supabase.from('organizations').select('id, name, subscription_tier', { count: 'exact' }),
         supabase.from('profiles').select('id', { count: 'exact' }),
-        supabase.from('apps').select('id, app_name, platform', { count: 'exact' })
+        supabase.from('apps').select('id', { count: 'exact' }),
+        supabase
+          .from('audit_logs')
+          .select('id', { count: 'exact' })
+          .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
       ]);
 
+      const enterpriseCount =
+        orgsResult.data?.filter((org) => org.subscription_tier === 'enterprise').length || 0;
+
+      const metrics: AdminDashboardMetrics = {
+        platform_health: {
+          status: 'good',
+          uptime_percentage: 99.9,
+          response_time_avg: 0,
+          error_rate: 0,
+        },
+        organizations: {
+          total: orgsResult.count || 0,
+          active: orgsResult.count || 0,
+          enterprise_tier: enterpriseCount,
+          pending_invitations: 0,
+          partnerships_active: 0,
+        },
+        users: {
+          total_users: usersResult.count || 0,
+          active_last_30_days: 0,
+          new_this_month: 0,
+          pending_invitations: 0,
+          by_role: {},
+        },
+        bigquery_clients: {
+          total_approved: 0,
+          data_volume_gb: 0,
+          query_count_today: 0,
+          organizations_with_access: 0,
+        },
+        security: {
+          failed_login_attempts_24h: 0,
+          suspicious_activities: 0,
+          audit_log_entries_today: auditResult.count || 0,
+          compliance_score: 100,
+        },
+        apps: {
+          total: appsResult.count || 0,
+        },
+      };
+
       return {
+        metrics,
         organizations: orgsResult.data || [],
-        organizationCount: orgsResult.count || 0,
-        userCount: usersResult.count || 0,
-        apps: appsResult.data || [],
-        appCount: appsResult.count || 0,
       };
     },
     enabled: isSuperAdmin,
@@ -64,22 +106,20 @@ const AdminPage: React.FC = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
-          <p className="text-zinc-400">
-            System administration and management
-          </p>
+          <p className="text-zinc-400">Executive metrics and management</p>
         </div>
 
-        {statsLoading ? (
+        {metricsLoading ? (
           <div className="text-zinc-400">Loading system statistics...</div>
         ) : (
           <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-zinc-300">Organizations</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-foreground">{systemStats?.organizationCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{dashboardData?.metrics.organizations.total}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -87,7 +127,7 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">Total Users</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-foreground">{systemStats?.userCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{dashboardData?.metrics.users.total_users}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -95,7 +135,7 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">Total Apps</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-foreground">{systemStats?.appCount}</div>
+                  <div className="text-2xl font-bold text-foreground">{dashboardData?.metrics.apps.total}</div>
                 </CardContent>
               </Card>
               <Card className="bg-zinc-900 border-zinc-800">
@@ -103,7 +143,15 @@ const AdminPage: React.FC = () => {
                   <CardTitle className="text-sm font-medium text-zinc-300">System Health</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">Good</div>
+                  <div className="text-2xl font-bold text-green-500 capitalize">{dashboardData?.metrics.platform_health.status}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-zinc-300">Audit Logs Today</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">{dashboardData?.metrics.security.audit_log_entries_today}</div>
                 </CardContent>
               </Card>
             </div>
@@ -118,14 +166,16 @@ const AdminPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {systemStats?.organizations.map((org) => (
+                    {dashboardData?.organizations.map((org) => (
                       <div key={org.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                         <div>
                           <p className="text-foreground font-medium">{org.name}</p>
                         </div>
-                        <Badge variant="secondary" className="bg-zinc-700 text-zinc-300">
-                          {org.subscription_tier}
-                        </Badge>
+                        {org.subscription_tier && (
+                          <Badge variant="secondary" className="bg-zinc-700 text-zinc-300">
+                            {org.subscription_tier}
+                          </Badge>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -166,3 +216,4 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
+
