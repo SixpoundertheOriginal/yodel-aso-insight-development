@@ -38,6 +38,7 @@ const AppDiscovery = lazy(() => import("./pages/app-discovery"));
 const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
 const Admin = lazy(() => import("./pages/admin"));
+const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
@@ -141,6 +142,10 @@ function App() {
                           <Route
                             path="/admin"
                             element={<ProtectedRoute><Admin /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/placeholder"
+                            element={<ProtectedRoute><AdminPlaceholder /></ProtectedRoute>}
                           />
                           <Route
                             path="/smoke-test"
