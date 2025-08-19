@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AdminDataTable } from '../shared/AdminDataTable';
 import { CreateOrganizationModal } from './CreateOrganizationModal';
+import { EditOrganizationModal } from './EditOrganizationModal';
+import { Edit3, Users, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Organization {
   id: string;
@@ -19,6 +22,9 @@ export const OrganizationManagementTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadOrganizations();
@@ -34,6 +40,35 @@ export const OrganizationManagementTable: React.FC = () => {
       console.error('Failed to load organizations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditOrganization = (org: Organization) => {
+    setSelectedOrganization(org);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteOrganization = async (orgId: string) => {
+    if (!confirm('Are you sure you want to delete this organization? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete organization');
+      }
+
+      loadOrganizations();
+      alert('Organization deleted successfully');
+
+    } catch (error: any) {
+      console.error('Delete failed:', error);
+      alert(`Failed to delete organization: ${error.message}`);
     }
   };
 
@@ -96,9 +131,27 @@ export const OrganizationManagementTable: React.FC = () => {
       accessor: 'actions',
       cell: (org: Organization) => (
         <div className="flex space-x-2">
-          <button className="text-indigo-600 hover:text-indigo-900 text-sm">Edit</button>
-          <button className="text-green-600 hover:text-green-900 text-sm">Users</button>
-          <button className="text-orange-600 hover:text-orange-900 text-sm">Analytics</button>
+          <button
+            onClick={() => handleEditOrganization(org)}
+            className="text-blue-400 hover:text-blue-300 p-1"
+            title="Edit Organization"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate(`/admin/organizations/${org.id}/users`)}
+            className="text-green-400 hover:text-green-300 p-1"
+            title="Manage Users"
+          >
+            <Users className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteOrganization(org.id)}
+            className="text-red-400 hover:text-red-300 p-1"
+            title="Delete Organization"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
@@ -141,6 +194,17 @@ export const OrganizationManagementTable: React.FC = () => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
+            loadOrganizations();
+          }}
+        />
+      )}
+
+      {showEditModal && selectedOrganization && (
+        <EditOrganizationModal
+          organization={selectedOrganization}
+          onClose={() => setShowEditModal(false)}
+          onSave={() => {
+            setShowEditModal(false);
             loadOrganizations();
           }}
         />

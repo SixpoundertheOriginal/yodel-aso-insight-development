@@ -25,7 +25,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    if (req.method === 'PUT') {
+    if (req.method === 'GET') {
+      // GET single organization with detailed metrics
+      const { data: organization, error } = await supabase
+        .from('organizations')
+        .select(`
+      id,
+      name,
+      slug,
+      domain,
+      subscription_tier,
+      app_limit,
+      app_limit_enforced,
+      settings,
+      created_at,
+      updated_at
+    `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+
+      // Get detailed counts for this organization
+      const [userCount, appCount, activeUserCount] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('organization_id', id),
+        supabase.from('organization_apps').select('*', { count: 'exact', head: true }).eq('organization_id', id),
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('organization_id', id)
+          .gte('last_login', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      ]);
+
+      const enrichedOrganization = {
+        ...organization,
+        user_count: userCount.count || 0,
+        app_count: appCount.count || 0,
+        active_users_30d: activeUserCount.count || 0,
+        last_activity: new Date().toISOString() // TODO: Calculate real last activity
+      };
+
+      res.status(200).json(enrichedOrganization);
+
+    } else if (req.method === 'PUT') {
       // UPDATE organization
       const { name, slug, domain, subscription_tier, settings } = req.body;
 

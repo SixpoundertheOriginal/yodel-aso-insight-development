@@ -39,6 +39,7 @@ const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
 const Admin = lazy(() => import("./pages/admin"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
+const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
@@ -146,6 +147,10 @@ function App() {
                           <Route
                             path="/admin/placeholder"
                             element={<ProtectedRoute><AdminPlaceholder /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/organizations"
+                            element={<ProtectedRoute><AdminOrganizations /></ProtectedRoute>}
                           />
                           <Route
                             path="/smoke-test"
