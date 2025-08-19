@@ -113,7 +113,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
           id: 'organizations',
           label: 'Organizations',
           icon: Building2,
-          href: '/admin?tab=organizations',
+          href: '/admin/organizations',
           status: navigationConfig['organizations'],
         },
         {

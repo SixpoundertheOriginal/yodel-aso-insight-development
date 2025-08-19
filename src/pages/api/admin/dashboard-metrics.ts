@@ -28,38 +28,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // REAL DATA QUERIES - Replace all mocked data
+    // Organizations metrics with error handling
+    const { data: organizationsData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, subscription_tier, created_at');
+
+    if (orgError) {
+      console.error('Organizations query error:', orgError);
+      throw new Error(`Failed to fetch organizations: ${orgError.message}`);
+    }
+
+    console.log(`Dashboard: Found ${organizationsData?.length || 0} organizations`);
+
+    // Fetch remaining data in parallel
     const [
-      organizationsData,
       usersData,
       appsData,
       clientAccessData,
       auditLogsData,
       partnershipsData
     ] = await Promise.all([
-      // Organizations metrics
-      supabase.from('organizations').select('id, subscription_tier, created_at'),
-      
-      // Users metrics  
+      // Users metrics
       supabase.from('profiles').select('id, role, last_login, created_at'),
-      
+
       // REAL APPS DATA from organization_apps table
       supabase.from('organization_apps').select(`
-        id, 
-        organization_id, 
-        app_identifier, 
-        app_name, 
-        data_source, 
+        id,
+        organization_id,
+        app_identifier,
+        app_name,
+        data_source,
         approval_status,
         created_at
       `),
-      
+
       // BigQuery client access
       supabase.from('organization_client_access').select('*'),
-      
+
       // Audit logs for security metrics
-      supabase.from('audit_logs').select('*').gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-      
+      supabase
+        .from('audit_logs')
+        .select('*')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+
       // Partnership data (handle if table doesn't exist)
       supabase.from('organization_partnerships').select('*').then(
         result => result,
@@ -68,16 +79,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // Calculate real metrics
-    const now = new Date();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Organization metrics
-    const totalOrgs = organizationsData.data?.length || 0;
-    const activeOrgs = organizationsData.data?.filter(org => 
+    const totalOrgs = organizationsData?.length || 0;
+    const activeOrgs = organizationsData?.filter(org =>
       new Date(org.created_at) > thirtyDaysAgo
     ).length || 0;
-    const enterpriseOrgs = organizationsData.data?.filter(org => 
+    const enterpriseOrgs = organizationsData?.filter(org =>
       org.subscription_tier === 'enterprise'
     ).length || 0;
 
@@ -174,6 +183,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json(metrics);
   } catch (error) {
     console.error('Dashboard metrics error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(200).json({
+      organizations: { total: 0, error: (error as Error).message }
+    });
   }
 }
