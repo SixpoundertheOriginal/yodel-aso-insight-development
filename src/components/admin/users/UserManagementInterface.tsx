@@ -24,6 +24,7 @@ interface User {
 export const UserManagementInterface: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -37,11 +38,18 @@ export const UserManagementInterface: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/admin/users');
-      if (!response.ok) throw new Error('Failed to load users');
+
+      if (!response.ok) {
+        throw new Error(`Failed to load users: ${response.status}`);
+      }
+
       const data = await response.json();
       setUsers(data);
-    } catch (error) {
+      console.log(`Loaded ${data.length} users across all organizations`);
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Failed to load users:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -70,9 +78,10 @@ export const UserManagementInterface: React.FC = () => {
       setShowInviteModal(false);
       loadUsers();
       alert(`Invitation sent successfully to ${userData.email}`);
-    } catch (error: any) {
-      console.error('Failed to invite user:', error);
-      alert(`Failed to invite user: ${error.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Failed to invite user:', err);
+      alert(`Failed to invite user: ${err.message}`);
     }
   };
 
@@ -241,6 +250,7 @@ export const UserManagementInterface: React.FC = () => {
 
   return (
     <div className="user-management">
+      {error && <div className="mb-4 text-red-500">{error}</div>}
       <div className="sm:flex sm:items-center mb-6">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-white flex items-center">

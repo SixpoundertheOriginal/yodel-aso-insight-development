@@ -17,10 +17,17 @@ interface Organization {
   created_at: Date;
 }
 
+type NewOrganization = Pick<
+  Organization,
+  'name' | 'slug' | 'domain' | 'subscription_tier'
+>;
+
 export const OrganizationManagementTable: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
@@ -34,16 +41,74 @@ export const OrganizationManagementTable: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/admin/organizations');
+
+      if (!response.ok) {
+        throw new Error(`Failed to load organizations: ${response.status}`);
+      }
+
       const data = await response.json();
       setOrganizations(data);
-    } catch (error) {
+      console.log(`Loaded ${data.length} organizations`);
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Failed to load organizations:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditOrganization = (org: Organization) => {
+  const handleCreateOrganization = async (orgData: NewOrganization) => {
+    try {
+      setCreating(true);
+      const response = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orgData)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Failed to create organization');
+      }
+
+      const result = await response.json();
+      setShowCreateModal(false);
+      loadOrganizations();
+      alert(`Organization "${result.organization.name}" created successfully!`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Failed to create organization:', error);
+      alert(`Failed to create organization: ${error.message}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleEditOrganization = async (
+    orgId: string,
+    updates: Partial<Organization>
+  ) => {
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) throw new Error('Failed to update organization');
+
+      loadOrganizations();
+      setShowEditModal(false);
+      alert('Organization updated successfully!');
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Failed to update organization:', error);
+      alert(`Update failed: ${error.message}`);
+    }
+  };
+
+  const openEditOrganization = (org: Organization) => {
     setSelectedOrganization(org);
     setShowEditModal(true);
   };
@@ -66,7 +131,8 @@ export const OrganizationManagementTable: React.FC = () => {
       loadOrganizations();
       alert('Organization deleted successfully');
 
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Delete failed:', error);
       alert(`Failed to delete organization: ${error.message}`);
     }
@@ -132,7 +198,7 @@ export const OrganizationManagementTable: React.FC = () => {
       cell: (org: Organization) => (
         <div className="flex space-x-2">
           <button
-            onClick={() => handleEditOrganization(org)}
+            onClick={() => openEditOrganization(org)}
             className="text-blue-400 hover:text-blue-300 p-1"
             title="Edit Organization"
           >
@@ -159,6 +225,9 @@ export const OrganizationManagementTable: React.FC = () => {
 
   return (
     <div className="organization-management">
+      {error && (
+        <div className="mb-4 text-red-500">{error}</div>
+      )}
       <div className="sm:flex sm:items-center mb-6">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Organizations</h1>
@@ -192,10 +261,8 @@ export const OrganizationManagementTable: React.FC = () => {
       {showCreateModal && (
         <CreateOrganizationModal
           onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            loadOrganizations();
-          }}
+          onCreate={handleCreateOrganization}
+          creating={creating}
         />
       )}
 
@@ -203,10 +270,9 @@ export const OrganizationManagementTable: React.FC = () => {
         <EditOrganizationModal
           organization={selectedOrganization}
           onClose={() => setShowEditModal(false)}
-          onSave={() => {
-            setShowEditModal(false);
-            loadOrganizations();
-          }}
+          onSave={(updates) =>
+            handleEditOrganization(selectedOrganization.id, updates)
+          }
         />
       )}
     </div>

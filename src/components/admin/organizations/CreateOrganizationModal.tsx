@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 
 interface CreateOrganizationModalProps {
   onClose: () => void;
-  onSuccess?: (organization?: any) => void;
+  onCreate: (orgData: {
+    name: string;
+    slug: string;
+    domain: string;
+    subscription_tier: string;
+  }) => Promise<void>;
+  creating?: boolean;
 }
 
-export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = ({ onClose, onSuccess }) => {
+export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = ({ onClose, onCreate, creating }) => {
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -13,8 +19,6 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
     subscription_tier: 'professional'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -28,7 +32,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
       newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
     }
 
-    if (formData.domain && !/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/.test(formData.domain)) {
+    if (formData.domain && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.domain)) {
       newErrors.domain = 'Please enter a valid domain';
     }
 
@@ -36,38 +40,28 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleNameChange = (name: string) => {
+    setFormData({
+      ...formData,
+      name,
+      slug: name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
     setErrors({});
-
     try {
-      const response = await fetch('/api/admin/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        if (error.error?.includes('slug already exists')) {
-          setErrors({ slug: 'This slug is already taken' });
-        } else {
-          setErrors({ general: error.error || 'Failed to create organization' });
-        }
-        return;
-      }
-
-      const result = await response.json();
-      onSuccess?.(result.organization);
-      alert('Organization created successfully!');
-    } catch (error) {
-      setErrors({ general: 'Network error. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
+      await onCreate(formData);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrors({ general: error.message || 'Failed to create organization' });
     }
   };
 
@@ -87,7 +81,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => handleNameChange(e.target.value)}
               className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
             {errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}
@@ -127,8 +121,12 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
           </div>
           <div className="flex justify-end space-x-2 pt-2">
             <button type="button" onClick={onClose} className="px-3 py-1 text-sm border rounded-md">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="px-3 py-1 text-sm bg-orange-600 text-white rounded-md disabled:opacity-50">
-              {isSubmitting ? 'Saving...' : 'Save'}
+            <button
+              type="submit"
+              disabled={creating}
+              className="px-3 py-1 text-sm bg-orange-600 text-white rounded-md disabled:opacity-50"
+            >
+              {creating ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>
