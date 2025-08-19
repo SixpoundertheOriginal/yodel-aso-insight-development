@@ -11,7 +11,7 @@ interface Organization {
 interface EditOrganizationModalProps {
   organization: Organization;
   onClose: () => void;
-  onSave: (updates: Partial<Organization>) => void;
+  onSave: (updates: Partial<Organization>) => Promise<void>;
 }
 
 export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({ organization, onClose, onSave }) => {
@@ -29,20 +29,11 @@ export const EditOrganizationModal: React.FC<EditOrganizationModalProps> = ({ or
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/organizations/${organization.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to update organization');
-      }
-      const result = await response.json();
-      onSave(result);
-    } catch (err: any) {
-      console.error('Failed to update organization:', err);
-      setError(err.message);
+      await onSave(formData);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Failed to update organization:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }

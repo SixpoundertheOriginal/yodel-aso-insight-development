@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/layout/AdminLayout';
-import { OrganizationManagementTable } from '@/components/admin/organizations/OrganizationManagementTable';
+import { UserManagementInterface } from '@/components/admin/users/UserManagementInterface';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useNavigate } from 'react-router-dom';
 
-const OrganizationsPage: React.FC = () => {
+const UsersPage: React.FC = () => {
   const { isSuperAdmin, isLoading } = usePermissions();
   const navigate = useNavigate();
 
@@ -17,7 +17,7 @@ const OrganizationsPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-white">Loading organizations...</div>
+        <div className="text-lg text-white">Loading users...</div>
       </div>
     );
   }
@@ -27,10 +27,10 @@ const OrganizationsPage: React.FC = () => {
   }
 
   return (
-    <AdminLayout currentPage="organizations">
-      <OrganizationManagementTable />
+    <AdminLayout currentPage="users">
+      <UserManagementInterface />
     </AdminLayout>
   );
 };
 
-export default OrganizationsPage;
+export default UsersPage;

@@ -31,8 +31,8 @@ interface AdminSidebarProps {
 
 const navigationConfig: Record<string, NavigationItem['status']> = {
   dashboard: 'ready',
-  organizations: 'in_development',
-  users: 'in_development',
+  organizations: 'ready',
+  users: 'ready',
   'system-status': 'placeholder',
   roles: 'placeholder',
   invitations: 'placeholder',
