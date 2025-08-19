@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/layout/AdminLayout';
 import { EnhancedAdminDashboard } from '@/components/admin/dashboard/EnhancedAdminDashboard';
-import { OrganizationManagementTable } from '@/components/admin/organizations/OrganizationManagementTable';
 import { UserManagementInterface } from '@/components/admin/users/UserManagementInterface';
 import { PartnershipManagementCenter } from '@/components/admin/partnerships/PartnershipManagementCenter';
 import { BigQueryClientManagement } from '@/components/admin/data/BigQueryClientManagement';
@@ -12,7 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 const AdminPanel: React.FC = () => {
   const { isSuperAdmin, isLoading } = usePermissions();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'dashboard';
 
   useEffect(() => {
@@ -37,8 +36,6 @@ const AdminPanel: React.FC = () => {
     switch (currentTab) {
       case 'dashboard':
         return <EnhancedAdminDashboard />;
-      case 'organizations':
-        return <OrganizationManagementTable />;
       case 'users':
         return <UserManagementInterface />;
       case 'partnerships':
