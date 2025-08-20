@@ -66,11 +66,15 @@ export interface CreativeAnalysisWithAI {
 }
 
 export class CreativeAnalysisService {
-  private static async fetchAppScreenshots(keyword: string): Promise<AppInfo[]> {
+  private static async fetchAppScreenshots(keyword: string, debug = false): Promise<AppInfo[]> {
     const encodedKeyword = encodeURIComponent(keyword);
     const searchUrl = `https://itunes.apple.com/search?term=${encodedKeyword}&country=US&media=software&limit=3`;
 
     try {
+      if (debug) {
+        console.log('fetchAppScreenshots request URL:', searchUrl);
+      }
+
       const response = await fetch(searchUrl);
       if (!response.ok) {
         throw new Error(`iTunes API error: ${response.status}`);
@@ -79,27 +83,47 @@ export class CreativeAnalysisService {
       const data = await response.json();
       const apps = data.results || [];
 
-      return apps.map((app: any) => ({
-        appId: app.trackId.toString(),
-        screenshots: app.screenshotUrls || [],
-        title: app.trackName || 'Unknown App',
-        icon: app.artworkUrl100 || app.artworkUrl60,
-        rating: app.averageUserRating,
-        developer: app.artistName
-      }));
+      const anomalies: string[] = [];
+      const appInfos = apps.map((app: any) => {
+        const screenshots = app.screenshotUrls || [];
+        if (debug && screenshots.length === 0) {
+          anomalies.push(`No screenshots for app ${app.trackId}`);
+        }
+        return {
+          appId: app.trackId.toString(),
+          screenshots,
+          title: app.trackName || 'Unknown App',
+          icon: app.artworkUrl100 || app.artworkUrl60,
+          rating: app.averageUserRating,
+          developer: app.artistName
+        } as AppInfo;
+      });
+
+      if (debug) {
+        const screenshotCounts = appInfos.map(a => ({ appId: a.appId, count: a.screenshots.length }));
+        console.log('fetchAppScreenshots response metadata:', {
+          resultCount: appInfos.length,
+          screenshotCounts
+        });
+        if (anomalies.length > 0) {
+          console.warn('fetchAppScreenshots anomalies:', anomalies);
+        }
+      }
+
+      return appInfos;
     } catch (error) {
       console.error('Error fetching app screenshots:', error);
       throw new Error('Failed to fetch screenshots for the keyword');
     }
   }
 
-  static async analyzeCreativesByKeyword(keyword: string): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByKeyword(keyword: string, debug = false): Promise<CreativeAnalysisResult> {
     try {
       if (!keyword.trim()) {
         throw new Error('Keyword is required');
       }
 
-      const apps = await this.fetchAppScreenshots(keyword.trim());
+      const apps = await this.fetchAppScreenshots(keyword.trim(), debug);
       
       return {
         success: true,
@@ -119,15 +143,19 @@ export class CreativeAnalysisService {
     }
   }
 
-  static async analyzeCreativesByAppId(appId: string): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByAppId(appId: string, debug = false): Promise<CreativeAnalysisResult> {
     try {
       if (!appId.trim()) {
         throw new Error('App ID is required');
       }
 
       const searchUrl = `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}&country=US`;
+      if (debug) {
+        console.log('analyzeCreativesByAppId request URL:', searchUrl);
+      }
+
       const response = await fetch(searchUrl);
-      
+
       if (!response.ok) {
         throw new Error(`iTunes API error: ${response.status}`);
       }
@@ -135,13 +163,25 @@ export class CreativeAnalysisService {
       const data = await response.json();
       const app = data.results?.[0];
 
+      if (debug) {
+        console.log('analyzeCreativesByAppId response metadata:', {
+          resultCount: data.results?.length || 0,
+          screenshotCount: app?.screenshotUrls?.length || 0
+        });
+      }
+
       if (!app) {
         throw new Error('App not found');
       }
 
+      const screenshots = app.screenshotUrls || [];
+      if (debug && screenshots.length === 0) {
+        console.warn(`No screenshots for app ${app.trackId}`);
+      }
+
       const appInfo: AppInfo = {
         appId: app.trackId.toString(),
-        screenshots: app.screenshotUrls || [],
+        screenshots,
         title: app.trackName || 'Unknown App',
         icon: app.artworkUrl100 || app.artworkUrl60,
         rating: app.averageUserRating,
