@@ -14,6 +14,7 @@ export { keywordIntelligenceService } from './keyword-intelligence.service';
 export { keywordValidationService } from './keyword-validation.service';
 export { keywordCacheService } from './keyword-cache.service';
 export { keywordRankingCalculatorService } from './keyword-ranking-calculator.service';
+export { openAIService } from './openAIService';
 
 // Add new bulletproof error handling services
 export { retryStrategyService } from './retry-strategy.service';
