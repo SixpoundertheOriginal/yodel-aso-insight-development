@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Star, Download, Target, BarChart3, TrendingUp } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
+import { isDebugTarget } from '@/lib/debugTargets';
 
 interface AppSelectionModalProps {
   isOpen: boolean;
@@ -64,57 +65,63 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
         
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-3">
-            {candidates.map((app, index) => (
-              <div key={index} className="border border-zinc-800 rounded-lg p-4">
-                <div className="flex items-start space-x-4">
-                  {app.icon && (
-                    <img 
-                      src={app.icon} 
-                      alt={app.name}
-                      className="w-16 h-16 rounded-xl"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-foreground truncate">
-                      {app.name}
-                    </h3>
-                    <p className="text-sm text-zinc-400 mb-2">
-                      by {app.developer || 'Unknown Developer'}
-                    </p>
-                    
-                    <div className="flex items-center gap-4 mb-2">
-                      {app.rating && (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm text-zinc-300">
-                            {app.rating}
-                          </span>
-                        </div>
-                      )}
-                      {app.applicationCategory && (
-                        <Badge variant="outline" className="text-zinc-400 border-zinc-600">
-                          {app.applicationCategory}
-                        </Badge>
+            {candidates.map((app, index) => {
+              const debug = isDebugTarget(app);
+              return (
+                <div key={index} className="border border-zinc-800 rounded-lg p-4">
+                  <div className="flex items-start space-x-4">
+                    {app.icon && (
+                      <img
+                        src={app.icon}
+                        alt={app.name}
+                        className="w-16 h-16 rounded-xl"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-foreground truncate flex items-center gap-2">
+                        {app.name}
+                        {debug && (
+                          <Badge variant="outline" className="text-[10px] border-yodel-orange text-yodel-orange">Debug</Badge>
+                        )}
+                      </h3>
+                      <p className="text-sm text-zinc-400 mb-2">
+                        by {app.developer || 'Unknown Developer'}
+                      </p>
+
+                      <div className="flex items-center gap-4 mb-2">
+                        {app.rating && (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm text-zinc-300">
+                              {app.rating}
+                            </span>
+                          </div>
+                        )}
+                        {app.applicationCategory && (
+                          <Badge variant="outline" className="text-zinc-400 border-zinc-600">
+                            {app.applicationCategory}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {app.description && (
+                        <p className="text-sm text-zinc-400 line-clamp-2">
+                          {app.description}
+                        </p>
                       )}
                     </div>
-                    
-                    {app.description && (
-                      <p className="text-sm text-zinc-400 line-clamp-2">
-                        {app.description}
-                      </p>
-                    )}
+
+                    <Button
+                      onClick={() => onSelect(app)}
+                      className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground flex items-center"
+                    >
+                      {buttonIcon}
+                      {buttonText}
+                    </Button>
                   </div>
-                  
-                  <Button
-                    onClick={() => onSelect(app)}
-                    className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground flex items-center"
-                  >
-                    {buttonIcon}
-                    {buttonText}
-                  </Button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
         
