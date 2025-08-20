@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { isDebugTarget } from '@/lib/debugTargets';
 import { Star, X } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 
@@ -62,68 +63,74 @@ export const AppSearchResultsModal: React.FC<AppSearchResultsModalProps> = React
         
         <div className="overflow-y-auto max-h-[60vh] pr-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {limitedResults.map((app, index) => (
-              <Card key={`${app.appId}-${index}`} className="bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800/80 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex space-x-3">
-                    <div className="flex-shrink-0">
-                      {app.icon ? (
-                        <img
-                          src={app.icon}
-                          alt={`${app.name} icon`}
-                          className="w-16 h-16 rounded-xl"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-gradient-to-br from-yodel-orange to-orange-600 rounded-xl flex items-center justify-center">
-                          <span className="text-foreground font-bold text-lg">
-                            {app.name?.charAt(0).toUpperCase() || '?'}
+            {limitedResults.map((app, index) => {
+              const debug = isDebugTarget(app);
+              return (
+                <Card key={`${app.appId}-${index}`} className="bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800/80 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex space-x-3">
+                      <div className="flex-shrink-0">
+                        {app.icon ? (
+                          <img
+                            src={app.icon}
+                            alt={`${app.name} icon`}
+                            className="w-16 h-16 rounded-xl"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gradient-to-br from-yodel-orange to-orange-600 rounded-xl flex items-center justify-center">
+                            <span className="text-foreground font-bold text-lg">
+                              {app.name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-foreground font-semibold text-sm leading-tight mb-1 truncate flex items-center gap-2">
+                          {app.name || 'Unknown App'}
+                          {debug && (
+                            <Badge variant="outline" className="text-[10px] border-yodel-orange text-yodel-orange">Debug</Badge>
+                          )}
+                        </h3>
+                        <p className="text-zinc-400 text-xs mb-1 truncate">
+                          {app.developer || 'Unknown Developer'}
+                        </p>
+
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="flex items-center space-x-1">
+                            {renderRatingStars(app.rating || 0)}
+                          </div>
+                          <span className="text-zinc-500 text-xs">
+                            {app.rating ? app.rating.toFixed(1) : 'N/A'}
                           </span>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-foreground font-semibold text-sm leading-tight mb-1 truncate">
-                        {app.name || 'Unknown App'}
-                      </h3>
-                      <p className="text-zinc-400 text-xs mb-1 truncate">
-                        {app.developer || 'Unknown Developer'}
-                      </p>
-                      
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="flex items-center space-x-1">
-                          {renderRatingStars(app.rating || 0)}
-                        </div>
-                        <span className="text-zinc-500 text-xs">
-                          {app.rating ? app.rating.toFixed(1) : 'N/A'}
-                        </span>
-                      </div>
-                      
-                      {app.applicationCategory && (
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs bg-zinc-700 text-zinc-300 border-zinc-600 mb-2"
+
+                        {app.applicationCategory && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-zinc-700 text-zinc-300 border-zinc-600 mb-2"
+                          >
+                            {app.applicationCategory}
+                          </Badge>
+                        )}
+
+                        <Button
+                          onClick={() => onSelect(app)}
+                          size="sm"
+                          className="w-full bg-yodel-orange hover:bg-orange-600 text-foreground text-xs"
                         >
-                          {app.applicationCategory}
-                        </Badge>
-                      )}
-                      
-                      <Button
-                        onClick={() => onSelect(app)}
-                        size="sm"
-                        className="w-full bg-yodel-orange hover:bg-orange-600 text-foreground text-xs"
-                      >
-                        Select This App
-                      </Button>
+                          Select This App
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
         

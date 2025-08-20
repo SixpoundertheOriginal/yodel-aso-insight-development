@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { isDebugTarget } from '@/lib/debugTargets';
 import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette, FileSpreadsheet } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -45,11 +46,12 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
   });
 
   const handleMetadataImport = (metadata: ScrapedMetadata, orgId: string) => {
-    console.log('🎯 [APP-AUDIT] App imported:', metadata.name);
+    const debug = isDebugTarget(metadata);
+    console.log('🎯 [APP-AUDIT] App imported:', metadata.name, debug ? '(debug target)' : '');
     setImportedMetadata(metadata);
     setActiveTab('overview');
     toast.success(`Started comprehensive audit for ${metadata.name}`);
-    
+
     // Share scraped data with unified page
     onAppScraped?.(metadata);
   };
@@ -315,7 +317,12 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
             />
           )}
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{importedMetadata.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              {importedMetadata.name}
+              {isDebugTarget(importedMetadata) && (
+                <Badge variant="outline" className="text-xs border-yodel-orange text-yodel-orange">Debug</Badge>
+              )}
+            </h1>
             <p className="text-zinc-400">
               {importedMetadata.applicationCategory} • {importedMetadata.locale}
               {lastUpdated && (

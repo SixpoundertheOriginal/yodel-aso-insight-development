@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
 import { toast } from 'sonner';
+import { isDebugTarget } from '@/lib/debugTargets';
 
 interface App {
   id: string;
@@ -303,49 +304,57 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
                     Search Results ({searchResults.length} found):
                   </div>
                   <div className="grid gap-3 max-h-64 overflow-y-auto">
-                    {searchResults.map((result, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-colors ${
-                          selectedResult === result 
-                            ? 'bg-yodel-orange/20 border border-yodel-orange' 
-                            : 'bg-zinc-800 hover:bg-zinc-700'
-                        }`}
-                        onClick={() => selectSearchResult(result)}
-                      >
-                        {result.icon ? (
-                          <img src={result.icon} alt={result.name} className="w-12 h-12 rounded-lg" />
-                        ) : (
-                          <div className="w-12 h-12 bg-zinc-600 rounded-lg flex items-center justify-center">
-                            <Smartphone className="h-6 w-6 text-zinc-400" />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="text-foreground font-medium">{result.name}</div>
-                          <div className="text-sm text-zinc-400">{result.developer}</div>
-                          {result.rating > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs text-zinc-400">{result.rating}</span>
-                              {result.reviews > 0 && (
-                                <span className="text-xs text-zinc-500">({result.reviews} reviews)</span>
-                              )}
+                    {searchResults.map((result, index) => {
+                      const debug = isDebugTarget(result);
+                      return (
+                        <div
+                          key={index}
+                          className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-colors ${
+                            selectedResult === result
+                              ? 'bg-yodel-orange/20 border border-yodel-orange'
+                              : 'bg-zinc-800 hover:bg-zinc-700'
+                          }`}
+                          onClick={() => selectSearchResult(result)}
+                        >
+                          {result.icon ? (
+                            <img src={result.icon} alt={result.name} className="w-12 h-12 rounded-lg" />
+                          ) : (
+                            <div className="w-12 h-12 bg-zinc-600 rounded-lg flex items-center justify-center">
+                              <Smartphone className="h-6 w-6 text-zinc-400" />
                             </div>
                           )}
-                          {result.applicationCategory && (
-                            <Badge variant="outline" className="mt-1 text-xs border-zinc-600 text-zinc-400">
-                              {result.applicationCategory}
-                            </Badge>
-                          )}
+                          <div className="flex-1">
+                            <div className="text-foreground font-medium flex items-center gap-2">
+                              {result.name}
+                              {debug && (
+                                <Badge variant="outline" className="text-[10px] border-yodel-orange text-yodel-orange">Debug</Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-zinc-400">{result.developer}</div>
+                            {result.rating > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                <span className="text-xs text-zinc-400">{result.rating}</span>
+                                {result.reviews > 0 && (
+                                  <span className="text-xs text-zinc-500">({result.reviews} reviews)</span>
+                                )}
+                              </div>
+                            )}
+                            {result.applicationCategory && (
+                              <Badge variant="outline" className="mt-1 text-xs border-zinc-600 text-zinc-400">
+                                {result.applicationCategory}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedResult === result && (
+                              <CheckCircle className="h-5 w-5 text-yodel-orange" />
+                            )}
+                            <ExternalLink className="h-4 w-4 text-zinc-400" />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {selectedResult === result && (
-                            <CheckCircle className="h-5 w-5 text-yodel-orange" />
-                          )}
-                          <ExternalLink className="h-4 w-4 text-zinc-400" />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {searchResults.length === 0 && (
                     <div className="text-center py-8 text-zinc-400">
