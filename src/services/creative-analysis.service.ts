@@ -65,30 +65,140 @@ export interface CreativeAnalysisWithAI {
   error?: string;
 }
 
+  interface iTunesApp {
+  trackName: string;
+  bundleId: string;
+  trackId: number;
+  screenshotUrls?: string[];
+  ipadScreenshotUrls?: string[];
+  appletvScreenshotUrls?: string[];
+    features?: string[];
+    [key: string]: unknown;
+}
+
+interface iTunesDebugLog {
+  requestParams: {
+    term: string;
+    country: string;
+    media: string;
+    limit: number;
+    entity: string;
+  };
+  responseMetadata: {
+    resultCount: number;
+    timestamp: string;
+    requestUrl: string;
+  };
+  appScreenshotAnalysis: Array<{
+    trackName: string;
+    bundleId: string;
+    screenshotUrls: string[];
+    ipadScreenshotUrls?: string[];
+    appletvScreenshotUrls?: string[];
+    otherImageFields: Record<string, unknown>;
+    totalScreenshotCount: number;
+  }>;
+  potentialIssues: string[];
+}
+
 export class CreativeAnalysisService {
+  private static processScreenshotsWithLogging(app: iTunesApp) {
+    console.group(`🖼️ Processing Screenshots: ${app.trackName}`);
+    const allScreenshots = {
+      phone: app.screenshotUrls || [],
+      ipad: app.ipadScreenshotUrls || [],
+      appletv: app.appletvScreenshotUrls || []
+    };
+    console.log('Screenshot sources found:', {
+      phone: allScreenshots.phone.length,
+      ipad: allScreenshots.ipad.length,
+      appletv: allScreenshots.appletv.length
+    });
+    const validatedScreenshots: Array<{ source: string; index: number; url: string; isHttps: boolean; isValidFormat: boolean; domain: string; displayUrl: string }> = [];
+    Object.entries(allScreenshots).forEach(([source, urls]) => {
+      urls.forEach((url, index) => {
+        const validation = {
+          source,
+          index,
+          url,
+          isHttps: url.startsWith('https://'),
+          isValidFormat: /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url),
+          domain: ''
+        };
+        try {
+          validation.domain = new URL(url).hostname;
+        } catch {
+          validation.domain = 'invalid-url';
+        }
+        console.log(`✅ ${source}[${index}]:`, validation);
+        if (validation.isHttps && validation.isValidFormat) {
+          validatedScreenshots.push({ ...validation, displayUrl: url });
+        }
+      });
+    });
+    console.log('📋 Final screenshot count:', validatedScreenshots.length);
+    console.groupEnd();
+    return validatedScreenshots;
+  }
+
+  private static logScreenshotIssues(app: iTunesApp) {
+    const issues: string[] = [];
+    if (!app.screenshotUrls && !app.ipadScreenshotUrls && !app.appletvScreenshotUrls) {
+      issues.push('No screenshot fields found in API response');
+    }
+    if ((app.screenshotUrls?.length ?? 0) === 0 && (app.ipadScreenshotUrls?.length ?? 0) === 0 && (app.appletvScreenshotUrls?.length ?? 0) === 0) {
+      issues.push('Screenshot arrays exist but are empty');
+    }
+    if (!app.screenshotUrls && (app.ipadScreenshotUrls?.length ?? 0) > 0) {
+      issues.push('iPad-only app detected - using iPad screenshots');
+    }
+    if (app.features?.includes('iosUniversal') === false) {
+      issues.push('App may have device restrictions');
+    }
+    if (issues.length > 0) {
+      console.warn(`⚠️ ${app.trackName} issues:`, issues);
+    }
+    return issues;
+  }
+
   private static async fetchAppScreenshots(keyword: string, debug = false): Promise<AppInfo[]> {
+    const requestParams = {
+      term: keyword,
+      country: 'US',
+      media: 'software',
+      limit: 3,
+      entity: 'software'
+    };
     const encodedKeyword = encodeURIComponent(keyword);
-    const searchUrl = `https://itunes.apple.com/search?term=${encodedKeyword}&country=US&media=software&limit=3`;
+    const searchUrl = `https://itunes.apple.com/search?term=${encodedKeyword}&country=${requestParams.country}&media=${requestParams.media}&limit=${requestParams.limit}&entity=${requestParams.entity}`;
+
+    let debugLog: iTunesDebugLog | null = null;
+    if (debug) {
+      console.group(`🔍 iTunes API Debug: "${keyword}"`);
+      console.log('📤 Request params:', requestParams);
+      debugLog = {
+        requestParams,
+        responseMetadata: {
+          resultCount: 0,
+          timestamp: new Date().toISOString(),
+          requestUrl: searchUrl
+        },
+        appScreenshotAnalysis: [],
+        potentialIssues: []
+      };
+    }
 
     try {
-      if (debug) {
-        console.log('fetchAppScreenshots request URL:', searchUrl);
-      }
-
       const response = await fetch(searchUrl);
       if (!response.ok) {
         throw new Error(`iTunes API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const apps = data.results || [];
+      const apps: iTunesApp[] = data.results || [];
 
-      const anomalies: string[] = [];
-      const appInfos = apps.map((app: any) => {
+      const appInfos = apps.map((app) => {
         const screenshots = app.screenshotUrls || [];
-        if (debug && screenshots.length === 0) {
-          anomalies.push(`No screenshots for app ${app.trackId}`);
-        }
         return {
           appId: app.trackId.toString(),
           screenshots,
@@ -99,21 +209,53 @@ export class CreativeAnalysisService {
         } as AppInfo;
       });
 
-      if (debug) {
-        const screenshotCounts = appInfos.map(a => ({ appId: a.appId, count: a.screenshots.length }));
-        console.log('fetchAppScreenshots response metadata:', {
-          resultCount: appInfos.length,
-          screenshotCounts
+      if (debug && debugLog) {
+        debugLog.responseMetadata.resultCount = data.resultCount || appInfos.length;
+        console.log('📥 Raw response:', data);
+        apps.forEach((app) => {
+          const otherImageFields = Object.keys(app).filter((key) =>
+            key.toLowerCase().includes('screenshot') ||
+            key.toLowerCase().includes('image') ||
+            key.toLowerCase().includes('icon')
+          );
+          const totalScreenshotCount = [
+            ...(app.screenshotUrls || []),
+            ...(app.ipadScreenshotUrls || []),
+            ...(app.appletvScreenshotUrls || [])
+          ].length;
+          debugLog.appScreenshotAnalysis.push({
+            trackName: app.trackName,
+            bundleId: app.bundleId,
+            screenshotUrls: app.screenshotUrls || [],
+            ipadScreenshotUrls: app.ipadScreenshotUrls,
+            appletvScreenshotUrls: app.appletvScreenshotUrls,
+            otherImageFields: otherImageFields.reduce((acc, key) => {
+              acc[key] = app[key];
+              return acc;
+            }, {} as Record<string, unknown>),
+            totalScreenshotCount
+          });
+          const issues = this.logScreenshotIssues(app);
+          if (issues.length > 0) {
+            debugLog.potentialIssues.push(`${app.trackName}: ${issues.join(', ')}`);
+          }
+          this.processScreenshotsWithLogging(app);
         });
-        if (anomalies.length > 0) {
-          console.warn('fetchAppScreenshots anomalies:', anomalies);
-        }
+        console.log('fetchAppScreenshots debug log:', debugLog);
       }
 
       return appInfos;
     } catch (error) {
-      console.error('Error fetching app screenshots:', error);
+      if (debug) {
+        console.error('❌ iTunes API Error:', error);
+      } else {
+        console.error('Error fetching app screenshots:', error);
+      }
       throw new Error('Failed to fetch screenshots for the keyword');
+    } finally {
+      if (debug) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -168,6 +310,10 @@ export class CreativeAnalysisService {
           resultCount: data.results?.length || 0,
           screenshotCount: app?.screenshotUrls?.length || 0
         });
+        if (app) {
+          this.logScreenshotIssues(app);
+          this.processScreenshotsWithLogging(app);
+        }
       }
 
       if (!app) {
@@ -204,6 +350,10 @@ export class CreativeAnalysisService {
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
+  }
+
+  static async debugMyFitnessPal() {
+    await this.fetchAppScreenshots('fitness', true);
   }
 
   static async analyzeCreativesWithAI(apps: AppInfo[], keyword?: string, sessionId?: string): Promise<CreativeAnalysisWithAI> {
@@ -327,7 +477,7 @@ export class CreativeAnalysisService {
   }
 
   // Store analysis results in database
-  private static async storeAnalysisResults(sessionId: string, analysisResult: any): Promise<void> {
+  private static async storeAnalysisResults(sessionId: string, analysisResult: CreativeAnalysisWithAI): Promise<void> {
     const { supabase } = await import('@/integrations/supabase/client');
     
     // Get current user's organization
@@ -398,7 +548,7 @@ export class CreativeAnalysisService {
   }
 
   // Get past analysis sessions
-  static async getAnalysisSessions(limit: number = 10): Promise<any[]> {
+  static async getAnalysisSessions(limit: number = 10): Promise<unknown[]> {
     const { supabase } = await import('@/integrations/supabase/client');
     
     const { data, error } = await supabase
@@ -452,14 +602,22 @@ export class CreativeAnalysisService {
       }
 
       // Convert database format back to service format
-      const individual: ScreenshotAnalysis[] = screenshots?.map(screenshot => {
-        const analysisData = screenshot.analysis_data as any;
-        return {
-          appId: screenshot.app_id,
-          appName: screenshot.app_name,
-          screenshotUrl: screenshot.screenshot_url,
-          colorPalette: analysisData.colorPalette as ColorPalette,
-          messageAnalysis: analysisData.messageAnalysis as MessageAnalysis,
+        const individual: ScreenshotAnalysis[] = screenshots?.map(screenshot => {
+          const analysisData = screenshot.analysis_data as {
+            colorPalette: ColorPalette;
+            messageAnalysis: MessageAnalysis;
+            visualHierarchy: VisualHierarchy;
+            textContent: string[];
+            designPatterns: string[];
+            flowRole?: string;
+            recommendations?: string[];
+          };
+          return {
+            appId: screenshot.app_id,
+            appName: screenshot.app_name,
+            screenshotUrl: screenshot.screenshot_url,
+            colorPalette: analysisData.colorPalette as ColorPalette,
+            messageAnalysis: analysisData.messageAnalysis as MessageAnalysis,
           visualHierarchy: analysisData.visualHierarchy as VisualHierarchy,
           textContent: analysisData.textContent as string[],
           designPatterns: analysisData.designPatterns as string[],
@@ -469,11 +627,11 @@ export class CreativeAnalysisService {
         };
       }) || [];
 
-      return {
-        success: true,
-        individual,
-        patterns: patterns?.patterns_data as any
-      };
+        return {
+          success: true,
+          individual,
+          patterns: patterns?.patterns_data as CreativeAnalysisWithAI['patterns']
+        };
     } catch (error) {
       console.error('Error loading analysis session:', error);
       return null;

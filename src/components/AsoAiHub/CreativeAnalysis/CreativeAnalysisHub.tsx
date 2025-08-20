@@ -19,6 +19,7 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [aiError, setAiError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'keyword' | 'appid'>('keyword');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
 
   const handleSearch = async () => {
     if (!keyword.trim()) return;
@@ -28,9 +29,9 @@ export const CreativeAnalysisHub: React.FC = () => {
     setCurrentSessionId(null);
     
     try {
-      const result = searchType === 'keyword' 
-        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword)
-        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword);
+      const result = searchType === 'keyword'
+        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, debugMode)
+        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, debugMode);
       
       setResults(result);
       
@@ -140,6 +141,15 @@ export const CreativeAnalysisHub: React.FC = () => {
               >
                 App ID Lookup
               </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  onClick={() => setDebugMode(!debugMode)}
+                  variant="outline"
+                  size="sm"
+                >
+                  🔍 Debug: {debugMode ? 'ON' : 'OFF'}
+                </Button>
+              )}
             </div>
             
             <div className="flex gap-3">
