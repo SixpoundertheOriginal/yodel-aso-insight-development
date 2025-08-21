@@ -12,6 +12,9 @@ import { cid } from '@/lib/caDebug';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COUNTRIES } from '@/components/AsoAiHub/MetadataCopilot/PreLaunchForm';
+import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
+import { ScrapedMetadata } from '@/types/aso';
+import { CompetitorCard } from './CompetitorCard';
 
 export const CreativeAnalysisHub: React.FC = () => {
   const [keyword, setKeyword] = useState('fitness');
@@ -27,6 +30,9 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState('US');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedApps, setSelectedApps] = useState<AppInfo[]>([]);
+  const [selectedCompetitors, setSelectedCompetitors] = useState<ScrapedMetadata[]>([]);
+  const [showCompetitorModal, setShowCompetitorModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'keyword' | 'competitor'>('keyword');
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('ca_selected_country') : null;
@@ -163,6 +169,43 @@ export const CreativeAnalysisHub: React.FC = () => {
     }
   };
 
+  const handleChooseCompetitors = () => {
+    setShowCompetitorModal(true);
+  };
+
+  const handleCompetitorSelection = (competitors: ScrapedMetadata[]) => {
+    setSelectedCompetitors(competitors);
+    setShowCompetitorModal(false);
+    if (competitors.length > 0) {
+      setActiveTab('competitor');
+    }
+  };
+
+  const convertToAppInfo = (metadata: ScrapedMetadata[]): AppInfo[] => {
+    return metadata.map(app => ({
+      appId: app.bundleId || app.appId || app.trackId?.toString() || '',
+      title: app.name || app.title || '',
+      screenshots: app.screenshots || (app.screenshot ? [app.screenshot] : []),
+      icon: app.icon,
+      rating: app.rating,
+      developer: app.developer,
+      country: selectedCountry
+    }));
+  };
+
+  const handleAnalyzeCompetitors = async () => {
+    const competitorAppInfo = convertToAppInfo(selectedCompetitors);
+    try {
+      setAiLoading(true);
+      const analysis = await CreativeAnalysisService.analyzeCreativesWithAI(competitorAppInfo);
+      setAiAnalysis(analysis);
+    } catch (error: any) {
+      setAiError(error.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-foreground">
       <div className="container mx-auto px-6 py-8 max-w-7xl">
@@ -179,6 +222,23 @@ export const CreativeAnalysisHub: React.FC = () => {
           </div>
         </div>
 
+        <div className="analysis-tabs flex gap-2 mb-6">
+          <Button
+            variant={activeTab === 'keyword' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('keyword')}
+          >
+            Keyword Analysis
+          </Button>
+          <Button
+            variant={activeTab === 'competitor' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('competitor')}
+          >
+            Competitor Analysis ({selectedCompetitors.length})
+          </Button>
+        </div>
+
+        {activeTab === 'keyword' && (
+          <>
         {/* Search Interface */}
         <Card className="bg-zinc-900 border-zinc-800 mb-8">
           <CardHeader>
@@ -232,6 +292,9 @@ export const CreativeAnalysisHub: React.FC = () => {
                   )}
                 </div>
               )}
+              <Button onClick={handleChooseCompetitors} variant="outline" size="sm" className="text-xs">
+                Choose Competitors
+              </Button>
               <div className="ml-auto flex items-center gap-2">
                 <Label className="text-xs text-zinc-400">App Store Region</Label>
                 <Select value={selectedCountry} onValueChange={setSelectedCountry}>
@@ -429,7 +492,61 @@ export const CreativeAnalysisHub: React.FC = () => {
             </CardContent>
           </Card>
         )}
+          </>
+        )}
+
+        {activeTab === 'competitor' && (
+          <div className="competitor-analysis-section space-y-6">
+            <div className="competitor-collection space-y-4">
+              <h3 className="text-xl font-semibold text-foreground">Selected Competitors ({selectedCompetitors.length}/5)</h3>
+              <div className="competitor-cards grid gap-4">
+                {selectedCompetitors.map((competitor) => (
+                  <CompetitorCard
+                    key={competitor.bundleId}
+                    app={competitor}
+                    onRemove={(app) =>
+                      setSelectedCompetitors((prev) => prev.filter((c) => c.bundleId !== app.bundleId))
+                    }
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleChooseCompetitors} variant="outline">
+                  Choose Competitors
+                </Button>
+                {selectedCompetitors.length > 0 && (
+                  <Button onClick={handleAnalyzeCompetitors} disabled={aiLoading} className="analyze-competitors-button">
+                    {aiLoading ? 'Analyzing...' : `Analyze ${selectedCompetitors.length} Competitors`}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {aiAnalysis && (
+              <div className="competitor-analysis-results">
+                <CreativeAnalysisResults
+                  analysis={aiAnalysis}
+                  keyword={keyword}
+                  apps={convertToAppInfo(selectedCompetitors)}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      <AppSelectionModal
+        isOpen={showCompetitorModal}
+        onClose={() => setShowCompetitorModal(false)}
+        candidates={[]}
+        onSelect={() => {}}
+        searchTerm={keyword}
+        selectMode="multi"
+        onMultiSelect={handleCompetitorSelection}
+        maxSelections={5}
+        selectedApps={selectedCompetitors}
+        searchCountry={selectedCountry}
+      />
     </div>
+  </div>
   );
 };

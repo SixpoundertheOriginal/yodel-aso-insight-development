@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +10,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Star, Download, Target, BarChart3, TrendingUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Star, Target, BarChart3, TrendingUp } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 import { isDebugTarget } from '@/lib/debugTargets';
+import { asoSearchService } from '@/services/aso-search.service';
 
 interface AppSelectionModalProps {
   isOpen: boolean;
@@ -22,8 +23,23 @@ interface AppSelectionModalProps {
   onSelect: (app: ScrapedMetadata) => void;
   searchTerm: string;
   mode?: 'select' | 'analyze';
-  onCompetitorAnalysis?: (searchTerm: string, analysisType: 'brand' | 'keyword' | 'category') => void;
+  onCompetitorAnalysis?: (
+    searchTerm: string,
+    analysisType: 'brand' | 'keyword' | 'category'
+  ) => void;
   showCompetitorAnalysis?: boolean;
+  selectMode?: 'single' | 'multi';
+  onMultiSelect?: (apps: ScrapedMetadata[]) => void;
+  maxSelections?: number;
+  selectedApps?: ScrapedMetadata[];
+  searchCountry?: string;
+}
+
+interface ButtonProps {
+  text: string;
+  onClick: () => void;
+  variant: 'default' | 'outline';
+  disabled?: boolean;
 }
 
 export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
@@ -34,10 +50,77 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   searchTerm,
   mode = 'select',
   onCompetitorAnalysis,
-  showCompetitorAnalysis = true
+  showCompetitorAnalysis = true,
+  selectMode = 'single',
+  onMultiSelect,
+  maxSelections = 5,
+  selectedApps = [],
+  searchCountry = 'US',
 }) => {
   const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
   const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
+
+  const [internalSelectedApps, setInternalSelectedApps] = useState<ScrapedMetadata[]>(selectedApps);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ScrapedMetadata[]>(candidates);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    setInternalSelectedApps(selectedApps);
+  }, [selectedApps]);
+
+  useEffect(() => {
+    if (selectMode === 'single') {
+      setSearchResults(candidates);
+    }
+  }, [candidates, selectMode]);
+
+  const handleAppToggle = (app: ScrapedMetadata) => {
+    const isSelected = internalSelectedApps.some((a) => a.bundleId === app.bundleId);
+    if (isSelected) {
+      setInternalSelectedApps((prev) => prev.filter((a) => a.bundleId !== app.bundleId));
+    } else if (internalSelectedApps.length < maxSelections) {
+      setInternalSelectedApps((prev) => [...prev, app]);
+    }
+  };
+
+  const handleClose = () => {
+    if (selectMode === 'multi' && onMultiSelect) {
+      onMultiSelect(internalSelectedApps);
+    }
+    onClose();
+  };
+
+  const getButtonProps = (app: ScrapedMetadata): ButtonProps => {
+    if (selectMode === 'single') {
+      return {
+        text: buttonText,
+        onClick: () => onSelect(app),
+        variant: 'default',
+      };
+    }
+    const isSelected = internalSelectedApps.some((a) => a.bundleId === app.bundleId);
+    const isAtLimit = internalSelectedApps.length >= maxSelections;
+    return {
+      text: isSelected ? 'Remove' : 'Add to Compare',
+      onClick: () => handleAppToggle(app),
+      variant: isSelected ? 'outline' : 'default',
+      disabled: !isSelected && isAtLimit,
+    };
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const results = await asoSearchService.searchApps(searchQuery.trim(), searchCountry);
+      setSearchResults(results.slice(0, 10));
+    } catch (e) {
+      console.error('Search failed', e);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleCompetitorAnalysis = (analysisType: 'brand' | 'keyword' | 'category') => {
     if (onCompetitorAnalysis) {
@@ -46,27 +129,40 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {mode === 'analyze' 
+            {mode === 'analyze'
               ? `Choose an app to analyze for "${searchTerm}"`
-              : `Multiple apps found for "${searchTerm}"`
-            }
+              : `Multiple apps found for "${searchTerm}"`}
           </DialogTitle>
           <DialogDescription>
             {mode === 'analyze'
-              ? `Found ${candidates.length} apps matching your search. Select which one you want to analyze for CPP strategy:`
-              : 'Select the app you want to analyze:'
-            }
+              ? `Found ${searchResults.length} apps matching your search. Select which one you want to analyze for CPP strategy:`
+              : 'Select the app you want to analyze:'}
           </DialogDescription>
         </DialogHeader>
-        
+
+        {selectMode === 'multi' && (
+          <div className="flex gap-2 mb-4">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search apps..."
+              className="bg-zinc-800 border-zinc-700 text-foreground"
+            />
+            <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
+              {searching ? 'Searching...' : 'Search'}
+            </Button>
+          </div>
+        )}
+
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-3">
-            {candidates.map((app, index) => {
+            {searchResults.map((app, index) => {
               const debug = isDebugTarget(app);
+              const btnProps = getButtonProps(app);
               return (
                 <div key={index} className="border border-zinc-800 rounded-lg p-4">
                   <div className="flex items-start space-x-4">
@@ -81,7 +177,12 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                       <h3 className="font-semibold text-foreground truncate flex items-center gap-2">
                         {app.name}
                         {debug && (
-                          <Badge variant="outline" className="text-[10px] border-yodel-orange text-yodel-orange">Debug</Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-yodel-orange text-yodel-orange"
+                          >
+                            Debug
+                          </Badge>
                         )}
                       </h3>
                       <p className="text-sm text-zinc-400 mb-2">
@@ -92,13 +193,14 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                         {app.rating && (
                           <div className="flex items-center gap-1">
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm text-zinc-300">
-                              {app.rating}
-                            </span>
+                            <span className="text-sm text-zinc-300">{app.rating}</span>
                           </div>
                         )}
                         {app.applicationCategory && (
-                          <Badge variant="outline" className="text-zinc-400 border-zinc-600">
+                          <Badge
+                            variant="outline"
+                            className="text-zinc-400 border-zinc-600"
+                          >
                             {app.applicationCategory}
                           </Badge>
                         )}
@@ -112,11 +214,13 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                     </div>
 
                     <Button
-                      onClick={() => onSelect(app)}
+                      onClick={btnProps.onClick}
+                      variant={btnProps.variant}
+                      disabled={btnProps.disabled}
                       className="bg-yodel-orange hover:bg-yodel-orange/90 text-foreground flex items-center"
                     >
-                      {buttonIcon}
-                      {buttonText}
+                      {selectMode === 'single' && buttonIcon}
+                      {btnProps.text}
                     </Button>
                   </div>
                 </div>
@@ -124,9 +228,8 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
             })}
           </div>
         </ScrollArea>
-        
-        {/* Competitor Analysis Section */}
-        {showCompetitorAnalysis && onCompetitorAnalysis && (
+
+        {showCompetitorAnalysis && selectMode === 'single' && onCompetitorAnalysis && (
           <>
             <Separator className="bg-zinc-800" />
             <div className="space-y-3 pt-4">
@@ -138,7 +241,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                   Get insights on top competing apps for "{searchTerm}"
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-2">
                 <Button
                   onClick={() => handleCompetitorAnalysis('keyword')}
@@ -149,7 +252,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                   Analyze Keyword Competition
                   <span className="ml-auto text-xs text-zinc-500">Top 10 apps</span>
                 </Button>
-                
+
                 <Button
                   onClick={() => handleCompetitorAnalysis('category')}
                   variant="outline"
@@ -167,3 +270,4 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
     </Dialog>
   );
 };
+
