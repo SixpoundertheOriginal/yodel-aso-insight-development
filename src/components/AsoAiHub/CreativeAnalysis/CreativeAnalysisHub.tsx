@@ -183,12 +183,12 @@ export const CreativeAnalysisHub: React.FC = () => {
 
   const convertToAppInfo = (metadata: ScrapedMetadata[]): AppInfo[] => {
     return metadata.map(app => ({
-      appId: app.bundleId || app.appId || app.trackId?.toString() || '',
-      title: app.name || app.title || '',
+      appId: String(app.bundleId || app.appId || app.trackId || ''),
+      title: String(app.name || app.title || ''),
       screenshots: app.screenshots || (app.screenshot ? [app.screenshot] : []),
-      icon: app.icon,
-      rating: app.rating,
-      developer: app.developer,
+      icon: String(app.icon || ''),
+      rating: Number(app.rating || 0),
+      developer: String(app.developer || ''),
       country: selectedCountry
     }));
   };
@@ -502,7 +502,7 @@ export const CreativeAnalysisHub: React.FC = () => {
               <div className="competitor-cards grid gap-4">
                 {selectedCompetitors.map((competitor) => (
                   <CompetitorCard
-                    key={competitor.bundleId}
+                    key={String(competitor.bundleId || competitor.appId || competitor.trackId || `competitor-${Date.now()}`)}
                     app={competitor}
                     onRemove={(app) =>
                       setSelectedCompetitors((prev) => prev.filter((c) => c.bundleId !== app.bundleId))
@@ -547,6 +547,5 @@ export const CreativeAnalysisHub: React.FC = () => {
         searchCountry={selectedCountry}
       />
     </div>
-  </div>
   );
 };
