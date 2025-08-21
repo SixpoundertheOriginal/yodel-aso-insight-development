@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, User, Image as ImageIcon, Brain, Loader2 } from 'lucide-react';
 import { type AppInfo } from '@/services/creative-analysis.service';
 import { ScreenshotGallery } from './ScreenshotGallery';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 interface AppComparisonCardProps {
   app: AppInfo;
@@ -12,6 +14,9 @@ interface AppComparisonCardProps {
   onAnalyzeWithAI?: (app: AppInfo) => void;
   isAnalyzing?: boolean;
   sessionId?: string;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (app: AppInfo, selected: boolean) => void;
 }
 
 export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
@@ -19,12 +24,30 @@ export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
   rank,
   onAnalyzeWithAI,
   isAnalyzing = false,
-  sessionId
+  sessionId,
+  selectionMode = false,
+  isSelected = false,
+  onSelectionChange
 }) => {
   return (
-    <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+    <Card
+      className={cn(
+        'bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors',
+        selectionMode && 'cursor-pointer',
+        isSelected && 'border-blue-500'
+      )}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-start gap-4">
+          {selectionMode && (
+            <div className="pt-1">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelectionChange?.(app, Boolean(checked))}
+                aria-label={`Select ${app.title} for comparison`}
+              />
+            </div>
+          )}
           {/* App Icon */}
           <div className="flex-shrink-0">
             {app.icon ? (

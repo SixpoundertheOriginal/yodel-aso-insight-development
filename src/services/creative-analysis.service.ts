@@ -10,6 +10,7 @@ interface AppInfo {
   bundleId?: string;
   trackId?: number;
   trackName?: string;
+  country?: string;
 }
 
 interface CreativeAnalysisResult {
@@ -168,12 +169,12 @@ export class CreativeAnalysisService {
     return issues;
   }
 
-  private static async fetchAppScreenshots(keyword: string, country = 'US', debug = false, sessionId?: string): Promise<AppInfo[]> {
+  private static async fetchAppScreenshots(keyword: string, country = 'US', debug = false, sessionId?: string, limit = 3): Promise<AppInfo[]> {
     const requestParams = {
       term: keyword,
       country,
       media: 'software',
-      limit: 3,
+      limit,
       entity: 'software'
     };
     const encodedKeyword = encodeURIComponent(keyword);
@@ -259,7 +260,8 @@ export class CreativeAnalysisService {
           developer: app.artistName,
           bundleId: app.bundleId,
           trackId: app.trackId,
-          trackName: app.trackName
+          trackName: app.trackName,
+          country
         } as AppInfo;
       });
 
@@ -313,17 +315,42 @@ export class CreativeAnalysisService {
     }
   }
 
+  private static mapItunesResponseToAppInfo(results: any[], country: string): AppInfo[] {
+    return results.map(app => ({
+      appId: app.trackId?.toString(),
+      screenshots: app.screenshotUrls || [],
+      title: app.trackName || 'Unknown App',
+      icon: app.artworkUrl100 || app.artworkUrl60,
+      rating: app.averageUserRating,
+      developer: app.artistName,
+      bundleId: app.bundleId,
+      trackId: app.trackId,
+      trackName: app.trackName,
+      country
+    }));
+  }
+
+  static async batchLookupApps(appIds: string[], country: string = 'US'): Promise<AppInfo[]> {
+    if (appIds.length === 0) return [];
+    const response = await fetch(`https://itunes.apple.com/lookup?id=${appIds.join(',')}&country=${country}`);
+    if (!response.ok) {
+      throw new Error(`iTunes API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return this.mapItunesResponseToAppInfo(data.results || [], country);
+  }
+
   static async analyzeCreativesByKeyword(
     keyword: string,
-    options: { debug?: boolean; country?: string; sessionId?: string } = {}
+    options: { debug?: boolean; country?: string; sessionId?: string; limit?: number } = {}
   ): Promise<CreativeAnalysisResult> {
-    const { debug = false, country = 'US', sessionId } = options;
+    const { debug = false, country = 'US', sessionId, limit = 3 } = options;
     try {
       if (!keyword.trim()) {
         throw new Error('Keyword is required');
       }
 
-      const apps = await this.fetchAppScreenshots(keyword.trim(), country, debug, sessionId);
+      const apps = await this.fetchAppScreenshots(keyword.trim(), country, debug, sessionId, limit);
 
       return {
         success: true,
@@ -395,7 +422,8 @@ export class CreativeAnalysisService {
         title: app.trackName || 'Unknown App',
         icon: app.artworkUrl100 || app.artworkUrl60,
         rating: app.averageUserRating,
-        developer: app.artistName
+        developer: app.artistName,
+        country
       };
 
       return {
