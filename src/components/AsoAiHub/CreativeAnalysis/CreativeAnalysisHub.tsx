@@ -25,6 +25,8 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [searchSessionId, setSearchSessionId] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState('US');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedApps, setSelectedApps] = useState<AppInfo[]>([]);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('ca_selected_country') : null;
@@ -50,10 +52,10 @@ export const CreativeAnalysisHub: React.FC = () => {
     setSearchSessionId(sessionId);
     
     try {
-      const options = { debug: debugMode, country: selectedCountry, sessionId };
+      const baseOptions = { debug: debugMode, country: selectedCountry, sessionId };
       const result = searchType === 'keyword'
-        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, options)
-        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, options);
+        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, { ...baseOptions, limit: selectionMode ? 10 : 3 })
+        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, baseOptions);
 
       setResults(result);
       
@@ -122,6 +124,45 @@ export const CreativeAnalysisHub: React.FC = () => {
     }
   };
 
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      setSelectedApps([]);
+    }
+  };
+
+  const handleAppSelection = (app: AppInfo, selected: boolean) => {
+    setSelectedApps(prev => {
+      if (selected) {
+        if (prev.find(a => a.appId === app.appId) || prev.length >= 5) {
+          return prev;
+        }
+        return [...prev, app];
+      }
+      return prev.filter(a => a.appId !== app.appId);
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedApps([]);
+  };
+
+  const handleAnalyzeSelected = async () => {
+    if (selectedApps.length < 2) {
+      setAiError('Please select at least 2 apps');
+      return;
+    }
+    try {
+      setAiLoading(true);
+      const analysis = await CreativeAnalysisService.analyzeCreativesWithAI(selectedApps);
+      setAiAnalysis(analysis);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Failed to analyze selected apps');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-foreground">
       <div className="container mx-auto px-6 py-8 max-w-7xl">
@@ -172,6 +213,24 @@ export const CreativeAnalysisHub: React.FC = () => {
                 >
                   🔍 Debug: {debugMode ? 'ON' : 'OFF'}
                 </Button>
+              )}
+              <Button
+                variant={selectionMode ? 'default' : 'outline'}
+                onClick={toggleSelectionMode}
+                size="sm"
+                className="text-xs"
+              >
+                {selectionMode ? 'Manual Selection' : 'Auto Analysis'}
+              </Button>
+              {selectionMode && (
+                <div className="flex items-center gap-2 text-xs text-zinc-400">
+                  <span>{selectedApps.length} apps selected</span>
+                  {selectedApps.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearAllSelections}>
+                      Clear All
+                    </Button>
+                  )}
+                </div>
               )}
               <div className="ml-auto flex items-center gap-2">
                 <Label className="text-xs text-zinc-400">App Store Region</Label>
@@ -258,24 +317,41 @@ export const CreativeAnalysisHub: React.FC = () => {
             <h3 className="text-xl font-semibold text-zinc-100">
               Analysis Results
             </h3>
-            {results.apps.some(app => app.screenshots.length > 0) && (
+            {selectionMode ? (
               <Button
-                onClick={() => handleAnalyzeWithAI()}
-                disabled={aiLoading}
+                onClick={handleAnalyzeSelected}
+                disabled={selectedApps.length < 2 || aiLoading}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {aiLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing All...
+                    Analyzing...
                   </>
                 ) : (
-                  <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    Analyze All with AI
-                  </>
+                  <>Analyze {selectedApps.length} Selected Apps</>
                 )}
               </Button>
+            ) : (
+              results.apps.some(app => app.screenshots.length > 0) && (
+                <Button
+                  onClick={() => handleAnalyzeWithAI()}
+                  disabled={aiLoading}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  {aiLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing All...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-4 h-4 mr-2" />
+                      Analyze All with AI
+                    </>
+                  )}
+                </Button>
+              )
             )}
           </div>
 
@@ -287,6 +363,9 @@ export const CreativeAnalysisHub: React.FC = () => {
               onAnalyzeWithAI={handleAnalyzeWithAI}
               isAnalyzing={aiLoading}
               sessionId={searchSessionId || undefined}
+              selectionMode={selectionMode}
+              isSelected={selectedApps.some(a => a.appId === app.appId)}
+              onSelectionChange={handleAppSelection}
             />
           ))}
 
