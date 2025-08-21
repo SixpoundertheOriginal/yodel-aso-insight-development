@@ -60,13 +60,21 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
   const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
 
-  const [internalSelectedApps, setInternalSelectedApps] = useState<ScrapedMetadata[]>(selectedApps);
+  const [internalSelectedApps, setInternalSelectedApps] = useState<ScrapedMetadata[]>(() => {
+    const uniqueApps = (selectedApps || []).filter(
+      (app, index, arr) => arr.findIndex((a) => a.appId === app.appId) === index
+    );
+    return uniqueApps;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ScrapedMetadata[]>(candidates);
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    setInternalSelectedApps(selectedApps);
+    const uniqueApps = (selectedApps || []).filter(
+      (app, index, arr) => arr.findIndex((a) => a.appId === app.appId) === index
+    );
+    setInternalSelectedApps(uniqueApps);
   }, [selectedApps]);
 
   useEffect(() => {
@@ -76,9 +84,9 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   }, [candidates, selectMode]);
 
   const handleAppToggle = (app: ScrapedMetadata) => {
-    const isSelected = internalSelectedApps.some((a) => a.bundleId === app.bundleId);
+    const isSelected = internalSelectedApps.some((a) => a.appId === app.appId);
     if (isSelected) {
-      setInternalSelectedApps((prev) => prev.filter((a) => a.bundleId !== app.bundleId));
+      setInternalSelectedApps((prev) => prev.filter((a) => a.appId !== app.appId));
     } else if (internalSelectedApps.length < maxSelections) {
       setInternalSelectedApps((prev) => [...prev, app]);
     }
@@ -99,7 +107,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
         variant: 'default',
       };
     }
-    const isSelected = internalSelectedApps.some((a) => a.bundleId === app.bundleId);
+    const isSelected = internalSelectedApps.some((a) => a.appId === app.appId);
     const isAtLimit = internalSelectedApps.length >= maxSelections;
     return {
       text: isSelected ? 'Remove' : 'Add to Compare',
