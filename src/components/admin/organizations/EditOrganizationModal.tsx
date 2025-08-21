@@ -6,6 +6,7 @@ interface Organization {
   slug: string;
   domain: string;
   subscription_tier: 'starter' | 'professional' | 'enterprise';
+  [key: string]: unknown;
 }
 
 interface EditOrganizationModalProps {

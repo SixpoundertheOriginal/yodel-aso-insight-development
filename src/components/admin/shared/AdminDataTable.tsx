@@ -160,13 +160,13 @@ export function AdminDataTable<T extends Record<string, unknown>>({
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
             {paginatedData.map((item, index) => (
-              <tr key={item.id || index} className="hover:bg-gray-750 transition-colors">
+              <tr key={String(item.id) || index} className="hover:bg-gray-750 transition-colors">
                 {onSelectionChange && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
+                      checked={selectedItems.includes(String(item.id))}
+                      onChange={() => handleSelectItem(String(item.id))}
                       className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-600 bg-gray-700 rounded"
                     />
                   </td>

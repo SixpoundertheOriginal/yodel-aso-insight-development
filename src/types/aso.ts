@@ -10,6 +10,7 @@ export interface ScrapedMetadata {
   applicationCategory?: string;
   locale: string;
   icon?: string;
+  [key: string]: unknown;
   developer?: string;
   rating?: number;
   reviews?: number;

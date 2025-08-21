@@ -27,6 +27,7 @@ export interface ColorPalette {
   accent: string;
   background: string;
   text: string;
+  [key: string]: unknown;
 }
 
 export interface MessageAnalysis {
@@ -565,13 +566,13 @@ export class CreativeAnalysisService {
           app_id: analysis.appId,
           app_name: analysis.appName,
           screenshot_url: analysis.screenshotUrl,
-          analysis_data: {
+          analysis_data: JSON.stringify({
             colorPalette: analysis.colorPalette,
             messageAnalysis: analysis.messageAnalysis,
             visualHierarchy: analysis.visualHierarchy,
             textContent: analysis.textContent,
             designPatterns: analysis.designPatterns
-          },
+          }),
           confidence_score: analysis.confidence
         }));
 
@@ -668,7 +669,7 @@ export class CreativeAnalysisService {
 
       // Convert database format back to service format
         const individual: ScreenshotAnalysis[] = screenshots?.map(screenshot => {
-          const analysisData = screenshot.analysis_data as {
+          const analysisData = JSON.parse(screenshot.analysis_data as string) as {
             colorPalette: ColorPalette;
             messageAnalysis: MessageAnalysis;
             visualHierarchy: VisualHierarchy;
@@ -686,7 +687,7 @@ export class CreativeAnalysisService {
           visualHierarchy: analysisData.visualHierarchy as VisualHierarchy,
           textContent: analysisData.textContent as string[],
           designPatterns: analysisData.designPatterns as string[],
-          flowRole: analysisData.flowRole || 'feature',
+          flowRole: (analysisData.flowRole as "feature" | "hook" | "proof" | "CTA" | "onboarding") || 'feature',
           recommendations: analysisData.recommendations || [],
           confidence: screenshot.confidence_score || 0
         };

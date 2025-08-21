@@ -15,10 +15,14 @@ interface User {
     id: string;
     name: string;
     slug: string;
+    [key: string]: unknown;
   };
+  status?: string;
+  last_sign_in_at?: string;
+  created_at?: string;
   email_confirmed: boolean;
   last_sign_in?: string;
-  created_at: string;
+  [key: string]: unknown;
 }
 
 export const UserManagementInterface: React.FC = () => {

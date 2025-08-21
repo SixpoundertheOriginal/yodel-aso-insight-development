@@ -15,6 +15,7 @@ interface Organization {
   active_users_30d: number;
   last_activity: Date;
   created_at: Date;
+  [key: string]: unknown;
 }
 
 type NewOrganization = Pick<

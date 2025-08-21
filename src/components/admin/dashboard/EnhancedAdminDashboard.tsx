@@ -79,7 +79,7 @@ export const EnhancedAdminDashboard: React.FC = () => {
         <ExecutiveMetricCard
           title="Platform Health"
           value={metrics?.platform_health.status || 'good'}
-          trend={metrics?.platform_health.response_time_avg}
+          trend="stable"
           status={metrics?.platform_health.status || 'good'}
           subtitle={`${metrics?.platform_health.uptime_percentage}% uptime`}
         />
