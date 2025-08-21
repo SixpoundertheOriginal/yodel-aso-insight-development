@@ -42,6 +42,7 @@ export interface SearchConfig {
   cacheResults?: boolean;
   debugMode?: boolean;
   onLoadingUpdate?: (state: LoadingState) => void;
+  country?: string;
 }
 
 class AsoSearchService {
@@ -76,7 +77,7 @@ class AsoSearchService {
       // Check cache first for instant results
       const cachedResult = cacheFallbackService.retrieve(input, config.organizationId);
       if (cachedResult) {
-        const result = this.wrapCachedResult(cachedResult, input);
+        const result = this.wrapCachedResult(cachedResult, input, 'cache', config.country || 'us');
         
         const feedback = {
           searchTerm: input,
@@ -135,7 +136,7 @@ class AsoSearchService {
       if (similarResults.length > 0) {
         console.log(`🔍 [ASO-SEARCH] Emergency fallback to similar cached result`);
         
-        const result = this.wrapCachedResult(similarResults[0], input, 'similar');
+        const result = this.wrapCachedResult(similarResults[0], input, 'similar', config.country || 'us');
         const feedback = {
           searchTerm: input,
           resultSource: 'similar' as const,
@@ -260,7 +261,7 @@ class AsoSearchService {
     try {
       const ambiguityResult: SearchResultsResponse = await directItunesService.searchWithAmbiguityDetection(input, {
         organizationId: config.organizationId,
-        country: 'us',
+        country: config.country || 'us',
         limit: 15,
         bypassReason: 'bulletproof-fallback-direct-api'
       });
@@ -275,7 +276,7 @@ class AsoSearchService {
         throw new Error(`No apps found for "${input}". Try different keywords or check the spelling.`);
       }
 
-      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-direct-api');
+      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-direct-api', config.country || 'us');
 
     } catch (error: any) {
       if (error instanceof AmbiguousSearchError) {
@@ -297,7 +298,7 @@ class AsoSearchService {
     try {
       const ambiguityResult: SearchResultsResponse = await directItunesService.searchWithAmbiguityDetection(input, {
         organizationId: config.organizationId,
-        country: 'us',
+        country: config.country || 'us',
         limit: 25,
         bypassReason: 'bulletproof-bypass-search'
       });
@@ -312,7 +313,7 @@ class AsoSearchService {
         throw new Error(`No apps found for "${input}". Try different keywords or check the spelling.`);
       }
 
-      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-bypass');
+      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-bypass', config.country || 'us');
 
     } catch (error: any) {
       if (error instanceof AmbiguousSearchError) {
@@ -339,7 +340,7 @@ class AsoSearchService {
       organizationId: config.organizationId,
       includeCompetitorAnalysis: true,
       searchParameters: {
-        country: 'us',
+        country: config.country || 'us',
         limit: 25
       }
     };
@@ -377,13 +378,18 @@ class AsoSearchService {
       throw new AmbiguousSearchError(candidates, data.data.searchTerm || input);
     }
 
-    return this.transformEdgeFunctionResult(data, input);
+    return this.transformEdgeFunctionResult(data, input, config.country || 'us');
   }
 
   /**
    * Wrap cached result for consistent interface
    */
-  private wrapCachedResult(app: ScrapedMetadata, input: string, source: 'cache' | 'similar' = 'cache'): SearchResult {
+  private wrapCachedResult(
+    app: ScrapedMetadata,
+    input: string,
+    source: 'cache' | 'similar' = 'cache',
+    country = 'us'
+  ): SearchResult {
     return {
       targetApp: app,
       competitors: [],
@@ -392,7 +398,7 @@ class AsoSearchService {
         type: 'keyword',
         totalResults: 1,
         category: app.applicationCategory || 'Unknown',
-        country: 'us',
+        country,
         source,
         responseTime: 0,
         backgroundRetries: 0
@@ -410,7 +416,7 @@ class AsoSearchService {
   /**
    * Transform edge function result
    */
-  private transformEdgeFunctionResult(data: any, input: string): SearchResult {
+  private transformEdgeFunctionResult(data: any, input: string, country: string): SearchResult {
     const responseData = data.data;
     const targetApp = {
       name: responseData.name || responseData.title,
@@ -435,7 +441,7 @@ class AsoSearchService {
         type: 'keyword' as const,
         totalResults: (responseData.competitors?.length || 0) + 1,
         category: responseData.applicationCategory || 'Unknown',
-        country: 'us',
+        country,
         source: 'primary',
         responseTime: 0,
         backgroundRetries: 0
@@ -451,7 +457,12 @@ class AsoSearchService {
   /**
    * Wrap direct iTunes result
    */
-  private wrapDirectResult(app: ScrapedMetadata, input: string, pattern: string): SearchResult {
+  private wrapDirectResult(
+    app: ScrapedMetadata,
+    input: string,
+    pattern: string,
+    country: string
+  ): SearchResult {
     correlationTracker.log('info', 'Wrapping direct iTunes result', {
       appName: app.name,
       pattern
@@ -465,7 +476,7 @@ class AsoSearchService {
         type: pattern.includes('brand') ? 'brand' : 'keyword',
         totalResults: 1,
         category: app.applicationCategory || 'Unknown',
-        country: 'us',
+        country,
         source: 'fallback',
         responseTime: 0,
         backgroundRetries: 0
@@ -478,6 +489,23 @@ class AsoSearchService {
         ]
       }
     };
+  }
+
+  /**
+   * Lightweight search helper for the app selection modal
+   */
+  async searchApps(query: string, country: string = 'US'): Promise<ScrapedMetadata[]> {
+    const search = await directItunesService.searchWithAmbiguityDetection(query, {
+      organizationId: 'global',
+      country,
+      limit: 10,
+      bypassReason: 'app-selection-modal'
+    });
+    return search.results.slice(0, 10);
+  }
+
+  searchByKeyword(keyword: string, country?: string) {
+    return this.searchApps(keyword, country);
   }
 
   /**
