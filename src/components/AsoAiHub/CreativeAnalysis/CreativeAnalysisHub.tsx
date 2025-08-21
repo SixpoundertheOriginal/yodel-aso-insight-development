@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,9 @@ import { CreativeAnalysisService, type AppInfo, type CreativeAnalysisResult, typ
 import { AppComparisonCard } from './AppComparisonCard';
 import { CreativeAnalysisResults } from './CreativeAnalysisResults';
 import { cid } from '@/lib/caDebug';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { COUNTRIES } from '@/components/AsoAiHub/MetadataCopilot/PreLaunchForm';
 
 export const CreativeAnalysisHub: React.FC = () => {
   const [keyword, setKeyword] = useState('fitness');
@@ -21,6 +24,20 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [searchSessionId, setSearchSessionId] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState('US');
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('ca_selected_country') : null;
+    if (stored) {
+      setSelectedCountry(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ca_selected_country', selectedCountry);
+    }
+  }, [selectedCountry]);
 
   const handleSearch = async () => {
     if (!keyword.trim()) return;
@@ -33,10 +50,11 @@ export const CreativeAnalysisHub: React.FC = () => {
     setSearchSessionId(sessionId);
     
     try {
+      const options = { debug: debugMode, country: selectedCountry, sessionId };
       const result = searchType === 'keyword'
-        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, debugMode, sessionId)
-        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, debugMode, sessionId);
-      
+        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, options)
+        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, options);
+
       setResults(result);
       
       // Create a new session if search was successful
@@ -60,6 +78,7 @@ export const CreativeAnalysisHub: React.FC = () => {
         apps: [],
         totalResults: 0,
         keyword: keyword.trim(),
+        country: selectedCountry,
         error: 'Failed to analyze creatives'
       });
     } finally {
@@ -128,7 +147,7 @@ export const CreativeAnalysisHub: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               <Button
                 variant={searchType === 'keyword' ? 'default' : 'outline'}
                 size="sm"
@@ -154,6 +173,21 @@ export const CreativeAnalysisHub: React.FC = () => {
                   🔍 Debug: {debugMode ? 'ON' : 'OFF'}
                 </Button>
               )}
+              <div className="ml-auto flex items-center gap-2">
+                <Label className="text-xs text-zinc-400">App Store Region</Label>
+                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                  <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 text-foreground">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country.code} value={country.code} className="text-foreground">
+                        {country.flag} {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="flex gap-3">
@@ -207,8 +241,13 @@ export const CreativeAnalysisHub: React.FC = () => {
                   {results.totalResults} {results.totalResults === 1 ? 'app' : 'apps'} found
                 </Badge>
               </div>
-              <div className="text-sm text-zinc-400">
-                Search: "{results.keyword}"
+              <div className="text-sm text-zinc-400 flex flex-col items-end sm:flex-row sm:items-center sm:gap-2">
+                <span>Search: "{results.keyword}"</span>
+                <span>
+                  {COUNTRIES.find(c => c.code === results.country)?.flag}
+                  {" "}
+                  {COUNTRIES.find(c => c.code === results.country)?.name} App Store
+                </span>
               </div>
             </div>
 

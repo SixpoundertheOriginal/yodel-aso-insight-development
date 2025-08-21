@@ -49,17 +49,17 @@ const APP_CATEGORIES = [
   { value: 'reference', label: 'Reference' }
 ];
 
-const COUNTRIES = [
-  { value: 'us', label: 'United States' },
-  { value: 'gb', label: 'United Kingdom' },
-  { value: 'ca', label: 'Canada' },
-  { value: 'au', label: 'Australia' },
-  { value: 'de', label: 'Germany' },
-  { value: 'fr', label: 'France' },
-  { value: 'es', label: 'Spain' },
-  { value: 'it', label: 'Italy' },
-  { value: 'jp', label: 'Japan' },
-  { value: 'kr', label: 'South Korea' }
+export const COUNTRIES = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'KR', name: 'South Korea', flag: '🇰🇷' }
 ];
 
 export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({ 
@@ -75,7 +75,7 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
     targetAudience: '',
     keyFeatures: '',
     differentiators: '',
-    targetCountry: 'us'
+    targetCountry: 'US'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -259,8 +259,8 @@ export const PreLaunchForm: React.FC<PreLaunchFormProps> = ({
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-700">
                 {COUNTRIES.map((country) => (
-                  <SelectItem key={country.value} value={country.value} className="text-foreground">
-                    {country.label}
+                  <SelectItem key={country.code} value={country.code} className="text-foreground">
+                    {country.name}
                   </SelectItem>
                 ))}
               </SelectContent>
