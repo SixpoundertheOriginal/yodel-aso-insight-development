@@ -3,13 +3,16 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Badge } from '@/components/ui/badge';
 import { ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { isMFP, CA_DEBUG } from '@/lib/caDebug';
 
 interface ScreenshotGalleryProps {
   screenshots: string[];
   appTitle: string;
+  app?: { bundleId?: string; trackId?: number; trackName?: string };
+  sessionId?: string;
 }
 
-export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots, appTitle }) => {
+export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots, appTitle, app, sessionId }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -40,18 +43,30 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
         </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {screenshots.map((url, index) => (
-            <div
-              key={index}
-              className="group relative aspect-[9/19.5] cursor-pointer rounded-lg overflow-hidden border border-zinc-700 hover:border-zinc-600 transition-all duration-200"
-              onClick={() => handleScreenshotClick(index)}
-            >
-              <img
-                src={url}
-                alt={`${appTitle} screenshot ${index + 1}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                loading="lazy"
-              />
+          {screenshots.map((url, index) => {
+            const handleLoad = CA_DEBUG && app && isMFP(app) ? () => console.info('[CA][MFP][IMG] load ok', { sessionId, src: url }) : undefined;
+            const handleError = CA_DEBUG && app && isMFP(app)
+              ? (e: React.SyntheticEvent<HTMLImageElement>) => console.warn('[CA][MFP][IMG] load err', {
+                  sessionId,
+                  src: url,
+                  w: (e.currentTarget as HTMLImageElement).naturalWidth,
+                  h: (e.currentTarget as HTMLImageElement).naturalHeight
+                })
+              : undefined;
+            return (
+              <div
+                key={index}
+                className="group relative aspect-[9/19.5] cursor-pointer rounded-lg overflow-hidden border border-zinc-700 hover:border-zinc-600 transition-all duration-200"
+                onClick={() => handleScreenshotClick(index)}
+              >
+                <img
+                  src={url}
+                  alt={`${appTitle} screenshot ${index + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                  onLoad={handleLoad}
+                  onError={handleError}
+                />
               
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors duration-200 flex items-center justify-center">
@@ -65,7 +80,8 @@ export const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshot
                 </Badge>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

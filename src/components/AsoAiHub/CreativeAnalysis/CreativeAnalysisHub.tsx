@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Palette, Search, Image, Loader2, AlertCircle, Brain } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CreativeAnalysisService, type AppInfo, type CreativeAnalysisResult, type CreativeAnalysisWithAI } from '@/services/creative-analysis.service';
-import { ScreenshotGallery } from './ScreenshotGallery';
 import { AppComparisonCard } from './AppComparisonCard';
 import { CreativeAnalysisResults } from './CreativeAnalysisResults';
+import { cid } from '@/lib/caDebug';
 
 export const CreativeAnalysisHub: React.FC = () => {
   const [keyword, setKeyword] = useState('fitness');
@@ -20,6 +20,7 @@ export const CreativeAnalysisHub: React.FC = () => {
   const [searchType, setSearchType] = useState<'keyword' | 'appid'>('keyword');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [searchSessionId, setSearchSessionId] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!keyword.trim()) return;
@@ -27,11 +28,14 @@ export const CreativeAnalysisHub: React.FC = () => {
     setLoading(true);
     setAiAnalysis(null);
     setCurrentSessionId(null);
+
+    const sessionId = cid();
+    setSearchSessionId(sessionId);
     
     try {
       const result = searchType === 'keyword'
-        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, debugMode)
-        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, debugMode);
+        ? await CreativeAnalysisService.analyzeCreativesByKeyword(keyword, debugMode, sessionId)
+        : await CreativeAnalysisService.analyzeCreativesByAppId(keyword, debugMode, sessionId);
       
       setResults(result);
       
@@ -237,12 +241,13 @@ export const CreativeAnalysisHub: React.FC = () => {
           </div>
 
           {results.apps.map((app, index) => (
-            <AppComparisonCard 
-              key={app.appId} 
-              app={app} 
+            <AppComparisonCard
+              key={app.appId}
+              app={app}
               rank={index + 1}
               onAnalyzeWithAI={handleAnalyzeWithAI}
               isAnalyzing={aiLoading}
+              sessionId={searchSessionId || undefined}
             />
           ))}
 
