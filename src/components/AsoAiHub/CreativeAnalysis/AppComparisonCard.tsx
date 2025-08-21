@@ -11,13 +11,15 @@ interface AppComparisonCardProps {
   rank: number;
   onAnalyzeWithAI?: (app: AppInfo) => void;
   isAnalyzing?: boolean;
+  sessionId?: string;
 }
 
 export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
   app,
   rank,
   onAnalyzeWithAI,
-  isAnalyzing = false
+  isAnalyzing = false,
+  sessionId
 }) => {
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -75,7 +77,12 @@ export const AppComparisonCard: React.FC<AppComparisonCardProps> = ({
 
       <CardContent>
         {app.screenshots.length > 0 ? (
-          <ScreenshotGallery screenshots={app.screenshots} appTitle={app.title} />
+          <ScreenshotGallery
+            screenshots={app.screenshots}
+            appTitle={app.title}
+            app={app}
+            sessionId={sessionId}
+          />
         ) : (
           <div className="py-8 text-center">
             <ImageIcon className="h-8 w-8 mx-auto mb-2 text-zinc-500" />

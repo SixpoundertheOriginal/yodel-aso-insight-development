@@ -1,3 +1,5 @@
+import { CA_DEBUG, isMFP } from '@/lib/caDebug';
+
 interface AppInfo {
   appId: string;
   screenshots: string[];
@@ -5,6 +7,9 @@ interface AppInfo {
   icon?: string;
   rating?: number;
   developer?: string;
+  bundleId?: string;
+  trackId?: number;
+  trackName?: string;
 }
 
 interface CreativeAnalysisResult {
@@ -161,7 +166,7 @@ export class CreativeAnalysisService {
     return issues;
   }
 
-  private static async fetchAppScreenshots(keyword: string, debug = false): Promise<AppInfo[]> {
+  private static async fetchAppScreenshots(keyword: string, debug = false, sessionId?: string): Promise<AppInfo[]> {
     const requestParams = {
       term: keyword,
       country: 'US',
@@ -197,15 +202,62 @@ export class CreativeAnalysisService {
       const data = await response.json();
       const apps: iTunesApp[] = data.results || [];
 
+      if (CA_DEBUG && sessionId) {
+        for (const app of apps) {
+          if (isMFP(app)) {
+            console.groupCollapsed('[CA][MFP][A] search payload');
+            console.log({
+              sessionId,
+              trackId: app.trackId,
+              bundleId: app.bundleId,
+              trackName: app.trackName,
+              iphone: app.screenshotUrls?.length ?? 0,
+              ipad: app.ipadScreenshotUrls?.length ?? 0,
+              sampleIphone: app.screenshotUrls?.slice(0, 2)
+            });
+            console.groupEnd();
+
+            try {
+              const lookupResp = await fetch(`https://itunes.apple.com/lookup?id=${app.trackId}&entity=software&country=US`);
+              const lookupData = await lookupResp.json();
+              const lookupApp: iTunesApp | undefined = lookupData.results?.[0];
+              console.log('[CA][MFP][B] lookup payload', {
+                sessionId,
+                trackId: app.trackId,
+                iphone: lookupApp?.screenshotUrls?.length ?? 0,
+                ipad: lookupApp?.ipadScreenshotUrls?.length ?? 0,
+                sampleIphone: lookupApp?.screenshotUrls?.slice(0, 2)
+              });
+            } catch (lookupErr) {
+              console.warn('[CA][MFP][B] lookup failed', { sessionId, trackId: app.trackId, error: lookupErr });
+            }
+          }
+        }
+      }
+
       const appInfos = apps.map((app) => {
-        const screenshots = app.screenshotUrls || [];
+        const rawScreenshots = app.screenshotUrls || [];
+        const sanitizedScreenshots = rawScreenshots;
+        if (CA_DEBUG && sessionId && isMFP(app)) {
+          const droppedExamples = rawScreenshots.filter((u) => !sanitizedScreenshots.includes(u)).slice(0, 2);
+          console.log('[CA][MFP][C] validator result', {
+            sessionId,
+            inCount: rawScreenshots.length,
+            outCount: sanitizedScreenshots.length,
+            droppedExamples,
+            reason: 'validator'
+          });
+        }
         return {
           appId: app.trackId.toString(),
-          screenshots,
+          screenshots: sanitizedScreenshots,
           title: app.trackName || 'Unknown App',
           icon: app.artworkUrl100 || app.artworkUrl60,
           rating: app.averageUserRating,
-          developer: app.artistName
+          developer: app.artistName,
+          bundleId: app.bundleId,
+          trackId: app.trackId,
+          trackName: app.trackName
         } as AppInfo;
       });
 
@@ -259,13 +311,13 @@ export class CreativeAnalysisService {
     }
   }
 
-  static async analyzeCreativesByKeyword(keyword: string, debug = false): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByKeyword(keyword: string, debug = false, sessionId?: string): Promise<CreativeAnalysisResult> {
     try {
       if (!keyword.trim()) {
         throw new Error('Keyword is required');
       }
 
-      const apps = await this.fetchAppScreenshots(keyword.trim(), debug);
+      const apps = await this.fetchAppScreenshots(keyword.trim(), debug, sessionId);
       
       return {
         success: true,
@@ -285,7 +337,7 @@ export class CreativeAnalysisService {
     }
   }
 
-  static async analyzeCreativesByAppId(appId: string, debug = false): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByAppId(appId: string, debug = false, sessionId?: string): Promise<CreativeAnalysisResult> {
     try {
       if (!appId.trim()) {
         throw new Error('App ID is required');
