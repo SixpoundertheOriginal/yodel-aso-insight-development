@@ -17,6 +17,7 @@ interface CreativeAnalysisResult {
   apps: AppInfo[];
   totalResults: number;
   keyword: string;
+  country: string;
   error?: string;
 }
 
@@ -166,16 +167,16 @@ export class CreativeAnalysisService {
     return issues;
   }
 
-  private static async fetchAppScreenshots(keyword: string, debug = false, sessionId?: string): Promise<AppInfo[]> {
+  private static async fetchAppScreenshots(keyword: string, country = 'US', debug = false, sessionId?: string): Promise<AppInfo[]> {
     const requestParams = {
       term: keyword,
-      country: 'US',
+      country,
       media: 'software',
       limit: 3,
       entity: 'software'
     };
     const encodedKeyword = encodeURIComponent(keyword);
-    const searchUrl = `https://itunes.apple.com/search?term=${encodedKeyword}&country=${requestParams.country}&media=${requestParams.media}&limit=${requestParams.limit}&entity=${requestParams.entity}`;
+    const searchUrl = `https://itunes.apple.com/search?term=${encodedKeyword}&country=${country}&media=${requestParams.media}&limit=${requestParams.limit}&entity=${requestParams.entity}`;
 
     let debugLog: iTunesDebugLog | null = null;
     if (debug) {
@@ -218,7 +219,7 @@ export class CreativeAnalysisService {
             console.groupEnd();
 
             try {
-              const lookupResp = await fetch(`https://itunes.apple.com/lookup?id=${app.trackId}&entity=software&country=US`);
+              const lookupResp = await fetch(`https://itunes.apple.com/lookup?id=${app.trackId}&entity=software&country=${country}`);
               const lookupData = await lookupResp.json();
               const lookupApp: iTunesApp | undefined = lookupData.results?.[0];
               console.log('[CA][MFP][B] lookup payload', {
@@ -311,19 +312,24 @@ export class CreativeAnalysisService {
     }
   }
 
-  static async analyzeCreativesByKeyword(keyword: string, debug = false, sessionId?: string): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByKeyword(
+    keyword: string,
+    options: { debug?: boolean; country?: string; sessionId?: string } = {}
+  ): Promise<CreativeAnalysisResult> {
+    const { debug = false, country = 'US', sessionId } = options;
     try {
       if (!keyword.trim()) {
         throw new Error('Keyword is required');
       }
 
-      const apps = await this.fetchAppScreenshots(keyword.trim(), debug, sessionId);
-      
+      const apps = await this.fetchAppScreenshots(keyword.trim(), country, debug, sessionId);
+
       return {
         success: true,
         apps,
         totalResults: apps.length,
-        keyword: keyword.trim()
+        keyword: keyword.trim(),
+        country
       };
     } catch (error) {
       console.error('Creative analysis error:', error);
@@ -332,18 +338,23 @@ export class CreativeAnalysisService {
         apps: [],
         totalResults: 0,
         keyword: keyword.trim(),
+        country,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
 
-  static async analyzeCreativesByAppId(appId: string, debug = false, sessionId?: string): Promise<CreativeAnalysisResult> {
+  static async analyzeCreativesByAppId(
+    appId: string,
+    options: { debug?: boolean; country?: string; sessionId?: string } = {}
+  ): Promise<CreativeAnalysisResult> {
+    const { debug = false, country = 'US' } = options;
     try {
       if (!appId.trim()) {
         throw new Error('App ID is required');
       }
 
-      const searchUrl = `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}&country=US`;
+      const searchUrl = `https://itunes.apple.com/lookup?id=${encodeURIComponent(appId)}&country=${country}`;
       if (debug) {
         console.log('analyzeCreativesByAppId request URL:', searchUrl);
       }
@@ -390,7 +401,8 @@ export class CreativeAnalysisService {
         success: true,
         apps: [appInfo],
         totalResults: 1,
-        keyword: app.trackName || appId
+        keyword: app.trackName || appId,
+        country
       };
     } catch (error) {
       console.error('Creative analysis by app ID error:', error);
@@ -399,13 +411,14 @@ export class CreativeAnalysisService {
         apps: [],
         totalResults: 0,
         keyword: appId,
+        country,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
 
   static async debugMyFitnessPal() {
-    await this.fetchAppScreenshots('fitness', true);
+    await this.fetchAppScreenshots('fitness', 'US', true);
   }
 
   static async analyzeCreativesWithAI(apps: AppInfo[], keyword?: string, sessionId?: string): Promise<CreativeAnalysisWithAI> {
