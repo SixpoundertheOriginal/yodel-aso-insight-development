@@ -200,8 +200,17 @@ serve(async (req) => {
       }
 
       // Get OAuth token
-      const tokenResponse = await getGoogleOAuthToken(credentials);
-      const accessToken = tokenResponse.access_token;
+      let accessToken: string;
+      try {
+        const tokenResponse = await getGoogleOAuthToken(credentials);
+        accessToken = tokenResponse.access_token;
+      } catch (error: any) {
+        console.error('❌ [App Discovery] OAuth token retrieval failed:', error.stack || error);
+        return new Response(
+          JSON.stringify({ requestId, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       // Discovery query to find all unique clients in BigQuery
       const discoveryQuery = `
@@ -221,21 +230,30 @@ serve(async (req) => {
 
       console.log('🔍 [App Discovery] Executing BigQuery discovery query');
 
-      const bigQueryResponse = await fetch(
-        `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: discoveryQuery,
-            useLegacySql: false,
-            maxResults: 50
-          })
-        }
-      );
+      let bigQueryResponse: Response;
+      try {
+        bigQueryResponse = await fetch(
+          `https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: discoveryQuery,
+              useLegacySql: false,
+              maxResults: 50
+            })
+          }
+        );
+      } catch (error: any) {
+        console.error('❌ [App Discovery] BigQuery fetch failed:', error.stack || error);
+        return new Response(
+          JSON.stringify({ requestId, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       if (!bigQueryResponse.ok) {
         const errorText = await bigQueryResponse.text();
@@ -313,7 +331,7 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ [App Discovery] Error:', error.message);
+    console.error('❌ [App Discovery] Error:', error.message, error.stack);
 
     return new Response(
       JSON.stringify({
