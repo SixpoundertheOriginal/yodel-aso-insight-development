@@ -165,14 +165,15 @@ serve(async (req) => {
       const projectIdEnv = Deno.env.get('PROJECT_ID');
       const googleCloudProject = Deno.env.get('GOOGLE_CLOUD_PROJECT');
 
-      console.log('[App Discovery] Env state:', {
+      const envState = {
         hasBigQueryProjectId: !!projectId,
         hasCredentials: !!credentialString,
         hasProjectId: !!projectIdEnv,
         hasGoogleCloudProject: !!googleCloudProject
-      });
+      };
+      console.log('[App Discovery] Env state:', envState);
 
-      if (!projectId || !credentialString) {
+      if (!envState.hasBigQueryProjectId || !envState.hasCredentials) {
         throw new Error('BigQuery configuration missing');
       }
 
@@ -187,8 +188,12 @@ serve(async (req) => {
         );
       }
 
-      console.log('[App Discovery] Credentials contain project_id:', !!credentials.project_id);
-      if (!credentials.project_id || credentials.project_id !== projectId) {
+      const projectIdMatches = credentials.project_id === projectId;
+      console.log('[App Discovery] Credential project_id check:', {
+        hasProjectId: !!credentials.project_id,
+        matchesEnvProjectId: projectIdMatches
+      });
+      if (!credentials.project_id || !projectIdMatches) {
         console.error('❌ [App Discovery] Project ID mismatch', {
           credentialProjectId: credentials.project_id,
           envProjectId: projectId
