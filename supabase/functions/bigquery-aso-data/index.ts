@@ -422,6 +422,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const { pathname } = new URL(req.url)
+  if (pathname === '/ping') {
+    return new Response(
+      JSON.stringify({
+        status: 'ok',
+        projectIdResolved: Boolean(Deno.env.get('BIGQUERY_PROJECT_ID'))
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
   try {
     log('request received', {
       method: req.method,
