@@ -123,6 +123,71 @@ function normalizeTrafficSourcesArray(trafficSources: any): string[] {
   return [];
 }
 
+interface ProjectIdSourceAudit {
+  present: boolean;
+  length: number;
+  hasBackticks: boolean;
+}
+
+interface ProjectIdAudit {
+  sources: {
+    BIGQUERY_PROJECT_ID: ProjectIdSourceAudit;
+    GOOGLE_CLOUD_PROJECT: ProjectIdSourceAudit;
+    PROJECT_ID: ProjectIdSourceAudit;
+    BIGQUERY_CREDENTIALS: ProjectIdSourceAudit;
+  };
+  resolved: string | null;
+  credentialsParseError?: string;
+}
+
+function resolveProjectIdWithAudit(): {
+  projectId: string | null;
+  credentials: BigQueryCredentials | null;
+  audit: ProjectIdAudit;
+} {
+  const auditSource = (value: string | null): ProjectIdSourceAudit => ({
+    present: !!value,
+    length: value?.length ?? 0,
+    hasBackticks: value ? value.includes('`') : false,
+  });
+
+  const envBigquery = Deno.env.get('BIGQUERY_PROJECT_ID') || null;
+  const envGcp = Deno.env.get('GOOGLE_CLOUD_PROJECT') || null;
+  const envGeneric = Deno.env.get('PROJECT_ID') || null;
+
+  const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS') || '';
+  let credentials: BigQueryCredentials | null = null;
+  let credsProjectId: string | null = null;
+  let credentialsParseError: string | undefined;
+
+  if (credentialString) {
+    try {
+      credentials = JSON.parse(credentialString);
+      credsProjectId = credentials.project_id || null;
+    } catch (e) {
+      credentialsParseError = (e as Error).message;
+    }
+  }
+
+  let projectId = envBigquery || envGcp || envGeneric || credsProjectId || null;
+  if (projectId && projectId.includes('`')) {
+    projectId = null;
+  }
+
+  const audit: ProjectIdAudit = {
+    sources: {
+      BIGQUERY_PROJECT_ID: auditSource(envBigquery),
+      GOOGLE_CLOUD_PROJECT: auditSource(envGcp),
+      PROJECT_ID: auditSource(envGeneric),
+      BIGQUERY_CREDENTIALS: auditSource(credsProjectId),
+    },
+    resolved: projectId,
+    credentialsParseError,
+  };
+
+  return { projectId, credentials, audit };
+}
+
 // Calculate previous period given current date range
 function calculatePreviousPeriod(from: string, to: string): { from: string; to: string } | null {
   const fromDate = new Date(from);
@@ -424,33 +489,18 @@ serve(async (req) => {
 
   const { pathname } = new URL(req.url)
   if (pathname === '/ping') {
+    const { projectId, audit } = resolveProjectIdWithAudit();
     const envAudit = {
-      BIGQUERY_PROJECT_ID: !!Deno.env.get('BIGQUERY_PROJECT_ID'),
-      GOOGLE_CLOUD_PROJECT: !!Deno.env.get('GOOGLE_CLOUD_PROJECT'),
-      PROJECT_ID: !!Deno.env.get('PROJECT_ID'),
-      BIGQUERY_CREDENTIALS: !!Deno.env.get('BIGQUERY_CREDENTIALS'),
+      ...audit.sources,
       SUPABASE_URL: !!Deno.env.get('SUPABASE_URL'),
       SUPABASE_ANON_KEY: !!Deno.env.get('SUPABASE_ANON_KEY'),
     };
-    let resolvedProjectId = Deno.env.get('BIGQUERY_PROJECT_ID')
-      || Deno.env.get('GOOGLE_CLOUD_PROJECT')
-      || Deno.env.get('PROJECT_ID')
-      || null;
-    if (!resolvedProjectId) {
-      try {
-        const cred = Deno.env.get('BIGQUERY_CREDENTIALS');
-        if (cred) {
-          const parsed = JSON.parse(cred);
-          resolvedProjectId = parsed.project_id || null;
-        }
-      } catch (_) {}
-    }
     return new Response(
       JSON.stringify({
         status: 'ok',
-        projectIdResolved: !!resolvedProjectId,
-        projectId: resolvedProjectId,
-        envAudit
+        projectIdResolved: !!projectId,
+        projectId,
+        envAudit,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -488,41 +538,19 @@ serve(async (req) => {
       }
     )
 
-    const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS');
-    const envProjectIdPrimary = Deno.env.get('BIGQUERY_PROJECT_ID');
-    const envProjectIdGcp = Deno.env.get('GOOGLE_CLOUD_PROJECT');
-    const envProjectIdGeneric = Deno.env.get('PROJECT_ID');
+    const { projectId, credentials, audit } = resolveProjectIdWithAudit();
+    log('project id audit', audit);
 
-    // Parse credentials first
-    let credentials: BigQueryCredentials;
-    try {
-      credentials = JSON.parse(credentialString || '');
-    } catch (parseError) {
-      log('credentials parse failed', (parseError as any).message);
+    if (!credentials) {
       return new Response(
         JSON.stringify({ success: false, error: 'INVALID_BIGQUERY_CREDENTIALS', rid }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Resolve project id with fallbacks
-    let projectId = envProjectIdPrimary || envProjectIdGcp || envProjectIdGeneric || credentials?.project_id || '';
-
-    const envState = {
-      hasCredentials: !!credentialString,
-      sources: {
-        BIGQUERY_PROJECT_ID: !!envProjectIdPrimary,
-        GOOGLE_CLOUD_PROJECT: !!envProjectIdGcp,
-        PROJECT_ID: !!envProjectIdGeneric,
-        CREDS_PROJECT_ID: !!credentials?.project_id,
-      },
-      resolvedProjectId: projectId || null,
-    };
-    log('env', envState);
-
     if (!projectId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'PROJECT_ID_UNRESOLVED', rid, meta: envState }),
+        JSON.stringify({ success: false, error: 'PROJECT_ID_UNRESOLVED', rid, meta: audit }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
