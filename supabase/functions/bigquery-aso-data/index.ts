@@ -424,10 +424,33 @@ serve(async (req) => {
 
   const { pathname } = new URL(req.url)
   if (pathname === '/ping') {
+    const envAudit = {
+      BIGQUERY_PROJECT_ID: !!Deno.env.get('BIGQUERY_PROJECT_ID'),
+      GOOGLE_CLOUD_PROJECT: !!Deno.env.get('GOOGLE_CLOUD_PROJECT'),
+      PROJECT_ID: !!Deno.env.get('PROJECT_ID'),
+      BIGQUERY_CREDENTIALS: !!Deno.env.get('BIGQUERY_CREDENTIALS'),
+      SUPABASE_URL: !!Deno.env.get('SUPABASE_URL'),
+      SUPABASE_ANON_KEY: !!Deno.env.get('SUPABASE_ANON_KEY'),
+    };
+    let resolvedProjectId = Deno.env.get('BIGQUERY_PROJECT_ID')
+      || Deno.env.get('GOOGLE_CLOUD_PROJECT')
+      || Deno.env.get('PROJECT_ID')
+      || null;
+    if (!resolvedProjectId) {
+      try {
+        const cred = Deno.env.get('BIGQUERY_CREDENTIALS');
+        if (cred) {
+          const parsed = JSON.parse(cred);
+          resolvedProjectId = parsed.project_id || null;
+        }
+      } catch (_) {}
+    }
     return new Response(
       JSON.stringify({
         status: 'ok',
-        projectIdResolved: Boolean(Deno.env.get('BIGQUERY_PROJECT_ID'))
+        projectIdResolved: !!resolvedProjectId,
+        projectId: resolvedProjectId,
+        envAudit
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -466,27 +489,14 @@ serve(async (req) => {
     )
 
     const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS');
-    const projectId = Deno.env.get('BIGQUERY_PROJECT_ID');
-    const projectIdEnv = Deno.env.get('PROJECT_ID');
-    const googleCloudProject = Deno.env.get('GOOGLE_CLOUD_PROJECT');
+    const envProjectIdPrimary = Deno.env.get('BIGQUERY_PROJECT_ID');
+    const envProjectIdGcp = Deno.env.get('GOOGLE_CLOUD_PROJECT');
+    const envProjectIdGeneric = Deno.env.get('PROJECT_ID');
 
-    const envState = {
-      hasBigQueryProjectId: !!projectId,
-      hasCredentials: !!credentialString,
-      hasProjectId: !!projectIdEnv,
-      hasGoogleCloudProject: !!googleCloudProject,
-    };
-    log('env', envState);
-    if (!envState.hasBigQueryProjectId || !envState.hasCredentials) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'MISSING_ENV', rid, meta: envState }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    // Parse credentials first
     let credentials: BigQueryCredentials;
     try {
-      credentials = JSON.parse(credentialString!);
+      credentials = JSON.parse(credentialString || '');
     } catch (parseError) {
       log('credentials parse failed', (parseError as any).message);
       return new Response(
@@ -495,14 +505,24 @@ serve(async (req) => {
       );
     }
 
-    log('credential project_id presence', { hasProjectId: !!credentials.project_id });
-    if (!credentials.project_id || credentials.project_id !== projectId) {
-      log('credential project_id mismatch', {
-        credentialProjectId: credentials.project_id,
-        envProjectId: projectId
-      });
+    // Resolve project id with fallbacks
+    let projectId = envProjectIdPrimary || envProjectIdGcp || envProjectIdGeneric || credentials?.project_id || '';
+
+    const envState = {
+      hasCredentials: !!credentialString,
+      sources: {
+        BIGQUERY_PROJECT_ID: !!envProjectIdPrimary,
+        GOOGLE_CLOUD_PROJECT: !!envProjectIdGcp,
+        PROJECT_ID: !!envProjectIdGeneric,
+        CREDS_PROJECT_ID: !!credentials?.project_id,
+      },
+      resolvedProjectId: projectId || null,
+    };
+    log('env', envState);
+
+    if (!projectId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'PROJECT_ID_MISMATCH', rid }),
+        JSON.stringify({ success: false, error: 'PROJECT_ID_UNRESOLVED', rid, meta: envState }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
