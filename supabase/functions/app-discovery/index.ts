@@ -36,6 +36,8 @@ function cleanAppName(appId: string): string {
 
 serve(async (req) => {
   const requestId = crypto.randomUUID();
+  const log = (m: string, extra?: unknown) =>
+    console.log(`[App Discovery][${requestId}] ${m}`, extra ?? "");
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,7 +92,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('🔍 [App Discovery] Request:', body);
+    log('request received', body);
 
     const validationErrors: string[] = [];
     if (!body.organizationId || typeof body.organizationId !== 'string') {
@@ -169,9 +171,9 @@ serve(async (req) => {
         hasBigQueryProjectId: !!projectId,
         hasCredentials: !!credentialString,
         hasProjectId: !!projectIdEnv,
-        hasGoogleCloudProject: !!googleCloudProject
+        hasGoogleCloudProject: !!googleCloudProject,
       };
-      console.log('[App Discovery] Env state:', envState);
+      log('env', envState);
 
       if (!envState.hasBigQueryProjectId || !envState.hasCredentials) {
         throw new Error('BigQuery configuration missing');
@@ -181,7 +183,7 @@ serve(async (req) => {
       try {
         credentials = JSON.parse(credentialString);
       } catch (err: any) {
-        console.error('❌ [App Discovery] Credentials parse failed:', err.message);
+        log('credentials parse failed', err.message);
         return new Response(
           JSON.stringify({ success: false, error: 'INVALID_BIGQUERY_CREDENTIALS' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -189,14 +191,14 @@ serve(async (req) => {
       }
 
       const projectIdMatches = credentials.project_id === projectId;
-      console.log('[App Discovery] Credential project_id check:', {
+      log('credential project_id check', {
         hasProjectId: !!credentials.project_id,
-        matchesEnvProjectId: projectIdMatches
+        matchesEnvProjectId: projectIdMatches,
       });
       if (!credentials.project_id || !projectIdMatches) {
-        console.error('❌ [App Discovery] Project ID mismatch', {
+        log('credential project_id mismatch', {
           credentialProjectId: credentials.project_id,
-          envProjectId: projectId
+          envProjectId: projectId,
         });
         return new Response(
           JSON.stringify({ success: false, error: 'PROJECT_ID_MISMATCH' }),
@@ -210,7 +212,7 @@ serve(async (req) => {
         const tokenResponse = await getGoogleOAuthToken(credentials);
         accessToken = tokenResponse.access_token;
       } catch (error: any) {
-        console.error('❌ [App Discovery] OAuth token retrieval failed:', error.stack || error);
+        log('OAuth token retrieval failed', error.stack || error);
         return new Response(
           JSON.stringify({ requestId, error: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
