@@ -432,10 +432,14 @@ serve(async (req) => {
     });
 
     const contentType = req.headers.get('content-type') || '';
-    if (!contentType.includes('application/json') && req.method !== 'GET') {
+    if (req.method !== 'GET' && contentType !== 'application/json') {
       return new Response(
-        JSON.stringify({ success: false, error: 'UNSUPPORTED_MEDIA_TYPE', rid }),
-        { status: 415, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          requestId: rid,
+          error: 'INVALID_CONTENT_TYPE',
+          details: 'Content-Type must be application/json'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -525,10 +529,9 @@ serve(async (req) => {
         log('json parse failed', (parseError as any).message);
         return new Response(
           JSON.stringify({
-            success: false,
+            requestId: rid,
             error: 'INVALID_JSON',
-            rid,
-            meta: { executionTimeMs: Date.now() - startTime }
+            details: (parseError as any).message
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -542,11 +545,39 @@ serve(async (req) => {
       );
     }
 
+    const validationErrors: string[] = [];
+    if (!body.organizationId || typeof body.organizationId !== 'string') {
+      validationErrors.push('organizationId');
+    }
+    if (
+      !body.dateRange ||
+      typeof body.dateRange.from !== 'string' ||
+      typeof body.dateRange.to !== 'string'
+    ) {
+      validationErrors.push('dateRange');
+    }
+    if (body.selectedApps && !Array.isArray(body.selectedApps)) {
+      validationErrors.push('selectedApps');
+    }
+    if (body.trafficSources && !Array.isArray(body.trafficSources)) {
+      validationErrors.push('trafficSources');
+    }
+    if (typeof body.limit !== 'undefined' && typeof body.limit !== 'number') {
+      validationErrors.push('limit');
+    }
+    if (validationErrors.length) {
+      return new Response(
+        JSON.stringify({
+          requestId: rid,
+          error: 'INVALID_REQUEST',
+          details: validationErrors
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ✅ FIXED: Use organizationId parameter correctly
     const organizationId = body.organizationId;
-    if (!organizationId) {
-      throw new Error('organizationId parameter is required');
-    }
 
     log(`processing request for organization: ${organizationId}`);
     

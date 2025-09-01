@@ -35,9 +35,23 @@ function cleanAppName(appId: string): string {
 }
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID();
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const contentType = req.headers.get('content-type') || '';
+  if (contentType !== 'application/json') {
+    return new Response(
+      JSON.stringify({
+        requestId,
+        error: 'INVALID_CONTENT_TYPE',
+        details: 'Content-Type must be application/json'
+      }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -51,15 +65,64 @@ serve(async (req) => {
       }
     )
 
-    const body: AppDiscoveryRequest = await req.json();
+    let body: AppDiscoveryRequest;
+    try {
+      body = await req.json();
+    } catch (err: any) {
+      return new Response(
+        JSON.stringify({
+          requestId,
+          error: 'INVALID_JSON',
+          details: err.message
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('🔍 [App Discovery] Request:', body);
+
+    const validationErrors: string[] = [];
+    if (!body.organizationId || typeof body.organizationId !== 'string') {
+      validationErrors.push('organizationId');
+    }
+    if (!body.action || typeof body.action !== 'string') {
+      validationErrors.push('action');
+    }
+    if (validationErrors.length) {
+      return new Response(
+        JSON.stringify({
+          requestId,
+          error: 'INVALID_REQUEST',
+          details: validationErrors
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!['discover', 'approve', 'reject'].includes(body.action)) {
+      return new Response(
+        JSON.stringify({
+          requestId,
+          error: 'UNKNOWN_ACTION',
+          details: body.action
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if ((body.action === 'approve' || body.action === 'reject') && (!body.appId || typeof body.appId !== 'string')) {
+      return new Response(
+        JSON.stringify({
+          requestId,
+          error: 'INVALID_REQUEST',
+          details: 'appId is required for approval actions'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Handle approval/rejection actions
     if (body.action === 'approve' || body.action === 'reject') {
-      if (!body.appId) {
-        throw new Error('App ID is required for approval actions');
-      }
-
       const { data, error } = await supabaseClient.rpc('update_app_approval_status', {
         p_app_id: body.appId,
         p_status: body.action === 'approve' ? 'approved' : 'rejected'
@@ -229,14 +292,21 @@ serve(async (req) => {
       );
     }
 
-    throw new Error('Invalid action specified');
+    return new Response(
+      JSON.stringify({
+        requestId,
+        error: 'UNKNOWN_ACTION',
+        details: body.action
+      }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error: any) {
     console.error('❌ [App Discovery] Error:', error.message);
-    
+
     return new Response(
       JSON.stringify({
-        success: false,
+        requestId,
         error: error.message
       }),
       {
