@@ -452,15 +452,42 @@ serve(async (req) => {
 
     const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS');
     const projectId = Deno.env.get('BIGQUERY_PROJECT_ID');
+    const projectIdEnv = Deno.env.get('PROJECT_ID');
+    const googleCloudProject = Deno.env.get('GOOGLE_CLOUD_PROJECT');
 
     const envState = {
-      hasProjectId: !!projectId,
+      hasBigQueryProjectId: !!projectId,
       hasCredentials: !!credentialString,
+      hasProjectId: !!projectIdEnv,
+      hasGoogleCloudProject: !!googleCloudProject,
     };
     log('env', envState);
-    if (!envState.hasProjectId || !envState.hasCredentials) {
+    if (!envState.hasBigQueryProjectId || !envState.hasCredentials) {
       return new Response(
         JSON.stringify({ success: false, error: 'MISSING_ENV', rid, meta: envState }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let credentials: BigQueryCredentials;
+    try {
+      credentials = JSON.parse(credentialString!);
+    } catch (parseError) {
+      log('credentials parse failed', (parseError as any).message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'INVALID_BIGQUERY_CREDENTIALS', rid }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    log('credential project_id presence', { hasProjectId: !!credentials.project_id });
+    if (!credentials.project_id || credentials.project_id !== projectId) {
+      log('credential project_id mismatch', {
+        credentialProjectId: credentials.project_id,
+        envProjectId: projectId
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'PROJECT_ID_MISMATCH', rid }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -579,7 +606,6 @@ serve(async (req) => {
     console.log('🎯 [BigQuery] Final clients to query:', clientsToQuery);
 
     // Get BigQuery OAuth token
-    const credentials: BigQueryCredentials = JSON.parse(credentialString);
     const tokenResponse = await getGoogleOAuthToken(credentials);
     const accessToken = tokenResponse.access_token;
 
