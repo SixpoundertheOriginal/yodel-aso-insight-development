@@ -414,20 +414,30 @@ async function discoverAndSyncApps(
 
 serve(async (req) => {
   const startTime = Date.now();
-  
+  const rid = crypto.randomUUID();
+  const log = (m: string, extra?: unknown) =>
+    console.log(`[BigQuery][${rid}] ${m}`, extra ?? "");
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🔍 [BigQuery] ASO Data request received');
-    console.log('🔍 [HTTP] Request received:', {
+    log('request received', {
       method: req.method,
       contentType: req.headers.get('content-type'),
       contentLength: req.headers.get('content-length'),
       authorization: req.headers.get('authorization') ? 'PRESENT' : 'MISSING',
       userAgent: req.headers.get('user-agent')
     });
+
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && req.method !== 'GET') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'UNSUPPORTED_MEDIA_TYPE', rid }),
+        { status: 415, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -442,22 +452,16 @@ serve(async (req) => {
 
     const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS');
     const projectId = Deno.env.get('BIGQUERY_PROJECT_ID');
-    
-    if (!projectId || !credentialString) {
+
+    const envState = {
+      hasProjectId: !!projectId,
+      hasCredentials: !!credentialString,
+    };
+    log('env', envState);
+    if (!envState.hasProjectId || !envState.hasCredentials) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Missing BigQuery configuration',
-          meta: {
-            hasProjectId: !!projectId,
-            hasCredentials: !!credentialString,
-            executionTimeMs: Date.now() - startTime
-          }
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ success: false, error: 'MISSING_ENV', rid, meta: envState }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -475,13 +479,13 @@ serve(async (req) => {
           startsWithBrace: rawBody.trim().startsWith('{')
         });
         body = JSON.parse(rawBody);
-        console.log('✅ [HTTP] JSON parse successful:', {
+        log('json parse successful', {
           hasOrganizationId: !!(body as any).organizationId,
           hasDateRange: !!(body as any).dateRange,
           keys: Object.keys(body as any)
         });
         // Phase 1.1: request reception logging
-        console.log('📥 [Edge Function] Request received:', {
+        log('request body', {
           organizationId: (body as any).organizationId,
           trafficSources: (body as any).trafficSources,
           trafficSourcesType: typeof (body as any).trafficSources,
@@ -491,19 +495,24 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         });
       } catch (parseError) {
-        console.error('❌ [HTTP] JSON parse failed:', (parseError as any).message);
+        log('json parse failed', (parseError as any).message);
         return new Response(
           JSON.stringify({
             success: false,
-            error: `Invalid JSON in request body: ${(parseError as any).message}`,
-            meta: { executionTimeMs: Date.now() - startTime, parseError: (parseError as any).message }
+            error: 'INVALID_JSON',
+            rid,
+            meta: { executionTimeMs: Date.now() - startTime }
           }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    }
+
+    if (body && (body as any).check === 'ping') {
+      return new Response(
+        JSON.stringify({ ok: true, rid }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // ✅ FIXED: Use organizationId parameter correctly
@@ -512,7 +521,7 @@ serve(async (req) => {
       throw new Error('organizationId parameter is required');
     }
 
-    console.log(`📋 [BigQuery] Processing request for organization: ${organizationId}`);
+    log(`processing request for organization: ${organizationId}`);
     
     if (isDevelopment()) {
       console.log('🔍 [BigQuery] Request parameters:', {
@@ -1074,12 +1083,13 @@ serve(async (req) => {
 
   } catch (error: any) {
     const executionTimeMs = Date.now() - startTime;
-    console.error('💥 [BigQuery] Function error:', error.message);
-    
+    console.error(`[BigQuery][${rid}] Function error:`, error.message);
+
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
+        rid,
         meta: {
           executionTimeMs,
           timestamp: new Date().toISOString(),
