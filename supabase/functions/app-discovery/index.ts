@@ -88,13 +88,43 @@ serve(async (req) => {
     if (body.action === 'discover') {
       const credentialString = Deno.env.get('BIGQUERY_CREDENTIALS');
       const projectId = Deno.env.get('BIGQUERY_PROJECT_ID');
+      const projectIdEnv = Deno.env.get('PROJECT_ID');
+      const googleCloudProject = Deno.env.get('GOOGLE_CLOUD_PROJECT');
+
+      console.log('[App Discovery] Env state:', {
+        hasBigQueryProjectId: !!projectId,
+        hasCredentials: !!credentialString,
+        hasProjectId: !!projectIdEnv,
+        hasGoogleCloudProject: !!googleCloudProject
+      });
 
       if (!projectId || !credentialString) {
         throw new Error('BigQuery configuration missing');
       }
 
-      const credentials: BigQueryCredentials = JSON.parse(credentialString);
-      
+      let credentials: BigQueryCredentials;
+      try {
+        credentials = JSON.parse(credentialString);
+      } catch (err: any) {
+        console.error('❌ [App Discovery] Credentials parse failed:', err.message);
+        return new Response(
+          JSON.stringify({ success: false, error: 'INVALID_BIGQUERY_CREDENTIALS' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('[App Discovery] Credentials contain project_id:', !!credentials.project_id);
+      if (!credentials.project_id || credentials.project_id !== projectId) {
+        console.error('❌ [App Discovery] Project ID mismatch', {
+          credentialProjectId: credentials.project_id,
+          envProjectId: projectId
+        });
+        return new Response(
+          JSON.stringify({ success: false, error: 'PROJECT_ID_MISMATCH' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Get OAuth token
       const tokenResponse = await getGoogleOAuthToken(credentials);
       const accessToken = tokenResponse.access_token;
