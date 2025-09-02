@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Smartphone, Search, Loader2, ExternalLink, Star, CheckCircle } from 'lucide-react';
 import { useAppManagement } from '@/hooks/useAppManagement';
 import { useAuth } from '@/context/AuthContext';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
 import { toast } from 'sonner';
@@ -51,6 +52,7 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
 }) => {
   const { createApp, updateApp, isCreating, isUpdating } = useAppManagement();
   const { user } = useAuth();
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   
   const [formData, setFormData] = useState({
     app_name: '',
@@ -118,21 +120,25 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
     setSelectedResult(null);
     
     try {
-      // Get user's organization ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      // Determine organization context
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+        orgId = profile?.organization_id || null;
+      }
 
-      if (!profile?.organization_id) {
+      if (!orgId) {
         toast.error('Organization not found');
         return;
       }
 
       const result = await AppStoreIntegrationService.searchApp(
         formData.app_name,
-        profile.organization_id
+        orgId
       );
 
       if (result.success && result.data) {
@@ -157,18 +163,22 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
     if (!user || appStoreId.length < 6) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+        orgId = profile?.organization_id || null;
+      }
 
-      if (!profile?.organization_id) return;
+      if (!orgId) return;
 
       const result = await AppStoreIntegrationService.validateAppStoreId(
         appStoreId,
         formData.platform === 'ios' ? 'ios' : 'android',
-        profile.organization_id
+        orgId
       );
 
       if (result.success && result.data) {

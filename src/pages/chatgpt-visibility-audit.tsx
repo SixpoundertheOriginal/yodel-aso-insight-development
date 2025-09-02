@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { 
   SimplifiedBulkAuditProcessor,
   VisibilityResults,
@@ -61,6 +62,7 @@ function ChatGPTVisibilityAudit() {
   const [auditRuns, setAuditRuns] = useState<AuditRun[]>([]);
   const [selectedAuditRun, setSelectedAuditRun] = useState<AuditRun | null>(null);
   const [organizationId, setOrganizationId] = useState<string>('');
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'setup' | 'runs' | 'results'>('setup');
 
@@ -129,29 +131,42 @@ function ChatGPTVisibilityAudit() {
         return;
       }
 
-      // Get user profile to get organization ID
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      // Determine organization context
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
 
-      if (profileError || !profile?.organization_id) {
+        if (profileError || !profile?.organization_id) {
+          toast({
+            title: 'Organization Required',
+            description: 'You need to be part of an organization to use this feature.',
+            variant: 'destructive'
+          });
+          return;
+        }
+        orgId = profile.organization_id;
+      }
+
+      if (!orgId) {
         toast({
           title: 'Organization Required',
-          description: 'You need to be part of an organization to use this feature.',
+          description: 'Please select an organization to use this feature.',
           variant: 'destructive'
         });
         return;
       }
 
-      setOrganizationId(profile.organization_id);
+      setOrganizationId(orgId);
 
       // Fetch apps
       const { data: appsData, error: appsError } = await supabase
         .from('apps')
         .select('*')
-        .eq('organization_id', profile.organization_id)
+        .eq('organization_id', orgId)
         .eq('is_active', true);
 
       if (appsError) {
@@ -166,7 +181,7 @@ function ChatGPTVisibilityAudit() {
       }
 
       // Fetch audit runs
-      await loadAuditRuns(profile.organization_id);
+      await loadAuditRuns(orgId);
 
     } catch (error) {
       console.error('Error initializing data:', error);

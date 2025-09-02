@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/lib/utils/debug';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 
 interface BigQueryAppContextType {
   selectedApps: string[];
@@ -15,6 +16,7 @@ const BigQueryAppContext = createContext<BigQueryAppContextType | undefined>(und
 const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Only log provider mount in verbose debug mode
   debugLog.verbose('[BigQueryAppContext] Provider mounted');
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   
   // ✅ ENHANCED: State management with performance optimization
   const [selectedApps, setSelectedApps] = useState<string[]>([]);
@@ -35,15 +37,21 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        // Get user's organization
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('organization_id')
-          .eq('id', user.id)
-          .single();
+        // Determine organization based on role
+        let organizationId: string | null = null;
+        if (isSuperAdmin) {
+          organizationId = selectedOrganizationId || null;
+        } else {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+          organizationId = profile?.organization_id || null;
+        }
 
-        if (!profile?.organization_id) {
-          debugLog.verbose('[BigQueryAppContext] No organization found, using fallback');
+        if (!organizationId) {
+          debugLog.verbose('[BigQueryAppContext] No organization context found, using fallback');
           setAvailableApps(['Mixbook']);
           setSelectedApps(['Mixbook']);
           setLoading(false);
@@ -54,7 +62,7 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
         const { data: approvedApps, error } = await supabase
           .from('organization_apps')
           .select('app_identifier')
-          .eq('organization_id', profile.organization_id)
+          .eq('organization_id', organizationId)
           .eq('data_source', 'bigquery')
           .eq('approval_status', 'approved');
 
@@ -69,7 +77,7 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
         const appIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
         
         debugLog.verbose('[BigQueryAppContext] Loaded approved apps:', {
-          organizationId: profile.organization_id,
+          organizationId,
           approvedAppsCount: appIdentifiers.length
         });
 
@@ -91,7 +99,7 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadApprovedApps();
-  }, []);
+  }, [isSuperAdmin, selectedOrganizationId]);
 
   // ✅ ENHANCED: Memoized app selection handler to prevent unnecessary re-renders
   const handleSetSelectedApps = useCallback((apps: string[]) => {
