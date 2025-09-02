@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (req.method === 'PUT') {
       // UPDATE user
-      const { role, organization_id, first_name, last_name } = req.body;
+      const { roles, organization_id, first_name, last_name } = req.body;
 
       const { data: updatedProfile, error: profileError } = await supabase
         .from('profiles')
@@ -45,18 +45,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (profileError) throw profileError;
 
       // Replace existing roles for user
-      if (role) {
+      if (roles) {
         await supabase.from('user_roles').delete().eq('user_id', id);
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: id as string,
-            organization_id,
-            role,
-            granted_by: user.id
-          });
+        if (Array.isArray(roles) && roles.length > 0) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert(
+              roles.map((role: string) => ({
+                user_id: id as string,
+                organization_id,
+                role,
+                granted_by: user.id
+              }))
+            );
 
-        if (roleError) throw roleError;
+          if (roleError) throw roleError;
+        }
       }
 
       // Log the change
@@ -68,15 +72,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           action: 'USER_UPDATED',
           resource_type: 'user',
           resource_id: id as string,
-          details: {
-            changes: { role, organization_id, first_name, last_name },
-            updated_by: user.email
-          }
-        });
+            details: {
+              changes: { roles, organization_id, first_name, last_name },
+              updated_by: user.email
+            }
+          });
 
       res.status(200).json({
         ...updatedProfile,
-        roles: role ? [{ role, organization_id }] : []
+        roles: Array.isArray(roles) ? roles.map((r: string) => ({ role: r, organization_id })) : []
       });
 
     } else if (req.method === 'DELETE') {

@@ -6,7 +6,7 @@ interface UserInvitationModalProps {
   onClose: () => void;
   onInvite: (userData: {
     email: string;
-    role: string;
+    roles: string[];
     organization_id: string;
     first_name?: string;
     last_name?: string;
@@ -21,7 +21,7 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
     email: '',
     first_name: '',
     last_name: '',
-    role: 'viewer',
+    roles: ['viewer'],
     organization_id: ''
   });
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -142,12 +142,18 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Role *
+              Roles *
             </label>
             <select
+              multiple
               required
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              value={formData.roles}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  roles: Array.from(e.target.selectedOptions, option => option.value)
+                })
+              }
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               {roles.map((role) => (
@@ -157,7 +163,7 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
               ))}
             </select>
             <p className="text-xs text-gray-400 mt-1">
-              {roles.find(r => r.value === formData.role)?.description}
+              Hold Ctrl/Command to select multiple roles
             </p>
           </div>
 

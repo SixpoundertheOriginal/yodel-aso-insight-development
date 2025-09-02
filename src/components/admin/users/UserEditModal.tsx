@@ -6,14 +6,14 @@ interface UserEditModalProps {
     id: string;
     first_name?: string;
     last_name?: string;
-    role: string;
+    roles: { role: string }[];
     organization_id: string;
   };
   onClose: () => void;
   onSave: (updates: {
     first_name?: string;
     last_name?: string;
-    role?: string;
+    roles?: string[];
     organization_id?: string;
   }) => void;
 }
@@ -22,7 +22,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
   const [formData, setFormData] = useState({
     first_name: user.first_name || '',
     last_name: user.last_name || '',
-    role: user.role,
+    roles: user.roles?.map(r => r.role) || [],
     organization_id: user.organization_id
   });
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -114,16 +114,23 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Roles</label>
             <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              multiple
+              value={formData.roles}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  roles: Array.from(e.target.selectedOptions, option => option.value)
+                })
+              }
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {roles.map((role) => (
                 <option key={role.value} value={role.value}>{role.label}</option>
               ))}
             </select>
+            <p className="text-xs text-gray-400 mt-1">Hold Ctrl/Command to select multiple roles</p>
           </div>
 
           <div className="flex space-x-3 pt-4">

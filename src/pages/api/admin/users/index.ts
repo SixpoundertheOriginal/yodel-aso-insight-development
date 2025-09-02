@@ -68,18 +68,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     } else if (req.method === 'POST') {
       // CREATE new user (invitation)
-      const { email, role, organization_id, first_name, last_name } = req.body;
+      const { email, roles, organization_id, first_name, last_name } = req.body;
 
       // Validate required fields
-      if (!email || !role || !organization_id) {
-        return res.status(400).json({ 
-          error: 'Missing required fields: email, role, organization_id' 
+      if (!email || !organization_id || !roles || !Array.isArray(roles) || roles.length === 0) {
+        return res.status(400).json({
+          error: 'Missing required fields: email, roles, organization_id'
         });
       }
 
-      // Validate role
+      // Validate roles
       const validRoles = ['super_admin', 'org_admin', 'aso_manager', 'analyst', 'viewer', 'client'];
-      if (!validRoles.includes(role)) {
+      if (roles.some((r: string) => !validRoles.includes(r))) {
         return res.status(400).json({ error: 'Invalid role' });
       }
 
@@ -99,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           first_name,
           last_name,
-          role,
+          roles,
           organization_id
         },
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
@@ -133,12 +133,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Assign role in user_roles table
       const { error: roleAssignError } = await supabase
         .from('user_roles')
-        .insert({
-          user_id: authUser.user.id,
-          organization_id,
-          role,
-          granted_by: user.id
-        });
+        .insert(
+          roles.map((role: string) => ({
+            user_id: authUser.user.id,
+            organization_id,
+            role,
+            granted_by: user.id
+          }))
+        );
 
       if (roleAssignError) {
         console.error('Role assignment error:', roleAssignError);
@@ -157,17 +159,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           action: 'USER_INVITED',
           resource_type: 'user',
           resource_id: profile.id,
-          details: {
-            invited_email: email,
-            assigned_role: role,
-            invited_by: user.email
-          }
-        });
+            details: {
+              invited_email: email,
+              assigned_roles: roles,
+              invited_by: user.email
+            }
+          });
 
       res.status(201).json({
         user: {
           ...profile,
-          roles: [{ role, organization_id }]
+          roles: roles.map((role: string) => ({ role, organization_id }))
         },
         invitation_sent: true,
         message: 'User invited successfully'
