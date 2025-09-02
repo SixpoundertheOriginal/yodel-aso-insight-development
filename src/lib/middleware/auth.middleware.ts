@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Tables } from '@/integrations/supabase/types';
-import { MiddlewareFunction, ApiRequest, ApiResponse } from './types';
+import { MiddlewareFunction } from './types';
 
 export const withAuth: MiddlewareFunction = async (req, res, next) => {
   try {
@@ -29,37 +28,35 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
       return;
     }
 
-    // Get user profile and organization/role
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('organization_id, user_roles(role, organization_id)')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      res.status(401).json({
-        error: 'User profile not found',
-        code: 'PROFILE_NOT_FOUND'
-      });
-      return;
-    }
-
-    const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
-    const isSuperAdmin = userRoles.some(
-      (r) => r.role?.toLowerCase() === 'super_admin' && r.organization_id === null
+    // Check super admin status
+    const { data: isSuperAdminData, error: superAdminError } = await supabase.rpc(
+      'is_super_admin',
+      { user_uuid: user.id }
     );
 
-    if (!isSuperAdmin && !profile.organization_id) {
-      res.status(403).json({
-        error: 'Organization context required',
-        code: 'ORG_REQUIRED'
-      });
-      return;
+    const isSuperAdmin = Boolean(isSuperAdminData) && !superAdminError;
+    let organizationId: string | null = null;
+
+    if (!isSuperAdmin) {
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('organization_id')
+        .eq('user_id', user.id);
+
+      if (rolesError || !roles || roles.length === 0 || !roles[0].organization_id) {
+        res.status(403).json({
+          error: 'Organization context required',
+          code: 'ORG_REQUIRED'
+        });
+        return;
+      }
+
+      organizationId = roles[0].organization_id;
     }
 
     // Attach user data to request
     req.user = user;
-    req.organizationId = profile.organization_id || null;
+    req.organizationId = organizationId;
     req.isSuperAdmin = isSuperAdmin;
 
     await next();

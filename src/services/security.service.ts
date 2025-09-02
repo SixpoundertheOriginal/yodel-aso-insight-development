@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Tables } from '@/integrations/supabase/types';
 import { SecurityContext, AuditLogEntry, RateLimitConfig, SecureResponse, ValidationError } from '@/types/security';
 
 class SecurityService {
@@ -138,25 +137,24 @@ class SecurityService {
    */
   async validateOrganizationContext(organizationId: string, userId: string): Promise<SecureResponse<boolean>> {
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('organization_id, user_roles(role, organization_id)')
-        .eq('id', userId)
-        .single();
+      const { data: roles, error } = await supabase
+        .from('user_roles')
+        .select('role, organization_id')
+        .eq('user_id', userId);
 
-      if (error || !profile) {
-        return { success: false, errors: [{ field: 'user', message: 'User profile not found', code: 'USER_NOT_FOUND' }] };
+      if (error || !roles) {
+        return { success: false, errors: [{ field: 'user', message: 'User roles not found', code: 'USER_NOT_FOUND' }] };
       }
 
-      const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
-      const isSuperAdmin = userRoles.some(
+      const isSuperAdmin = roles.some(
         (r) => r.role?.toLowerCase() === 'super_admin' && r.organization_id === null
       );
       if (isSuperAdmin) {
         return { success: true, data: true };
       }
 
-      if (profile.organization_id !== organizationId) {
+      const hasOrgAccess = roles.some((r) => r.organization_id === organizationId);
+      if (!hasOrgAccess) {
         return { success: false, errors: [{ field: 'organization', message: 'Access denied to organization', code: 'ACCESS_DENIED' }] };
       }
 
