@@ -14,13 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, organization_id')
-    .eq('id', user.id)
+  const { data: superAdminRole, error: roleError } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'super_admin')
     .single();
 
-  if (profile?.role !== 'super_admin') {
+  if (roleError || !superAdminRole) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -29,10 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // UPDATE user
       const { role, organization_id, first_name, last_name } = req.body;
 
-      const { data: updatedUser, error } = await supabase
+      const { data: updatedProfile, error: profileError } = await supabase
         .from('profiles')
         .update({
-          role,
           organization_id,
           first_name,
           last_name,
@@ -42,13 +42,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select()
         .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Replace existing roles for user
+      if (role) {
+        await supabase.from('user_roles').delete().eq('user_id', id);
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: id as string,
+            organization_id,
+            role,
+            granted_by: user.id
+          });
+
+        if (roleError) throw roleError;
+      }
 
       // Log the change
       await supabase
         .from('audit_logs')
         .insert({
-          organization_id: updatedUser.organization_id,
+          organization_id: organization_id,
           user_id: user.id,
           action: 'USER_UPDATED',
           resource_type: 'user',
@@ -59,7 +74,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         });
 
-      res.status(200).json(updatedUser);
+      res.status(200).json({
+        ...updatedProfile,
+        roles: role ? [{ role, organization_id }] : []
+      });
 
     } else if (req.method === 'DELETE') {
       // DELETE user

@@ -13,13 +13,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: superAdminRole, error: roleError } = await supabase
+    .from('user_roles')
     .select('role')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
+    .eq('role', 'super_admin')
     .single();
 
-  if (profile?.role !== 'super_admin') {
+  if (roleError || !superAdminRole) {
     return res.status(403).json({ error: 'Forbidden - Super admin required' });
   }
 
@@ -33,10 +34,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email,
           first_name,
           last_name,
-          role,
           organization_id,
           last_login,
           created_at,
+          user_roles(role, organization_id),
           organizations:organization_id (
             id,
             name,
@@ -56,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const authUser = authUsers.users.find(au => au.id === user.id);
         return {
           ...user,
+          roles: user.user_roles || [],
           email_confirmed: authUser?.email_confirmed_at ? true : false,
           last_sign_in: authUser?.last_sign_in_at,
           auth_provider: authUser?.app_metadata?.provider || 'email'
@@ -116,7 +118,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email,
           first_name,
           last_name,
-          role,
           organization_id
         })
         .select()
@@ -127,6 +128,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Clean up auth user if profile creation fails
         await supabase.auth.admin.deleteUser(authUser.user.id);
         return res.status(500).json({ error: 'Failed to create user profile' });
+      }
+
+      // Assign role in user_roles table
+      const { error: roleAssignError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authUser.user.id,
+          organization_id,
+          role,
+          granted_by: user.id
+        });
+
+      if (roleAssignError) {
+        console.error('Role assignment error:', roleAssignError);
+        // Clean up created records if role assignment fails
+        await supabase.from('profiles').delete().eq('id', authUser.user.id);
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+        return res.status(500).json({ error: 'Failed to assign user role' });
       }
 
       // Log the invitation
@@ -146,7 +165,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
       res.status(201).json({
-        user: profile,
+        user: {
+          ...profile,
+          roles: [{ role, organization_id }]
+        },
         invitation_sent: true,
         message: 'User invited successfully'
       });
