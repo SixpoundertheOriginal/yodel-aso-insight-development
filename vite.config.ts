@@ -8,6 +8,34 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      // Map admin API calls to Supabase Edge Functions
+      '/api/health': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-health',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/health', ''),
+      },
+      '/api/whoami': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-whoami',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/whoami', ''),
+      },
+      '/api/admin/organizations': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-organizations',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/admin/organizations', ''),
+      },
+      '/api/admin/dashboard-metrics': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-dashboard-metrics',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/admin/dashboard-metrics', ''),
+      },
+      '/api/admin/recent-activity': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-recent-activity',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/admin/recent-activity', ''),
+      },
+    },
   },
   plugins: [
     react(),

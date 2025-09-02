@@ -73,7 +73,7 @@ class SecurityService {
       }
 
       const currentHourlyUsage = recentActions?.length || 0;
-      const hourlyLimit = limits?.requests_per_hour || this.getDefaultLimits(tier).requestsPerHour;
+      const hourlyLimit = Number(limits?.requests_per_hour) || this.getDefaultLimits(tier).requestsPerHour;
       
       if (currentHourlyUsage >= hourlyLimit) {
         return { 
@@ -90,7 +90,7 @@ class SecurityService {
       return { 
         success: true, 
         data: true, 
-        rateLimitRemaining: hourlyLimit - currentHourlyUsage 
+        rateLimitRemaining: Number(hourlyLimit) - currentHourlyUsage 
       };
     } catch (error) {
       console.error('Rate limit check failed:', error);
