@@ -9,7 +9,7 @@ interface User {
   email: string;
   first_name?: string;
   last_name?: string;
-  role: string;
+  roles: { role: string; organization_id: string }[];
   organization_id: string;
   organizations?: {
     id: string;
@@ -61,7 +61,7 @@ export const UserManagementInterface: React.FC = () => {
 
   const handleInviteUser = async (userData: {
     email: string;
-    role: string;
+    roles: string[];
     organization_id: string;
     first_name?: string;
     last_name?: string;
@@ -89,7 +89,12 @@ export const UserManagementInterface: React.FC = () => {
     }
   };
 
-  const handleEditUser = async (userId: string, updates: Partial<User>) => {
+  const handleEditUser = async (userId: string, updates: {
+    first_name?: string;
+    last_name?: string;
+    roles?: string[];
+    organization_id?: string;
+  }) => {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
@@ -187,20 +192,26 @@ export const UserManagementInterface: React.FC = () => {
     },
     {
       header: 'Role',
-      accessor: 'role',
-      cell: (user: User) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          user.role === 'super_admin'
+      accessor: 'roles',
+      cell: (user: User) => {
+        const rolePriority = ['super_admin', 'org_admin', 'aso_manager', 'analyst', 'viewer', 'client'];
+        const highestRole = rolePriority.find(r => user.roles.some(ur => ur.role === r)) ||
+          user.roles[0]?.role || 'unknown';
+        const roleNames = user.roles.map(r => r.role.replace('_', ' ')).join(', ');
+        const colorClass =
+          highestRole === 'super_admin'
             ? 'bg-red-100 text-red-800'
-            : user.role === 'org_admin'
+            : highestRole === 'org_admin'
             ? 'bg-purple-100 text-purple-800'
-            : user.role === 'aso_manager'
+            : highestRole === 'aso_manager'
             ? 'bg-blue-100 text-blue-800'
-            : 'bg-gray-100 text-gray-800'
-        }`}>
-          {user.role.replace('_', ' ')}
-        </span>
-      )
+            : 'bg-gray-100 text-gray-800';
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
+            {roleNames}
+          </span>
+        );
+      }
     },
     {
       header: 'Status',
