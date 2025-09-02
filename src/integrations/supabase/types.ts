@@ -2370,7 +2370,12 @@ export type Database = {
       get_approved_apps: {
         Args: { p_organization_id: string }
         Returns: {
+          id: string
           app_identifier: string
+          app_name: string | null
+          data_source: string
+          approval_status: string
+          app_metadata: unknown
         }[]
       }
       get_current_user_organization_id: {
