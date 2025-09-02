@@ -1894,7 +1894,6 @@ export type Database = {
           id: string
           last_name: string | null
           organization_id: string | null
-          role: string
           updated_at: string
         }
         Insert: {
@@ -1904,7 +1903,6 @@ export type Database = {
           id: string
           last_name?: string | null
           organization_id?: string | null
-          role?: string
           updated_at?: string
         }
         Update: {
@@ -1914,7 +1912,6 @@ export type Database = {
           id?: string
           last_name?: string | null
           organization_id?: string | null
-          role?: string
           updated_at?: string
         }
         Relationships: [
@@ -1993,29 +1990,18 @@ export type Database = {
       }
       role_permissions: {
         Row: {
-          created_at: string
-          permission_name: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
+          permissions: Json
         }
         Insert: {
-          created_at?: string
-          permission_name: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
+          permissions: Json
         }
         Update: {
-          created_at?: string
-          permission_name?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
+          permissions?: Json
         }
-        Relationships: [
-          {
-            foreignKeyName: "role_permissions_permission_name_fkey"
-            columns: ["permission_name"]
-            isOneToOne: false
-            referencedRelation: "permissions"
-            referencedColumns: ["name"]
-          },
-        ]
+        Relationships: []
       }
       scrape_cache: {
         Row: {
@@ -2132,30 +2118,40 @@ export type Database = {
       }
       user_roles: {
         Row: {
-          created_at: string
-          id: string
-          organization_id: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at: string
           user_id: string
+          organization_id: string | null
+          role: string
+          granted_by: string | null
+          granted_at: string
+          expires_at: string | null
+          is_active: boolean
         }
         Insert: {
-          created_at?: string
-          id?: string
-          organization_id?: string | null
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
           user_id: string
+          organization_id?: string | null
+          role: string
+          granted_by?: string | null
+          granted_at?: string
+          expires_at?: string | null
+          is_active?: boolean
         }
         Update: {
-          created_at?: string
-          id?: string
-          organization_id?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
           user_id?: string
+          organization_id?: string | null
+          role?: string
+          granted_by?: string | null
+          granted_at?: string
+          expires_at?: string | null
+          is_active?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_organization_id_fkey"
             columns: ["organization_id"]
@@ -2490,12 +2486,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role:
-        | "SUPER_ADMIN"
-        | "ORGANIZATION_ADMIN"
-        | "MANAGER"
-        | "ANALYST"
-        | "VIEWER"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2622,14 +2613,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: [
-        "SUPER_ADMIN",
-        "ORGANIZATION_ADMIN",
-        "MANAGER",
-        "ANALYST",
-        "VIEWER",
-      ],
-    },
+    Enums: {},
   },
 } as const
