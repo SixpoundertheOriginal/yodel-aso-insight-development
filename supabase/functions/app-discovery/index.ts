@@ -238,7 +238,7 @@ serve(async (req) => {
 
       // Discovery query to find all unique clients in BigQuery
       const discoveryQuery = `
-        SELECT 
+        SELECT
           client as app_identifier,
           COUNT(*) as record_count,
           MIN(date) as first_seen,
@@ -246,8 +246,12 @@ serve(async (req) => {
           COUNT(DISTINCT date) as days_with_data
         FROM \`${projectId}.client_reports.aso_all_apple\`
         WHERE client IS NOT NULL AND client != ''
-        GROUP BY client 
-        HAVING COUNT(*) > 100
+        GROUP BY client
+      ` +
+      // Lowered threshold from 100 to 50 rows to include smaller apps in discovery
+      // Rationale: Apps with 50+ rows contain meaningful data worth managing
+      // AppOne: 65 rows, AppTwo: 73 rows - both have sufficient data for analysis
+      `HAVING COUNT(*) > 50
         ORDER BY record_count DESC
         LIMIT 50
       `;
