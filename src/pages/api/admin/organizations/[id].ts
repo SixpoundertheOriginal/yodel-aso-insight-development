@@ -14,13 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: superAdminRole, error: roleError } = await supabase
+    .from('user_roles')
     .select('role')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
+    .eq('role', 'super_admin')
     .single();
 
-  if (profile?.role !== 'super_admin') {
+  if (roleError || !superAdminRole) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

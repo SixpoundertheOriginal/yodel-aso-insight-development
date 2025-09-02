@@ -18,13 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
+    const { data: superAdminRole, error: roleError } = await supabase
+      .from('user_roles')
       .select('role')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
+      .eq('role', 'super_admin')
       .single();
 
-    if (profile?.role !== 'super_admin') {
+    if (roleError || !superAdminRole) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       partnershipsData
     ] = await Promise.all([
       // Users metrics
-      supabase.from('profiles').select('id, role, last_login, created_at'),
+      supabase.from('profiles').select('id, last_login, created_at, user_roles(role)'),
 
       // REAL APPS DATA from organization_apps table
       supabase.from('organization_apps').select(`
@@ -92,14 +93,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // User metrics
     const totalUsers = usersData.data?.length || 0;
-    const activeUsers = usersData.data?.filter(user => 
+    const activeUsers = usersData.data?.filter(user =>
       user.last_login && new Date(user.last_login) > thirtyDaysAgo
     ).length || 0;
-    const newUsers = usersData.data?.filter(user => 
+    const newUsers = usersData.data?.filter(user =>
       new Date(user.created_at) > thirtyDaysAgo
     ).length || 0;
     const usersByRole = usersData.data?.reduce((acc, user) => {
-      acc[user.role] = (acc[user.role] || 0) + 1;
+      const roles = (user.user_roles || []) as { role: string }[];
+      roles.forEach(r => {
+        acc[r.role] = (acc[r.role] || 0) + 1;
+      });
       return acc;
     }, {} as Record<string, number>) || {};
 
