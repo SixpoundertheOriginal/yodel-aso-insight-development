@@ -28,7 +28,7 @@ serve(async (req) => {
       .eq('user_id', user.user.id)
 
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { 
-      user_id: user.user.id 
+      user_uuid: user.user.id 
     })
 
     const whoamiData = {

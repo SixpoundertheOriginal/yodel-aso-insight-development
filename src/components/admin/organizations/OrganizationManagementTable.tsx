@@ -4,6 +4,7 @@ import { CreateOrganizationModal } from './CreateOrganizationModal';
 import { EditOrganizationModal } from './EditOrganizationModal';
 import { Edit3, Users, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Organization {
   id: string;
@@ -41,15 +42,13 @@ export const OrganizationManagementTable: React.FC = () => {
   const loadOrganizations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/organizations');
-
-      if (!response.ok) {
-        throw new Error(`Failed to load organizations: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setOrganizations(data);
-      console.log(`Loaded ${data.length} organizations`);
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations');
+      
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Request failed');
+      
+      setOrganizations(response.data || []);
+      console.log(`Loaded ${response.data?.length || 0} organizations`);
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Failed to load organizations:', error);
@@ -62,21 +61,16 @@ export const OrganizationManagementTable: React.FC = () => {
   const handleCreateOrganization = async (orgData: NewOrganization) => {
     try {
       setCreating(true);
-      const response = await fetch('/api/admin/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orgData)
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
+        body: orgData
       });
 
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Failed to create organization');
-      }
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to create organization');
 
-      const result = await response.json();
       setShowCreateModal(false);
       loadOrganizations();
-      alert(`Organization "${result.organization.name}" created successfully!`);
+      alert(`Organization "${response.data.name}" created successfully!`);
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Failed to create organization:', error);
@@ -91,13 +85,12 @@ export const OrganizationManagementTable: React.FC = () => {
     updates: Partial<Organization>
   ) => {
     try {
-      const response = await fetch(`/api/admin/organizations/${orgId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
+        body: { action: 'update', id: orgId, payload: updates }
       });
 
-      if (!response.ok) throw new Error('Failed to update organization');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to update organization');
 
       loadOrganizations();
       setShowEditModal(false);
@@ -120,18 +113,15 @@ export const OrganizationManagementTable: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/organizations/${orgId}`, {
-        method: 'DELETE'
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
+        body: { action: 'delete', id: orgId }
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete organization');
-      }
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to delete organization');
 
       loadOrganizations();
       alert('Organization deleted successfully');
-
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Delete failed:', error);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserEditModalProps {
   user: {
@@ -34,10 +35,10 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
 
   const loadOrganizations = async () => {
     try {
-      const response = await fetch('/api/admin/organizations');
-      if (response.ok) {
-        const data = await response.json();
-        setOrganizations(data);
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations');
+      if (error) throw error;
+      if (response?.success) {
+        setOrganizations(response.data || []);
       }
     } catch (error) {
       console.error('Failed to load organizations:', error);

@@ -3,6 +3,7 @@ import { ExecutiveMetricCard } from './ExecutiveMetricCard';
 import { PlatformHealthChart } from './PlatformHealthChart';
 import { QuickActionsPanel } from './QuickActionsPanel';
 import { RecentActivityFeed } from './RecentActivityFeed';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AdminDashboardMetrics {
   platform_health: {
@@ -53,9 +54,10 @@ export const EnhancedAdminDashboard: React.FC = () => {
   const loadDashboardMetrics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/dashboard-metrics');
-      const data = await response.json();
-      setMetrics(data);
+      const { data: response, error } = await supabase.functions.invoke('admin-dashboard-metrics');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Request failed');
+      setMetrics(response.data);
       setRefreshTime(new Date());
     } catch (error) {
       console.error('Failed to load dashboard metrics:', error);

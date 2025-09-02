@@ -22,7 +22,7 @@ serve(async (req) => {
     if (!user.user) throw new Error('Not authenticated')
     
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { 
-      user_id: user.user.id 
+      user_uuid: user.user.id 
     })
     if (!isSuperAdmin) throw new Error('Super admin access required')
 
@@ -44,48 +44,96 @@ serve(async (req) => {
       })
 
     } else if (req.method === 'POST') {
-      // Create new organization
+      // Handle both create and update/delete via body action
       const body = await req.json()
       
-      // Validate required fields
-      if (!body.name || !body.slug || !body.domain) {
-        throw new Error('Missing required fields: name, slug, domain')
-      }
+      if (body.action === 'update') {
+        // Update organization
+        const { id, payload } = body
+        if (!id || !payload) {
+          throw new Error('Missing required fields: id, payload for update')
+        }
 
-      // Check if slug already exists
-      const { data: existing } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('slug', body.slug)
-        .single()
+        const { data: updatedOrg, error } = await supabase
+          .from('organizations')
+          .update(payload)
+          .eq('id', id)
+          .select()
+          .single()
 
-      if (existing) {
-        throw new Error('Organization slug already exists')
-      }
+        if (error) throw error
 
-      // Insert new organization
-      const { data: newOrg, error } = await supabase
-        .from('organizations')
-        .insert({
-          name: body.name,
-          slug: body.slug,
-          domain: body.domain,
-          subscription_tier: body.subscription_tier || 'professional',
-          settings: body.settings || {}
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedOrg,
+          message: 'Organization updated successfully'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
-        .select()
-        .single()
 
-      if (error) throw error
+      } else if (body.action === 'delete') {
+        // Delete organization
+        const { id } = body
+        if (!id) {
+          throw new Error('Missing required field: id for delete')
+        }
 
-      return new Response(JSON.stringify({
-        success: true,
-        data: newOrg,
-        message: 'Organization created successfully'
-      }), {
-        status: 201,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+        const { error } = await supabase
+          .from('organizations')
+          .delete()
+          .eq('id', id)
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Organization deleted successfully'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+
+      } else {
+        // Create new organization
+        // Validate required fields
+        if (!body.name || !body.slug || !body.domain) {
+          throw new Error('Missing required fields: name, slug, domain')
+        }
+
+        // Check if slug already exists
+        const { data: existing } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('slug', body.slug)
+          .single()
+
+        if (existing) {
+          throw new Error('Organization slug already exists')
+        }
+
+        // Insert new organization
+        const { data: newOrg, error } = await supabase
+          .from('organizations')
+          .insert({
+            name: body.name,
+            slug: body.slug,
+            domain: body.domain,
+            subscription_tier: body.subscription_tier || 'professional',
+            settings: body.settings || {}
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: newOrg,
+          message: 'Organization created successfully'
+        }), {
+          status: 201,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
 
     } else {
       throw new Error('Method not allowed')

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ActivityItem {
   id: string;
@@ -20,9 +21,10 @@ export const RecentActivityFeed: React.FC = () => {
   const loadRecentActivity = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/recent-activity');
-      const data = await response.json();
-      setActivities(data);
+      const { data: response, error } = await supabase.functions.invoke('admin-recent-activity');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Request failed');
+      setActivities(response.data || []);
     } catch (error) {
       console.error('Failed to load recent activity:', error);
       setActivities([

@@ -3,6 +3,7 @@ import { AdminDataTable } from '../shared/AdminDataTable';
 import { UserInvitationModal } from './UserInvitationModal';
 import { UserEditModal } from './UserEditModal';
 import { Users, UserPlus, Edit3, Trash2, RotateCcw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -41,15 +42,15 @@ export const UserManagementInterface: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/users');
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'list' }
+      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to load users: ${response.status}`);
-      }
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Request failed');
 
-      const data = await response.json();
-      setUsers(data);
-      console.log(`Loaded ${data.length} users across all organizations`);
+      setUsers(response.data || []);
+      console.log(`Loaded ${response.data?.length || 0} users across all organizations`);
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Failed to load users:', error);
@@ -67,18 +68,13 @@ export const UserManagementInterface: React.FC = () => {
     last_name?: string;
   }) => {
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'create', ...userData }
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to invite user');
-      }
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to invite user');
 
-      await response.json();
       setShowInviteModal(false);
       loadUsers();
       alert(`Invitation sent successfully to ${userData.email}`);
@@ -96,13 +92,12 @@ export const UserManagementInterface: React.FC = () => {
     organization_id?: string;
   }) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'update', id: userId, payload: updates }
       });
 
-      if (!response.ok) throw new Error('Failed to update user');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to update user');
 
       setShowEditModal(false);
       setSelectedUser(null);
@@ -119,11 +114,12 @@ export const UserManagementInterface: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE'
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'delete', id: userId }
       });
 
-      if (!response.ok) throw new Error('Failed to delete user');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to delete user');
 
       loadUsers();
     } catch (error) {
@@ -138,14 +134,14 @@ export const UserManagementInterface: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
-        method: 'POST'
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'resetPassword', id: userId }
       });
 
-      if (!response.ok) throw new Error('Failed to send password reset');
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to send password reset');
 
-      const result = await response.json();
-      alert(`Password reset email sent to ${result.email}`);
+      alert(`Password reset email sent to ${response.data?.email || 'user'}`);
     } catch (error) {
       console.error('Failed to send password reset:', error);
       alert('Failed to send password reset email');
