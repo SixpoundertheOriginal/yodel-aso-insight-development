@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { SecurityContext, AuditLogEntry, RateLimitConfig, SecureResponse, ValidationError } from '@/types/security';
 
 class SecurityService {
@@ -53,7 +54,7 @@ class SecurityService {
         return { success: false, errors: [{ field: 'organization', message: 'Organization not found', code: 'ORG_NOT_FOUND' }] };
       }
 
-      const limits = orgData.api_limits as any;
+      const limits = orgData.api_limits as Record<string, unknown>;
       const tier = orgData.subscription_tier;
       
       // Get current usage from audit logs
@@ -139,7 +140,7 @@ class SecurityService {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('organization_id, role')
+        .select('organization_id, user_roles(role, organization_id)')
         .eq('id', userId)
         .single();
 
@@ -147,7 +148,10 @@ class SecurityService {
         return { success: false, errors: [{ field: 'user', message: 'User profile not found', code: 'USER_NOT_FOUND' }] };
       }
 
-      const isSuperAdmin = profile.role?.toLowerCase() === 'super_admin';
+      const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
+      const isSuperAdmin = userRoles.some(
+        (r) => r.role?.toLowerCase() === 'super_admin' && r.organization_id === null
+      );
       if (isSuperAdmin) {
         return { success: true, data: true };
       }

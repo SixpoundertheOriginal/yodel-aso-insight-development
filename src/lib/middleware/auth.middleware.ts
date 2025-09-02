@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { MiddlewareFunction, ApiRequest, ApiResponse } from './types';
 
 export const withAuth: MiddlewareFunction = async (req, res, next) => {
@@ -31,7 +32,7 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
     // Get user profile and organization/role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('organization_id, role')
+      .select('organization_id, user_roles(role, organization_id)')
       .eq('id', user.id)
       .single();
 
@@ -43,8 +44,10 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
       return;
     }
 
-    const role = profile.role?.toLowerCase();
-    const isSuperAdmin = role === 'super_admin';
+    const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
+    const isSuperAdmin = userRoles.some(
+      (r) => r.role?.toLowerCase() === 'super_admin' && r.organization_id === null
+    );
 
     if (!isSuperAdmin && !profile.organization_id) {
       res.status(403).json({
