@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { ScrapedMetadata } from '@/types/aso';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { DataImporter } from '@/components/shared/DataImporter';
@@ -28,6 +29,7 @@ interface MetadataImporterProps {
 export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSuccess, onCompetitorAnalysis }) => {
   const [mode, setMode] = useState<'selector' | 'existing' | 'pre-launch'>('selector');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const [lastError, setLastError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'auto' | 'keyword' | 'brand' | 'url'>('auto');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -71,27 +73,36 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         console.log('🔍 [METADATA-IMPORTER] Fetching user organization...');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('❌ [METADATA-IMPORTER] Profile fetch error:', error);
-            throw error;
-          }
-          
-          if (profile?.organization_id) {
-            setOrganizationId(profile.organization_id);
-            console.log('✅ [METADATA-IMPORTER] Organization ID found:', profile.organization_id);
+          if (isSuperAdmin) {
+            setOrganizationId(selectedOrganizationId || null);
+            if (selectedOrganizationId) {
+              console.log('✅ [METADATA-IMPORTER] Super admin organization context:', selectedOrganizationId);
+            } else {
+              console.warn('⚠️ [METADATA-IMPORTER] Super admin has no organization selected.');
+            }
           } else {
-            console.warn('⚠️ [METADATA-IMPORTER] User has no organization_id.');
-            toast({
-              title: 'Organization Setup Required',
-              description: 'Your account needs to be associated with an organization. Please contact support.',
-              variant: 'destructive',
-            });
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('organization_id')
+              .eq('id', user.id)
+              .single();
+
+            if (error) {
+              console.error('❌ [METADATA-IMPORTER] Profile fetch error:', error);
+              throw error;
+            }
+
+            if (profile?.organization_id) {
+              setOrganizationId(profile.organization_id);
+              console.log('✅ [METADATA-IMPORTER] Organization ID found:', profile.organization_id);
+            } else {
+              console.warn('⚠️ [METADATA-IMPORTER] User has no organization_id.');
+              toast({
+                title: 'Organization Setup Required',
+                description: 'Your account needs to be associated with an organization. Please contact support.',
+                variant: 'destructive',
+              });
+            }
           }
         } else {
           console.warn('⚠️ [METADATA-IMPORTER] User not authenticated.');
@@ -103,9 +114,9 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         }
       } catch (err: any) {
         console.error("❌ [METADATA-IMPORTER] Error fetching user profile/organization:", err);
-        toast({ 
-          title: 'Could not load your profile. Please refresh and try again.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Could not load your profile. Please refresh and try again.',
+          variant: 'destructive'
         });
       }
     };
@@ -115,7 +126,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
     if (showDebugInfo) {
       loadSystemHealth();
     }
-  }, [toast, showDebugInfo]);
+  }, [toast, showDebugInfo, isSuperAdmin, selectedOrganizationId]);
 
   const loadSystemHealth = async () => {
     try {

@@ -28,12 +28,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // ✅ ENHANCED: Only redirect non-super-admin users without organization
   // Platform Super Admins can have null organization_id and should access dashboard
   if (profile && !profile.organization_id) {
-    // Check if user is a super admin
     const userRoles = profile.user_roles || [];
-    const isSuperAdmin = userRoles.some((role: any) => 
-      role.role === 'SUPER_ADMIN' && role.organization_id === null
-    );
-    
+    const isSuperAdmin =
+      userRoles.some(
+        (role: any) => role.role?.toLowerCase() === 'super_admin' && role.organization_id === null
+      ) || profile.role?.toLowerCase() === 'super_admin';
+
     if (!isSuperAdmin) {
       return <Navigate to="/apps" replace />;
     }

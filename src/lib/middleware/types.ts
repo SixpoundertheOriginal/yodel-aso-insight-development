@@ -12,7 +12,8 @@ export interface ApiRequest {
   };
   user?: User;
   session?: Session;
-  organizationId?: string;
+  organizationId?: string | null;
+  isSuperAdmin?: boolean;
   rateLimitInfo?: {
     remaining: number;
     resetTime: Date;

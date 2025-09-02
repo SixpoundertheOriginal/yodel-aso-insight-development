@@ -28,7 +28,7 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
       return;
     }
 
-    // Get user profile and organization
+    // Get user profile and organization/role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('organization_id, role')
@@ -43,10 +43,22 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
       return;
     }
 
+    const role = profile.role?.toLowerCase();
+    const isSuperAdmin = role === 'super_admin';
+
+    if (!isSuperAdmin && !profile.organization_id) {
+      res.status(403).json({
+        error: 'Organization context required',
+        code: 'ORG_REQUIRED'
+      });
+      return;
+    }
+
     // Attach user data to request
     req.user = user;
-    req.organizationId = profile.organization_id;
-    
+    req.organizationId = profile.organization_id || null;
+    req.isSuperAdmin = isSuperAdmin;
+
     await next();
   } catch (error) {
     console.error('Auth middleware error:', error);

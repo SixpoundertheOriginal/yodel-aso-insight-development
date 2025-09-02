@@ -147,6 +147,11 @@ class SecurityService {
         return { success: false, errors: [{ field: 'user', message: 'User profile not found', code: 'USER_NOT_FOUND' }] };
       }
 
+      const isSuperAdmin = profile.role?.toLowerCase() === 'super_admin';
+      if (isSuperAdmin) {
+        return { success: true, data: true };
+      }
+
       if (profile.organization_id !== organizationId) {
         return { success: false, errors: [{ field: 'organization', message: 'Access denied to organization', code: 'ACCESS_DENIED' }] };
       }

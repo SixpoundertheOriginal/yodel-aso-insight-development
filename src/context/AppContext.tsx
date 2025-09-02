@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { useSuperAdmin } from './SuperAdminContext';
 
 interface App {
   id: string;
@@ -30,13 +31,26 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
 
   // Get user's organization apps with enhanced query
   const { data: apps = [], isLoading, error } = useQuery({
-    queryKey: ['user-apps', user?.id],
+    queryKey: ['user-apps', user?.id, isSuperAdmin ? selectedOrganizationId : null],
     queryFn: async () => {
       if (!user) return [];
+
+      // Platform super admin can view apps for selected organization
+      if (isSuperAdmin) {
+        if (!selectedOrganizationId) return [];
+        const { data: apps, error } = await supabase
+          .from('apps')
+          .select('*')
+          .eq('organization_id', selectedOrganizationId)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return apps || [];
+      }
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -55,7 +69,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error) throw error;
       return apps || [];
     },
-    enabled: !!user,
+    enabled: !!user && (!isSuperAdmin || !!selectedOrganizationId),
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

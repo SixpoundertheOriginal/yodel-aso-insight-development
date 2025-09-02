@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { toast } from 'sonner';
 
 interface OrganizationUsage {
@@ -28,32 +29,37 @@ interface AppFormData {
 
 export const useAppManagement = () => {
   const { user } = useAuth();
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const queryClient = useQueryClient();
 
   // Get organization usage analytics
   const { data: orgUsage, isLoading: isLoadingUsage } = useQuery({
-    queryKey: ['organization-usage'],
+    queryKey: ['organization-usage', isSuperAdmin ? selectedOrganizationId : null],
     queryFn: async () => {
       if (!user) return null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+        orgId = profile?.organization_id || null;
+      }
 
-      if (!profile?.organization_id) return null;
+      if (!orgId) return null;
 
       const { data, error } = await supabase
         .from('organization_app_usage')
         .select('*')
-        .eq('organization_id', profile.organization_id)
+        .eq('organization_id', orgId)
         .single();
 
       if (error) throw error;
       return data as OrganizationUsage;
     },
-    enabled: !!user,
+    enabled: !!user && (!isSuperAdmin || !!selectedOrganizationId),
   });
 
   // Check if organization can add more apps
@@ -74,22 +80,26 @@ export const useAppManagement = () => {
 
   // Get audit logs for app changes
   const { data: auditLogs, isLoading: isLoadingAudit } = useQuery({
-    queryKey: ['app-audit-logs'],
+    queryKey: ['app-audit-logs', isSuperAdmin ? selectedOrganizationId : null],
     queryFn: async () => {
       if (!user) return [];
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+        orgId = profile?.organization_id || null;
+      }
 
-      if (!profile?.organization_id) return [];
+      if (!orgId) return [];
 
       const { data, error } = await supabase
         .from('audit_logs')
         .select('*')
-        .eq('organization_id', profile.organization_id)
+        .eq('organization_id', orgId)
         .eq('resource_type', 'app')
         .order('created_at', { ascending: false })
         .limit(20);
@@ -97,19 +107,23 @@ export const useAppManagement = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && (!isSuperAdmin || !!selectedOrganizationId),
   });
 
   // Create new app mutation
   const createAppMutation = useMutation({
     mutationFn: async (appData: AppFormData) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user!.id)
-        .single();
+      let orgId: string | null = selectedOrganizationId || null;
+      if (!isSuperAdmin) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user!.id)
+          .single();
+        orgId = profile?.organization_id || null;
+      }
 
-      if (!profile?.organization_id) {
+      if (!orgId) {
         throw new Error('No organization found');
       }
 
@@ -117,7 +131,7 @@ export const useAppManagement = () => {
         .from('apps')
         .insert({
           ...appData,
-          organization_id: profile.organization_id,
+          organization_id: orgId,
           created_by: user!.id,
           is_active: true
         })

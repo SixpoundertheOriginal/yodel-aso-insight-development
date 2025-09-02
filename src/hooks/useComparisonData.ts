@@ -4,6 +4,7 @@ import { useAsoData } from '../context/AsoDataContext';
 import { useBigQueryData } from './useBigQueryData';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { standardizeChartData } from '../utils/format';
 import { getPreviousPeriod, calculateDeltas } from '../utils/dateCalculations';
 import { AsoData } from './useMockAsoData';
@@ -31,11 +32,17 @@ export interface ComparisonData {
 export const useComparisonData = (type: ComparisonType): ComparisonData => {
   const { filters } = useAsoData();
   const { user } = useAuth();
+  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState<string>('');
 
-  // Get organization ID from user profile
+  // Get organization ID from user profile or super admin selection
   useEffect(() => {
     const fetchOrganizationId = async () => {
+      if (isSuperAdmin) {
+        setOrganizationId(selectedOrganizationId || '');
+        return;
+      }
+
       if (!user) return;
 
       try {
@@ -59,7 +66,7 @@ export const useComparisonData = (type: ComparisonType): ComparisonData => {
     };
 
     fetchOrganizationId();
-  }, [user]);
+  }, [user, isSuperAdmin, selectedOrganizationId]);
   
   // Calculate previous period date range
   const previousDateRange = useMemo(() => {

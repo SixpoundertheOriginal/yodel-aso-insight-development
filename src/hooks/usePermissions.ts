@@ -25,33 +25,36 @@ export const usePermissions = () => {
         .select('role, organization_id')
         .eq('user_id', user.id);
 
-      const roles = userRoles?.map(r => r.role) || [];
+      const roleSet = new Set<string>();
+      if (profile.role) roleSet.add(profile.role.toLowerCase());
+      userRoles?.forEach(r => roleSet.add(r.role.toLowerCase()));
+
       // ✅ ENHANCED: Handle null organization_id for Platform Super Admin
-      const organizationRoles = userRoles?.filter(r => 
-        profile.organization_id 
-          ? r.organization_id === profile.organization_id 
+      const organizationRoles = userRoles?.filter(r =>
+        profile.organization_id
+          ? r.organization_id === profile.organization_id
           : r.organization_id === null
-      ).map(r => r.role) || [];
+      ).map(r => r.role.toLowerCase()) || [];
 
       // Define permission list based on roles
-      const permissionsList = [];
-      if (roles.includes('SUPER_ADMIN')) {
+      const permissionsList: string[] = [];
+      if (roleSet.has('super_admin')) {
         permissionsList.push('admin.manage_all', 'admin.approve_apps', 'admin.manage_apps', 'admin.view_audit_logs');
       }
-      if (organizationRoles.includes('ORGANIZATION_ADMIN') || roles.includes('SUPER_ADMIN')) {
+      if (organizationRoles.includes('org_admin') || roleSet.has('super_admin')) {
         permissionsList.push('admin.manage_apps', 'admin.approve_apps', 'admin.view_org_data');
       }
 
       return {
         userId: user.id,
         organizationId: profile.organization_id,
-        roles,
+        roles: Array.from(roleSet),
         organizationRoles,
         permissions: permissionsList,
-        isSuperAdmin: roles.includes('SUPER_ADMIN'),
-        isOrganizationAdmin: organizationRoles.includes('ORGANIZATION_ADMIN') || roles.includes('SUPER_ADMIN'),
-        canManageApps: organizationRoles.includes('ORGANIZATION_ADMIN') || roles.includes('SUPER_ADMIN'),
-        canApproveApps: organizationRoles.includes('ORGANIZATION_ADMIN') || roles.includes('SUPER_ADMIN')
+        isSuperAdmin: roleSet.has('super_admin'),
+        isOrganizationAdmin: organizationRoles.includes('org_admin') || roleSet.has('super_admin'),
+        canManageApps: organizationRoles.includes('org_admin') || roleSet.has('super_admin'),
+        canApproveApps: organizationRoles.includes('org_admin') || roleSet.has('super_admin')
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
