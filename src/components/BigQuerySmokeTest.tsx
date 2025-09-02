@@ -28,9 +28,12 @@ export const BigQuerySmokeTest: React.FC = () => {
     try {
       const testPayload = {
         organizationId: "84728f94-91db-4f9c-b025-5221fbed4065",
+        // Using 2025-07-04 to 2025-08-06 because this is the actual data range
+        // available in BigQuery for AppOne and AppTwo (confirmed via direct query)
+        // Total expected rows: ~138 (65 from AppOne + 73 from AppTwo)
         dateRange: {
-          from: "2025-06-01",
-          to: "2025-07-01"
+          from: "2025-07-04",
+          to: "2025-08-06"
         },
         selectedApps: ["AppOne", "AppTwo"],
         trafficSources: []
