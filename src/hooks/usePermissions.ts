@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 
 export const usePermissions = () => {
   const { data: permissions, isLoading } = useQuery({
@@ -10,38 +11,38 @@ export const usePermissions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      // Get user profile and roles
+      // Get user profile with roles
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('organization_id, user_roles(role, organization_id)')
         .eq('id', user.id)
         .single();
 
       if (!profile) return null;
 
-      // Get user roles
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select('role, organization_id')
-        .eq('user_id', user.id);
-
+      const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
       const roleSet = new Set<string>();
-      if (profile.role) roleSet.add(profile.role.toLowerCase());
-      userRoles?.forEach(r => roleSet.add(r.role.toLowerCase()));
+      userRoles.forEach((r) => roleSet.add(r.role.toLowerCase()));
 
       // ✅ ENHANCED: Handle null organization_id for Platform Super Admin
-      const organizationRoles = userRoles?.filter(r =>
-        profile.organization_id
-          ? r.organization_id === profile.organization_id
-          : r.organization_id === null
-      ).map(r => r.role.toLowerCase()) || [];
+      const organizationRoles = userRoles
+        .filter((r) =>
+          profile.organization_id
+            ? r.organization_id === profile.organization_id
+            : r.organization_id === null
+        )
+        .map((r) => r.role.toLowerCase());
+
+      const isSuperAdmin = userRoles.some(
+        (r) => r.role?.toLowerCase() === 'super_admin' && r.organization_id === null
+      );
 
       // Define permission list based on roles
       const permissionsList: string[] = [];
-      if (roleSet.has('super_admin')) {
+      if (isSuperAdmin) {
         permissionsList.push('admin.manage_all', 'admin.approve_apps', 'admin.manage_apps', 'admin.view_audit_logs');
       }
-      if (organizationRoles.includes('org_admin') || roleSet.has('super_admin')) {
+      if (organizationRoles.includes('org_admin') || isSuperAdmin) {
         permissionsList.push('admin.manage_apps', 'admin.approve_apps', 'admin.view_org_data');
       }
 
@@ -51,10 +52,10 @@ export const usePermissions = () => {
         roles: Array.from(roleSet),
         organizationRoles,
         permissions: permissionsList,
-        isSuperAdmin: roleSet.has('super_admin'),
-        isOrganizationAdmin: organizationRoles.includes('org_admin') || roleSet.has('super_admin'),
-        canManageApps: organizationRoles.includes('org_admin') || roleSet.has('super_admin'),
-        canApproveApps: organizationRoles.includes('org_admin') || roleSet.has('super_admin')
+        isSuperAdmin,
+        isOrganizationAdmin: organizationRoles.includes('org_admin') || isSuperAdmin,
+        canManageApps: organizationRoles.includes('org_admin') || isSuperAdmin,
+        canApproveApps: organizationRoles.includes('org_admin') || isSuperAdmin
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
