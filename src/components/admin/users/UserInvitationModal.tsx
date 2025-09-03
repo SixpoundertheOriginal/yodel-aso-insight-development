@@ -34,7 +34,9 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
 
   const loadOrganizations = async () => {
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations');
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
+        method: 'GET'
+      });
       if (error) throw error;
       if (response?.success) {
         setOrganizations(response.data || []);
