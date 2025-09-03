@@ -42,8 +42,10 @@ export const OrganizationManagementTable: React.FC = () => {
   const loadOrganizations = async () => {
     try {
       setLoading(true);
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations');
-      
+      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
+        method: 'GET'
+      });
+
       if (error) throw error;
       if (!response?.success) throw new Error(response?.error || 'Request failed');
       
