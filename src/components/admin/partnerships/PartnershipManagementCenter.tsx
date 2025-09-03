@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const PartnershipManagementCenter: React.FC = () => {
+const PartnershipManagementCenter: React.FC = () => {
   return (
     <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
       <h2 className="text-lg font-semibold mb-4">Partnerships</h2>
@@ -9,4 +9,5 @@ export const PartnershipManagementCenter: React.FC = () => {
   );
 };
 
+export { PartnershipManagementCenter };
 export default PartnershipManagementCenter;

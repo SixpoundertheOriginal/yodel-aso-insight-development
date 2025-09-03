@@ -4,7 +4,7 @@ interface SecurityCompliancePanelProps {
   defaultTab?: string;
 }
 
-export const SecurityCompliancePanel: React.FC<SecurityCompliancePanelProps> = ({ defaultTab }) => {
+const SecurityCompliancePanel: React.FC<SecurityCompliancePanelProps> = ({ defaultTab }) => {
   return (
     <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
       <h2 className="text-lg font-semibold mb-4">Security & Compliance</h2>
@@ -13,4 +13,5 @@ export const SecurityCompliancePanel: React.FC<SecurityCompliancePanelProps> = (
   );
 };
 
+export { SecurityCompliancePanel };
 export default SecurityCompliancePanel;
