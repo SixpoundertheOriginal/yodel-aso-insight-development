@@ -5,6 +5,7 @@ import { EditOrganizationModal } from './EditOrganizationModal';
 import { Edit3, Users, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface Organization {
   id: string;
@@ -52,9 +53,13 @@ export const OrganizationManagementTable: React.FC = () => {
       setOrganizations(response.data || []);
       console.log(`Loaded ${response.data?.length || 0} organizations`);
     } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Failed to load organizations:', error);
-      setError(error.message);
+      const error = err as FunctionsHttpError | Error;
+      const message =
+        error instanceof FunctionsHttpError
+          ? error.context?.error || error.message
+          : error.message;
+      console.error('Failed to load organizations:', message, error);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -74,9 +79,13 @@ export const OrganizationManagementTable: React.FC = () => {
       loadOrganizations();
       alert(`Organization "${response.data.name}" created successfully!`);
     } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Failed to create organization:', error);
-      alert(`Failed to create organization: ${error.message}`);
+      const error = err as FunctionsHttpError | Error;
+      const message =
+        error instanceof FunctionsHttpError
+          ? error.context?.error || error.message
+          : error.message;
+      console.error('Failed to create organization:', message, error);
+      alert(`Failed to create organization: ${message}`);
     } finally {
       setCreating(false);
     }
@@ -98,9 +107,13 @@ export const OrganizationManagementTable: React.FC = () => {
       setShowEditModal(false);
       alert('Organization updated successfully!');
     } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Failed to update organization:', error);
-      alert(`Update failed: ${error.message}`);
+      const error = err as FunctionsHttpError | Error;
+      const message =
+        error instanceof FunctionsHttpError
+          ? error.context?.error || error.message
+          : error.message;
+      console.error('Failed to update organization:', message, error);
+      alert(`Update failed: ${message}`);
     }
   };
 
@@ -125,9 +138,13 @@ export const OrganizationManagementTable: React.FC = () => {
       loadOrganizations();
       alert('Organization deleted successfully');
     } catch (err: unknown) {
-      const error = err as Error;
-      console.error('Delete failed:', error);
-      alert(`Failed to delete organization: ${error.message}`);
+      const error = err as FunctionsHttpError | Error;
+      const message =
+        error instanceof FunctionsHttpError
+          ? error.context?.error || error.message
+          : error.message;
+      console.error('Delete failed:', message, error);
+      alert(`Failed to delete organization: ${message}`);
     }
   };
 

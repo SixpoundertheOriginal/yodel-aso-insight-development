@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface CreateOrganizationModalProps {
   onClose: () => void;
@@ -62,8 +63,12 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
     try {
       await onCreate(formData);
     } catch (err: unknown) {
-      const error = err as Error;
-      setErrors({ general: error.message || 'Failed to create organization' });
+      const error = err as FunctionsHttpError | Error;
+      const message =
+        error instanceof FunctionsHttpError
+          ? error.context?.error || error.message
+          : error.message;
+      setErrors({ general: message || 'Failed to create organization' });
     }
   };
 
