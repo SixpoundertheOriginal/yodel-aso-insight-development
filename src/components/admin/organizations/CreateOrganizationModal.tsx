@@ -32,7 +32,9 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
       newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
     }
 
-    if (formData.domain && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.domain)) {
+    if (!formData.domain.trim()) {
+      newErrors.domain = 'Domain is required';
+    } else if (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.domain)) {
       newErrors.domain = 'Please enter a valid domain';
     }
 
@@ -101,6 +103,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
             <label className="block text-sm font-medium mb-1">Domain</label>
             <input
               type="text"
+              required
               value={formData.domain}
               onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
               className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
