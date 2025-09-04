@@ -8,7 +8,8 @@ import React, {
 import { ChatInput } from './ChatInput';
 import type { MetricsData, FilterContext } from '@/types/aso';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+// remark-gfm temporarily disabled to prevent runtime error
+// import remarkGfm from 'remark-gfm';
 import { Copy, Bookmark, Share, User } from 'lucide-react';
 
 interface Message {
@@ -159,7 +160,7 @@ const EnhancedMessageContent = ({
 
   return (
     <div className={`prose prose-sm max-w-none ${role === 'user' ? 'prose-invert' : ''}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm as any]} components={markdownComponents}>
+      <ReactMarkdown components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>
