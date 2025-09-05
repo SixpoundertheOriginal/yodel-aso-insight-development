@@ -93,3 +93,15 @@ additional_redirect_urls = ["https://bkbcqocpjahewqjmlgvf.supabase.co/auth/v1/ca
 jwt_expiry = 3600
 refresh_token_rotation_enabled = true
 security_update_password_require_reauthentication = true
+
+[functions.admin-whoami]
+verify_jwt = true
+
+[functions.admin-dashboard-metrics]
+verify_jwt = true
+
+[functions.admin-organizations]
+verify_jwt = true
+
+[functions.admin-recent-activity]
+verify_jwt = true

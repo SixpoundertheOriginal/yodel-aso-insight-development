@@ -1792,6 +1792,7 @@ export type Database = {
           app_limit_enforced: boolean | null
           billing_email: string | null
           created_at: string
+          domain: string | null
           features: Json | null
           id: string
           name: string
@@ -1807,6 +1808,7 @@ export type Database = {
           app_limit_enforced?: boolean | null
           billing_email?: string | null
           created_at?: string
+          domain?: string | null
           features?: Json | null
           id?: string
           name: string
@@ -1822,6 +1824,7 @@ export type Database = {
           app_limit_enforced?: boolean | null
           billing_email?: string | null
           created_at?: string
+          domain?: string | null
           features?: Json | null
           id?: string
           name?: string
@@ -1894,6 +1897,7 @@ export type Database = {
           id: string
           last_name: string | null
           organization_id: string | null
+          role: string
           updated_at: string
         }
         Insert: {
@@ -1903,6 +1907,7 @@ export type Database = {
           id: string
           last_name?: string | null
           organization_id?: string | null
+          role?: string
           updated_at?: string
         }
         Update: {
@@ -1912,6 +1917,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           organization_id?: string | null
+          role?: string
           updated_at?: string
         }
         Relationships: [
@@ -1990,18 +1996,29 @@ export type Database = {
       }
       role_permissions: {
         Row: {
-          role: string
-          permissions: Json
+          created_at: string
+          permission_name: string
+          role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
-          role: string
-          permissions: Json
+          created_at?: string
+          permission_name: string
+          role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
-          role?: string
-          permissions?: Json
+          created_at?: string
+          permission_name?: string
+          role?: Database["public"]["Enums"]["app_role"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_name_fkey"
+            columns: ["permission_name"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["name"]
+          },
+        ]
       }
       scrape_cache: {
         Row: {
@@ -2118,40 +2135,30 @@ export type Database = {
       }
       user_roles: {
         Row: {
-          user_id: string
+          created_at: string
+          id: string
           organization_id: string | null
-          role: string
-          granted_by: string | null
-          granted_at: string
-          expires_at: string | null
-          is_active: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          user_id: string
+          created_at?: string
+          id?: string
           organization_id?: string | null
-          role: string
-          granted_by?: string | null
-          granted_at?: string
-          expires_at?: string | null
-          is_active?: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          user_id?: string
+          created_at?: string
+          id?: string
           organization_id?: string | null
-          role?: string
-          granted_by?: string | null
-          granted_at?: string
-          expires_at?: string | null
-          is_active?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "user_roles_granted_by_fkey"
-            columns: ["granted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "user_roles_organization_id_fkey"
             columns: ["organization_id"]
@@ -2366,12 +2373,7 @@ export type Database = {
       get_approved_apps: {
         Args: { p_organization_id: string }
         Returns: {
-          id: string
           app_identifier: string
-          app_name: string | null
-          data_source: string
-          approval_status: string
-          app_metadata: unknown
         }[]
       }
       get_current_user_organization_id: {
@@ -2486,7 +2488,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "SUPER_ADMIN"
+        | "ORGANIZATION_ADMIN"
+        | "MANAGER"
+        | "ANALYST"
+        | "VIEWER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2613,6 +2620,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "SUPER_ADMIN",
+        "ORGANIZATION_ADMIN",
+        "MANAGER",
+        "ANALYST",
+        "VIEWER",
+      ],
+    },
   },
 } as const
