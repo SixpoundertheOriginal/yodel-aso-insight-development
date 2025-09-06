@@ -6,7 +6,7 @@ interface ActivityItem {
   type: 'user_login' | 'org_created' | 'app_approved' | 'partnership_created';
   message: string;
   user: string;
-  timestamp: Date;
+  timestamp: Date | string;
   metadata?: Record<string, unknown>;
 }
 
@@ -56,9 +56,10 @@ export const RecentActivityFeed: React.FC = () => {
     }
   };
 
-  const formatTimestamp = (timestamp: Date) => {
+  const formatTimestamp = (timestamp: Date | string) => {
     const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
+    const dateObj = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    const diff = now.getTime() - dateObj.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
