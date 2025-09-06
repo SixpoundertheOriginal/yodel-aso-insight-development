@@ -6,6 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeUserFields(data: Record<string, unknown>) {
+  if (!data || typeof data !== 'object') return data
+  const normalized: Record<string, unknown> = { ...data }
+
+  const keyMap: Record<string, string> = {
+    firstName: 'first_name',
+    lastName: 'last_name',
+    organizationId: 'organization_id',
+  }
+
+  for (const [camel, snake] of Object.entries(keyMap)) {
+    if (camel in normalized && !(snake in normalized)) {
+      normalized[snake] = normalized[camel]
+      delete normalized[camel]
+    }
+  }
+
+  if ('role' in normalized && !('roles' in normalized)) {
+    const roleValue = normalized['role']
+    normalized['roles'] = Array.isArray(roleValue)
+      ? roleValue
+      : [roleValue]
+    delete normalized['role']
+  }
+
+  if ('roles' in normalized && !Array.isArray(normalized['roles'])) {
+    normalized['roles'] = [normalized['roles']]
+  }
+
+  return normalized
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -37,7 +69,10 @@ serve(async (req) => {
     })
     if (!isSuperAdmin) throw new Error('Super admin access required')
 
-    const body = await req.json()
+    const body = normalizeUserFields(await req.json())
+    if (body.payload) {
+      body.payload = normalizeUserFields(body.payload)
+    }
     const { action } = body
 
     if (action === 'list') {
@@ -157,7 +192,7 @@ serve(async (req) => {
       try {
         // Update auth user metadata if provided
         if (payload.email || payload.first_name || payload.last_name) {
-          const updateData: any = {}
+          const updateData: Record<string, unknown> = {}
           if (payload.email) updateData.email = payload.email
           if (payload.first_name || payload.last_name) {
             updateData.user_metadata = {
