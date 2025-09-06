@@ -22,7 +22,7 @@ serve(async (req) => {
     if (!user.user) throw new Error('Not authenticated')
     
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { 
-      user_uuid: user.user.id 
+      user_id: user.user.id 
     })
     if (!isSuperAdmin) throw new Error('Super admin access required')
 
