@@ -241,15 +241,16 @@ class RequestTransmissionService {
       };
 
     } catch (invokeError: any) {
+      const err: any = invokeError ?? {};
       console.error('💥 [FIXED-JSON] Invoke exception:', {
-        name: invokeError.name,
-        message: invokeError.message,
-        status: invokeError.status,
-        statusText: invokeError.statusText,
-        stack: invokeError.stack?.substring(0, 200)
+        name: err?.name,
+        message: err?.message ?? String(invokeError),
+        status: err?.status,
+        statusText: err?.statusText,
+        stack: typeof err?.stack === 'string' ? err.stack.substring(0, 200) : undefined
       });
       
-      throw new Error(`Fixed JSON transmission failed: ${invokeError.message}`);
+      throw new Error(`Fixed JSON transmission failed: ${err?.message ?? 'Unknown error'}`);
     }
   }
 
