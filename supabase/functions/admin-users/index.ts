@@ -12,10 +12,17 @@ serve(async (req) => {
   }
 
   try {
+    // Regular client for authentication checks
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    )
+
+    // Admin client with service key for user operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { data: user } = await supabase.auth.getUser()
@@ -65,48 +72,76 @@ serve(async (req) => {
 
     } else if (action === 'create') {
       // Create/invite new user
-      const { email, roles, organization_id, first_name, last_name } = body
+      const { email, roles, organization_id, first_name, last_name, password } = body
       
       if (!email || !roles || !organization_id) {
         throw new Error('Missing required fields: email, roles, organization_id')
       }
 
-      // Create user profile
-      const { data: newProfile, error: profileError } = await supabase
-        .from('profiles')
-        .insert({
+      try {
+        // Create auth user first using admin client
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email,
-          first_name,
-          last_name,
-          organization_id
+          password: password || `temp_${Date.now()}`,
+          email_confirm: true,
+          user_metadata: {
+            first_name,
+            last_name,
+            organization_id
+          }
         })
-        .select()
-        .single()
 
-      if (profileError) throw profileError
+        if (authError) throw authError
 
-      // Assign roles
-      const roleInserts = roles.map((role: string) => ({
-        user_id: newProfile.id,
-        role,
-        organization_id,
-        is_active: true
-      }))
+        // Create profile with auth user ID
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authUser.user.id,
+            email,
+            first_name,
+            last_name,
+            organization_id
+          })
+          .select()
+          .single()
 
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert(roleInserts)
+        if (profileError) {
+          // Rollback: delete auth user if profile creation fails
+          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+          throw profileError
+        }
 
-      if (roleError) throw roleError
+        // Assign roles
+        const roleInserts = roles.map((role: string) => ({
+          user_id: authUser.user.id,
+          role,
+          organization_id,
+          is_active: true
+        }))
 
-      return new Response(JSON.stringify({
-        success: true,
-        data: newProfile,
-        message: 'User invitation sent successfully'
-      }), {
-        status: 201,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert(roleInserts)
+
+        if (roleError) {
+          // Rollback: delete auth user and profile if role assignment fails
+          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+          await supabase.from('profiles').delete().eq('id', authUser.user.id)
+          throw roleError
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: { ...newProfile, roles },
+          message: 'User created successfully'
+        }), {
+          status: 201,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      } catch (error) {
+        throw new Error(`User creation failed: ${error.message}`)
+      }
 
     } else if (action === 'update') {
       // Update user
@@ -115,50 +150,70 @@ serve(async (req) => {
         throw new Error('Missing required fields: id, payload for update')
       }
 
-      // Update profile
-      const { data: updatedProfile, error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: payload.first_name,
-          last_name: payload.last_name,
-          organization_id: payload.organization_id
+      try {
+        // Update auth user metadata if provided
+        if (payload.email || payload.first_name || payload.last_name) {
+          const updateData: any = {}
+          if (payload.email) updateData.email = payload.email
+          if (payload.first_name || payload.last_name) {
+            updateData.user_metadata = {
+              first_name: payload.first_name,
+              last_name: payload.last_name
+            }
+          }
+          
+          const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData)
+          if (authError) throw authError
+        }
+
+        // Update profile
+        const { data: updatedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: payload.first_name,
+            last_name: payload.last_name,
+            organization_id: payload.organization_id,
+            email: payload.email
+          })
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (profileError) throw profileError
+
+        // Update roles if provided
+        if (payload.roles) {
+          // Remove existing roles
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', id)
+
+          // Add new roles
+          const roleInserts = payload.roles.map((role: string) => ({
+            user_id: id,
+            role,
+            organization_id: payload.organization_id,
+            is_active: true
+          }))
+
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert(roleInserts)
+
+          if (roleError) throw roleError
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: { ...updatedProfile, roles: payload.roles },
+          message: 'User updated successfully'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (profileError) throw profileError
-
-      // Update roles if provided
-      if (payload.roles) {
-        // Remove existing roles
-        await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', id)
-
-        // Add new roles
-        const roleInserts = payload.roles.map((role: string) => ({
-          user_id: id,
-          role,
-          organization_id: payload.organization_id,
-          is_active: true
-        }))
-
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert(roleInserts)
-
-        if (roleError) throw roleError
+      } catch (error) {
+        throw new Error(`User update failed: ${error.message}`)
       }
-
-      return new Response(JSON.stringify({
-        success: true,
-        data: updatedProfile,
-        message: 'User updated successfully'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
 
     } else if (action === 'delete') {
       // Delete user
@@ -167,52 +222,70 @@ serve(async (req) => {
         throw new Error('Missing required field: id for delete')
       }
 
-      // Remove user roles first
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', id)
+      try {
+        // Get user details before deletion for logging
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, first_name, last_name')
+          .eq('id', id)
+          .single()
 
-      // Delete profile
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id)
+        // Delete auth user (this will cascade to profile due to foreign key constraint)
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id)
+        if (authError) throw authError
 
-      if (error) throw error
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'User deleted successfully'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+        return new Response(JSON.stringify({
+          success: true,
+          message: `User ${profile?.email || id} deleted successfully`
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      } catch (error) {
+        throw new Error(`User deletion failed: ${error.message}`)
+      }
 
     } else if (action === 'resetPassword') {
       // Reset password
-      const { id } = body
+      const { id, password } = body
       if (!id) {
         throw new Error('Missing required field: id for password reset')
       }
 
-      // Get user email
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', id)
-        .single()
+      try {
+        // Get user email for response
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', id)
+          .single()
 
-      if (error) throw error
+        if (profileError) throw profileError
 
-      // Note: In a real implementation, you would send a password reset email here
-      // For now, we'll just return a success message
-      return new Response(JSON.stringify({
-        success: true,
-        data: { email: profile.email },
-        message: 'Password reset email sent'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+        // Reset password using admin client
+        if (password) {
+          const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+            password: password
+          })
+          if (passwordError) throw passwordError
+        } else {
+          // Send password reset email
+          const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: profile.email
+          })
+          if (resetError) throw resetError
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: { email: profile.email },
+          message: password ? 'Password updated successfully' : 'Password reset email sent'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      } catch (error) {
+        throw new Error(`Password reset failed: ${error.message}`)
+      }
 
     } else {
       throw new Error('Invalid action. Supported actions: list, create, update, delete, resetPassword')
