@@ -6,36 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function normalizeUserFields(data: Record<string, unknown>) {
-  if (!data || typeof data !== 'object') return data
-  const normalized: Record<string, unknown> = { ...data }
-
-  const keyMap: Record<string, string> = {
-    firstName: 'first_name',
-    lastName: 'last_name',
-    organizationId: 'organization_id',
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeUserFields(payload: any) {
+  return {
+    ...payload,
+    first_name: payload.first_name || payload.firstName,
+    last_name: payload.last_name || payload.lastName,
+    organization_id: payload.organization_id || payload.organizationId,
+    roles: payload.roles || (payload.role ? [payload.role] : undefined)
   }
-
-  for (const [camel, snake] of Object.entries(keyMap)) {
-    if (camel in normalized && !(snake in normalized)) {
-      normalized[snake] = normalized[camel]
-      delete normalized[camel]
-    }
-  }
-
-  if ('role' in normalized && !('roles' in normalized)) {
-    const roleValue = normalized['role']
-    normalized['roles'] = Array.isArray(roleValue)
-      ? roleValue
-      : [roleValue]
-    delete normalized['role']
-  }
-
-  if ('roles' in normalized && !Array.isArray(normalized['roles'])) {
-    normalized['roles'] = [normalized['roles']]
-  }
-
-  return normalized
 }
 
 serve(async (req) => {
@@ -44,10 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const body = normalizeUserFields(await req.json())
-    if (body.payload) {
-      body.payload = normalizeUserFields(body.payload)
-    }
+    const body = await req.json()
     const { action } = body
 
     if (action === 'env_check') {
@@ -120,9 +96,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
 
-    } else if (action === 'create') {
+    } else if (action === 'create' || action === 'invite') {
       // Create/invite new user
-      const { email, roles, organization_id, first_name, last_name, password } = body
+      const normalizedBody = normalizeUserFields(body)
+      const { email, roles, organization_id, first_name, last_name, password } = normalizedBody
       
       if (!email || !roles || !organization_id) {
         throw new Error('Missing required fields: email, roles, organization_id')
@@ -195,23 +172,26 @@ serve(async (req) => {
 
     } else if (action === 'update') {
       // Update user
-      const { id, payload } = body
+      const normalizedBody = normalizeUserFields(body)
+      const { id, payload } = normalizedBody
       if (!id || !payload) {
         throw new Error('Missing required fields: id, payload for update')
       }
 
+      const normalizedPayload = normalizeUserFields(payload)
+
       try {
         // Update auth user metadata if provided
-        if (payload.email || payload.first_name || payload.last_name) {
+        if (normalizedPayload.email || normalizedPayload.first_name || normalizedPayload.last_name) {
           const updateData: Record<string, unknown> = {}
-          if (payload.email) updateData.email = payload.email
-          if (payload.first_name || payload.last_name) {
+          if (normalizedPayload.email) updateData.email = normalizedPayload.email
+          if (normalizedPayload.first_name || normalizedPayload.last_name) {
             updateData.user_metadata = {
-              first_name: payload.first_name,
-              last_name: payload.last_name
+              first_name: normalizedPayload.first_name,
+              last_name: normalizedPayload.last_name
             }
           }
-          
+
           const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, updateData)
           if (authError) throw authError
         }
@@ -220,10 +200,10 @@ serve(async (req) => {
         const { data: updatedProfile, error: profileError } = await supabase
           .from('profiles')
           .update({
-            first_name: payload.first_name,
-            last_name: payload.last_name,
-            organization_id: payload.organization_id,
-            email: payload.email
+            first_name: normalizedPayload.first_name,
+            last_name: normalizedPayload.last_name,
+            organization_id: normalizedPayload.organization_id,
+            email: normalizedPayload.email
           })
           .eq('id', id)
           .select()
@@ -232,7 +212,7 @@ serve(async (req) => {
         if (profileError) throw profileError
 
         // Update roles if provided
-        if (payload.roles) {
+        if (normalizedPayload.roles) {
           // Remove existing roles
           await supabase
             .from('user_roles')
@@ -240,10 +220,10 @@ serve(async (req) => {
             .eq('user_id', id)
 
           // Add new roles
-          const roleInserts = payload.roles.map((role: string) => ({
+          const roleInserts = normalizedPayload.roles.map((role: string) => ({
             user_id: id,
             role,
-            organization_id: payload.organization_id,
+            organization_id: normalizedPayload.organization_id,
             is_active: true
           }))
 
@@ -256,7 +236,7 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          data: { ...updatedProfile, roles: payload.roles },
+          data: { ...updatedProfile, roles: normalizedPayload.roles },
           message: 'User updated successfully'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
