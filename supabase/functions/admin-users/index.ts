@@ -44,6 +44,23 @@ serve(async (req) => {
   }
 
   try {
+    const body = normalizeUserFields(await req.json())
+    if (body.payload) {
+      body.payload = normalizeUserFields(body.payload)
+    }
+    const { action } = body
+
+    if (action === 'env_check') {
+      return new Response(
+        JSON.stringify({
+          has_service_key: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+          has_anon_key: !!Deno.env.get('SUPABASE_ANON_KEY'),
+          supabase_url: Deno.env.get('SUPABASE_URL') ?? null,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Regular client for authentication checks
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -58,7 +75,7 @@ serve(async (req) => {
     }
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      serviceRoleKey!
+      serviceRoleKey,
     )
 
     const { data: user } = await supabase.auth.getUser()
@@ -68,12 +85,6 @@ serve(async (req) => {
       user_id: user.user.id 
     })
     if (!isSuperAdmin) throw new Error('Super admin access required')
-
-    const body = normalizeUserFields(await req.json())
-    if (body.payload) {
-      body.payload = normalizeUserFields(body.payload)
-    }
-    const { action } = body
 
     if (action === 'list') {
       // List all users across all organizations
