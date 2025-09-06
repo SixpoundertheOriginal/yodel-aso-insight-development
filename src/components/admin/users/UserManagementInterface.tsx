@@ -62,14 +62,21 @@ export const UserManagementInterface: React.FC = () => {
 
   const handleInviteUser = async (userData: {
     email: string;
-    roles: string[];
+    roles: string[] | string;
     organization_id: string;
     first_name?: string;
     last_name?: string;
   }) => {
     try {
+      const payload = {
+        ...userData,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        organization_id: userData.organization_id,
+        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles]
+      }
       const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'create', ...userData }
+        body: { action: 'create', ...payload }
       });
 
       if (error) throw error;
@@ -88,12 +95,23 @@ export const UserManagementInterface: React.FC = () => {
   const handleEditUser = async (userId: string, updates: {
     first_name?: string;
     last_name?: string;
-    roles?: string[];
+    roles?: string[] | string;
     organization_id?: string;
   }) => {
     try {
+      const payload = {
+        ...updates,
+        first_name: updates.first_name,
+        last_name: updates.last_name,
+        organization_id: updates.organization_id,
+        roles: updates.roles
+          ? Array.isArray(updates.roles)
+            ? updates.roles
+            : [updates.roles]
+          : undefined
+      }
       const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'update', id: userId, payload: updates }
+        body: { action: 'update', id: userId, payload }
       });
 
       if (error) throw error;
