@@ -17,6 +17,20 @@ function normalizeUserFields(payload: any) {
   }
 }
 
+// Map frontend role names to database enum values
+function mapRoleToDBEnum(role: string): string {
+  const roleMapping: Record<string, string> = {
+    'super_admin': 'SUPER_ADMIN',
+    'org_admin': 'ORGANIZATION_ADMIN', 
+    'aso_manager': 'ASO_MANAGER',
+    'analyst': 'ANALYST',
+    'viewer': 'VIEWER',
+    'client': 'CLIENT',
+    'manager': 'MANAGER'
+  }
+  return roleMapping[role] || role.toUpperCase()
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -142,9 +156,8 @@ serve(async (req) => {
         // Assign roles
         const roleInserts = roles.map((role: string) => ({
           user_id: authUser.user.id,
-          role,
-          organization_id,
-          is_active: true
+          role: mapRoleToDBEnum(role),
+          organization_id
         }))
 
         const { error: roleError } = await supabase
@@ -222,9 +235,8 @@ serve(async (req) => {
           // Add new roles
           const roleInserts = normalizedPayload.roles.map((role: string) => ({
             user_id: id,
-            role,
-            organization_id: normalizedPayload.organization_id,
-            is_active: true
+            role: mapRoleToDBEnum(role),
+            organization_id: normalizedPayload.organization_id
           }))
 
           const { error: roleError } = await supabase

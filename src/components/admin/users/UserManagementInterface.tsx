@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminDataTable } from '../shared/AdminDataTable';
 import { UserInvitationModal } from './UserInvitationModal';
+import { UserCreationModal } from './UserCreationModal';
 import { UserEditModal } from './UserEditModal';
 import { Users, UserPlus, Edit3, Trash2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ export const UserManagementInterface: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -76,7 +78,7 @@ export const UserManagementInterface: React.FC = () => {
         roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles]
       }
       const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'create', ...payload }
+        body: { action: 'invite', ...payload }
       });
 
       if (error) throw error;
@@ -89,6 +91,40 @@ export const UserManagementInterface: React.FC = () => {
       const err = error as Error;
       console.error('Failed to invite user:', err);
       alert(`Failed to invite user: ${err.message}`);
+    }
+  };
+
+  const handleCreateUser = async (userData: {
+    email: string;
+    roles: string[] | string;
+    organization_id: string;
+    first_name?: string;
+    last_name?: string;
+    password: string;
+  }) => {
+    try {
+      const payload = {
+        ...userData,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        organization_id: userData.organization_id,
+        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles],
+        password: userData.password
+      }
+      const { data: response, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'create', ...payload }
+      });
+
+      if (error) throw error;
+      if (!response?.success) throw new Error(response?.error || 'Failed to create user');
+
+      setShowCreateModal(false);
+      loadUsers();
+      alert(`User created successfully: ${userData.email}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Failed to create user:', err);
+      alert(`Failed to create user: ${err.message}`);
     }
   };
 
@@ -290,13 +326,20 @@ export const UserManagementInterface: React.FC = () => {
             Manage platform users across all organizations
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-3">
           <button
             onClick={() => setShowInviteModal(true)}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Invite User
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center justify-center rounded-md border border-gray-600 bg-transparent px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Create User
           </button>
         </div>
       </div>
@@ -329,6 +372,13 @@ export const UserManagementInterface: React.FC = () => {
         <UserInvitationModal
           onClose={() => setShowInviteModal(false)}
           onInvite={handleInviteUser}
+        />
+      )}
+
+      {showCreateModal && (
+        <UserCreationModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreateUser}
         />
       )}
 
