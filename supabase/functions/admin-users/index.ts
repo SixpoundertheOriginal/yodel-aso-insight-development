@@ -343,7 +343,7 @@ serve(async (req) => {
         };
         console.log('Profile data:', JSON.stringify(profileData, null, 2));
 
-        const { data: newProfile, error: profileError } = await supabase
+        const { data: newProfile, error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert(profileData)
           .select()
@@ -373,7 +373,7 @@ serve(async (req) => {
         });
         console.log('Role inserts:', JSON.stringify(roleInserts, null, 2));
 
-        const { error: roleError } = await supabase
+        const { error: roleError } = await supabaseAdmin
           .from('user_roles')
           .insert(roleInserts)
 
@@ -384,7 +384,7 @@ serve(async (req) => {
           console.log('Role assignment failed, rolling back user and profile');
           // Rollback: delete auth user and profile if role assignment fails
           await supabaseAdmin.auth.admin.deleteUser(authResult.data.user.id)
-          await supabase.from('profiles').delete().eq('id', authResult.data.user.id)
+          await supabaseAdmin.from('profiles').delete().eq('id', authResult.data.user.id)
           throw roleError
         }
 
