@@ -73,7 +73,7 @@ serve(async (req) => {
       });
     }
 
-    const { action } = requestBody;
+    const { action, ...body } = requestBody;
     console.log('Action requested:', action);
 
     if (action === 'env_check') {
@@ -214,7 +214,7 @@ serve(async (req) => {
       console.log('Action type:', action);
       
       // Create/invite new user
-      const normalizedBody = normalizeUserFields(requestBody)
+      const normalizedBody = normalizeUserFields(body)
       console.log('Normalized body:', JSON.stringify(normalizedBody, null, 2));
       
       const { email, roles, organization_id, first_name, last_name, password } = normalizedBody
