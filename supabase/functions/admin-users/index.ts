@@ -234,6 +234,70 @@ serve(async (req) => {
         console.log('- Organization ID missing:', !organization_id);
         throw new Error('Missing required fields: email, roles, organization_id')
       }
+      async function checkExistingAuthUser(userEmail: string) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers()
+        if (error) {
+          console.log('Auth user lookup error:', error)
+          throw error
+        }
+        return data.users?.find((u) => u.email?.toLowerCase() === userEmail.toLowerCase()) || null
+      }
+
+      async function checkExistingProfile(userEmail: string) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', userEmail)
+          .maybeSingle()
+        if (error) {
+          console.log('Profile lookup error:', error)
+          throw error
+        }
+        return data
+      }
+
+      async function validateUserCreation(userEmail: string) {
+        const [authUser, profile] = await Promise.all([
+          checkExistingAuthUser(userEmail),
+          checkExistingProfile(userEmail)
+        ])
+
+        if (authUser && profile) {
+          return { canCreate: false, status: 'conflict', authUser, profile }
+        }
+        if (authUser || profile) {
+          return { canCreate: false, status: 'orphan', authUser, profile }
+        }
+        return { canCreate: true }
+      }
+
+      const validationResult = await validateUserCreation(email)
+      console.log('User creation validation result:', JSON.stringify(validationResult))
+
+      if (!validationResult.canCreate) {
+        if (validationResult.status === 'conflict') {
+          console.log('User exists in both auth and profile; aborting creation')
+          return new Response(JSON.stringify({
+            error: 'User already exists',
+            timestamp: new Date().toISOString()
+          }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        const detail = validationResult.authUser
+          ? 'Auth user exists without profile'
+          : 'Profile exists without auth user'
+        console.log('Orphaned user record detected:', detail)
+        return new Response(JSON.stringify({
+          error: 'Orphaned user record exists',
+          details: detail,
+          timestamp: new Date().toISOString()
+        }), {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
 
       try {
         console.log('=== DATABASE OPERATION START ===');
@@ -256,22 +320,22 @@ serve(async (req) => {
         };
         console.log('Auth user data:', JSON.stringify(authUserData, null, 2));
 
-        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser(authUserData)
+        const authResult = await supabaseAdmin.auth.admin.createUser(authUserData)
 
         console.log('Auth user creation result:');
-        console.log('- Success:', !!authUser);
-        console.log('- Error:', authError);
-        console.log('- User ID:', authUser?.user?.id);
+        console.log('- Success:', !!authResult.data);
+        console.log('- Error:', authResult.error);
+        console.log('- User ID:', authResult.data?.user?.id);
 
-        if (authError) {
-          console.log('Auth user creation failed:', authError.message);
-          throw authError;
+        if (authResult.error) {
+          console.log('Auth user creation failed:', authResult.error.message);
+          throw authResult.error;
         }
 
         // Create profile with auth user ID
         console.log('Step 2: Creating profile');
         const profileData = {
-          id: authUser.user.id,
+          id: authResult.data.user.id,
           email,
           first_name,
           last_name,
@@ -292,7 +356,7 @@ serve(async (req) => {
         if (profileError) {
           console.log('Profile creation failed, rolling back auth user');
           // Rollback: delete auth user if profile creation fails
-          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+          await supabaseAdmin.auth.admin.deleteUser(authResult.data.user.id)
           throw profileError
         }
 
@@ -302,7 +366,7 @@ serve(async (req) => {
           const mappedRole = mapRoleToDBEnum(role);
           console.log(`Mapping role: ${role} -> ${mappedRole}`);
           return {
-            user_id: authUser.user.id,
+            user_id: authResult.data.user.id,
             role: mappedRole,
             organization_id
           };
@@ -319,13 +383,13 @@ serve(async (req) => {
         if (roleError) {
           console.log('Role assignment failed, rolling back user and profile');
           // Rollback: delete auth user and profile if role assignment fails
-          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
-          await supabase.from('profiles').delete().eq('id', authUser.user.id)
+          await supabaseAdmin.auth.admin.deleteUser(authResult.data.user.id)
+          await supabase.from('profiles').delete().eq('id', authResult.data.user.id)
           throw roleError
         }
 
         console.log('=== USER CREATION SUCCESS ===');
-        console.log('User created successfully:', authUser.user.id);
+        console.log('User created successfully:', authResult.data.user.id);
         console.log('Execution Time:', Date.now() - startTime, 'ms');
 
         const responseData = {
