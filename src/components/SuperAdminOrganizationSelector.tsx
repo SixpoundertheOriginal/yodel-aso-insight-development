@@ -75,8 +75,8 @@ export const SuperAdminOrganizationSelector: React.FC<SuperAdminOrganizationSele
             Select Organization Context:
           </label>
           <Select 
-            value={selectedOrg || ''} 
-            onValueChange={(value) => onOrgChange(value || null)}
+            value={selectedOrg || 'platform_all'} 
+            onValueChange={(value) => onOrgChange(value === 'platform_all' ? null : value)}
             disabled={loading}
           >
             <SelectTrigger className="w-full border-blue-200 focus:ring-blue-500">
@@ -86,7 +86,7 @@ export const SuperAdminOrganizationSelector: React.FC<SuperAdminOrganizationSele
             </SelectTrigger>
             <SelectContent>
               {allowAllOrgs && (
-                <SelectItem value="">
+                <SelectItem value="platform_all">
                   <span className="font-medium text-blue-600">All Organizations (Platform View)</span>
                 </SelectItem>
               )}

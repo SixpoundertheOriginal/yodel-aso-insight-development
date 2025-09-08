@@ -20,6 +20,10 @@ const AsoAiHubPage: React.FC = () => {
     dataContext.organizationId
   );
 
+  const handleOrgChange = (orgId: string | null) => {
+    setSelectedOrgId(orgId);
+  };
+
   // Get current user's organization
   const { data: userContext } = useQuery({
     queryKey: ['user-context'],
@@ -67,7 +71,7 @@ const AsoAiHubPage: React.FC = () => {
             {dataContext.canAccessAllOrgs && (
               <SuperAdminOrganizationSelector
                 selectedOrg={selectedOrgId}
-                onOrgChange={setSelectedOrgId}
+                onOrgChange={handleOrgChange}
                 className="mb-6"
               />
             )}
