@@ -33,6 +33,7 @@ interface AsoDataContextType {
   availableTrafficSources: string[] | undefined;
   meta?: any;
   isDemo?: boolean; // NEW: Demo data flag
+  isDemoOrg?: boolean; // NEW: Demo organization flag
 }
 
 const AsoDataContext = createContext<AsoDataContextType | undefined>(undefined);
@@ -78,7 +79,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     currentDataSource,
     dataSourceStatus,
     availableTrafficSources,
-    isDemo // NEW: Get demo flag from hook
+    isDemo, // NEW: Get demo flag from hook
+    isDemoOrg // NEW: Demo organization flag
   } = useAsoDataWithFallback(
     filters.dateRange,
     filters.trafficSources,
@@ -87,6 +89,7 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
 
   console.log('🔍 DEMO AUDIT [CONTEXT-1]: Context input received');
   console.log('🔍 DEMO AUDIT [CONTEXT-1]: Input isDemo:', isDemo);
+  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Input isDemoOrg:', isDemoOrg);
 
   const updateFilters = useCallback((newFilters: AsoDataFilters | ((prev: AsoDataFilters) => AsoDataFilters)) => {
     setFilters(newFilters);
@@ -104,12 +107,14 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       dataSourceStatus,
       availableTrafficSources,
       meta: undefined, // Will be populated by BigQuery hook if needed
-      isDemo // NEW: Pass through demo flag
+      isDemo, // NEW: Pass through demo flag
+      isDemoOrg // NEW: Pass through demo organization flag
     };
 
     console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context value created');
     console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context keys:', Object.keys(value));
     console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context isDemo:', value.isDemo);
+    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context isDemoOrg:', value.isDemoOrg);
 
     return value;
   }, [
@@ -121,7 +126,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     currentDataSource,
     dataSourceStatus,
     availableTrafficSources,
-    isDemo // NEW: Include in dependencies
+    isDemo, // NEW: Include in dependencies
+    isDemoOrg
   ]);
 
   return (
