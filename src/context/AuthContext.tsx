@@ -14,6 +14,7 @@ interface AuthContextType {
   signIn: (options: { email: string; password: string }) => Promise<any>;
   signOut: () => Promise<any>;
   signInWithOAuth: (options: { provider: 'google' | 'github' | 'twitter' }) => Promise<any>;
+  resetPassword: (email: string) => Promise<{ success: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async ({ email, password }: { email: string; password: string }) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth/confirm-email?type=signup`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -175,6 +176,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/auth/confirm-email?type=recovery`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: 'Password reset email sent',
+        description: 'Check your email for the password reset link.',
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      toast({
+        title: 'Reset failed',
+        description: error.message || 'Failed to send password reset email.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   const value = {
     session,
     user,
@@ -183,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     signInWithOAuth,
+    resetPassword,
   };
 
   return (

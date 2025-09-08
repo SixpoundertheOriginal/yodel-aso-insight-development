@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Github, Twitter } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -19,7 +20,8 @@ const signInSchema = z.object({
 type SignInFormValues = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
-  const { signIn, signInWithOAuth } = useAuth();
+  const { signIn, signInWithOAuth, resetPassword } = useAuth();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const navigate = useNavigate();
 
@@ -48,6 +50,18 @@ export function SignInForm() {
     setIsLoading(true);
     try {
       await signInWithOAuth({ provider });
+    } catch (error) {
+      // Error is handled in the auth context
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(email: string) {
+    setIsLoading(true);
+    try {
+      await resetPassword(email);
     } catch (error) {
       // Error is handled in the auth context
       console.error(error);
@@ -105,6 +119,27 @@ export function SignInForm() {
             </Button>
           </form>
         </Form>
+
+        <div className="text-center mt-4">
+          <Button
+            variant="link"
+            className="p-0 h-auto text-sm text-zinc-400 hover:text-yodel-orange"
+            onClick={() => {
+              const email = form.getValues('email');
+              if (email) {
+                handleForgotPassword(email);
+              } else {
+                toast({
+                  title: 'Email required',
+                  description: 'Please enter your email address first.',
+                  variant: 'destructive',
+                });
+              }
+            }}
+          >
+            Forgot your password?
+          </Button>
+        </div>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">

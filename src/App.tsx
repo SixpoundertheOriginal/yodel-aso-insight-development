@@ -43,6 +43,9 @@ const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
+const ConfirmEmail = lazy(() => import("./pages/auth/confirm-email"));
+const CompleteSignup = lazy(() => import("./pages/auth/complete-signup"));
+const UpdatePassword = lazy(() => import("./pages/auth/update-password"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -66,6 +69,9 @@ function App() {
                         <Routes>
                           <Route path="/auth/sign-in" element={<SignIn />} />
                           <Route path="/auth/sign-up" element={<SignUp />} />
+                          <Route path="/auth/confirm-email" element={<ConfirmEmail />} />
+                          <Route path="/auth/complete-signup" element={<CompleteSignup />} />
+                          <Route path="/auth/update-password" element={<UpdatePassword />} />
                           <Route path="/" element={<Index />} />
                           <Route
                             path="/dashboard"
