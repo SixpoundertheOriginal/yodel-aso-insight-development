@@ -8,10 +8,17 @@ import { AppAuditHub } from '@/components/AppAudit/AppAuditHub';
 import { HeroSection } from '@/components/ui/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useDataAccess } from '@/hooks/useDataAccess';
+import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { Brain, Target } from 'lucide-react';
 
 const AsoAiHubPage: React.FC = () => {
   const navigate = useNavigate();
+  const dataContext = useDataAccess();
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
+    dataContext.organizationId
+  );
 
   // Get current user's organization
   const { data: userContext } = useQuery({
@@ -56,9 +63,24 @@ const AsoAiHubPage: React.FC = () => {
               description="Import your app to get actionable insights, competitor analysis, and optimization recommendations. Perfect for getting started or quick health checks."
             />
             
+            {/* Super Admin Organization Selector */}
+            {dataContext.canAccessAllOrgs && (
+              <SuperAdminOrganizationSelector
+                selectedOrg={selectedOrgId}
+                onOrgChange={setSelectedOrgId}
+                className="mb-6"
+              />
+            )}
+            
             {/* Main Audit Hub */}
-            {userContext?.organizationId ? (
-              <AppAuditHub organizationId={userContext.organizationId} />
+            {(selectedOrgId || dataContext.organizationId) ? (
+              <AppAuditHub organizationId={selectedOrgId || dataContext.organizationId} />
+            ) : dataContext.canAccessAllOrgs ? (
+              <div className="text-center py-12 bg-blue-50/50 rounded-lg border border-blue-200">
+                <Brain className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-blue-700 mb-2">Select Organization</h3>
+                <p className="text-blue-600">Choose an organization above to access ASO AI Audit features</p>
+              </div>
             ) : (
               <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">
                 <Brain className="h-16 w-16 text-zinc-600 mx-auto mb-4" />

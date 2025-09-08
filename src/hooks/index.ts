@@ -29,7 +29,7 @@ export { useEnhancedQueries } from './useEnhancedQueries';
 export { useEnhancedKeywordAnalytics } from './useEnhancedKeywordAnalytics';
 
 // Add unified keyword intelligence manager
-export { useKeywordIntelligenceManager } from './useKeywordIntelligenceManager';
+export { useDataAccess } from './useDataAccess';
 
 // Add new keyword discovery service
 export { keywordDiscoveryService } from '../services/keyword-discovery.service';

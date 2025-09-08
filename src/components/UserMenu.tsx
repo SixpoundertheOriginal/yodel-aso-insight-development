@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { SuperAdminBadge } from '@/components/SuperAdminBadge';
 
 export const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -40,11 +41,14 @@ export const UserMenu: React.FC = () => {
             <p className="text-sm font-medium leading-none text-foreground">
               {user.email}
             </p>
-            {isSuperAdmin && (
-              <p className="text-xs leading-none text-yodel-orange">
-                Super Admin
-              </p>
-            )}
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <p className="text-xs leading-none text-yodel-orange">
+                  Super Admin
+                </p>
+              )}
+              <SuperAdminBadge />
+            </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -36,6 +36,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
+import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 
 interface NavigationItem {
   title: string;
@@ -144,7 +145,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
   const { hasFeature } = useFeatureAccess();
-  const { canAccessAdminFeatures } = useUIPermissions();
+  const { canAccessAdminFeatures, hasPermission } = useUIPermissions();
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(
@@ -160,7 +161,8 @@ export function AppSidebar() {
     const isActive = location.pathname === item.url;
     const isDisabled =
       item.status === "coming_soon" || item.status === "under_development";
-    const hasAccess = !item.featureKey || hasFeature(item.featureKey);
+    // Super admin bypass + feature access check
+    const hasAccess = !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings');
     
     // Don't render the item if the organization doesn't have access to this feature
     if (!hasAccess) {
@@ -278,7 +280,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2 py-4">
         {/* Performance Intelligence Section */}
-        {analyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+        {analyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -295,7 +297,7 @@ export function AppSidebar() {
         )}
 
         {/* AI Command Center Section */}
-        {aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+        {aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -312,7 +314,7 @@ export function AppSidebar() {
         )}
 
         {/* Growth Accelerators Section */}
-        {aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+        {aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -329,7 +331,7 @@ export function AppSidebar() {
         )}
 
         {/* Control Center Section - visible to org admins and super admins */}
-        {(isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+        {(isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">

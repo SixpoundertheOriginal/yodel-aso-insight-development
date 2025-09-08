@@ -485,7 +485,10 @@ useEffect(() => {
   if (isSuperAdmin && !organizationId) {
     return (
       <div className="h-screen bg-background/50 border-l border-border flex flex-col items-center justify-center p-6">
-        <SuperAdminOrganizationSelector className="w-full max-w-md" />
+        <SuperAdminOrganizationSelector 
+          className="w-full max-w-md" 
+          onOrgChange={() => {}} // Placeholder - will be handled by parent context
+        />
       </div>
     );
   }
