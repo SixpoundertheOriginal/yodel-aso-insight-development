@@ -190,9 +190,34 @@ export function AppSidebar() {
         item.url === route || item.url.startsWith(route + '/')
       );
       
-      // Also check feature access as fallback
+      // Check feature access
       const hasFeatureAccess = !item.featureKey || hasFeature(item.featureKey);
       
+      // For demo orgs: prioritize route allowance over feature access
+      // This ensures demo orgs see their allowed navigation regardless of feature gates
+      if (isDemoOrg) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔍 Demo Org Filter - ${item.title}:`, {
+            url: item.url,
+            isRouteAllowed,
+            hasFeatureAccess,
+            featureKey: item.featureKey,
+            decision: isRouteAllowed ? 'SHOW (route allowed)' : 'HIDE (route not allowed)'
+          });
+        }
+        return isRouteAllowed; // Demo orgs bypass feature gating
+      }
+      
+      // For regular orgs: require both route access AND feature access
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Regular Org Filter - ${item.title}:`, {
+          url: item.url,
+          isRouteAllowed,
+          hasFeatureAccess,
+          featureKey: item.featureKey,
+          decision: (isRouteAllowed && hasFeatureAccess) ? 'SHOW' : 'HIDE'
+        });
+      }
       return isRouteAllowed && hasFeatureAccess;
     });
   };
