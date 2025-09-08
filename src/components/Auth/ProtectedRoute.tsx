@@ -26,9 +26,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth/sign-in" replace />;
   }
 
+  // 🔧 FIX: Check if user is in auth flow - don't redirect during auth processes
+  const isInAuthFlow = location.search.includes('access_token') || 
+                      location.search.includes('token_hash') || 
+                      location.search.includes('type=') ||
+                      location.pathname.startsWith('/auth/');
+
   // ✅ ENHANCED: Only redirect non-super-admin users without organization
-  // Platform Super Admins can have null organization_id and should access dashboard
-  if (profile && !profile.organization_id) {
+  // BUT NOT if they're in the middle of an auth flow (email confirmation, password reset, etc.)
+  if (profile && !profile.organization_id && !isInAuthFlow) {
     const userRoles = (profile.user_roles || []) as Tables<'user_roles'>[];
     const isSuperAdmin = userRoles.some(
       (role) => role.role?.toLowerCase() === 'super_admin' && role.organization_id === null
