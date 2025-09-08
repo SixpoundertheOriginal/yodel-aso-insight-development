@@ -14,6 +14,7 @@ import { BigQueryAppProvider } from "./context/BigQueryAppContext";
 import { SuperAdminProvider } from "./context/SuperAdminContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
+import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
 
 // Lazy load components
 const Index = lazy(() => import("./pages/Index"));
@@ -147,7 +148,7 @@ function App() {
                           />
                           <Route
                             path="/settings"
-                            element={<ProtectedRoute><Settings /></ProtectedRoute>}
+                            element={<ProtectedRoute><SuperAdminGuard><Settings /></SuperAdminGuard></ProtectedRoute>}
                           />
                           <Route
                             path="/admin"

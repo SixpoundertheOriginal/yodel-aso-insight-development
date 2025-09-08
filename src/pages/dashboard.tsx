@@ -409,7 +409,7 @@ const DashboardContent: React.FC = () => {
 
         {/* Sidebar - Pass collapse state */}
         <div className="fixed right-0 top-0 h-full z-10">
-          {!permissionsLoading && (
+          {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && (
             isDashboardDataReady ? (
               <ContextualInsightsSidebar
                 metricsData={data}
