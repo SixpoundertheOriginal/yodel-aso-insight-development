@@ -9,31 +9,13 @@ export const useUIPermissions = () => {
   const [permissions, setPermissions] = useState<UIPermissions>({});
   const [loading, setLoading] = useState(true);
 
-  // ENTERPRISE: Super admin bypass - platform-wide unrestricted access
-  if (isSuperAdmin) {
-    return {
-      hasPermission: () => true,
-      hasContextPermission: () => true,
-      permissions: SUPER_ADMIN_PERMISSIONS as UIPermissions,
-      loading: false,
-      refreshPermissions: async () => {},
-
-      // Optimized flags
-      canAccessDevTools: true,
-      canSeeDebugInfo: true,
-      canSeeLiveBadges: true,
-      canSeePerformanceMetrics: true,
-      canAccessAdminFeatures: true,
-      canSeeSystemInfo: true,
-
-      // Platform scope
-      canAccessAllOrganizations: true,
-      canManagePlatform: true
-    } as const;
-  }
-
   // Memoized permission checker with audit logging
   const hasPermission = useCallback((key: string, logAccess = false): boolean => {
+    // ENTERPRISE: Super admin bypass - always return true
+    if (isSuperAdmin) {
+      return true;
+    }
+    
     const hasAccess = permissions[key] ?? false;
     
     // Log access attempt if requested (for audit purposes)
@@ -47,7 +29,7 @@ export const useUIPermissions = () => {
     }
     
     return hasAccess;
-  }, [permissions, profile]);
+  }, [isSuperAdmin, permissions, profile]);
 
   // Context-aware permission checker
   const hasContextPermission = useCallback((
@@ -55,6 +37,11 @@ export const useUIPermissions = () => {
     context?: any, 
     logAccess = false
   ): boolean => {
+    // ENTERPRISE: Super admin bypass - always return true
+    if (isSuperAdmin) {
+      return true;
+    }
+    
     if (!permissions) return false;
     
     const basePermission = permissions[key] ?? false;
@@ -74,10 +61,17 @@ export const useUIPermissions = () => {
     // For now, just return base permission
     // In the future, we can add context-specific rules here
     return basePermission;
-  }, [permissions, profile]);
+  }, [isSuperAdmin, permissions, profile]);
 
   // Load permissions when user changes
   useEffect(() => {
+    // Skip loading for super admins
+    if (isSuperAdmin) {
+      setPermissions(SUPER_ADMIN_PERMISSIONS);
+      setLoading(false);
+      return;
+    }
+
     if (!profile?.id) {
       setPermissions({});
       setLoading(false);
@@ -110,10 +104,15 @@ export const useUIPermissions = () => {
     return () => { 
       mounted = false; 
     };
-  }, [profile?.id]);
+  }, [isSuperAdmin, profile?.id]);
 
   // Refresh permissions
   const refreshPermissions = useCallback(async () => {
+    if (isSuperAdmin) {
+      // No-op for super admins
+      return;
+    }
+    
     if (!profile?.id) return;
     
     setLoading(true);
@@ -127,26 +126,27 @@ export const useUIPermissions = () => {
     } finally {
       setLoading(false);
     }
-  }, [profile?.id]);
+  }, [isSuperAdmin, profile?.id]);
 
+  // Return consistent structure regardless of isSuperAdmin
   return {
     hasPermission,
     hasContextPermission,
-    permissions,
-    loading,
+    permissions: isSuperAdmin ? SUPER_ADMIN_PERMISSIONS : permissions,
+    loading: isSuperAdmin ? false : loading,
     refreshPermissions,
     
     // Commonly used permission checks (optimized)
-    canAccessDevTools: hasPermission('ui.debug.show_test_buttons'),
-    canSeeDebugInfo: hasPermission('ui.debug.show_metadata'),
-    canSeeLiveBadges: hasPermission('ui.debug.show_live_badges'),
-    canSeePerformanceMetrics: hasPermission('ui.debug.show_performance_metrics'),
-    canAccessAdminFeatures: hasPermission('ui.admin.show_user_management'),
-    canSeeSystemInfo: hasPermission('ui.admin.show_system_info'),
+    canAccessDevTools: isSuperAdmin || hasPermission('ui.debug.show_test_buttons'),
+    canSeeDebugInfo: isSuperAdmin || hasPermission('ui.debug.show_metadata'),
+    canSeeLiveBadges: isSuperAdmin || hasPermission('ui.debug.show_live_badges'),
+    canSeePerformanceMetrics: isSuperAdmin || hasPermission('ui.debug.show_performance_metrics'),
+    canAccessAdminFeatures: isSuperAdmin || hasPermission('ui.admin.show_user_management'),
+    canSeeSystemInfo: isSuperAdmin || hasPermission('ui.admin.show_system_info'),
 
-    // Non-super-admin defaults
-    canAccessAllOrganizations: false,
-    canManagePlatform: false
+    // Super admin capabilities
+    canAccessAllOrganizations: isSuperAdmin,
+    canManagePlatform: isSuperAdmin
   } as const;
 };
 
