@@ -13,11 +13,13 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { PermissionWrapper } from "@/components/PermissionWrapper";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useSuperAdmin } from "@/context/SuperAdminContext";
 
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
   const { selectedApps, setSelectedApps } = useBigQueryAppSelection();
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { isSuperAdmin } = useSuperAdmin();
   
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -124,9 +126,11 @@ const TopBar: React.FC = React.memo(() => {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="theme-toggle-container">
-              <ThemeToggle />
-            </div>
+            {isSuperAdmin && (
+              <div className="theme-toggle-container">
+                <ThemeToggle />
+              </div>
+            )}
             <UserMenu />
           </div>
         </div>

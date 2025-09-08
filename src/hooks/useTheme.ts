@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 
 type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
@@ -11,15 +12,27 @@ interface UseThemeReturn {
 }
 
 export function useTheme(): UseThemeReturn {
+  const { isSuperAdmin } = useSuperAdmin();
+  const storedSuper = localStorage.getItem('is-super-admin') === 'true';
+
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem('theme') as Theme;
-    return stored || 'system';
+    if (storedSuper) {
+      const stored = localStorage.getItem('theme') as Theme;
+      return stored === 'light' || stored === 'dark' ? stored : 'dark';
+    }
+    return 'dark';
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     return systemPrefersDark ? 'dark' : 'light';
   });
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      setThemeState('dark');
+    }
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     const updateResolvedTheme = () => {
@@ -45,26 +58,32 @@ export function useTheme(): UseThemeReturn {
     root.classList.add(resolvedTheme);
     document.body.classList.remove('light', 'dark');
     document.body.classList.add(resolvedTheme);
-    localStorage.setItem('theme', theme);
-  }, [theme, resolvedTheme]);
+    if (isSuperAdmin) {
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme, resolvedTheme, isSuperAdmin]);
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === 'theme') {
-        const newTheme = (e.newValue as Theme) || 'system';
+      if (isSuperAdmin && e.key === 'theme') {
+        const newTheme = (e.newValue as Theme) || 'dark';
         setThemeState(newTheme);
       }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
-  }, []);
+  }, [isSuperAdmin]);
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
+    if (isSuperAdmin) {
+      setThemeState(newTheme);
+    }
   };
 
   const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    if (isSuperAdmin) {
+      setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    }
   };
 
   return {

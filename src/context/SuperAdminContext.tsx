@@ -32,6 +32,11 @@ export const SuperAdminProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [selectedOrganizationId, isSuperAdmin]);
 
+  // Persist super admin status for theme control
+  useEffect(() => {
+    localStorage.setItem('is-super-admin', isSuperAdmin ? 'true' : 'false');
+  }, [isSuperAdmin]);
+
   const isPlatformWideMode = isSuperAdmin && selectedOrganizationId === null;
 
   const contextValue: SuperAdminContextType = {

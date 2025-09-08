@@ -140,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
+      localStorage.setItem('is-super-admin', 'false');
       navigate('/auth/sign-in');
     } catch (error: any) {
       toast({
