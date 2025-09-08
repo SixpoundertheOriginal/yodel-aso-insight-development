@@ -8,7 +8,6 @@ import { DataSourceIndicator } from "../components/DataSourceIndicator";
 import { CountryPicker } from "../components/CountryPicker";
 import { PlaceholderDataIndicator } from "../components/PlaceholderDataIndicator";
 import { MarketProvider, useMarketData } from "../contexts/MarketContext";
-import { DemoDataBadge } from '@/components/DemoDataBadge';
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
@@ -232,12 +231,8 @@ const DashboardContent: React.FC = () => {
               selectedCountry={selectedMarket}
               onCountryChange={setSelectedMarket}
             />
-            {loading ? (
+            {loading && (
               <span className="text-gray-500 text-sm">Loading...</span>
-            ) : isDemo ? (
-              <DemoDataBadge isDemo={true} />
-            ) : (
-              <span className="text-green-600 font-medium text-sm">• Real-time</span>
             )}
           </div>
         </div>
