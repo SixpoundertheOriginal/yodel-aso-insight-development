@@ -24,9 +24,14 @@
   <body>
     <script>
       (function() {
-        const stored = localStorage.getItem('theme');
+        const isSuper = localStorage.getItem('is-super-admin') === 'true';
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = stored === 'light' || stored === 'dark' ? stored : (systemPrefersDark ? 'dark' : 'light');
+        const stored = isSuper ? localStorage.getItem('theme') : null;
+        const theme = stored === 'light' || stored === 'dark'
+          ? stored
+          : isSuper
+            ? (systemPrefersDark ? 'dark' : 'light')
+            : 'dark';
         document.documentElement.classList.add(theme);
       })();
     </script>
