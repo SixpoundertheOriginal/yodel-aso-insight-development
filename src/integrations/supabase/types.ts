@@ -1729,6 +1729,60 @@ export type Database = {
           },
         ]
       }
+      organization_branding: {
+        Row: {
+          branding_template: string | null
+          created_at: string | null
+          custom_message: string | null
+          id: string
+          is_enabled: boolean | null
+          logo_url: string | null
+          organization_id: string
+          position: string | null
+          style_config: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          branding_template?: string | null
+          created_at?: string | null
+          custom_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          logo_url?: string | null
+          organization_id: string
+          position?: string | null
+          style_config?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          branding_template?: string | null
+          created_at?: string | null
+          custom_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          logo_url?: string | null
+          organization_id?: string
+          position?: string | null
+          style_config?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_branding_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "organization_branding_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_client_access: {
         Row: {
           access_level: string | null

@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import TopBar from "../components/TopBar";
 import { GradientBackground, Container } from "@/components/ui/premium";
+import { OrganizationBranding } from "@/components/OrganizationBranding";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {children}
             </Container>
           </main>
+          <OrganizationBranding position="footer" />
         </SidebarInset>
       </GradientBackground>
     </SidebarProvider>

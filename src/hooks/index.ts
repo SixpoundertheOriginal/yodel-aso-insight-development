@@ -30,6 +30,7 @@ export { useEnhancedKeywordAnalytics } from './useEnhancedKeywordAnalytics';
 
 // Add unified keyword intelligence manager
 export { useDataAccess } from './useDataAccess';
+export { useOrganizationBranding } from './useOrganizationBranding';
 export { BigQueryTestButtons } from '../components/BigQueryTestButtons';
 export { DebugToolsWrapper, BigQueryTestWrapper, PerformanceTestWrapper, TechnicalMetadataWrapper } from '../components/DebugToolsWrapper';
 
