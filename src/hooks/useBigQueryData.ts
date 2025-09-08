@@ -83,6 +83,9 @@ interface BigQueryMeta {
   filteredByTrafficSource?: boolean;
   projectId: string;
   timestamp: string;
+  isDemo?: boolean;                    // NEW: Demo mode flag
+  demoMessage?: string;                // NEW: Demo explanation
+  message?: string;                    // NEW: General messages
   periodComparison?: PeriodComparison;
   dataArchitecture?: {
     phase: string;
@@ -118,6 +121,7 @@ interface BigQueryDataResult {
   loading: boolean;
   error: Error | null;
   meta?: BigQueryMeta;
+  isDemo?: boolean;                    // NEW: Expose demo flag
   availableTrafficSources: string[] | undefined;
 }
 
@@ -133,6 +137,7 @@ export const useBigQueryData = (
   const [error, setError] = useState<Error | null>(null);
   const [meta, setMeta] = useState<BigQueryMeta | undefined>(undefined);
   const [rawData, setRawData] = useState<BigQueryDataPoint[]>([]);
+  const [isDemo, setIsDemo] = useState<boolean>(false); // NEW: Demo state
   const availableSourcesRef = useRef<string[]>([]);
   
   // Get selected apps from BigQuery app selector
@@ -269,6 +274,7 @@ export const useBigQueryData = (
         });
 
         setMeta(bigQueryResponse.meta);
+        setIsDemo(bigQueryResponse.meta.isDemo || false); // NEW: Set demo flag
         availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
         setRawData(bigQueryResponse.data || []);
 
@@ -370,6 +376,7 @@ export const useBigQueryData = (
     loading,
     error,
     meta,
+    isDemo, // NEW: Expose demo flag
     availableTrafficSources: meta?.availableTrafficSources
   };
 };

@@ -38,12 +38,22 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
+import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components/DemoDataBadge';
+import { useBigQueryData } from '@/hooks/useBigQueryData';
 
 const OverviewContent: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
+  
+  // Get demo state from BigQuery data hook
+  const { isDemo } = useBigQueryData(
+    'demo-org', // This would come from your organization context
+    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
+    [],
+    true
+  );
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -321,6 +331,9 @@ const OverviewContent: React.FC = () => {
 
               {/* Placeholder Data Indicator */}
               <PlaceholderDataIndicator />
+              
+              {/* Demo Data Banner */}
+              <DemoDataBanner isDemo={isDemo} />
 
               {data && (
                 <div className="flex flex-col space-y-8">

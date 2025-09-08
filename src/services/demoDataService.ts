@@ -16,8 +16,12 @@ export interface DemoASOMetrics {
 export interface DemoDataResponse {
   success: true;
   data: DemoASOMetrics[];
-  metadata: {
-    is_demo_data: true;
+  meta: {
+    rowCount: number;
+    totalRows: number;
+    executionTimeMs: number;
+    isDemo: true;                    // CRITICAL: Demo mode flag
+    demoMessage: string;             // Demo explanation message
     organization_id: string;
     generated_at: string;
     total_records: number;
@@ -26,6 +30,9 @@ export interface DemoDataResponse {
       to: string;
     };
     demo_apps: string[];
+    availableTrafficSources: string[];
+    projectId: string;
+    timestamp: string;
   };
 }
 
@@ -101,13 +108,20 @@ export class DemoDataService {
     return {
       success: true,
       data: demoData,
-      metadata: {
-        is_demo_data: true,
+      meta: {
+        rowCount: demoData.length,
+        totalRows: demoData.length,
+        executionTimeMs: 120,
+        isDemo: true,
+        demoMessage: 'Synthetic demo data for platform evaluation - no client data exposed',
         organization_id: organizationId,
         generated_at: new Date().toISOString(),
         total_records: demoData.length,
         date_range: dateRange,
-        demo_apps: this.DEMO_APPS
+        demo_apps: this.DEMO_APPS,
+        availableTrafficSources: this.TRAFFIC_SOURCES.map(this.mapBigQueryToDisplay),
+        projectId: 'demo-environment',
+        timestamp: new Date().toISOString()
       }
     };
   }
