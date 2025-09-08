@@ -1,11 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { usePermissions } from '@/hooks/usePermissions';
 import { uiPermissionService, UIPermissions } from '@/services/uiPermissions';
 
 export const useUIPermissions = () => {
   const { profile } = useUserProfile();
+  const { isSuperAdmin } = usePermissions();
   const [permissions, setPermissions] = useState<UIPermissions>({});
   const [loading, setLoading] = useState(true);
+
+  // ENTERPRISE: Super admin bypass - platform-wide unrestricted access
+  if (isSuperAdmin) {
+    return {
+      hasPermission: () => true,
+      hasContextPermission: () => true,
+      permissions: SUPER_ADMIN_PERMISSIONS as UIPermissions,
+      loading: false,
+      refreshPermissions: async () => {},
+
+      // Optimized flags
+      canAccessDevTools: true,
+      canSeeDebugInfo: true,
+      canSeeLiveBadges: true,
+      canSeePerformanceMetrics: true,
+      canAccessAdminFeatures: true,
+      canSeeSystemInfo: true,
+
+      // Platform scope
+      canAccessAllOrganizations: true,
+      canManagePlatform: true
+    } as const;
+  }
 
   // Memoized permission checker with audit logging
   const hasPermission = useCallback((key: string, logAccess = false): boolean => {
@@ -117,6 +142,22 @@ export const useUIPermissions = () => {
     canSeeLiveBadges: hasPermission('ui.debug.show_live_badges'),
     canSeePerformanceMetrics: hasPermission('ui.debug.show_performance_metrics'),
     canAccessAdminFeatures: hasPermission('ui.admin.show_user_management'),
-    canSeeSystemInfo: hasPermission('ui.admin.show_system_info')
-  };
+    canSeeSystemInfo: hasPermission('ui.admin.show_system_info'),
+
+    // Non-super-admin defaults
+    canAccessAllOrganizations: false,
+    canManagePlatform: false
+  } as const;
+};
+
+// Define super admin capabilities
+const SUPER_ADMIN_PERMISSIONS: UIPermissions = {
+  'ui.debug.show_test_buttons': true,
+  'ui.debug.show_live_badges': true,
+  'ui.debug.show_metadata': true,
+  'ui.debug.show_performance_metrics': true,
+  'ui.admin.show_user_management': true,
+  'ui.admin.manage_organizations': true,
+  'ui.admin.platform_settings': true,
+  'ui.debug.show_all_data': true
 };

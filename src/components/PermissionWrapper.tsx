@@ -19,9 +19,13 @@ export const PermissionWrapper = memo<PermissionWrapperProps>(({
   loading = <Skeleton className="w-full h-8" />,
   logAccess = false
 }) => {
-  const { hasContextPermission, loading: permissionsLoading } = useUIPermissions();
+  const { hasContextPermission, loading: permissionsLoading, canAccessAllOrganizations } = useUIPermissions();
   
   if (permissionsLoading) return <>{loading}</>;
+  
+  if (canAccessAllOrganizations) {
+    return <>{children}</>;
+  }
   
   const hasAccess = hasContextPermission(permission, context, logAccess);
   return hasAccess ? <>{children}</> : <>{fallback}</>;
