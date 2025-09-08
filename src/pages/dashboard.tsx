@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import KpiCard from "../components/KpiCard";
 import AnalyticsTrafficSourceChart from "../components/AnalyticsTrafficSourceChart";
 import ComparisonChart from "../components/ComparisonChart";
-import { DataSourceIndicator } from "../components/DataSourceIndicator";
 import { CountryPicker } from "../components/CountryPicker";
 import { PlaceholderDataIndicator } from "../components/PlaceholderDataIndicator";
 import { MarketProvider, useMarketData } from "../contexts/MarketContext";
