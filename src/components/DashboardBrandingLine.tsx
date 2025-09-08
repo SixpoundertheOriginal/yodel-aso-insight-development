@@ -28,11 +28,17 @@ export const DashboardBrandingLine: React.FC = () => {
         .select('name')
         .eq('id', selectedOrganizationId)
         .single()
-        .then(({ data, error }) => {
-          if (!error && data) setOrgName(data.name);
-          else setOrgName(null);
-        })
-        .finally(() => setLoading(false));
+        .then(
+          ({ data, error }) => {
+            if (!error && data) setOrgName(data.name);
+            else setOrgName(null);
+            setLoading(false);
+          },
+          () => {
+            setOrgName(null);
+            setLoading(false);
+          }
+        );
     } else {
       setOrgName(profile?.organizations?.name ?? null);
     }

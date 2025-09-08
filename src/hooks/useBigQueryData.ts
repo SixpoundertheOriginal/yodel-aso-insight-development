@@ -265,7 +265,6 @@ export const useBigQueryData = (
         console.log('🔍 DEMO AUDIT [HOOK-1]: Raw meta object:', bigQueryResponse.meta);
         console.log('🔍 DEMO AUDIT [HOOK-1]: Demo flag variations:');
         console.log('  - meta.isDemo:', bigQueryResponse.meta?.isDemo);
-        console.log('  - meta.isDemoData:', bigQueryResponse.meta?.isDemoData);
 
         if (!bigQueryResponse.success) {
           debugLog.error('Service error', bigQueryResponse.error);
@@ -281,7 +280,7 @@ export const useBigQueryData = (
         });
 
         setMeta(bigQueryResponse.meta);
-        setIsDemo(bigQueryResponse.meta.isDemo || bigQueryResponse.meta.isDemoData || false); // NEW: Set demo flag
+        setIsDemo(bigQueryResponse.meta.isDemo || false); // NEW: Set demo flag
         availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
         setRawData(bigQueryResponse.data || []);
 
@@ -380,7 +379,7 @@ export const useBigQueryData = (
 
   console.log('🔍 DEMO AUDIT [HOOK-2]: Hook return preparation');
   console.log('🔍 DEMO AUDIT [HOOK-2]: Meta state:', !!meta);
-  console.log('🔍 DEMO AUDIT [HOOK-2]: Demo flag extraction:', meta?.isDemo || meta?.isDemoData || false);
+  console.log('🔍 DEMO AUDIT [HOOK-2]: Demo flag extraction:', meta?.isDemo || false);
 
   const hookResult = {
     data,
@@ -388,7 +387,7 @@ export const useBigQueryData = (
     error,
     meta,
     availableTrafficSources: meta?.availableTrafficSources,
-    isDemo: meta?.isDemo || meta?.isDemoData || false // Extract demo flag
+    isDemo: meta?.isDemo || false // Extract demo flag
   };
 
   console.log('🔍 DEMO AUDIT [HOOK-3]: Hook returning:');

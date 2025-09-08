@@ -81,6 +81,18 @@ function App() {
                             element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
                           />
                           <Route
+                            path="/dashboard/executive"
+                            element={<ProtectedRoute><Overview /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/dashboard/analytics"
+                            element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/dashboard/conversion-rate"
+                            element={<ProtectedRoute><ConversionAnalysis /></ProtectedRoute>}
+                          />
+                          <Route
                             path="/traffic-sources"
                             element={<ProtectedRoute><TrafficSources /></ProtectedRoute>}
                           />
