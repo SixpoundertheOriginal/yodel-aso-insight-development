@@ -23,7 +23,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
-import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components/DemoDataBadge';
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 
@@ -246,16 +245,12 @@ const ConversionAnalysisContent: React.FC = () => {
                       onCountryChange={setSelectedMarket}
                       className="min-w-[200px]"
                     />
-                    {loading ? (
+                    {loading && (
                       <span className="text-gray-500 text-sm">Loading...</span>
-                    ) : isDemo ? (
-                      <DemoDataBadge isDemo={true} />
-                    ) : (
-                      <span className="text-green-600 font-medium text-sm">• Real-time</span>
                     )}
                   </div>
                 </div>
-                
+
                 {/* Placeholder Data Indicator */}
                 <PlaceholderDataIndicator />
 

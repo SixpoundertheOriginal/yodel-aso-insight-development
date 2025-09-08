@@ -38,8 +38,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
-import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components/DemoDataBadge';
-import { useBigQueryData } from '@/hooks/useBigQueryData';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 
 const OverviewContent: React.FC = () => {
@@ -318,13 +316,12 @@ const OverviewContent: React.FC = () => {
                     <PremiumTypography.PageTitle gradient="orange" animated>
                       Performance Overview
                     </PremiumTypography.PageTitle>
-                    <DemoDataBadge isDemo={isDemo} />
                   </div>
                   <DashboardBrandingLine />
                 </div>
 
                 <div className="flex gap-4">
-                  <CountryPicker 
+                  <CountryPicker
                     selectedCountry={selectedMarket}
                     onCountryChange={setSelectedMarket}
                     className="min-w-[200px]"
@@ -336,21 +333,14 @@ const OverviewContent: React.FC = () => {
                     onSelectedSourcesChange={setSelectedSources}
                     availableSources={[...executiveTrafficSources]}
                   />
-                  {loading ? (
+                  {loading && (
                     <span className="text-gray-500 text-sm">Loading...</span>
-                  ) : isDemo ? (
-                    <DemoDataBadge isDemo={true} />
-                  ) : (
-                    <span className="text-green-600 font-medium text-sm">• Real-time</span>
                   )}
                 </div>
               </div>
 
               {/* Placeholder Data Indicator */}
               <PlaceholderDataIndicator />
-              
-              {/* Demo Data Banner */}
-              <DemoDataBanner isDemo={isDemo} />
 
               {data && (
                 <div className="flex flex-col space-y-8">
