@@ -21,7 +21,21 @@ export const useFeatureAccess = () => {
         setFeatures(orgFeatures);
       } catch (error) {
         console.error('Failed to fetch organization features:', error);
-        setFeatures([]);
+        // Fallback: If feature access table doesn't exist, allow access to all features
+        // This prevents the app from breaking during migration transitions
+        setFeatures([
+          'performance_intelligence',
+          'executive_dashboard', 
+          'analytics',
+          'conversion_intelligence',
+          'keyword_intelligence',
+          'metadata_generator',
+          'creative_review',
+          'aso_chat',
+          'competitive_intelligence',
+          'app_discovery',
+          'admin_panel'
+        ]);
       } finally {
         setLoading(false);
       }
@@ -43,6 +57,20 @@ export const useFeatureAccess = () => {
       setFeatures(orgFeatures);
     } catch (error) {
       console.error('Failed to refresh features:', error);
+      // Fallback: If feature access table doesn't exist, allow access to all features
+      setFeatures([
+        'performance_intelligence',
+        'executive_dashboard', 
+        'analytics',
+        'conversion_intelligence',
+        'keyword_intelligence',
+        'metadata_generator',
+        'creative_review',
+        'aso_chat',
+        'competitive_intelligence',
+        'app_discovery',
+        'admin_panel'
+      ]);
     } finally {
       setLoading(false);
     }

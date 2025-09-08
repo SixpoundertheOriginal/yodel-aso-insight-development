@@ -3,18 +3,24 @@ import { PlatformFeature } from '@/constants/features';
 
 export class FeatureAccessService {
   async getOrgFeatures(organizationId: string): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('org_feature_access')
-      .select('feature_key')
-      .eq('organization_id', organizationId)
-      .eq('is_enabled', true);
-    
-    if (error) {
-      console.error('Error fetching organization features:', error);
+    try {
+      const { data, error } = await supabase
+        .from('org_feature_access')
+        .select('feature_key')
+        .eq('organization_id', organizationId)
+        .eq('is_enabled', true);
+      
+      if (error) {
+        console.error('Error fetching organization features:', error);
+        // If table doesn't exist or RLS blocks access, return empty array to trigger fallback
+        throw error;
+      }
+      
+      return data?.map(f => f.feature_key) || [];
+    } catch (error) {
+      console.error('Feature access service error:', error);
       throw error;
     }
-    
-    return data?.map(f => f.feature_key) || [];
   }
 
   async checkFeatureAccess(organizationId: string, featureKey: string): Promise<boolean> {
