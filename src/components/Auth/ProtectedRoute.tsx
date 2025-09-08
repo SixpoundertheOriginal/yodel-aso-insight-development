@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Tables } from '@/integrations/supabase/types';
+import { useAsoData } from '@/context/AsoDataContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading } = useUserProfile();
   const location = useLocation();
+  const { isDemo } = useAsoData();
 
   // Show spinner while auth or profile are loading
   if (loading || (user && profileLoading)) {
@@ -47,6 +49,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   // Clear any stored intent once authenticated and organization validated
   sessionStorage.removeItem('postLoginRedirect');
+
+  // Restrict routes in demo mode
+  const demoPaths = ['/overview', '/dashboard', '/conversion-analysis'];
+  if (isDemo && !demoPaths.includes(location.pathname)) {
+    return <Navigate to='/overview' replace />;
+  }
+
   return <>{children}</>;
 };
 
