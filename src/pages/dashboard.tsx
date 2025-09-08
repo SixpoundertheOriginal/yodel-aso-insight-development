@@ -28,6 +28,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { OrganizationSelector } from '@/components/Organization/OrganizationSelector';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
+import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 
 const DashboardContent: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
@@ -223,9 +224,7 @@ const DashboardContent: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Store Performance</h1>
-            <p className="text-muted-foreground">
-              Analytics insights for your applications
-            </p>
+            <DashboardBrandingLine />
           </div>
           
           <div className="flex items-center space-x-4">

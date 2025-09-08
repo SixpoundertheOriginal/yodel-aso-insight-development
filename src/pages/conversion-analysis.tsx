@@ -25,6 +25,7 @@ import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components/DemoDataBadge';
 import { useBigQueryData } from '@/hooks/useBigQueryData';
+import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 
 const ConversionAnalysisContent: React.FC = () => {
   const asoContext = useAsoData();
@@ -227,13 +228,16 @@ const ConversionAnalysisContent: React.FC = () => {
               </TabsList>
               <TabsContent value="performance" className="space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                  <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-bold">Conversion Analysis</h1>
-                    <CategorySelector
-                      selectedCategory={selectedCategory}
-                      onCategoryChange={setSelectedCategory}
-                      availableCategories={availableCategories}
-                    />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-4">
+                      <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+                      <CategorySelector
+                        selectedCategory={selectedCategory}
+                        onCategoryChange={setSelectedCategory}
+                        availableCategories={availableCategories}
+                      />
+                    </div>
+                    <DashboardBrandingLine />
                   </div>
                   
                   <div className="flex items-center gap-4">
