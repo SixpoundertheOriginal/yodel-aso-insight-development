@@ -1568,6 +1568,51 @@ export type Database = {
         }
         Relationships: []
       }
+      markets: {
+        Row: {
+          country_code: string
+          country_name: string
+          created_at: string | null
+          currency_code: string | null
+          data_source: string | null
+          id: string
+          is_available: boolean | null
+          metadata: Json | null
+          priority_order: number | null
+          region: string
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          country_code: string
+          country_name: string
+          created_at?: string | null
+          currency_code?: string | null
+          data_source?: string | null
+          id?: string
+          is_available?: boolean | null
+          metadata?: Json | null
+          priority_order?: number | null
+          region: string
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          country_code?: string
+          country_name?: string
+          created_at?: string | null
+          currency_code?: string | null
+          data_source?: string | null
+          id?: string
+          is_available?: boolean | null
+          metadata?: Json | null
+          priority_order?: number | null
+          region?: string
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       metadata_versions: {
         Row: {
           app_store_id: string

@@ -1,10 +1,13 @@
 
-// src/pages/dashboard.tsx
+// Update dashboard to integrate country picker
 import React, { useState, useEffect } from "react";
 import KpiCard from "../components/KpiCard";
 import AnalyticsTrafficSourceChart from "../components/AnalyticsTrafficSourceChart";
 import ComparisonChart from "../components/ComparisonChart";
 import { DataSourceIndicator } from "../components/DataSourceIndicator";
+import { CountryPicker } from "../components/CountryPicker";
+import { PlaceholderDataIndicator } from "../components/PlaceholderDataIndicator";
+import { MarketProvider, useMarketData } from "../contexts/MarketContext";
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +27,7 @@ import { OrganizationSelector } from '@/components/Organization/OrganizationSele
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 
-const Dashboard: React.FC = () => {
+const DashboardContent: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
   const [selectedKPI, setSelectedKPI] = useState<string>('impressions');
   const navigate = useNavigate();
@@ -39,6 +42,7 @@ const Dashboard: React.FC = () => {
     meta
   } = useAsoData();
   const { user } = useAuth();
+  const { selectedMarket, setSelectedMarket, isPlaceholderData } = useMarketData();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
@@ -196,6 +200,30 @@ const Dashboard: React.FC = () => {
             />
           </div>
         )}
+
+        {/* Page Header with Country Picker */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Performance Overview</h1>
+            <p className="text-muted-foreground">
+              Analytics insights for your applications
+            </p>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <CountryPicker 
+              selectedCountry={selectedMarket}
+              onCountryChange={setSelectedMarket}
+            />
+            <DataSourceIndicator 
+              currentDataSource={currentDataSource}
+              dataSourceStatus={dataSourceStatus}
+            />
+          </div>
+        </div>
+
+        {/* Placeholder Data Indicator */}
+        <PlaceholderDataIndicator />
 
         {/* ✅ ENHANCED: Platform-wide mode message */}
         {isPlatformWideMode && (
@@ -384,6 +412,15 @@ const Dashboard: React.FC = () => {
           )}
         </div>
     </MainLayout>
+  );
+};
+
+// Main Dashboard component with MarketProvider
+const Dashboard: React.FC = () => {
+  return (
+    <MarketProvider>
+      <DashboardContent />
+    </MarketProvider>
   );
 };
 

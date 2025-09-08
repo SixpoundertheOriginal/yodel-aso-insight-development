@@ -40,6 +40,9 @@ export { keywordDiscoveryService } from '../services/keyword-discovery.service';
 // Add debounced filters hook
 export { useDebouncedFilters } from './useDebouncedFilters';
 
+// Market data hooks
+export * from '../contexts/MarketContext';
+
 // Derived KPI framework hooks
 export {
   useDerivedKPIs,
