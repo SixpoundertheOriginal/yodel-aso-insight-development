@@ -142,8 +142,17 @@ export function AppSidebar() {
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
   const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions();
   const { user } = useAuth();
-const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
-  
+  const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 DEMO DETECTION VALIDATION', {
+      org,
+      isDemoOrg,
+      demo_mode: org?.settings?.demo_mode,
+      slug: org?.slug,
+    });
+  }
+
   // Define navigation items first, before filtering
   const controlCenterItems: NavigationItem[] = [
     {
