@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Database, Calendar, BarChart3, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { PermissionWrapper } from '@/components/PermissionWrapper';
 
 interface ApprovedApp {
   id: string;
@@ -52,13 +53,15 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                 {app.app_metadata && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {app.app_metadata.record_count && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <BarChart3 className="h-4 w-4 text-zinc-400" />
-                        <span className="text-zinc-400">Records:</span>
-                        <span className="text-foreground font-medium">
-                          {formatNumber(app.app_metadata.record_count)}
-                        </span>
-                      </div>
+                      <PermissionWrapper permission="ui.debug.show_metadata">
+                        <div className="flex items-center gap-2 text-sm">
+                          <BarChart3 className="h-4 w-4 text-zinc-400" />
+                          <span className="text-zinc-400">Records:</span>
+                          <span className="text-foreground font-medium">
+                            {formatNumber(app.app_metadata.record_count)}
+                          </span>
+                        </div>
+                      </PermissionWrapper>
                     )}
                     
                     {app.app_metadata.days_with_data && (
