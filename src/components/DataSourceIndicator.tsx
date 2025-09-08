@@ -5,7 +5,7 @@ import { Database, TestTube, AlertTriangle, Loader2 } from 'lucide-react';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 
 type DataSource = 'mock' | 'bigquery';
-type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+type DataSourceStatus = 'loading' | 'bigquery-success' | 'demo-data' | 'bigquery-failed-fallback' | 'mock-only';
 
 interface DataSourceIndicatorProps {
   currentDataSource: DataSource | null;
@@ -34,6 +34,16 @@ export const DataSourceIndicator: React.FC<DataSourceIndicatorProps> = ({
           tooltip: 'Real-time ASO data',
           debugText: 'Data from BigQuery (Live ASO metrics)',
           debugTooltip: 'Data from BigQuery (Live ASO metrics)'
+        };
+      
+      case 'demo-data':
+        return {
+          icon: <TestTube className="h-3 w-3" />,
+          text: 'Demo Data',
+          variant: 'secondary' as const,
+          tooltip: 'Sample data being shown',
+          debugText: 'Demo Data',
+          debugTooltip: 'Showing demo data (no approved apps)'
         };
       
       case 'bigquery-failed-fallback':

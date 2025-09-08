@@ -19,7 +19,7 @@ export interface AsoDataFilters {
   selectedApps: string[];
 }
 
-export type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+export type DataSourceStatus = 'loading' | 'bigquery-success' | 'demo-data' | 'bigquery-failed-fallback' | 'mock-only';
 
 interface AsoDataContextType {
   data: AsoData | null;

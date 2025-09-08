@@ -9,7 +9,7 @@ import { debugLog } from '@/lib/utils/debug';
 
 export type DataSource = 'bigquery' | 'mock' | 'auto';
 export type CurrentDataSource = 'bigquery' | 'mock';
-export type DataSourceStatus = 'loading' | 'bigquery-success' | 'bigquery-failed-fallback' | 'mock-only';
+export type DataSourceStatus = 'loading' | 'bigquery-success' | 'demo-data' | 'bigquery-failed-fallback' | 'mock-only';
 
 interface UseAsoDataWithFallbackResult {
   data: AsoData | null;
@@ -132,15 +132,16 @@ export const useAsoDataWithFallback = (
 
     // BigQuery succeeded
     if (bigQueryResult.data && !bigQueryResult.error) {
-      debugLog.info('✅ [Fallback] Using BigQuery data');
+      const isDemo = bigQueryResult.isDemo || false;
+      debugLog.info(`✅ [Fallback] Using ${isDemo ? 'demo' : 'BigQuery'} data`);
       setCurrentDataSource('bigquery');
-      setDataSourceStatus('bigquery-success');
+      setDataSourceStatus(isDemo ? 'demo-data' : 'bigquery-success');
       setFinalResult({
         data: bigQueryResult.data,
         loading: false,
         error: null,
         availableTrafficSources: bigQueryResult.availableTrafficSources,
-        isDemo: bigQueryResult.isDemo || false // NEW: Pass through demo flag
+        isDemo: isDemo
       });
       return;
     }
