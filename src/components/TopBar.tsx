@@ -10,10 +10,10 @@ import { BigQueryAppSelector } from "./BigQueryAppSelector";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { PermissionWrapper } from "@/components/PermissionWrapper";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
+import GlobalDemoIndicator from "./GlobalDemoIndicator";
 
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
@@ -77,9 +77,10 @@ const TopBar: React.FC = React.memo(() => {
             <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground" />
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-yodel-orange"></div>
-              <Heading3 className="text-lg font-semibold text-foreground sm:text-2xl">
+            <Heading3 className="text-lg font-semibold text-foreground sm:text-2xl">
               {getPageTitle()}
             </Heading3>
+            <GlobalDemoIndicator />
             {isAnalyticsPage && (
               <PermissionWrapper permission="ui.debug.show_data_source" fallback={
                 <div className="hidden sm:flex items-center gap-2 ml-4">
