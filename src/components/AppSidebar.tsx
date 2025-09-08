@@ -38,7 +38,8 @@ import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
-import { useAsoData } from "@/context/AsoDataContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
 
 interface NavigationItem {
   title: string;
@@ -53,29 +54,21 @@ interface NavigationItem {
 const analyticsItems: NavigationItem[] = [
   {
     title: "Executive Dashboard",
-    url: "/overview",
+    url: "/dashboard/executive",
     icon: Home,
     featureKey: PLATFORM_FEATURES.EXECUTIVE_DASHBOARD,
   },
   {
     title: "Analytics",
-    url: "/dashboard",
+    url: "/dashboard/analytics",
     icon: BarChart3,
     featureKey: PLATFORM_FEATURES.ANALYTICS,
   },
   {
-    title: "Conversion Intelligence",
-    url: "/conversion-analysis",
+    title: "Conversion Rate",
+    url: "/dashboard/conversion-rate",
     icon: Target,
     featureKey: PLATFORM_FEATURES.CONVERSION_INTELLIGENCE,
-  },
-  {
-    title: "Insights",
-    url: "/insights",
-    icon: Brain,
-    status: "coming_soon",
-    statusLabel: "Coming Soon",
-    featureKey: PLATFORM_FEATURES.PERFORMANCE_INTELLIGENCE,
   },
 ];
 
@@ -145,11 +138,16 @@ const userItems: NavigationItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
+  const { isSuperAdmin, isOrganizationAdmin, roles = [] } = usePermissions();
   const { hasFeature } = useFeatureAccess();
-  const { canAccessAdminFeatures, hasPermission } = useUIPermissions();
+  const { hasPermission } = useUIPermissions();
   const { user } = useAuth();
-  const { isDemo } = useAsoData();
+  const { profile } = useUserProfile();
+  const org = profile?.organizations as { settings?: { demo_mode?: boolean }; slug?: string } | undefined;
+  const isDemoOrg = Boolean(org?.settings?.demo_mode) || org?.slug?.toLowerCase() === 'next';
+  const role =
+    (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
+  const routes = getAllowedRoutes({ isDemoOrg, role });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
@@ -270,10 +268,7 @@ export function AppSidebar() {
     });
   }
 
-  const demoAllowed = ['/overview', '/dashboard', '/conversion-analysis'];
-  const visibleAnalyticsItems = isDemo
-    ? analyticsItems.filter(i => demoAllowed.includes(i.url))
-    : analyticsItems;
+  const visibleAnalyticsItems = analyticsItems.filter(i => routes.includes(i.url));
 
   return (
     <Sidebar collapsible="icon" className="border-r border-footer-border">
@@ -308,7 +303,7 @@ export function AppSidebar() {
         )}
 
         {/* AI Command Center Section */}
-        {!isDemo && aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemoOrg && aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -325,7 +320,7 @@ export function AppSidebar() {
         )}
 
         {/* Growth Accelerators Section */}
-        {!isDemo && aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemoOrg && aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -342,7 +337,7 @@ export function AppSidebar() {
         )}
 
         {/* Control Center Section - visible to org admins and super admins */}
-        {!isDemo && (isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemoOrg && (isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
