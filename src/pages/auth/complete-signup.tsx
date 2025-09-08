@@ -33,6 +33,7 @@ const CompleteSignup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const form = useForm<CompleteSignupFormValues>({
     resolver: zodResolver(completeSignupSchema),
@@ -43,10 +44,11 @@ const CompleteSignup = () => {
   });
 
   const onSubmit = async (data: CompleteSignupFormValues) => {
+    setApiError(null);
     if (!user) {
       toast({
         title: 'Authentication required',
-        description: 'Please start from the email confirmation link.',
+        description: 'Your session has expired. Please use the email link again.',
         variant: 'destructive',
       });
       navigate('/auth/sign-in');
@@ -54,13 +56,53 @@ const CompleteSignup = () => {
     }
 
     setIsSubmitting(true);
+    const startTime = Date.now();
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: data.password
-      });
+      console.log('=== Complete Signup Debug ===');
+      const preUser = await supabase.auth.getUser();
+      console.log('Current user session (pre-update):', preUser);
 
-      if (error) {
-        throw error;
+      // Try to refresh session to avoid stale token issues
+      try {
+        const refreshed = await supabase.auth.refreshSession();
+        console.log('Session refresh result:', refreshed);
+      } catch (refreshError: any) {
+        console.warn('Session refresh failed:', refreshError?.message || refreshError);
+      }
+
+      console.log('Attempting password update for:', { email: user.email });
+      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+      console.log('Password update result:', { updateData, updateError });
+
+      if (updateError) {
+        console.error('Password update failed:', updateError);
+        const message =
+          updateError.message?.toLowerCase().includes('session')
+            ? 'Your session has expired. Please click the confirmation link again.'
+            : updateError.message || 'Failed to set password. Please try again.';
+        setApiError(message);
+        toast({
+          title: 'Setup failed',
+          description: message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const postUser = await supabase.auth.getUser();
+      console.log('Updated user session (post-update):', postUser);
+
+      if (!postUser?.data?.user) {
+        console.error('Password may not have been saved properly - user missing after update');
+        setApiError('Password may not have been saved properly. Please try again.');
+        toast({
+          title: 'Verification issue',
+          description: 'Password may not have been saved properly. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -68,12 +110,15 @@ const CompleteSignup = () => {
         description: 'Your password has been set successfully.',
       });
 
+      console.log('=== Complete Signup Success ===', { ms: Date.now() - startTime });
       navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      console.error('Password update error:', error);
+      console.error('Complete signup unexpected error:', error);
+      const message = error?.message || 'Failed to set password. Please try again.';
+      setApiError(message);
       toast({
         title: 'Setup failed',
-        description: error.message || 'Failed to set password. Please try again.',
+        description: message,
         variant: 'destructive',
       });
     } finally {
@@ -235,6 +280,13 @@ const CompleteSignup = () => {
                     <li>One number</li>
                   </ul>
                 </div>
+
+                {apiError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{apiError}</AlertDescription>
+                  </Alert>
+                )}
 
                 <Button
                   type="submit"
