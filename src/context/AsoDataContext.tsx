@@ -85,12 +85,15 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     defaultDataSource
   );
 
+  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Context input received');
+  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Input isDemo:', isDemo);
+
   const updateFilters = useCallback((newFilters: AsoDataFilters | ((prev: AsoDataFilters) => AsoDataFilters)) => {
     setFilters(newFilters);
   }, []);
 
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = useMemo(() => {
+    const value = {
       data,
       loading,
       error,
@@ -102,19 +105,24 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       availableTrafficSources,
       meta: undefined, // Will be populated by BigQuery hook if needed
       isDemo // NEW: Pass through demo flag
-    }),
-    [
-      data,
-      loading,
-      error,
-      filters,
-      updateFilters,
-      currentDataSource,
-      dataSourceStatus,
-      availableTrafficSources,
-      isDemo // NEW: Include in dependencies
-    ]
-  );
+    };
+
+    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context value created');
+    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context keys:', Object.keys(value));
+    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context isDemo:', value.isDemo);
+
+    return value;
+  }, [
+    data,
+    loading,
+    error,
+    filters,
+    updateFilters,
+    currentDataSource,
+    dataSourceStatus,
+    availableTrafficSources,
+    isDemo // NEW: Include in dependencies
+  ]);
 
   return (
     <AsoDataContext.Provider value={contextValue}>

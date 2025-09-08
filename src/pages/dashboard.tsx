@@ -33,9 +33,11 @@ const DashboardContent: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
   const [selectedKPI, setSelectedKPI] = useState<string>('impressions');
   const navigate = useNavigate();
+  const contextValue = useAsoData();
   const {
     data,
     loading,
+    error,
     filters,
     setFilters,
     setUserTouchedFilters,
@@ -43,7 +45,18 @@ const DashboardContent: React.FC = () => {
     dataSourceStatus,
     meta,
     isDemo // NEW: Get demo flag from context
-  } = useAsoData();
+  } = contextValue;
+
+  console.log('🔍 DEMO AUDIT [UI-1]: Component render');
+  console.log('🔍 DEMO AUDIT [UI-1]: Component isDemo:', isDemo);
+  console.log('🔍 DEMO AUDIT [UI-1]: Loading state:', loading);
+  console.log('🔍 DEMO AUDIT [UI-1]: Error state:', !!error);
+  console.log('🔍 DEMO AUDIT [UI-1]: Render decision:',
+    loading ? 'LOADING' : error ? 'ERROR' : isDemo ? 'DEMO_BADGE' : 'REAL_TIME'
+  );
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo type:', typeof isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo value:', isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: Context type keys:', Object.keys(contextValue));
   const { user } = useAuth();
   const { selectedMarket, setSelectedMarket, isPlaceholderData } = useMarketData();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();

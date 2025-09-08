@@ -27,7 +27,8 @@ import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 
 const ConversionAnalysisContent: React.FC = () => {
-  const { data, loading } = useAsoData();
+  const asoContext = useAsoData();
+  const { data, loading, error } = asoContext;
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
@@ -49,6 +50,17 @@ const ConversionAnalysisContent: React.FC = () => {
     [],
     !!organizationId // Only fetch when organizationId is available
   );
+
+  console.log('🔍 DEMO AUDIT [UI-1]: Component render');
+  console.log('🔍 DEMO AUDIT [UI-1]: Component isDemo:', isDemo);
+  console.log('🔍 DEMO AUDIT [UI-1]: Loading state:', loading);
+  console.log('🔍 DEMO AUDIT [UI-1]: Error state:', !!error);
+  console.log('🔍 DEMO AUDIT [UI-1]: Render decision:',
+    loading ? 'LOADING' : error ? 'ERROR' : isDemo ? 'DEMO_BADGE' : 'REAL_TIME'
+  );
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo type:', typeof isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo value:', isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: Context type keys:', Object.keys(asoContext));
 
   const trafficSources = data?.trafficSources || [];
   const filteredSources = selectedSources.length > 0

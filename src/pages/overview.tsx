@@ -42,7 +42,19 @@ import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 
 const OverviewContent: React.FC = () => {
-  const { data, loading, isDemo } = useAsoData(); // NEW: Get demo flag from context
+  const contextValue = useAsoData(); // NEW: Get demo flag from context
+  const { data, loading, error, isDemo } = contextValue;
+
+  console.log('🔍 DEMO AUDIT [UI-1]: Component render');
+  console.log('🔍 DEMO AUDIT [UI-1]: Component isDemo:', isDemo);
+  console.log('🔍 DEMO AUDIT [UI-1]: Loading state:', loading);
+  console.log('🔍 DEMO AUDIT [UI-1]: Error state:', !!error);
+  console.log('🔍 DEMO AUDIT [UI-1]: Render decision:',
+    loading ? 'LOADING' : error ? 'ERROR' : isDemo ? 'DEMO_BADGE' : 'REAL_TIME'
+  );
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo type:', typeof isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo value:', isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: Context type keys:', Object.keys(contextValue));
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
