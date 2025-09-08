@@ -2,12 +2,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Tables } from '@/integrations/supabase/types';
+
+type UserProfile = Tables<'profiles'> & {
+  organizations: (Pick<Tables<'organizations'>, 'name' | 'subscription_tier' | 'slug'> & {
+    settings: { demo_mode?: boolean } | null;
+  }) | null;
+  user_roles: Pick<Tables<'user_roles'>, 'role' | 'organization_id'>[];
+};
 
 export const useUserProfile = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading } = useQuery<UserProfile | null>({
     queryKey: ['user-profile'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -17,13 +25,13 @@ export const useUserProfile = () => {
         .from('profiles')
         .select(`
           *,
-          organizations(name, subscription_tier),
+          organizations(name, subscription_tier, slug, settings),
           user_roles(role, organization_id)
         `)
         .eq('id', user.id)
         .single();
 
-      return profile;
+      return profile as UserProfile;
     },
   });
 
