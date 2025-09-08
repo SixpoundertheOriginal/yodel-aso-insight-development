@@ -22,6 +22,7 @@ import { TrafficSourceKpiCards } from '../components/TrafficSourceKpiCards';
 import { usePermissions } from '@/hooks/usePermissions';
 import { OrganizationSelector } from '@/components/Organization/OrganizationSelector';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
+import { PermissionWrapper } from '@/components/PermissionWrapper';
 
 const Dashboard: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
@@ -253,19 +254,21 @@ const Dashboard: React.FC = () => {
         
         {/* Data Source Indicator with Test Button */}
         <div className="ml-4 flex flex-col items-end gap-2">
-          <DataSourceIndicator 
+          <DataSourceIndicator
             currentDataSource={currentDataSource}
             dataSourceStatus={dataSourceStatus}
           />
-          <Button 
-            onClick={() => navigate('/smoke-test')}
-            variant="outline"
-            size="sm"
-            className="border-zinc-700 text-zinc-400 hover:text-foreground"
-          >
-            <TestTube className="h-3 w-3 mr-1" />
-            Test BigQuery
-          </Button>
+          <PermissionWrapper permission="ui.debug.show_test_buttons">
+            <Button
+              onClick={() => navigate('/smoke-test')}
+              variant="outline"
+              size="sm"
+              className="border-zinc-700 text-zinc-400 hover:text-foreground"
+            >
+              <TestTube className="h-3 w-3 mr-1" />
+              Test BigQuery
+            </Button>
+          </PermissionWrapper>
         </div>
       </div>
 
