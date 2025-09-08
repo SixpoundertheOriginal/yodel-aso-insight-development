@@ -176,7 +176,7 @@ export const useAsoDataWithFallback = (
         bigQueryResult.error.message
       );
       setCurrentDataSource('mock');
-      setDataSourceStatus('bigquery-failed-fallback');
+      setDataSourceStatus(isDemoOrg ? 'demo-data' : 'bigquery-failed-fallback');
 
       // While mock is loading, keep previous data but surface BigQuery error
       if (mockResult.loading) {
@@ -184,7 +184,8 @@ export const useAsoDataWithFallback = (
           data: prev.data,
           loading: true,
           error: bigQueryResult.error,
-          availableTrafficSources: prev.availableTrafficSources
+          availableTrafficSources: prev.availableTrafficSources,
+          isDemo: isDemoOrg
         }));
         return;
       }
@@ -197,7 +198,7 @@ export const useAsoDataWithFallback = (
           error: null,
           availableTrafficSources:
             mockResult.data.trafficSources?.map((s) => s.name) || [],
-          isDemo: false // Mock fallback data is not demo data
+          isDemo: isDemoOrg
         });
         return;
       }
@@ -208,7 +209,8 @@ export const useAsoDataWithFallback = (
           data: prev.data,
           loading: false,
           error: mockResult.error,
-          availableTrafficSources: prev.availableTrafficSources
+          availableTrafficSources: prev.availableTrafficSources,
+          isDemo: isDemoOrg
         }));
         return;
       }
