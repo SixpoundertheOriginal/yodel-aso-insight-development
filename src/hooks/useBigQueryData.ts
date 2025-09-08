@@ -260,6 +260,13 @@ export const useBigQueryData = (
 
         const bigQueryResponse = response as BigQueryResponse;
 
+        console.log('🔍 DEMO AUDIT [HOOK-1]: Raw response received');
+        console.log('🔍 DEMO AUDIT [HOOK-1]: Response success:', bigQueryResponse.success);
+        console.log('🔍 DEMO AUDIT [HOOK-1]: Raw meta object:', bigQueryResponse.meta);
+        console.log('🔍 DEMO AUDIT [HOOK-1]: Demo flag variations:');
+        console.log('  - meta.isDemo:', bigQueryResponse.meta?.isDemo);
+        console.log('  - meta.isDemoData:', bigQueryResponse.meta?.isDemoData);
+
         if (!bigQueryResponse.success) {
           debugLog.error('Service error', bigQueryResponse.error);
           throw new Error(bigQueryResponse.error || 'BigQuery request failed');
@@ -274,7 +281,7 @@ export const useBigQueryData = (
         });
 
         setMeta(bigQueryResponse.meta);
-        setIsDemo(bigQueryResponse.meta.isDemo || false); // NEW: Set demo flag
+        setIsDemo(bigQueryResponse.meta.isDemo || bigQueryResponse.meta.isDemoData || false); // NEW: Set demo flag
         availableSourcesRef.current = bigQueryResponse.meta.availableTrafficSources || [];
         setRawData(bigQueryResponse.data || []);
 
@@ -371,14 +378,24 @@ export const useBigQueryData = (
     error: error?.message
   });
 
-  return {
+  console.log('🔍 DEMO AUDIT [HOOK-2]: Hook return preparation');
+  console.log('🔍 DEMO AUDIT [HOOK-2]: Meta state:', !!meta);
+  console.log('🔍 DEMO AUDIT [HOOK-2]: Demo flag extraction:', meta?.isDemo || meta?.isDemoData || false);
+
+  const hookResult = {
     data,
     loading,
     error,
     meta,
-    isDemo, // NEW: Expose demo flag
-    availableTrafficSources: meta?.availableTrafficSources
+    availableTrafficSources: meta?.availableTrafficSources,
+    isDemo: meta?.isDemo || meta?.isDemoData || false // Extract demo flag
   };
+
+  console.log('🔍 DEMO AUDIT [HOOK-3]: Hook returning:');
+  console.log('🔍 DEMO AUDIT [HOOK-3]: Return object keys:', Object.keys(hookResult));
+  console.log('🔍 DEMO AUDIT [HOOK-3]: Return isDemo value:', hookResult.isDemo);
+
+  return hookResult;
 };
 
 function createTrafficSourceTimeSeries(bigQueryData: BigQueryDataPoint[]) {

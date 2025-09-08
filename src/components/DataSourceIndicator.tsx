@@ -16,6 +16,28 @@ export const DataSourceIndicator: React.FC<DataSourceIndicatorProps> = ({
   currentDataSource,
   dataSourceStatus
 }) => {
+  const isDemo =
+    dataSourceStatus === 'demo-data' ||
+    dataSourceStatus === 'bigquery-failed-fallback' ||
+    dataSourceStatus === 'mock-only';
+
+  console.log('🔍 DEMO AUDIT [UI-1]: Component render');
+  console.log('🔍 DEMO AUDIT [UI-1]: Component isDemo:', isDemo);
+  console.log('🔍 DEMO AUDIT [UI-1]: Loading state:', dataSourceStatus === 'loading');
+  console.log('🔍 DEMO AUDIT [UI-1]: Error state:', dataSourceStatus === 'bigquery-failed-fallback');
+  console.log(
+    '🔍 DEMO AUDIT [UI-1]: Render decision:',
+    dataSourceStatus === 'loading'
+      ? 'LOADING'
+      : dataSourceStatus === 'bigquery-failed-fallback'
+        ? 'ERROR'
+        : isDemo
+          ? 'DEMO_BADGE'
+          : 'REAL_TIME'
+  );
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo type:', typeof isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: isDemo value:', isDemo);
+  console.log('🔍 DEMO AUDIT [TYPES]: Props keys:', Object.keys({ currentDataSource, dataSourceStatus }));
   const getIndicatorConfig = () => {
     switch (dataSourceStatus) {
       case 'loading':

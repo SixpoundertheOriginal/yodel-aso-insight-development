@@ -355,10 +355,19 @@ serve(async (req) => {
     // SECURITY: Get approved apps for organization
     const approvedApps = await getApprovedApps(supabaseClient, organizationId);
 
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Organization ID:', organizationId);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Approved apps count:', approvedApps.length);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Demo path triggered:', approvedApps.length === 0);
+
+    console.log('🔍 DEMO AUDIT [EDGE-2]: Building response...');
+    console.log('🔍 DEMO AUDIT [EDGE-2]: Response type:', approvedApps.length === 0 ? 'DEMO' : 'REAL');
+
+    let response: Response;
+
     // CRITICAL SECURITY FIX: If no approved apps, return demo data ONLY
     if (approvedApps.length === 0) {
       console.log('🎭 [DEMO] Zero approved apps - serving secure demo data');
-      
+
       // Log demo data access for audit
       try {
         await supabaseClient
@@ -378,36 +387,43 @@ serve(async (req) => {
         console.error('⚠️ [AUDIT] Failed to log demo access:', auditError);
       }
 
-      return generateSecureDemoResponse(organizationId, requestBody);
+      response = generateSecureDemoResponse(organizationId, requestBody);
+    } else {
+      // If we have approved apps, we would query real BigQuery here
+      // For now, return a message indicating real data would be queried
+      console.log(`🔐 [REAL-DATA] Would query real BigQuery for ${approvedApps.length} approved apps`);
+
+      response = new Response(JSON.stringify({
+        success: true,
+        data: [],
+        meta: {
+          rowCount: 0,
+          totalRows: 0,
+          executionTimeMs: 100,
+          queryParams: {
+            organizationId,
+            dateRange: dateRange || {},
+            selectedApps: approvedApps,
+            trafficSources: trafficSources || [],
+            limit: 1000
+          },
+          availableTrafficSources: [],
+          projectId: 'aso-reporting-1',
+          timestamp: new Date().toISOString(),
+          isDemo: false,
+          message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
     }
 
-    // If we have approved apps, we would query real BigQuery here
-    // For now, return a message indicating real data would be queried
-    console.log(`🔐 [REAL-DATA] Would query real BigQuery for ${approvedApps.length} approved apps`);
-    
-    return new Response(JSON.stringify({
-      success: true,
-      data: [],
-      meta: {
-        rowCount: 0,
-        totalRows: 0,
-        executionTimeMs: 100,
-        queryParams: {
-          organizationId,
-          dateRange: dateRange || {},
-          selectedApps: approvedApps,
-          trafficSources: trafficSources || [],
-          limit: 1000
-        },
-        availableTrafficSources: [],
-        projectId: 'aso-reporting-1',
-        timestamp: new Date().toISOString(),
-        isDemo: false,
-        message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
-      }
-    }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
+    const responseJson = await response.clone().json();
+    console.log('🔍 DEMO AUDIT [EDGE-3]: Final response meta keys:', Object.keys(responseJson.meta || {}));
+    console.log('🔍 DEMO AUDIT [EDGE-3]: Demo flag in response:', responseJson.meta?.isDemo || responseJson.meta?.isDemoData);
+    console.log('🔍 DEMO AUDIT [EDGE-3]: Response success:', responseJson.success);
+
+    return response;
 
   } catch (error) {
     console.error('🚨 [ERROR] BigQuery function error:', error);

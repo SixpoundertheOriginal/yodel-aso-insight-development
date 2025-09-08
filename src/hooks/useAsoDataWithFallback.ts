@@ -81,6 +81,11 @@ export const useAsoDataWithFallback = (
     shouldUseBigQuery
   );
 
+  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery result received');
+  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery result keys:', Object.keys(bigQueryResult));
+  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery isDemo:', bigQueryResult.isDemo);
+  console.log('🔍 DEMO AUDIT [FALLBACK-1]: Data source status:', dataSourceStatus);
+
   // Always prepare mock data as fallback using selected apps for consistency
   const mockResult = useMockAsoData(
     selectedApps,
