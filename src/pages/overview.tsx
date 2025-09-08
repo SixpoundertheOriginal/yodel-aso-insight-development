@@ -47,14 +47,15 @@ const OverviewContent: React.FC = () => {
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
   
-  // Get demo state from BigQuery data hook
+  const [organizationId, setOrganizationId] = useState('');
+  
+  // Get demo state from BigQuery data hook using real organizationId
   const { isDemo } = useBigQueryData(
-    'demo-org', // This would come from your organization context
+    organizationId,
     { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
     [],
-    true
+    !!organizationId // Only fetch when organizationId is available
   );
-  const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
@@ -304,9 +305,12 @@ const OverviewContent: React.FC = () => {
             )}
             <LayoutSection spacing="md" className="relative">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <PremiumTypography.PageTitle gradient="orange" animated>
-                  Performance Overview
-                </PremiumTypography.PageTitle>
+                <div className="flex items-center gap-4">
+                  <PremiumTypography.PageTitle gradient="orange" animated>
+                    Performance Overview
+                  </PremiumTypography.PageTitle>
+                  <DemoDataBadge isDemo={isDemo} />
+                </div>
 
                 <div className="flex gap-4">
                   <CountryPicker 

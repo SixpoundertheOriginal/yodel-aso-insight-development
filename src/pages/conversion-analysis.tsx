@@ -32,13 +32,6 @@ const ConversionAnalysisContent: React.FC = () => {
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
   
-  // Get demo state from BigQuery data hook  
-  const { isDemo } = useBigQueryData(
-    'demo-org', // This would come from your organization context
-    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
-    [],
-    true
-  );
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -48,6 +41,14 @@ const ConversionAnalysisContent: React.FC = () => {
   const [cvrType, setCvrType] = useState<CVRType>('impression');
   const [selectedCategory, setSelectedCategory] = useState<string>('Photo & Video');
   const [activeTab, setActiveTab] = useState<'performance' | 'benchmark'>('performance');
+
+  // Get demo state from BigQuery data hook using real organizationId
+  const { isDemo } = useBigQueryData(
+    organizationId,
+    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
+    [],
+    !!organizationId // Only fetch when organizationId is available
+  );
 
   const trafficSources = data?.trafficSources || [];
   const filteredSources = selectedSources.length > 0
@@ -216,6 +217,7 @@ const ConversionAnalysisContent: React.FC = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                   <div className="flex items-center gap-4">
                     <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+                    <DemoDataBadge isDemo={isDemo} />
                     <CategorySelector
                       selectedCategory={selectedCategory}
                       onCategoryChange={setSelectedCategory}
