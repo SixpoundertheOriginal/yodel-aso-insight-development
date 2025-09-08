@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
 
 interface NavigationItem {
@@ -143,6 +144,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
   const { hasFeature } = useFeatureAccess();
+  const { canAccessAdminFeatures } = useUIPermissions();
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(

@@ -42,6 +42,7 @@ const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
 const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
 const OrganizationFeaturesPage = lazy(() => import("./pages/admin/organization-features"));
+const UIPermissionDemoPage = lazy(() => import("./pages/UIPermissionDemoPage"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
 const ConfirmEmail = lazy(() => import("./pages/auth/confirm-email"));
@@ -171,6 +172,10 @@ function App() {
                           <Route
                             path="/smoke-test"
                             element={<ProtectedRoute><SmokeTest /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/ui-demo"
+                            element={<ProtectedRoute><UIPermissionDemoPage /></ProtectedRoute>}
                           />
                           <Route path="/404" element={<NotFound />} />
                           <Route path="*" element={<Navigate to="/404" replace />} />

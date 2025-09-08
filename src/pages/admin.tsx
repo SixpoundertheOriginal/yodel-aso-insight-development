@@ -6,6 +6,7 @@ import { UserManagementInterface } from '@/components/admin/users/UserManagement
 import { PartnershipManagementCenter } from '@/components/admin/partnerships/PartnershipManagementCenter';
 import { BigQueryClientManagement } from '@/components/admin/data/BigQueryClientManagement';
 import { SecurityCompliancePanel } from '@/components/admin/security/SecurityCompliancePanel';
+import { UIPermissionManager } from '@/components/admin/ui/UIPermissionManager';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const AdminPanel: React.FC = () => {
@@ -44,6 +45,8 @@ const AdminPanel: React.FC = () => {
         return <BigQueryClientManagement />;
       case 'security':
         return <SecurityCompliancePanel />;
+      case 'ui-permissions':
+        return <UIPermissionManager />;
       default:
         return <EnhancedAdminDashboard />;
     }

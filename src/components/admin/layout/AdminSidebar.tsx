@@ -14,6 +14,7 @@ import {
   Shield,
   TrendingUp,
   Users,
+  Settings,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -49,6 +50,7 @@ const navigationConfig: Record<string, NavigationItem['status']> = {
   security: 'coming_soon',
   compliance: 'coming_soon',
   'access-review': 'coming_soon',
+  'ui-permissions': 'ready',
 };
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPage }) => {
@@ -235,6 +237,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
           icon: Users,
           href: '/admin/access-review',
           status: navigationConfig['access-review'],
+        },
+        {
+          id: 'ui-permissions',
+          label: 'UI Permissions',
+          icon: Settings,
+          href: '/admin?tab=ui-permissions',
+          status: navigationConfig['ui-permissions'],
         },
       ],
     },

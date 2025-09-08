@@ -2175,6 +2175,72 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_access_logs: {
+        Row: {
+          access_granted: boolean
+          context: Json | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          organization_id: string | null
+          permission_key: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_granted: boolean
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          organization_id?: string | null
+          permission_key: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_granted?: boolean
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          organization_id?: string | null
+          permission_key?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ui_permissions: {
+        Row: {
+          context: Json | null
+          created_at: string | null
+          id: string
+          is_granted: boolean | null
+          permission_key: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          is_granted?: boolean | null
+          permission_key: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          is_granted?: boolean | null
+          permission_key?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2494,6 +2560,14 @@ export type Database = {
       get_user_organization_with_fallback: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_ui_permissions: {
+        Args: { p_user_id?: string }
+        Returns: {
+          context: Json
+          is_granted: boolean
+          permission_key: string
+        }[]
       }
       is_super_admin: {
         Args: { user_id?: string }
