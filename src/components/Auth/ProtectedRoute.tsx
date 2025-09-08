@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading } = useUserProfile();
   const location = useLocation();
-  const org = profile?.organizations as { settings?: { demo_mode?: boolean }; slug?: string } | undefined;
+  const org = profile?.organizations;
   const isDemoOrg = Boolean(org?.settings?.demo_mode) || org?.slug?.toLowerCase() === 'next';
   const userRoles = (profile?.user_roles || []) as Tables<'user_roles'>[];
   const role =

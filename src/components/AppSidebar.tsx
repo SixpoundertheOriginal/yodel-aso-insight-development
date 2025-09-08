@@ -169,7 +169,7 @@ export function AppSidebar() {
   // Coordinate loading states to prevent race condition UI flicker
   const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermissionsLoading && !profileLoading;
   
-  const org = profile?.organizations as { settings?: { demo_mode?: boolean }; slug?: string; name?: string } | undefined;
+  const org = profile?.organizations;
   const isDemoOrg = Boolean(org?.settings?.demo_mode) || org?.slug?.toLowerCase() === 'next';
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
