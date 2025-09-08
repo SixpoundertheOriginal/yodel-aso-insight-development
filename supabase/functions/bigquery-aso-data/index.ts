@@ -259,6 +259,7 @@ function generateSecureDemoResponse(
       projectId: 'demo-environment',
       timestamp: new Date().toISOString(),
       isDemo: true, // CRITICAL: Demo mode flag
+      isDemoData: true,
       demoMessage: 'Synthetic demo data for platform evaluation - no client data exposed',
       dataArchitecture: {
         phase: 'demo_data_generation',
