@@ -291,7 +291,11 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     const isDisabled =
       item.status === "coming_soon" || item.status === "under_development";
     // Super admin bypass + feature access check
-    const hasAccess = !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings');
+    const hasAccess =
+      isDemoOrg ||
+      !item.featureKey ||
+      hasFeature(item.featureKey) ||
+      hasPermission('ui.admin.platform_settings');
     
     // Don't render the item if the organization doesn't have access to this feature
     if (!hasAccess) {
