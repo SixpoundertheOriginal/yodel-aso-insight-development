@@ -20,11 +20,15 @@ import { useBenchmarkData } from '../hooks/useBenchmarkData';
 import BenchmarkAnalysisTab from '@/components/BenchmarkAnalysis/BenchmarkAnalysisTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePermissions } from '@/hooks/usePermissions';
+import { CountryPicker } from '@/components/CountryPicker';
+import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
+import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 
-const ConversionAnalysisPage: React.FC = () => {
+const ConversionAnalysisContent: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
+  const { selectedMarket, setSelectedMarket } = useMarketData();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -199,14 +203,27 @@ const ConversionAnalysisPage: React.FC = () => {
                 <TabsTrigger value="benchmark">Benchmark Analysis</TabsTrigger>
               </TabsList>
               <TabsContent value="performance" className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <h1 className="text-2xl font-bold">Conversion Analysis</h1>
-                  <CategorySelector
-                    selectedCategory={selectedCategory}
-                    onCategoryChange={setSelectedCategory}
-                    availableCategories={availableCategories}
-                  />
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-bold">Conversion Analysis</h1>
+                    <CategorySelector
+                      selectedCategory={selectedCategory}
+                      onCategoryChange={setSelectedCategory}
+                      availableCategories={availableCategories}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <CountryPicker 
+                      selectedCountry={selectedMarket}
+                      onCountryChange={setSelectedMarket}
+                      className="min-w-[200px]"
+                    />
+                  </div>
                 </div>
+                
+                {/* Placeholder Data Indicator */}
+                <PlaceholderDataIndicator />
 
                 {/* Cumulative Section */}
                 <section>
@@ -321,6 +338,14 @@ const ConversionAnalysisPage: React.FC = () => {
         )}
       </div>
     </MainLayout>
+  );
+};
+
+const ConversionAnalysisPage: React.FC = () => {
+  return (
+    <MarketProvider>
+      <ConversionAnalysisContent />
+    </MarketProvider>
   );
 };
 

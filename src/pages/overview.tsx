@@ -35,11 +35,15 @@ import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from '@/hooks/usePermissions';
+import { CountryPicker } from '@/components/CountryPicker';
+import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
+import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 
-const OverviewPage: React.FC = () => {
+const OverviewContent: React.FC = () => {
   const { data, loading } = useAsoData();
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
+  const { selectedMarket, setSelectedMarket } = useMarketData();
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -295,6 +299,11 @@ const OverviewPage: React.FC = () => {
                 </PremiumTypography.PageTitle>
 
                 <div className="flex gap-4">
+                  <CountryPicker 
+                    selectedCountry={selectedMarket}
+                    onCountryChange={setSelectedMarket}
+                    className="min-w-[200px]"
+                  />
                   <TrafficSourceSelector
                     value={trafficSourceView}
                     onChange={setTrafficSourceView}
@@ -309,6 +318,9 @@ const OverviewPage: React.FC = () => {
                   </PermissionWrapper>
                 </div>
               </div>
+
+              {/* Placeholder Data Indicator */}
+              <PlaceholderDataIndicator />
 
               {data && (
                 <div className="flex flex-col space-y-8">
@@ -458,6 +470,14 @@ const OverviewPage: React.FC = () => {
         )}
       </div>
     </MainLayout>
+  );
+};
+
+const OverviewPage: React.FC = () => {
+  return (
+    <MarketProvider>
+      <OverviewContent />
+    </MarketProvider>
   );
 };
 
