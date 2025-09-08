@@ -19,6 +19,7 @@ import { SuperAdminBadge } from '@/components/SuperAdminBadge';
 export const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
   const { isSuperAdmin } = usePermissions();
+  const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
 
   if (!user) return null;
 
@@ -58,12 +59,14 @@ export const UserMenu: React.FC = () => {
             <span>Profile</span>
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/settings" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </Link>
-        </DropdownMenuItem>
+        {isIgor && (
+          <DropdownMenuItem asChild>
+            <Link to="/settings" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
         {isSuperAdmin && (
           <DropdownMenuItem asChild>
             <Link to="/admin" className="cursor-pointer">

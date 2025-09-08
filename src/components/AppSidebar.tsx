@@ -37,6 +37,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavigationItem {
   title: string;
@@ -146,6 +147,9 @@ export function AppSidebar() {
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
   const { hasFeature } = useFeatureAccess();
   const { canAccessAdminFeatures, hasPermission } = useUIPermissions();
+  const { user } = useAuth();
+  const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
+  const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(
@@ -357,7 +361,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {userItems.map(renderNavItem)}
+              {accountItems.map(renderNavItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
