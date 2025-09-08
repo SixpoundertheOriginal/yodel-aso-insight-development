@@ -16,7 +16,6 @@ import {
   FileEdit,
   Star,
   Palette,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,15 +39,7 @@ import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
 import { useDemoOrgDetection } from "@/hooks/useDemoOrgDetection";
 import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
-
-interface NavigationItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-  status?: "active" | "coming_soon" | "under_development" | "beta";
-  statusLabel?: string;
-  featureKey?: string;
-}
+import { filterNavigationByRoutes, type NavigationItem } from "@/utils/navigation";
 
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
@@ -183,56 +174,13 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
-  // Filter navigation items based on getAllowedRoutes() results
-  const filterNavigationByRoutes = (items: NavigationItem[]) => {
-    return items.filter(item => {
-      // Super admin bypass - can see everything
-      if (isSuperAdmin && hasPermission('ui.admin.platform_settings')) {
-        return true;
-      }
-      
-      // Check if item URL is in allowed routes
-      const isRouteAllowed = routes.some(route => 
-        item.url === route || item.url.startsWith(route + '/')
-      );
-      
-      // Check feature access
-      const hasFeatureAccess = !item.featureKey || hasFeature(item.featureKey);
-      
-      // For demo orgs: prioritize route allowance over feature access
-      // This ensures demo orgs see their allowed navigation regardless of feature gates
-      if (isDemoOrg) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔍 Demo Org Filter - ${item.title}:`, {
-            url: item.url,
-            isRouteAllowed,
-            hasFeatureAccess,
-            featureKey: item.featureKey,
-            decision: isRouteAllowed ? 'SHOW (route allowed)' : 'HIDE (route not allowed)'
-          });
-        }
-        return isRouteAllowed; // Demo orgs bypass feature gating
-      }
-      
-      // For regular orgs: require both route access AND feature access
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Regular Org Filter - ${item.title}:`, {
-          url: item.url,
-          isRouteAllowed,
-          hasFeatureAccess,
-          featureKey: item.featureKey,
-          decision: (isRouteAllowed && hasFeatureAccess) ? 'SHOW' : 'HIDE'
-        });
-      }
-      return isRouteAllowed && hasFeatureAccess;
-    });
-  };
+  const filterOptions = { isDemoOrg, isSuperAdmin, routes, hasFeature, hasPermission };
 
   // Apply route filtering to all navigation sections
-  const filteredAnalyticsItems = filterNavigationByRoutes(analyticsItems);
-  const filteredAiToolsItems = filterNavigationByRoutes(aiToolsItems);
-  const filteredAiCopilotsItems = filterNavigationByRoutes(aiCopilotsItems);
-  const filteredControlCenterItems = filterNavigationByRoutes(controlCenterItems);
+  const filteredAnalyticsItems = filterNavigationByRoutes(analyticsItems, filterOptions);
+  const filteredAiToolsItems = filterNavigationByRoutes(aiToolsItems, filterOptions);
+  const filteredAiCopilotsItems = filterNavigationByRoutes(aiCopilotsItems, filterOptions);
+  const filteredControlCenterItems = filterNavigationByRoutes(controlCenterItems, filterOptions);
 
   // Debug logging for troubleshooting (temporary)
   if (process.env.NODE_ENV === 'development') {
@@ -290,18 +238,6 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     const isActive = location.pathname === item.url;
     const isDisabled =
       item.status === "coming_soon" || item.status === "under_development";
-    // Super admin bypass + feature access check
-    const hasAccess =
-      isDemoOrg ||
-      !item.featureKey ||
-      hasFeature(item.featureKey) ||
-      hasPermission('ui.admin.platform_settings');
-    
-    // Don't render the item if the organization doesn't have access to this feature
-    if (!hasAccess) {
-      return null;
-    }
-
     const statusTag = () => {
       if (item.status === "coming_soon") {
         return (
