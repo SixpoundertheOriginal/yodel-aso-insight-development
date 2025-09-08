@@ -138,18 +138,112 @@ const userItems: NavigationItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isSuperAdmin, isOrganizationAdmin, roles = [] } = usePermissions();
-  const { hasFeature } = useFeatureAccess();
-  const { hasPermission } = useUIPermissions();
+  const { isSuperAdmin, isOrganizationAdmin, roles = [], isLoading: permissionsLoading } = usePermissions();
+  const { hasFeature, loading: featuresLoading } = useFeatureAccess();
+  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions();
   const { user } = useAuth();
-  const { profile } = useUserProfile();
-  const org = profile?.organizations as { settings?: { demo_mode?: boolean }; slug?: string } | undefined;
+  const { profile, isLoading: profileLoading } = useUserProfile();
+  
+  // Define navigation items first, before filtering
+  const controlCenterItems: NavigationItem[] = [
+    {
+      title: "App Intelligence",
+      url: "/app-discovery",
+      icon: Database,
+      featureKey: PLATFORM_FEATURES.APP_DISCOVERY,
+    },
+    {
+      title: "Portfolio Manager",
+      url: "/apps",
+      icon: Smartphone,
+    },
+  ];
+  if (isSuperAdmin) {
+    controlCenterItems.push({
+      title: "System Control",
+      url: "/admin",
+      icon: Shield,
+    });
+  }
+  
+  // Coordinate loading states to prevent race condition UI flicker
+  const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermissionsLoading && !profileLoading;
+  
+  const org = profile?.organizations as { settings?: { demo_mode?: boolean }; slug?: string; name?: string } | undefined;
   const isDemoOrg = Boolean(org?.settings?.demo_mode) || org?.slug?.toLowerCase() === 'next';
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const routes = getAllowedRoutes({ isDemoOrg, role });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
+
+  // Filter navigation items based on getAllowedRoutes() results
+  const filterNavigationByRoutes = (items: NavigationItem[]) => {
+    return items.filter(item => {
+      // Super admin bypass - can see everything
+      if (isSuperAdmin && hasPermission('ui.admin.platform_settings')) {
+        return true;
+      }
+      
+      // Check if item URL is in allowed routes
+      const isRouteAllowed = routes.some(route => 
+        item.url === route || item.url.startsWith(route + '/')
+      );
+      
+      // Also check feature access as fallback
+      const hasFeatureAccess = !item.featureKey || hasFeature(item.featureKey);
+      
+      return isRouteAllowed && hasFeatureAccess;
+    });
+  };
+
+  // Apply route filtering to all navigation sections
+  const filteredAnalyticsItems = filterNavigationByRoutes(analyticsItems);
+  const filteredAiToolsItems = filterNavigationByRoutes(aiToolsItems);
+  const filteredAiCopilotsItems = filterNavigationByRoutes(aiCopilotsItems);
+  const filteredControlCenterItems = filterNavigationByRoutes(controlCenterItems);
+
+  // Debug logging for troubleshooting (temporary)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 AppSidebar Permission Debug:', {
+      // User context
+      userId: profile?.id,
+      organizationSlug: org?.slug,
+      organizationName: org?.name || profile?.organizations?.name,
+      
+      // Permission states
+      isSuperAdmin,
+      isOrganizationAdmin,
+      role,
+      isDemoOrg,
+      
+      // Hook loading states
+      permissionsLoading,
+      featuresLoading,
+      uiPermissionsLoading,
+      profileLoading,
+      allPermissionsLoaded,
+      
+      // Route calculation
+      allowedRoutes: routes,
+      
+      // Navigation visibility
+      analyticsItemsVisible: filteredAnalyticsItems.length,
+      aiToolsItemsVisible: filteredAiToolsItems.length,
+      aiCopilotsItemsVisible: filteredAiCopilotsItems.length,
+      controlCenterItemsVisible: filteredControlCenterItems.length,
+      
+      // Expected for Next org
+      expectedForNextOrg: isDemoOrg ? filteredAnalyticsItems.map(item => ({
+        title: item.title,
+        url: item.url,
+        allowed: routes.includes(item.url)
+      })) : 'N/A - Not demo org',
+      
+      // Timing
+      timestamp: new Date().toISOString()
+    });
+  }
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(
@@ -247,29 +341,6 @@ export function AppSidebar() {
     );
   };
 
-  const controlCenterItems: NavigationItem[] = [
-    {
-      title: "App Intelligence",
-      url: "/app-discovery",
-      icon: Database,
-      featureKey: PLATFORM_FEATURES.APP_DISCOVERY,
-    },
-    {
-      title: "Portfolio Manager",
-      url: "/apps",
-      icon: Smartphone,
-    },
-  ];
-  if (isSuperAdmin) {
-    controlCenterItems.push({
-      title: "System Control",
-      url: "/admin",
-      icon: Shield,
-    });
-  }
-
-  const visibleAnalyticsItems = analyticsItems.filter(i => routes.includes(i.url));
-
   return (
     <Sidebar collapsible="icon" className="border-r border-footer-border">
       <SidebarHeader className="border-b border-footer-border p-4">
@@ -286,7 +357,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2 py-4">
         {/* Performance Intelligence Section */}
-        {visibleAnalyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {filteredAnalyticsItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -296,14 +367,14 @@ export function AppSidebar() {
               </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {visibleAnalyticsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAnalyticsItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
         {/* AI Command Center Section */}
-        {!isDemoOrg && aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {filteredAiToolsItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -313,14 +384,14 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {aiToolsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAiToolsItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
         {/* Growth Accelerators Section */}
-        {!isDemoOrg && aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {filteredAiCopilotsItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -330,14 +401,14 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {aiCopilotsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAiCopilotsItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
         {/* Control Center Section - visible to org admins and super admins */}
-        {!isDemoOrg && (isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {filteredControlCenterItems.length > 0 && (isSuperAdmin || isOrganizationAdmin) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -347,7 +418,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {controlCenterItems.map(renderNavItem).filter(Boolean)}
+                {filteredControlCenterItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
