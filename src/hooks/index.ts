@@ -20,6 +20,7 @@ export type { KeywordData as AdvancedKeywordData, KeywordStats as KeywordIntelli
 // Add new user management hooks
 export { usePermissions } from './usePermissions';
 export { useUserProfile } from './useUserProfile';
+export { useDemoOrgDetection } from './useDemoOrgDetection';
 
 // Add new architecture hooks
 export { useAppSelection } from './useAppSelection';

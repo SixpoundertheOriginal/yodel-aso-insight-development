@@ -38,7 +38,7 @@ import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useDemoOrgDetection } from "@/hooks/useDemoOrgDetection";
 import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
 
 interface NavigationItem {
@@ -142,7 +142,7 @@ export function AppSidebar() {
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
   const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions();
   const { user } = useAuth();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
   
   // Define navigation items first, before filtering
   const controlCenterItems: NavigationItem[] = [
@@ -167,10 +167,7 @@ export function AppSidebar() {
   }
   
   // Coordinate loading states to prevent race condition UI flicker
-  const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermissionsLoading && !profileLoading;
-  
-  const org = profile?.organizations;
-  const isDemoOrg = Boolean(org?.settings?.demo_mode) || org?.slug?.toLowerCase() === 'next';
+const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermissionsLoading && !orgLoading;
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const routes = getAllowedRoutes({ isDemoOrg, role });
@@ -232,21 +229,21 @@ export function AppSidebar() {
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 AppSidebar Permission Debug:', {
       // User context
-      userId: profile?.id,
+      userId: user?.id,
       organizationSlug: org?.slug,
-      organizationName: org?.name || profile?.organizations?.name,
-      
+      organizationName: org?.name,
+
       // Permission states
       isSuperAdmin,
       isOrganizationAdmin,
       role,
       isDemoOrg,
-      
+
       // Hook loading states
       permissionsLoading,
       featuresLoading,
       uiPermissionsLoading,
-      profileLoading,
+      orgLoading,
       allPermissionsLoaded,
       
       // Route calculation
