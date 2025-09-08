@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Database, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PermissionWrapper } from '@/components/PermissionWrapper';
 
 interface TestResult {
   success: boolean;
@@ -230,49 +231,51 @@ export const BigQuerySmokeTest: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Card className="bg-zinc-900/50 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="text-foreground">BigQuery Edge Function Smoke Test</span>
-            <Button 
-              onClick={runSmokeTest} 
-              disabled={isRunning}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Re-run Test
-            </Button>
-          </CardTitle>
-          <div className="text-sm text-zinc-400">
-            This test verifies that the <code>bigquery-aso-data</code> Edge Function 
-            can successfully connect to Google BigQuery and return real data.
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {renderTestStatus()}
-          {renderResponseDetails()}
-        </CardContent>
-      </Card>
+    <PermissionWrapper permission="ui.debug.show_test_buttons">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-foreground">BigQuery Edge Function Smoke Test</span>
+              <Button 
+                onClick={runSmokeTest} 
+                disabled={isRunning}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Re-run Test
+              </Button>
+            </CardTitle>
+            <div className="text-sm text-zinc-400">
+              This test verifies that the <code>bigquery-aso-data</code> Edge Function 
+              can successfully connect to Google BigQuery and return real data.
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {renderTestStatus()}
+            {renderResponseDetails()}
+          </CardContent>
+        </Card>
 
-      {/* Test Instructions */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-foreground">What This Test Checks</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-zinc-300">
-          <div>✅ Edge Function invocation succeeds</div>
-          <div>✅ BigQuery credentials are configured</div>
-          <div>✅ Data is returned from BigQuery (not mock)</div>
-          <div>✅ Response includes proper metadata</div>
-          <div>✅ Execution time is reasonable (&lt; 30s)</div>
-          <div className="pt-2 text-xs text-zinc-400">
-            <strong>Note:</strong> This test uses organization ID: 84728f94-91db-4f9c-b025-5221fbed4065
-            and queries for AppOne, AppTwo data from June 2025.
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        {/* Test Instructions */}
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-foreground">What This Test Checks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-zinc-300">
+            <div>✅ Edge Function invocation succeeds</div>
+            <div>✅ BigQuery credentials are configured</div>
+            <div>✅ Data is returned from BigQuery (not mock)</div>
+            <div>✅ Response includes proper metadata</div>
+            <div>✅ Execution time is reasonable (&lt; 30s)</div>
+            <div className="pt-2 text-xs text-zinc-400">
+              <strong>Note:</strong> This test uses organization ID: 84728f94-91db-4f9c-b025-5221fbed4065
+              and queries for AppOne, AppTwo data from June 2025.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </PermissionWrapper>
   );
 };

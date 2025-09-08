@@ -10,6 +10,8 @@ import { BigQueryAppSelector } from "./BigQueryAppSelector";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { SuperAdminBadge } from "@/components/SuperAdminBadge";
+import { PermissionWrapper } from "@/components/PermissionWrapper";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const TopBar: React.FC = React.memo(() => {
@@ -77,11 +79,19 @@ const TopBar: React.FC = React.memo(() => {
               {getPageTitle()}
             </Heading3>
             {isAnalyticsPage && (
-              <div className="hidden sm:flex items-center gap-2 ml-4">
-                <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
-                  Data Source: BigQuery
+              <PermissionWrapper permission="ui.debug.show_data_source" fallback={
+                <div className="hidden sm:flex items-center gap-2 ml-4">
+                  <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
+                    Real-time Analytics
+                  </div>
                 </div>
-              </div>
+              }>
+                <div className="hidden sm:flex items-center gap-2 ml-4">
+                  <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
+                    Data Source: BigQuery
+                  </div>
+                </div>
+              </PermissionWrapper>
             )}
           </div>
         </div>

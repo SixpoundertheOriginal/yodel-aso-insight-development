@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PermissionWrapper } from "@/components/PermissionWrapper";
 import ExecutiveTimeSeriesChart from "../components/ExecutiveTimeSeriesChart";
 import KpiCard from "../components/KpiCard";
 import TrafficSourceSelector from "../components/TrafficSourceSelector";
@@ -301,7 +302,11 @@ const OverviewPage: React.FC = () => {
                     onSelectedSourcesChange={setSelectedSources}
                     availableSources={[...executiveTrafficSources]}
                   />
-                  <StatusIndicator status="success" pulse label="Live Data" />
+                  <PermissionWrapper permission="ui.debug.show_live_badges" fallback={
+                    <StatusIndicator status="success" pulse label="Real-time" />
+                  }>
+                    <StatusIndicator status="success" pulse label="Live Data" />
+                  </PermissionWrapper>
                 </div>
               </div>
 
