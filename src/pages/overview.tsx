@@ -40,6 +40,7 @@ import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components/DemoDataBadge';
 import { useBigQueryData } from '@/hooks/useBigQueryData';
+import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 
 const OverviewContent: React.FC = () => {
   const contextValue = useAsoData(); // NEW: Get demo flag from context
@@ -312,11 +313,14 @@ const OverviewContent: React.FC = () => {
             )}
             <LayoutSection spacing="md" className="relative">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <div className="flex items-center gap-4">
-                  <PremiumTypography.PageTitle gradient="orange" animated>
-                    Performance Overview
-                  </PremiumTypography.PageTitle>
-                  <DemoDataBadge isDemo={isDemo} />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-4">
+                    <PremiumTypography.PageTitle gradient="orange" animated>
+                      Performance Overview
+                    </PremiumTypography.PageTitle>
+                    <DemoDataBadge isDemo={isDemo} />
+                  </div>
+                  <DashboardBrandingLine />
                 </div>
 
                 <div className="flex gap-4">
