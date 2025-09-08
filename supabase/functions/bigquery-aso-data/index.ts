@@ -408,37 +408,49 @@ serve(async (req) => {
       response = generateSecureDemoResponse(effectiveOrgId, requestBody);
     } else {
       // If we have approved apps, we would query real BigQuery here
-      // For now, return a message indicating real data would be queried
+      // Wrap future BigQuery integration in try/catch for graceful fallback
       console.log(`🔐 [REAL-DATA] Would query real BigQuery for ${approvedApps.length} approved apps`);
 
-      const liveMeta = {
-        rowCount: 0,
-        totalRows: 0,
-        executionTimeMs: 100,
-        queryParams: {
-          organizationId: effectiveOrgId,
-          dateRange: dateRange || {},
-          selectedApps: approvedApps,
-          trafficSources: trafficSources || [],
-          limit: 1000
-        },
-        availableTrafficSources: [],
-        projectId: 'aso-reporting-1',
-        timestamp: new Date().toISOString(),
-        isDemo: false,
-        dataSource: 'live',
-        message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
-      };
+      try {
+        // Placeholder for future BigQuery query
+        const liveMeta = {
+          rowCount: 0,
+          totalRows: 0,
+          executionTimeMs: 100,
+          queryParams: {
+            organizationId: effectiveOrgId,
+            dateRange: dateRange || {},
+            selectedApps: approvedApps,
+            trafficSources: trafficSources || [],
+            limit: 1000
+          },
+          availableTrafficSources: [],
+          projectId: 'aso-reporting-1',
+          timestamp: new Date().toISOString(),
+          isDemo: false,
+          dataSource: 'live',
+          message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
+        };
 
-      response = new Response(JSON.stringify({
-        success: true,
-        data: [],
-        meta: liveMeta,
-        isDemo: false,
-        dataSource: 'live'
-      }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+        response = new Response(JSON.stringify({
+          success: true,
+          data: [],
+          meta: liveMeta,
+          isDemo: false,
+          dataSource: 'live'
+        }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      } catch (error) {
+        // On 403 or other BigQuery errors, fall back to secure demo data
+        console.error('🚨 [REAL-DATA] BigQuery query failed, falling back to secure demo data:', error);
+        const demoResponse = generateSecureDemoResponse(effectiveOrgId, requestBody);
+        const demoJson = await demoResponse.json();
+        demoJson.meta = { ...(demoJson.meta || {}), status: 'bigquery-failed-fallback', isDemo: true };
+        response = new Response(JSON.stringify(demoJson), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
     }
 
     const responseJson = await response.clone().json();
