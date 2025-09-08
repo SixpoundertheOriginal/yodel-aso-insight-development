@@ -33,6 +33,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { PLATFORM_FEATURES } from "@/constants/features";
 
 interface NavigationItem {
   title: string;
@@ -40,6 +42,7 @@ interface NavigationItem {
   icon: LucideIcon;
   status?: "active" | "coming_soon" | "under_development" | "beta";
   statusLabel?: string;
+  featureKey?: string;
 }
 
 // Performance Intelligence - Pure data visualization from BigQuery
@@ -48,16 +51,19 @@ const analyticsItems: NavigationItem[] = [
     title: "Executive Dashboard",
     url: "/overview",
     icon: Home,
+    featureKey: PLATFORM_FEATURES.EXECUTIVE_DASHBOARD,
   },
   {
     title: "Analytics",
     url: "/dashboard",
     icon: BarChart3,
+    featureKey: PLATFORM_FEATURES.ANALYTICS,
   },
   {
     title: "Conversion Intelligence",
     url: "/conversion-analysis",
     icon: Target,
+    featureKey: PLATFORM_FEATURES.CONVERSION_INTELLIGENCE,
   },
   {
     title: "Insights",
@@ -65,6 +71,7 @@ const analyticsItems: NavigationItem[] = [
     icon: Brain,
     status: "coming_soon",
     statusLabel: "Coming Soon",
+    featureKey: PLATFORM_FEATURES.PERFORMANCE_INTELLIGENCE,
   },
 ];
 
@@ -74,11 +81,13 @@ const aiToolsItems: NavigationItem[] = [
     title: "Strategic Audit Engine",
     url: "/aso-ai-hub",
     icon: Bot,
+    featureKey: PLATFORM_FEATURES.ASO_CHAT,
   },
   {
     title: "AI Visibility Optimizer",
     url: "/chatgpt-visibility-audit",
     icon: Brain,
+    featureKey: PLATFORM_FEATURES.COMPETITIVE_INTELLIGENCE,
   },
 ];
 
@@ -88,26 +97,31 @@ const aiCopilotsItems: NavigationItem[] = [
     title: "Strategy Brain",
     url: "/aso-knowledge-engine",
     icon: Brain,
+    featureKey: PLATFORM_FEATURES.ASO_CHAT,
   },
   {
     title: "Metadata Optimizer",
     url: "/metadata-copilot",
     icon: FileEdit,
+    featureKey: PLATFORM_FEATURES.METADATA_GENERATOR,
   },
   {
     title: "Opportunity Scanner",
     url: "/growth-gap-copilot",
     icon: TrendingUp,
+    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
   {
     title: "Feature Maximizer",
     url: "/featuring-toolkit",
     icon: Star,
+    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
   {
     title: "Creative Analysis",
     url: "/creative-analysis",
     icon: Palette,
+    featureKey: PLATFORM_FEATURES.CREATIVE_REVIEW,
   },
 ];
 
@@ -128,6 +142,7 @@ const userItems: NavigationItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
+  const { hasFeature } = useFeatureAccess();
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(
@@ -143,6 +158,12 @@ export function AppSidebar() {
     const isActive = location.pathname === item.url;
     const isDisabled =
       item.status === "coming_soon" || item.status === "under_development";
+    const hasAccess = !item.featureKey || hasFeature(item.featureKey);
+    
+    // Don't render the item if the organization doesn't have access to this feature
+    if (!hasAccess) {
+      return null;
+    }
 
     const statusTag = () => {
       if (item.status === "coming_soon") {
@@ -223,6 +244,7 @@ export function AppSidebar() {
       title: "App Intelligence",
       url: "/app-discovery",
       icon: Database,
+      featureKey: PLATFORM_FEATURES.APP_DISCOVERY,
     },
     {
       title: "Portfolio Manager",
@@ -254,52 +276,58 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2 py-4">
         {/* Performance Intelligence Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-            <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-yodel-blue to-blue-500"></div>
-                Performance Intelligence
-              </div>
-            </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {analyticsItems.map(renderNavItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {analyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+              <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-gradient-to-r from-yodel-blue to-blue-500"></div>
+                  Performance Intelligence
+                </div>
+              </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {analyticsItems.map(renderNavItem).filter(Boolean)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* AI Command Center Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-yodel-orange to-orange-500 rounded-full"></div>
-              AI Command Center
-            </div>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {aiToolsItems.map(renderNavItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-yodel-orange to-orange-500 rounded-full"></div>
+                AI Command Center
+              </div>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {aiToolsItems.map(renderNavItem).filter(Boolean)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Growth Accelerators Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
-              Growth Accelerators
-            </div>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {aiCopilotsItems.map(renderNavItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
+                Growth Accelerators
+              </div>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {aiCopilotsItems.map(renderNavItem).filter(Boolean)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Control Center Section - visible to org admins and super admins */}
-        {(isSuperAdmin || isOrganizationAdmin) && (
+        {(isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey)) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -309,7 +337,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {controlCenterItems.map(renderNavItem)}
+                {controlCenterItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -1613,6 +1613,48 @@ export type Database = {
         }
         Relationships: []
       }
+      org_feature_access: {
+        Row: {
+          created_at: string | null
+          feature_key: string
+          id: string
+          is_enabled: boolean | null
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feature_key: string
+          id?: string
+          is_enabled?: boolean | null
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean | null
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_feature_access_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "org_feature_access_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_apps: {
         Row: {
           app_identifier: string

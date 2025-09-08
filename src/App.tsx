@@ -41,6 +41,7 @@ const Admin = lazy(() => import("./pages/admin"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
 const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
+const OrganizationFeaturesPage = lazy(() => import("./pages/admin/organization-features"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
 const ConfirmEmail = lazy(() => import("./pages/auth/confirm-email"));
@@ -158,6 +159,10 @@ function App() {
                           <Route
                             path="/admin/organizations"
                             element={<ProtectedRoute><AdminOrganizations /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/organizations/:id/features"
+                            element={<ProtectedRoute><OrganizationFeaturesPage /></ProtectedRoute>}
                           />
                           <Route
                             path="/admin/users"

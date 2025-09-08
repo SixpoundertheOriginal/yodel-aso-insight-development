@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AdminDataTable } from '../shared/AdminDataTable';
 import { CreateOrganizationModal } from './CreateOrganizationModal';
 import { EditOrganizationModal } from './EditOrganizationModal';
-import { Edit3, Users, Trash2 } from 'lucide-react';
+import { Edit3, Users, Trash2, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -220,6 +220,13 @@ export const OrganizationManagementTable: React.FC = () => {
             title="Manage Users"
           >
             <Users className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate(`/admin/organizations/${org.id}/features`)}
+            className="text-blue-400 hover:text-blue-300 p-1"
+            title="Manage Features"
+          >
+            <Settings className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDeleteOrganization(org.id)}
