@@ -325,11 +325,13 @@ const OverviewContent: React.FC = () => {
                     onSelectedSourcesChange={setSelectedSources}
                     availableSources={[...executiveTrafficSources]}
                   />
-                  <PermissionWrapper permission="ui.debug.show_live_badges" fallback={
-                    <StatusIndicator status="success" pulse label="Real-time" />
-                  }>
-                    <StatusIndicator status="success" pulse label="Live Data" />
-                  </PermissionWrapper>
+                  {loading ? (
+                    <span className="text-gray-500 text-sm">Loading...</span>
+                  ) : isDemo ? (
+                    <DemoDataBadge isDemo={true} />
+                  ) : (
+                    <span className="text-green-600 font-medium text-sm">• Real-time</span>
+                  )}
                 </div>
               </div>
 

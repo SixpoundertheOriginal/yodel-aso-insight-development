@@ -8,6 +8,8 @@ import { DataSourceIndicator } from "../components/DataSourceIndicator";
 import { CountryPicker } from "../components/CountryPicker";
 import { PlaceholderDataIndicator } from "../components/PlaceholderDataIndicator";
 import { MarketProvider, useMarketData } from "../contexts/MarketContext";
+import { DemoDataBadge } from '@/components/DemoDataBadge';
+import { useBigQueryData } from '@/hooks/useBigQueryData';
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +49,14 @@ const DashboardContent: React.FC = () => {
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
+
+  // Get demo state from BigQuery data hook using real organizationId
+  const { isDemo } = useBigQueryData(
+    organizationId,
+    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
+    [],
+    !!organizationId // Only fetch when organizationId is available
+  );
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -204,7 +214,7 @@ const DashboardContent: React.FC = () => {
         {/* Page Header with Country Picker */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Performance Overview</h1>
+            <h1 className="text-3xl font-bold text-foreground">Store Performance</h1>
             <p className="text-muted-foreground">
               Analytics insights for your applications
             </p>
@@ -215,10 +225,13 @@ const DashboardContent: React.FC = () => {
               selectedCountry={selectedMarket}
               onCountryChange={setSelectedMarket}
             />
-            <DataSourceIndicator 
-              currentDataSource={currentDataSource}
-              dataSourceStatus={dataSourceStatus}
-            />
+            {loading ? (
+              <span className="text-gray-500 text-sm">Loading...</span>
+            ) : isDemo ? (
+              <DemoDataBadge isDemo={true} />
+            ) : (
+              <span className="text-green-600 font-medium text-sm">• Real-time</span>
+            )}
           </div>
         </div>
 
@@ -280,12 +293,8 @@ const DashboardContent: React.FC = () => {
           )}
         </div>
         
-        {/* Data Source Indicator with Test Button */}
+        {/* Test Button */}
         <div className="ml-4 flex flex-col items-end gap-2">
-          <DataSourceIndicator
-            currentDataSource={currentDataSource}
-            dataSourceStatus={dataSourceStatus}
-          />
           <PermissionWrapper permission="ui.debug.show_test_buttons">
             <Button
               onClick={() => navigate('/smoke-test')}

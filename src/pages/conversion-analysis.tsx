@@ -217,7 +217,6 @@ const ConversionAnalysisContent: React.FC = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                   <div className="flex items-center gap-4">
                     <h1 className="text-2xl font-bold">Conversion Analysis</h1>
-                    <DemoDataBadge isDemo={isDemo} />
                     <CategorySelector
                       selectedCategory={selectedCategory}
                       onCategoryChange={setSelectedCategory}
@@ -231,14 +230,18 @@ const ConversionAnalysisContent: React.FC = () => {
                       onCountryChange={setSelectedMarket}
                       className="min-w-[200px]"
                     />
+                    {loading ? (
+                      <span className="text-gray-500 text-sm">Loading...</span>
+                    ) : isDemo ? (
+                      <DemoDataBadge isDemo={true} />
+                    ) : (
+                      <span className="text-green-600 font-medium text-sm">• Real-time</span>
+                    )}
                   </div>
                 </div>
                 
                 {/* Placeholder Data Indicator */}
                 <PlaceholderDataIndicator />
-                
-                {/* Demo Data Banner */}
-                <DemoDataBanner isDemo={isDemo} />
 
                 {/* Cumulative Section */}
                 <section>
