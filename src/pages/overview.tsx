@@ -42,20 +42,15 @@ import { DemoDataBadge, DemoDataInlineBadge, DemoDataBanner } from '@/components
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 
 const OverviewContent: React.FC = () => {
-  const { data, loading } = useAsoData();
+  const { data, loading, isDemo } = useAsoData(); // NEW: Get demo flag from context
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
   
   const [organizationId, setOrganizationId] = useState('');
   
-  // Get demo state from BigQuery data hook using real organizationId
-  const { isDemo } = useBigQueryData(
-    organizationId,
-    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
-    [],
-    !!organizationId // Only fetch when organizationId is available
-  );
+  // Remove duplicate useBigQueryData call - isDemo now comes from context
+  // const { isDemo } = useBigQueryData(...) - REMOVED
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');

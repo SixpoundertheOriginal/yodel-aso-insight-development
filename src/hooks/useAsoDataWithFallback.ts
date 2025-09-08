@@ -18,6 +18,7 @@ interface UseAsoDataWithFallbackResult {
   currentDataSource: CurrentDataSource | null;
   dataSourceStatus: DataSourceStatus;
   availableTrafficSources: string[] | undefined;
+  isDemo?: boolean; // NEW: Expose demo flag
 }
 
 export const useAsoDataWithFallback = (
@@ -92,11 +93,13 @@ export const useAsoDataWithFallback = (
     loading: boolean;
     error: Error | null;
     availableTrafficSources: string[] | undefined;
+    isDemo?: boolean; // NEW: Track demo state
   }>({
     data: null,
     loading: true,
     error: null,
-    availableTrafficSources: undefined
+    availableTrafficSources: undefined,
+    isDemo: false
   });
 
   useEffect(() => {
@@ -109,7 +112,8 @@ export const useAsoDataWithFallback = (
         data: mockResult.data,
         loading: mockResult.loading,
         error: mockResult.error,
-        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || []
+        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || [],
+        isDemo: false // Mock data is not demo data
       });
       return;
     }
@@ -135,7 +139,8 @@ export const useAsoDataWithFallback = (
         data: bigQueryResult.data,
         loading: false,
         error: null,
-        availableTrafficSources: bigQueryResult.availableTrafficSources
+        availableTrafficSources: bigQueryResult.availableTrafficSources,
+        isDemo: bigQueryResult.isDemo || false // NEW: Pass through demo flag
       });
       return;
     }
@@ -167,7 +172,8 @@ export const useAsoDataWithFallback = (
           loading: false,
           error: null,
           availableTrafficSources:
-            mockResult.data.trafficSources?.map((s) => s.name) || []
+            mockResult.data.trafficSources?.map((s) => s.name) || [],
+          isDemo: false // Mock fallback data is not demo data
         });
         return;
       }

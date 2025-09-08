@@ -32,6 +32,7 @@ interface AsoDataContextType {
   dataSourceStatus: DataSourceStatus;
   availableTrafficSources: string[] | undefined;
   meta?: any;
+  isDemo?: boolean; // NEW: Demo data flag
 }
 
 const AsoDataContext = createContext<AsoDataContextType | undefined>(undefined);
@@ -76,7 +77,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     error,
     currentDataSource,
     dataSourceStatus,
-    availableTrafficSources
+    availableTrafficSources,
+    isDemo // NEW: Get demo flag from hook
   } = useAsoDataWithFallback(
     filters.dateRange,
     filters.trafficSources,
@@ -98,7 +100,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       currentDataSource,
       dataSourceStatus,
       availableTrafficSources,
-      meta: undefined // Will be populated by BigQuery hook if needed
+      meta: undefined, // Will be populated by BigQuery hook if needed
+      isDemo // NEW: Pass through demo flag
     }),
     [
       data,
@@ -108,7 +111,8 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       updateFilters,
       currentDataSource,
       dataSourceStatus,
-      availableTrafficSources
+      availableTrafficSources,
+      isDemo // NEW: Include in dependencies
     ]
   );
 

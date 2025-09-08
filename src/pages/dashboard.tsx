@@ -41,7 +41,8 @@ const DashboardContent: React.FC = () => {
     setUserTouchedFilters,
     currentDataSource,
     dataSourceStatus,
-    meta
+    meta,
+    isDemo // NEW: Get demo flag from context
   } = useAsoData();
   const { user } = useAuth();
   const { selectedMarket, setSelectedMarket, isPlaceholderData } = useMarketData();
@@ -49,14 +50,8 @@ const DashboardContent: React.FC = () => {
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
-
-  // Get demo state from BigQuery data hook using real organizationId
-  const { isDemo } = useBigQueryData(
-    organizationId,
-    { from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() },
-    [],
-    !!organizationId // Only fetch when organizationId is available
-  );
+  
+  // Remove duplicate useBigQueryData call - isDemo now comes from context
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
