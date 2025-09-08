@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Organization ID used for demo mode queries
+const DEMO_ORG_ID = Deno.env.get('DEMO_ORG_ID') ?? 'demo-org';
+
 // SECURE Demo Data Service - prevents real client data exposure
 class SecureDemoDataService {
   private static readonly DEMO_APPS = [
@@ -240,7 +243,7 @@ function generateSecureDemoResponse(
     requestBody.trafficSources,
     requestBody.countries
   );
-  
+
   const responseData = {
     success: true,
     data: demoData,
@@ -260,6 +263,7 @@ function generateSecureDemoResponse(
       timestamp: new Date().toISOString(),
       isDemo: true, // CRITICAL: Demo mode flag
       isDemoData: true,
+      dataSource: 'demo',
       demoMessage: 'Synthetic demo data for platform evaluation - no client data exposed',
       dataArchitecture: {
         phase: 'demo_data_generation',
@@ -280,7 +284,9 @@ function generateSecureDemoResponse(
         jobComplete: true,
         trafficSourceMapping: {}
       }
-    }
+    },
+    isDemo: true,
+    dataSource: 'demo'
   };
 
   return new Response(JSON.stringify(responseData), {
@@ -353,21 +359,32 @@ serve(async (req) => {
       });
     }
 
-    // SECURITY: Get approved apps for organization
-    const approvedApps = await getApprovedApps(supabaseClient, organizationId);
+    // Check organization settings for demo mode
+    const { data: org } = await supabaseClient
+      .from('organizations')
+      .select('settings')
+      .eq('id', organizationId)
+      .single();
+
+    const isDemo = !!org?.settings?.demo_mode;
+    const effectiveOrgId = isDemo ? DEMO_ORG_ID : organizationId;
+
+    // SECURITY: Get approved apps for organization (use mapped ID)
+    const approvedApps = await getApprovedApps(supabaseClient, effectiveOrgId);
 
     console.log('🔍 DEMO AUDIT [EDGE-1]: Organization ID:', organizationId);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Effective ID:', effectiveOrgId);
     console.log('🔍 DEMO AUDIT [EDGE-1]: Approved apps count:', approvedApps.length);
-    console.log('🔍 DEMO AUDIT [EDGE-1]: Demo path triggered:', approvedApps.length === 0);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Demo path triggered:', isDemo || approvedApps.length === 0);
 
     console.log('🔍 DEMO AUDIT [EDGE-2]: Building response...');
-    console.log('🔍 DEMO AUDIT [EDGE-2]: Response type:', approvedApps.length === 0 ? 'DEMO' : 'REAL');
+    console.log('🔍 DEMO AUDIT [EDGE-2]: Response type:', (isDemo || approvedApps.length === 0) ? 'DEMO' : 'REAL');
 
     let response: Response;
 
-    // CRITICAL SECURITY FIX: If no approved apps, return demo data ONLY
-    if (approvedApps.length === 0) {
-      console.log('🎭 [DEMO] Zero approved apps - serving secure demo data');
+    // If organization is in demo mode or has no approved apps, return demo data
+    if (isDemo || approvedApps.length === 0) {
+      console.log('🎭 [DEMO] Demo mode active - serving secure demo data');
 
       // Log demo data access for audit
       try {
@@ -379,7 +396,7 @@ serve(async (req) => {
             action: 'demo_data_access',
             resource_type: 'bigquery_data',
             details: {
-              reason: 'no_approved_apps',
+              reason: isDemo ? 'demo_mode' : 'no_approved_apps',
               demo_mode: true,
               date_range: dateRange
             }
@@ -388,32 +405,37 @@ serve(async (req) => {
         console.error('⚠️ [AUDIT] Failed to log demo access:', auditError);
       }
 
-      response = generateSecureDemoResponse(organizationId, requestBody);
+      response = generateSecureDemoResponse(effectiveOrgId, requestBody);
     } else {
       // If we have approved apps, we would query real BigQuery here
       // For now, return a message indicating real data would be queried
       console.log(`🔐 [REAL-DATA] Would query real BigQuery for ${approvedApps.length} approved apps`);
 
+      const liveMeta = {
+        rowCount: 0,
+        totalRows: 0,
+        executionTimeMs: 100,
+        queryParams: {
+          organizationId: effectiveOrgId,
+          dateRange: dateRange || {},
+          selectedApps: approvedApps,
+          trafficSources: trafficSources || [],
+          limit: 1000
+        },
+        availableTrafficSources: [],
+        projectId: 'aso-reporting-1',
+        timestamp: new Date().toISOString(),
+        isDemo: false,
+        dataSource: 'live',
+        message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
+      };
+
       response = new Response(JSON.stringify({
         success: true,
         data: [],
-        meta: {
-          rowCount: 0,
-          totalRows: 0,
-          executionTimeMs: 100,
-          queryParams: {
-            organizationId,
-            dateRange: dateRange || {},
-            selectedApps: approvedApps,
-            trafficSources: trafficSources || [],
-            limit: 1000
-          },
-          availableTrafficSources: [],
-          projectId: 'aso-reporting-1',
-          timestamp: new Date().toISOString(),
-          isDemo: false,
-          message: `Real BigQuery integration not yet implemented. Would query ${approvedApps.length} approved apps.`
-        }
+        meta: liveMeta,
+        isDemo: false,
+        dataSource: 'live'
       }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });

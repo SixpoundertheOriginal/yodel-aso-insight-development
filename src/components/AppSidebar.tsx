@@ -38,6 +38,7 @@ import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { PLATFORM_FEATURES } from "@/constants/features";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
+import { useAsoData } from "@/context/AsoDataContext";
 
 interface NavigationItem {
   title: string;
@@ -148,6 +149,7 @@ export function AppSidebar() {
   const { hasFeature } = useFeatureAccess();
   const { canAccessAdminFeatures, hasPermission } = useUIPermissions();
   const { user } = useAuth();
+  const { isDemo } = useAsoData();
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
@@ -268,6 +270,11 @@ export function AppSidebar() {
     });
   }
 
+  const demoAllowed = ['/overview', '/dashboard', '/conversion-analysis'];
+  const visibleAnalyticsItems = isDemo
+    ? analyticsItems.filter(i => demoAllowed.includes(i.url))
+    : analyticsItems;
+
   return (
     <Sidebar collapsible="icon" className="border-r border-footer-border">
       <SidebarHeader className="border-b border-footer-border p-4">
@@ -284,7 +291,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2 py-4">
         {/* Performance Intelligence Section */}
-        {analyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {visibleAnalyticsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -294,14 +301,14 @@ export function AppSidebar() {
               </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {analyticsItems.map(renderNavItem).filter(Boolean)}
+                {visibleAnalyticsItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
         {/* AI Command Center Section */}
-        {aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemo && aiToolsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -318,7 +325,7 @@ export function AppSidebar() {
         )}
 
         {/* Growth Accelerators Section */}
-        {aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemo && aiCopilotsItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
@@ -335,7 +342,7 @@ export function AppSidebar() {
         )}
 
         {/* Control Center Section - visible to org admins and super admins */}
-        {(isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
+        {!isDemo && (isSuperAdmin || isOrganizationAdmin) && controlCenterItems.some(item => !item.featureKey || hasFeature(item.featureKey) || hasPermission('ui.admin.platform_settings')) && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
               <div className="flex items-center gap-2">
