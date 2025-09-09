@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { organizationsApi } from '@/lib/admin-api';
 
 interface UserCreationModalProps {
   onClose: () => void;
@@ -35,18 +35,8 @@ export const UserCreationModal: React.FC<UserCreationModalProps> = ({
 
   const loadOrganizations = async () => {
     try {
-      const response = await fetch('/api/admin/organizations', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      if (response.ok && result?.success) {
-        setOrganizations(result.data || []);
-      }
+      const organizations = await organizationsApi.list();
+      setOrganizations(organizations || []);
     } catch (error) {
       console.error('Failed to load organizations:', error);
     }

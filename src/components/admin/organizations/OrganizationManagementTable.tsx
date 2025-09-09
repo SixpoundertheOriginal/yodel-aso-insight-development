@@ -4,7 +4,7 @@ import { CreateOrganizationModal } from './CreateOrganizationModal';
 import { EditOrganizationModal } from './EditOrganizationModal';
 import { Edit3, Users, Trash2, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { organizationsApi, AdminApiError } from '@/lib/admin-api';
 
 interface Organization {
   id: string;
@@ -42,23 +42,12 @@ export const OrganizationManagementTable: React.FC = () => {
   const loadOrganizations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/organizations', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Request failed');
-      }
-      
-      setOrganizations(result.data || []);
-      console.log(`Loaded ${result.data?.length || 0} organizations`);
+      const organizations = await organizationsApi.list();
+      setOrganizations(organizations || []);
+      console.log(`Loaded ${organizations?.length || 0} organizations`);
+      setError(null);
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err as AdminApiError;
       console.error('Failed to load organizations:', error.message, error);
       setError(error.message);
     } finally {
@@ -69,25 +58,12 @@ export const OrganizationManagementTable: React.FC = () => {
   const handleCreateOrganization = async (orgData: NewOrganization) => {
     try {
       setCreating(true);
-      const response = await fetch('/api/admin/organizations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orgData),
-      });
-      
-      const result = await response.json();
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Failed to create organization');
-      }
-
+      const result = await organizationsApi.create(orgData);
       setShowCreateModal(false);
       loadOrganizations();
-      alert(`Organization "${result.data.name}" created successfully!`);
+      alert(`Organization "${result.name}" created successfully!`);
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err as AdminApiError;
       console.error('Failed to create organization:', error.message, error);
       alert(`Failed to create organization: ${error.message}`);
     } finally {
@@ -100,25 +76,12 @@ export const OrganizationManagementTable: React.FC = () => {
     updates: Partial<Organization>
   ) => {
     try {
-      const response = await fetch(`/api/admin/organizations/${orgId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-      
-      const result = await response.json();
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Failed to update organization');
-      }
-
+      await organizationsApi.update(orgId, updates);
       loadOrganizations();
       setShowEditModal(false);
       alert('Organization updated successfully!');
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err as AdminApiError;
       console.error('Failed to update organization:', error.message, error);
       alert(`Update failed: ${error.message}`);
     }
@@ -135,23 +98,11 @@ export const OrganizationManagementTable: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/organizations/${orgId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Failed to delete organization');
-      }
-
+      await organizationsApi.delete(orgId);
       loadOrganizations();
       alert('Organization deleted successfully');
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err as AdminApiError;
       console.error('Delete failed:', error.message, error);
       alert(`Failed to delete organization: ${error.message}`);
     }

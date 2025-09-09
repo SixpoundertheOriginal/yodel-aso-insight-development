@@ -78,3 +78,38 @@ The Creative Vision Analyzer Supabase function uses the OpenAI API. Configure it
 
 - `OPENAI_API_KEY`: your OpenAI API key.
 - `OPENAI_MODEL` (optional): the OpenAI model identifier. Defaults to `gpt-4.1-2025-04-14` if not set.
+
+## Admin Diagnostic Tools
+
+For developers working on the admin API integration, several diagnostic tools are available:
+
+### Scripts
+
+- **Smoke Tests**: `npm run smoke:admin` - Runs comprehensive API smoke tests
+  - Usage: `./scripts/admin-smoke.sh [BASE_URL] [SUPER_TOKEN] [ORG_TOKEN] [ORG_ID]`
+  - Tests health, whoami, organizations, and users endpoints with different auth levels
+  - Validates JSON content-type responses
+
+- **Bot Token**: `npm run token:bot` - Get JWT token for testing
+  - Usage: `BOT_EMAIL=test@example.com BOT_PASSWORD=password npm run token:bot`
+  - Returns access token for API testing
+
+### In-App Diagnostics Panel
+
+Enable with environment variable: `VITE_ADMIN_DIAGNOSTICS_ENABLED=true`
+
+- Access via Admin Panel → API Diagnostics
+- Real-time API testing with response analysis
+- JSON content-type validation
+- Organization context testing
+- Shell command templates for manual testing
+
+### Manual Testing Commands
+
+```bash
+# Get tokens
+BOT_EMAIL=test@example.com BOT_PASSWORD=password node scripts/get-token.ts
+
+# Run smoke tests  
+./scripts/admin-smoke.sh http://localhost:8080 "$SUPER" "$ORGADM" "$ORGID"
+```

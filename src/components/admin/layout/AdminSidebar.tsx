@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Users,
   Settings,
+  Stethoscope,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -35,6 +36,7 @@ const navigationConfig: Record<string, NavigationItem['status']> = {
   organizations: 'ready',
   users: 'ready',
   'system-status': 'placeholder',
+  diagnostics: 'ready',
   roles: 'placeholder',
   invitations: 'placeholder',
   bigquery: 'placeholder',
@@ -81,32 +83,46 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
     }
   };
 
+  const diagnosticsEnabled = import.meta.env.VITE_ADMIN_DIAGNOSTICS_ENABLED === 'true';
+
+  const platformOverviewItems = [
+    {
+      id: 'dashboard',
+      label: 'Executive Dashboard',
+      icon: BarChart3,
+      href: '/admin?tab=dashboard',
+      status: navigationConfig['dashboard'],
+    },
+    {
+      id: 'system-status',
+      label: 'System Health',
+      icon: Activity,
+      href: '/admin/system-status',
+      status: navigationConfig['system-status'],
+    },
+    {
+      id: 'analytics',
+      label: 'Platform Analytics',
+      icon: TrendingUp,
+      href: '/admin/analytics',
+      status: navigationConfig['analytics'],
+    },
+  ];
+
+  if (diagnosticsEnabled) {
+    platformOverviewItems.splice(2, 0, {
+      id: 'diagnostics',
+      label: 'API Diagnostics',
+      icon: Stethoscope,
+      href: '/admin?tab=diagnostics',
+      status: navigationConfig['diagnostics'],
+    });
+  }
+
   const navigationItems: { section: string; items: NavigationItem[] }[] = [
     {
       section: 'Platform Overview',
-      items: [
-        {
-          id: 'dashboard',
-          label: 'Executive Dashboard',
-          icon: BarChart3,
-          href: '/admin?tab=dashboard',
-          status: navigationConfig['dashboard'],
-        },
-        {
-          id: 'system-status',
-          label: 'System Health',
-          icon: Activity,
-          href: '/admin/system-status',
-          status: navigationConfig['system-status'],
-        },
-        {
-          id: 'analytics',
-          label: 'Platform Analytics',
-          icon: TrendingUp,
-          href: '/admin/analytics',
-          status: navigationConfig['analytics'],
-        },
-      ],
+      items: platformOverviewItems,
     },
     {
       section: 'Organization Management',

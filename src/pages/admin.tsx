@@ -7,6 +7,7 @@ import { PartnershipManagementCenter } from '@/components/admin/partnerships/Par
 import { BigQueryClientManagement } from '@/components/admin/data/BigQueryClientManagement';
 import { SecurityCompliancePanel } from '@/components/admin/security/SecurityCompliancePanel';
 import { UIPermissionManager } from '@/components/admin/ui/UIPermissionManager';
+import { AdminDiagnostics } from '@/components/admin/AdminDiagnostics';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const AdminPanel: React.FC = () => {
@@ -47,6 +48,8 @@ const AdminPanel: React.FC = () => {
         return <SecurityCompliancePanel />;
       case 'ui-permissions':
         return <UIPermissionManager />;
+      case 'diagnostics':
+        return import.meta.env.VITE_ADMIN_DIAGNOSTICS_ENABLED === 'true' ? <AdminDiagnostics /> : <EnhancedAdminDashboard />;
       default:
         return <EnhancedAdminDashboard />;
     }
