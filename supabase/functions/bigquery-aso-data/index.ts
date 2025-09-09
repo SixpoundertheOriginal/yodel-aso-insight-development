@@ -39,12 +39,12 @@ class SecureDemoDataService {
   ];
 
   private static readonly TRAFFIC_SOURCES = [
-    { name: 'App Store Search', weight: 0.35, raw: 'App_Store_Search' },        // 35% - Increased for positive TRUE SEARCH
-    { name: 'App Store Browse', weight: 0.25, raw: 'App_Store_Browse' },        // 25% - Strong browse category
-    { name: 'Apple Search Ads', weight: 0.20, raw: 'Apple_Search_Ads' },        // 20% - Reduced to enable TRUE SEARCH = 15%
-    { name: 'App Referrer', weight: 0.08, raw: 'App_Referrer' },               // 8% - Slightly reduced
+    { name: 'App Store Search', weight: 0.40, raw: 'App_Store_Search' },        // 40% - Higher for strong TRUE SEARCH
+    { name: 'App Store Browse', weight: 0.25, raw: 'App_Store_Browse' },        // 25% - Strong browse category  
+    { name: 'Apple Search Ads', weight: 0.15, raw: 'Apple_Search_Ads' },        // 15% - Lower to ensure TRUE SEARCH = 25%
+    { name: 'App Referrer', weight: 0.08, raw: 'App_Referrer' },               // 8% - App-to-app referrals
     { name: 'Google Search', weight: 0.05, raw: 'Google_Search' },             // 5% - Android organic search
-    { name: 'Web Referrer', weight: 0.04, raw: 'Web_Referrer' },               // 4% - Reduced
+    { name: 'Web Referrer', weight: 0.04, raw: 'Web_Referrer' },               // 4% - Web-to-app
     { name: 'Google Explore', weight: 0.02, raw: 'Google_Explore' },           // 2% - Android browse
     { name: 'Institutional Purchase', weight: 0.01, raw: 'Institutional_Purchase' } // 1% - Enterprise installs
   ];
@@ -371,11 +371,13 @@ serve(async (req) => {
     const isDemo = !!org?.settings?.demo_mode;
     const effectiveOrgId = isDemo ? DEMO_ORG_ID : organizationId;
 
-    // SECURITY: Get approved apps for organization (use mapped ID)
-    const approvedApps = await getApprovedApps(supabaseClient, effectiveOrgId);
+    // SECURITY: Get approved apps for organization (use actual org ID, not mapped)  
+    const approvedApps = await getApprovedApps(supabaseClient, organizationId);
 
     console.log('🔍 DEMO AUDIT [EDGE-1]: Organization ID:', organizationId);
     console.log('🔍 DEMO AUDIT [EDGE-1]: Effective ID:', effectiveOrgId);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Demo mode detected:', isDemo);
+    console.log('🔍 DEMO AUDIT [EDGE-1]: Org settings:', org?.settings);
     console.log('🔍 DEMO AUDIT [EDGE-1]: Approved apps count:', approvedApps.length);
     console.log('🔍 DEMO AUDIT [EDGE-1]: Demo path triggered:', isDemo || approvedApps.length === 0);
 

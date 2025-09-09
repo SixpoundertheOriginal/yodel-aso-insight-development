@@ -73,9 +73,9 @@ export const useAsoDataWithFallback = (
     fetchOrganizationId();
   }, [user]);
 
-  // ✅ ENHANCED: Skip BigQuery for Platform Super Admin, use mock data directly
-  const bigQueryReady = organizationId.length > 0 && !isDemoOrg;
-  const shouldUseBigQuery = bigQueryReady && preferredDataSource !== 'mock' && !isDemoOrg;
+  // ✅ ENHANCED: Skip BigQuery only for Platform Super Admin, demo orgs should use BigQuery (gets demo data)
+  const bigQueryReady = organizationId.length > 0;
+  const shouldUseBigQuery = bigQueryReady && preferredDataSource !== 'mock';
   
   const bigQueryResult = useBigQueryData(
     shouldUseBigQuery ? organizationId : '',
@@ -111,21 +111,6 @@ export const useAsoDataWithFallback = (
   });
 
   useEffect(() => {
-    // ✅ Skip BigQuery entirely for demo organizations
-    if (isDemoOrg) {
-      debugLog.info('🎭 [Fallback] Demo organization detected - serving demo data');
-      setCurrentDataSource('mock');
-      setDataSourceStatus('demo-data');
-      setFinalResult({
-        data: mockResult.data,
-        loading: mockResult.loading,
-        error: mockResult.error,
-        availableTrafficSources: mockResult.data?.trafficSources?.map(s => s.name) || [],
-        isDemo: true
-      });
-      return;
-    }
-
     // ✅ ENHANCED: Handle Platform Super Admin (no organization) with mock data
     if (preferredDataSource === 'mock' || !shouldUseBigQuery) {
       debugLog.info('🎭 [Fallback] Using mock data (super admin or explicit preference)');
