@@ -25,6 +25,7 @@ const FULL_APP: string[] = [
   '/growth-gap-copilot',
   '/featuring-toolkit',
   '/creative-analysis',
+  '/growth/web-rank-apps',
   '/app-discovery',
   '/apps',
   '/admin',

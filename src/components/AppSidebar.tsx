@@ -16,6 +16,7 @@ import {
   FileEdit,
   Star,
   Palette,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -110,6 +111,12 @@ const aiCopilotsItems: NavigationItem[] = [
     url: "/creative-analysis",
     icon: Palette,
     featureKey: PLATFORM_FEATURES.CREATIVE_REVIEW,
+  },
+  {
+    title: "Web Rank (Apps)",
+    url: "/growth/web-rank-apps",
+    icon: Search,
+    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
 ];
 

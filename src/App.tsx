@@ -51,6 +51,7 @@ const CompleteSignup = lazy(() => import("./pages/auth/complete-signup"));
 const UpdatePassword = lazy(() => import("./pages/auth/update-password"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const WebRankAppsPage = lazy(() => import("./pages/growth/WebRankAppsPage"));
 
 const queryClient = new QueryClient();
 
@@ -141,6 +142,10 @@ function App() {
                           <Route
                             path="/aso-knowledge-engine"
                             element={<ProtectedRoute><AsoKnowledgeEngine /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/growth/web-rank-apps"
+                            element={<ProtectedRoute><WebRankAppsPage /></ProtectedRoute>}
                           />
                           <Route
                             path="/aso-unified"
