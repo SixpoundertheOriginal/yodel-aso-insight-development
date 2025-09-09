@@ -16,9 +16,10 @@ import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
 import Overview from "./pages/overview";
+import Index from "./pages/Index";
 
 // Lazy load components
-const Index = lazy(() => import("./pages/Index"));
+// Index statically imported to avoid chunk load failure
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const TrafficSources = lazy(() => import("./pages/traffic-sources"));
 const ConversionAnalysis = lazy(() => import("./pages/conversion-analysis"));
