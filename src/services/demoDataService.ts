@@ -46,12 +46,14 @@ export class DemoDataService {
   ];
 
   private static readonly TRAFFIC_SOURCES = [
-    'App_Store_Search',
-    'App_Store_Browse', 
-    'Apple_Search_Ads',
-    'App_Referrer',
-    'Web_Referrer',
-    'Event_Notification'
+    'App Store Search',           // Matched to KPI registry naming
+    'App Store Browse',           // Matched to KPI registry naming  
+    'Apple Search Ads',           // Matched to KPI registry naming
+    'App Referrer',
+    'Google Search',              // Added for Android organic search
+    'Web Referrer',
+    'Google Explore',             // Added for Android browse
+    'Institutional Purchase'      // Added for Enterprise installs
   ];
 
   static async generateSecureDemoData(

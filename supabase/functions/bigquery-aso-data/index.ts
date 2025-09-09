@@ -39,12 +39,14 @@ class SecureDemoDataService {
   ];
 
   private static readonly TRAFFIC_SOURCES = [
-    { name: 'Apple Search Ads', weight: 0.35, raw: 'Apple_Search_Ads' },
-    { name: 'App Store Search', weight: 0.25, raw: 'App_Store_Search' },
-    { name: 'App Store Browse', weight: 0.20, raw: 'App_Store_Browse' },
-    { name: 'App Referrer', weight: 0.10, raw: 'App_Referrer' },
-    { name: 'Web Referrer', weight: 0.06, raw: 'Web_Referrer' },
-    { name: 'Event Notification', weight: 0.04, raw: 'Event_Notification' }
+    { name: 'App Store Search', weight: 0.35, raw: 'App_Store_Search' },        // 35% - Increased for positive TRUE SEARCH
+    { name: 'App Store Browse', weight: 0.25, raw: 'App_Store_Browse' },        // 25% - Strong browse category
+    { name: 'Apple Search Ads', weight: 0.20, raw: 'Apple_Search_Ads' },        // 20% - Reduced to enable TRUE SEARCH = 15%
+    { name: 'App Referrer', weight: 0.08, raw: 'App_Referrer' },               // 8% - Slightly reduced
+    { name: 'Google Search', weight: 0.05, raw: 'Google_Search' },             // 5% - Android organic search
+    { name: 'Web Referrer', weight: 0.04, raw: 'Web_Referrer' },               // 4% - Reduced
+    { name: 'Google Explore', weight: 0.02, raw: 'Google_Explore' },           // 2% - Android browse
+    { name: 'Institutional Purchase', weight: 0.01, raw: 'Institutional_Purchase' } // 1% - Enterprise installs
   ];
 
   private static readonly COUNTRIES = [
