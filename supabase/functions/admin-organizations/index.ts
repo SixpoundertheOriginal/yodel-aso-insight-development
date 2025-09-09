@@ -167,6 +167,7 @@ serve(async (req) => {
       // Get old values for audit
       const { data: oldData } = await supabase.from('organizations').select('*').eq('id', id).single();
       
+      // Soft delete by setting deleted_at timestamp
       const { data, error } = await supabase.from('organizations').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('*').single();
       if (error) return json({ error: error.message }, 500);
       
@@ -244,6 +245,7 @@ serve(async (req) => {
     // Get old values for audit
     const { data: oldData } = await supabase.from("organizations").select("*").eq("id", id).single();
     
+    // Soft delete by setting deleted_at timestamp
     const { data, error } = await supabase.from("organizations").update({ deleted_at: new Date().toISOString() }).eq("id", id).select("*").single();
     if (error) return json({ error: error.message }, 500);
     
