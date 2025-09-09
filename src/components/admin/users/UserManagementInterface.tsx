@@ -244,10 +244,13 @@ export const UserManagementInterface: React.FC = () => {
       header: 'Role',
       accessor: 'roles',
       cell: (user: User) => {
+        const roles = Array.isArray(user.roles) ? user.roles : [];
         const rolePriority = ['super_admin', 'org_admin', 'aso_manager', 'analyst', 'viewer', 'client'];
-        const highestRole = rolePriority.find(r => user.roles.some(ur => ur.role === r)) ||
-          user.roles[0]?.role || 'unknown';
-        const roleNames = user.roles.map(r => r.role.replace('_', ' ')).join(', ');
+        const highestRole = rolePriority.find(r => roles.some(ur => ur.role === r)) ||
+          roles[0]?.role || 'unknown';
+        const roleNames = roles.length
+          ? roles.map(r => (r.role || '').replace('_', ' ')).join(', ')
+          : 'no role';
         const colorClass =
           highestRole === 'super_admin'
             ? 'bg-red-100 text-red-800'
@@ -261,7 +264,7 @@ export const UserManagementInterface: React.FC = () => {
             {roleNames}
           </span>
         );
-      }
+      },
     },
     {
       header: 'Status',
