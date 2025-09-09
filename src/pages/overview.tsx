@@ -160,6 +160,7 @@ const OverviewContent: React.FC = () => {
 
   // Show skeleton only on initial load when there's no data yet
   if (loading && !data) {
+    console.log('🔧 [Overview Debug] Showing skeleton - Loading:', loading, 'Data:', !!data);
     return (
       <MainLayout>
         <div className="flex min-h-screen">
@@ -230,6 +231,17 @@ const OverviewContent: React.FC = () => {
     dataType: typeof data,
     summaryData: data?.summary,
     firstTimeseriesItem: data?.timeseriesData?.[0]
+  });
+
+  // 🔧 DEBUG: Check if we should render content
+  console.log('🔧 [Overview Render Check]', {
+    shouldShowSkeleton: loading && !data,
+    hasDataToShow: !!data,
+    willRenderMainContent: !loading || !!data,
+    impressionsValue: data?.summary?.impressions?.value || 0,
+    downloadsValue: data?.summary?.downloads?.value || 0,
+    isDemo,
+    error: !!error
   });
 
   const impressionsValue =
