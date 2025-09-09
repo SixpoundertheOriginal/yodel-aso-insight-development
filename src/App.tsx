@@ -18,13 +18,14 @@ import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
 import Overview from "./pages/overview";
 import Index from "./pages/Index";
 
-// Lazy load components
-// Index statically imported to avoid chunk load failure
-const Dashboard = lazy(() => import("./pages/dashboard"));
-const TrafficSources = lazy(() => import("./pages/traffic-sources"));
+// === STATIC IMPORTS (Critical Routes) ===
+// Core dashboard pages imported statically to avoid chunk load failures
+import Dashboard from "./pages/dashboard";
+import TrafficSources from "./pages/traffic-sources";
 import ConversionAnalysis from "./pages/conversion-analysis";
-// Overview statically imported to avoid chunk load failure
-const InsightsPage = lazy(() => import("./pages/insights"));
+import InsightsPage from "./pages/insights";
+
+// === LAZY IMPORTS (Secondary Routes) ===
 const TrafficPerformanceMatrix = lazy(() => import("./pages/TrafficPerformanceMatrix"));
 
 const AsoAiHub = lazy(() => import("./pages/aso-ai-hub"));
