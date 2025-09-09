@@ -22,7 +22,7 @@ import Index from "./pages/Index";
 // Index statically imported to avoid chunk load failure
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const TrafficSources = lazy(() => import("./pages/traffic-sources"));
-const ConversionAnalysis = lazy(() => import("./pages/conversion-analysis"));
+import ConversionAnalysis from "./pages/conversion-analysis";
 // Overview statically imported to avoid chunk load failure
 const InsightsPage = lazy(() => import("./pages/insights"));
 const TrafficPerformanceMatrix = lazy(() => import("./pages/TrafficPerformanceMatrix"));
