@@ -52,14 +52,6 @@ const SignUp = () => {
           </CardHeader>
           <CardContent>
             <SignUpForm />
-            <div className="mt-6 text-center">
-              <p className="text-sm text-zinc-400">
-                Already have an account?{' '}
-                <a href="/auth/sign-in" className="text-yodel-orange hover:underline">
-                  Sign in
-                </a>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
