@@ -137,11 +137,11 @@ const userItems: NavigationItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isSuperAdmin, isOrganizationAdmin, roles = [], isLoading: permissionsLoading } = usePermissions();
-  const { hasFeature, loading: featuresLoading } = useFeatureAccess();
-  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions(org?.id);
+  const { isSuperAdmin, isOrganizationAdmin, roles = [], organizationId, isLoading: permissionsLoading } = usePermissions();
   const { user } = useAuth();
   const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
+  const { hasFeature, loading: featuresLoading } = useFeatureAccess();
+  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions(organizationId || undefined);
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 DEMO DETECTION VALIDATION', {

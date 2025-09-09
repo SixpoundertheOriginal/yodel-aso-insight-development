@@ -72,7 +72,7 @@ export async function getAppWebRank({ appUrl, keyword, gl = 'dk', hl = 'da' }: W
 
     const json = await res.json();
     const parsed = webRankResponseSchema.parse(json);
-    return { rank: parsed.rank, matchedUrl: parsed.matchedUrl, serpTop: parsed.serpTop };
+    return { rank: parsed.rank, matchedUrl: parsed.matchedUrl, serpTop: (parsed.serpTop as SerpItem[] | undefined) };
   } catch (err) {
     console.error('getAppWebRank error:', err);
     throw err;
