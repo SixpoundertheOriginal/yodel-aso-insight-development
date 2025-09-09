@@ -24,6 +24,7 @@ interface User {
   created_at?: string;
   email_confirmed: boolean;
   last_sign_in?: string;
+  email_confirmed_at?: string; // From auth.users
   [key: string]: unknown;
 }
 

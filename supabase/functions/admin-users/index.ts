@@ -85,7 +85,7 @@ serve(async (req) => {
       if (orgIds.length === 0) return json({ success: true, data: [] });
     }
     let q = supabase.from("profiles").select(`
-      id,email,first_name,last_name,organization_id,created_at,email_confirmed_at,last_sign_in_at,
+      id,email,first_name,last_name,organization_id,created_at,
       user_roles(role, organization_id),
       organizations:organization_id(id,name,slug)
     `).order("created_at", { ascending: false });
@@ -93,25 +93,32 @@ serve(async (req) => {
     const { data: rawData, error } = await q;
     if (error) return json({ error: error.message }, 500);
     
+    // Get auth.users data for email confirmation status
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    if (authError) return json({ error: authError.message }, 500);
+    
     // Transform data to match UI expectations
-    const transformedData = (rawData || []).map((user: any) => ({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      organization: user.organizations ? {
-        id: user.organizations.id,
-        name: user.organizations.name,
-        slug: user.organizations.slug
-      } : null,
-      organization_id: user.organization_id,
-      roles: user.user_roles || [],
-      role: user.user_roles?.[0]?.role || null, // Primary role for backward compatibility
-      status: user.email_confirmed_at ? 'active' : 'pending',
-      email_confirmed: !!user.email_confirmed_at,
-      last_sign_in: user.last_sign_in_at,
-      created_at: user.created_at
-    }));
+    const transformedData = (rawData || []).map((user: any) => {
+      const authUser = authUsers.users.find(au => au.id === user.id);
+      return {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        organization: user.organizations ? {
+          id: user.organizations.id,
+          name: user.organizations.name,
+          slug: user.organizations.slug
+        } : null,
+        organization_id: user.organization_id,
+        roles: user.user_roles || [],
+        role: user.user_roles?.[0]?.role || null, // Primary role for backward compatibility
+        status: authUser?.email_confirmed_at ? 'active' : 'pending',
+        email_confirmed: !!authUser?.email_confirmed_at,
+        last_sign_in: authUser?.last_sign_in_at,
+        created_at: user.created_at
+      };
+    });
     
     return json({ success: true, data: transformedData });
   }
@@ -129,7 +136,7 @@ serve(async (req) => {
         if (orgIds.length === 0) return json({ success: true, data: [] });
       }
       let q = supabase.from("profiles").select(`
-        id,email,first_name,last_name,organization_id,created_at,email_confirmed_at,last_sign_in_at,
+        id,email,first_name,last_name,organization_id,created_at,
         user_roles(role, organization_id),
         organizations:organization_id(id,name,slug)
       `).order("created_at", { ascending: false });
@@ -137,25 +144,32 @@ serve(async (req) => {
       const { data: rawData, error } = await q;
       if (error) return json({ error: error.message }, 500);
       
+      // Get auth.users data for email confirmation status
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      if (authError) return json({ error: authError.message }, 500);
+      
       // Transform data to match UI expectations
-      const transformedData = (rawData || []).map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        organization: user.organizations ? {
-          id: user.organizations.id,
-          name: user.organizations.name,
-          slug: user.organizations.slug
-        } : null,
-        organization_id: user.organization_id,
-        roles: user.user_roles || [],
-        role: user.user_roles?.[0]?.role || null,
-        status: user.email_confirmed_at ? 'active' : 'pending',
-        email_confirmed: !!user.email_confirmed_at,
-        last_sign_in: user.last_sign_in_at,
-        created_at: user.created_at
-      }));
+      const transformedData = (rawData || []).map((user: any) => {
+        const authUser = authUsers.users.find(au => au.id === user.id);
+        return {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          organization: user.organizations ? {
+            id: user.organizations.id,
+            name: user.organizations.name,
+            slug: user.organizations.slug
+          } : null,
+          organization_id: user.organization_id,
+          roles: user.user_roles || [],
+          role: user.user_roles?.[0]?.role || null,
+          status: authUser?.email_confirmed_at ? 'active' : 'pending',
+          email_confirmed: !!authUser?.email_confirmed_at,
+          last_sign_in: authUser?.last_sign_in_at,
+          created_at: user.created_at
+        };
+      });
       
       return json({ success: true, data: transformedData });
     }
