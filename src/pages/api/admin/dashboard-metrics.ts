@@ -30,16 +30,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Organizations metrics with error handling
-    const { data: organizationsData, error: orgError } = await supabase
+    const { data: organizations, error: orgError } = await supabase
       .from('organizations')
-      .select('id, subscription_tier, created_at');
+      .select('id, subscription_tier, created_at')
+      .is('deleted_at', null); // Only active organizations
 
     if (orgError) {
       console.error('Organizations query error:', orgError);
       throw new Error(`Failed to fetch organizations: ${orgError.message}`);
     }
 
-    console.log(`Dashboard: Found ${organizationsData?.length || 0} organizations`);
+    console.log(`Dashboard: Found ${organizations?.length || 0} organizations`);
 
     // Fetch remaining data in parallel
     const [
@@ -83,11 +84,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Organization metrics
-    const totalOrgs = organizationsData?.length || 0;
-    const activeOrgs = organizationsData?.filter(org =>
+    const totalOrgs = organizations?.length || 0;
+    const activeOrgs = organizations?.filter(org =>
       new Date(org.created_at) > thirtyDaysAgo
     ).length || 0;
-    const enterpriseOrgs = organizationsData?.filter(org =>
+    const enterpriseOrgs = organizations?.filter(org =>
       org.subscription_tier === 'enterprise'
     ).length || 0;
 

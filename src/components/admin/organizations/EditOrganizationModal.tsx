@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-
-interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  domain: string;
-  subscription_tier: 'starter' | 'professional' | 'enterprise';
-  [key: string]: unknown;
-}
+import { Organization } from '@/types/organization';
 
 interface EditOrganizationModalProps {
   organization: Organization;

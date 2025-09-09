@@ -43,11 +43,12 @@ class SecurityService {
   async checkRateLimit(organizationId: string, action: string): Promise<SecureResponse<boolean>> {
     try {
       // Get organization's rate limit configuration
-      const { data: orgData, error } = await supabase
-        .from('organizations')
-        .select('subscription_tier, api_limits')
-        .eq('id', organizationId)
-        .single();
+        const { data: orgData, error } = await supabase
+          .from('organizations')
+          .select('subscription_tier, api_limits')
+          .eq('id', organizationId)
+          .is('deleted_at', null) // Only active organizations
+          .single();
 
       if (error) {
         return { success: false, errors: [{ field: 'organization', message: 'Organization not found', code: 'ORG_NOT_FOUND' }] };

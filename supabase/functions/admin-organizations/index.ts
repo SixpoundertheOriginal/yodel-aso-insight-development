@@ -111,7 +111,7 @@ serve(async (req) => {
       if (!isSA) return json({ error: "forbidden" }, 403);
       const { name, slug, domain, tier, subscription_tier } = body || {};
       if (!name || !slug) return json({ error: "invalid_request", details: "name and slug required" }, 400);
-      const { data: exists } = await supabase.from("organizations").select("id").eq("slug", slug).maybeSingle();
+      const { data: exists } = await supabase.from("organizations").select("id").eq("slug", slug).is("deleted_at", null).maybeSingle();
       if (exists) return json({ error: "conflict", details: "slug already exists" }, 409);
       const { data, error } = await supabase.from("organizations").insert({ name, slug, domain, subscription_tier: tier || subscription_tier || null }).select("*").single();
       if (error) return json({ error: error.message }, 500);
@@ -189,7 +189,7 @@ serve(async (req) => {
     if (action === 'list') {
       // compatibility listing
       const limit = 50;
-      let query = supabase.from('organizations').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(limit);
+        let query = supabase.from('organizations').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(limit);
       if (!isSA) {
         const { data: orgs } = await supabase.from('user_roles').select('organization_id').eq('user_id', uid);
         const ids = (orgs || []).map((r: any) => r.organization_id);

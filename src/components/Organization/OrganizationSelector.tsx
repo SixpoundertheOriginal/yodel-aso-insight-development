@@ -40,10 +40,11 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
       }
 
       try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('id, name, subscription_tier')
-          .order('name');
+          const { data, error } = await supabase
+            .from('organizations')
+            .select('id, name, subscription_tier')
+            .is('deleted_at', null) // Only active organizations
+            .order('name');
 
         if (error) {
           console.error('Error fetching organizations:', error);

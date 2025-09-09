@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { NewOrganization } from '@/types/organization';
 
 interface CreateOrganizationModalProps {
   onClose: () => void;
-  onCreate: (orgData: {
-    name: string;
-    slug: string;
-    domain: string;
-    subscription_tier: string;
-  }) => Promise<void>;
+  onCreate: (orgData: NewOrganization) => Promise<void>;
   creating?: boolean;
 }
 
 export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = ({ onClose, onCreate, creating }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<NewOrganization>({
     name: '',
     slug: '',
     domain: '',
@@ -119,7 +115,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
             <label className="block text-sm font-medium mb-1">Subscription Tier</label>
             <select
               value={formData.subscription_tier}
-              onChange={(e) => setFormData({ ...formData, subscription_tier: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, subscription_tier: e.target.value as 'starter' | 'professional' | 'enterprise' })}
               className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="starter">Starter</option>

@@ -23,11 +23,12 @@ export const DashboardBrandingLine: React.FC = () => {
         return;
       }
       setLoading(true);
-      supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', selectedOrganizationId)
-        .single()
+        supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', selectedOrganizationId)
+          .is('deleted_at', null) // Only active organizations
+          .single()
         .then(
           ({ data, error }) => {
             if (!error && data) setOrgName(data.name);

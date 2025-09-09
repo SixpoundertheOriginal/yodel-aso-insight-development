@@ -36,10 +36,11 @@ export const SuperAdminOrganizationSelector: React.FC<SuperAdminOrganizationSele
       
       const fetchOrganizations = async () => {
         try {
-          const { data, error } = await supabase
-            .from('organizations')
-            .select('id, name, slug')
-            .order('name');
+            const { data, error } = await supabase
+              .from('organizations')
+              .select('id, name, slug')
+              .is('deleted_at', null) // Only active organizations  
+              .order('name');
 
           if (error) {
             console.error('Error fetching organizations:', error);

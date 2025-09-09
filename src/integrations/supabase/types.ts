@@ -1933,6 +1933,7 @@ export type Database = {
           app_limit_enforced: boolean | null
           billing_email: string | null
           created_at: string
+          deleted_at: string | null
           domain: string | null
           features: Json | null
           id: string
@@ -1949,6 +1950,7 @@ export type Database = {
           app_limit_enforced?: boolean | null
           billing_email?: string | null
           created_at?: string
+          deleted_at?: string | null
           domain?: string | null
           features?: Json | null
           id?: string
@@ -1965,6 +1967,7 @@ export type Database = {
           app_limit_enforced?: boolean | null
           billing_email?: string | null
           created_at?: string
+          deleted_at?: string | null
           domain?: string | null
           features?: Json | null
           id?: string

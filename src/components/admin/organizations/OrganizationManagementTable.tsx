@@ -5,24 +5,7 @@ import { EditOrganizationModal } from './EditOrganizationModal';
 import { Edit3, Users, Trash2, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { organizationsApi, AdminApiError } from '@/lib/admin-api';
-
-interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  domain: string;
-  subscription_tier: 'starter' | 'professional' | 'enterprise';
-  user_count: number;
-  active_users_30d: number;
-  last_activity: Date;
-  created_at: Date;
-  [key: string]: unknown;
-}
-
-type NewOrganization = Pick<
-  Organization,
-  'name' | 'slug' | 'domain' | 'subscription_tier'
->;
+import { Organization, NewOrganization } from '@/types/organization';
 
 export const OrganizationManagementTable: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);

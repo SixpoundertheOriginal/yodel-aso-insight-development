@@ -40,9 +40,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       app_limit_enforced,
       settings,
       created_at,
-      updated_at
+      updated_at,
+      deleted_at
     `)
         .eq('id', id)
+        .is('deleted_at', null) // Only active organizations
         .single();
 
       if (error) throw error;
@@ -110,12 +112,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json(updatedOrg);
 
     } else if (req.method === 'DELETE') {
-      // DELETE organization (with safeguards)
+      // SOFT DELETE organization (with safeguards)
       const { data: orgToDelete } = await supabase
         .from('organizations')
-        .select('name, slug')
+        .select('name, slug, deleted_at')
         .eq('id', id)
         .single();
+
+      if (!orgToDelete) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+
+      if (orgToDelete.deleted_at) {
+        return res.status(400).json({ error: 'Organization already deleted' });
+      }
 
       // Check if organization has users
       const { count: userCount } = await supabase
@@ -130,11 +140,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // Delete organization (cascades will handle related records)
-      const { error: deleteError } = await supabase
+      // Soft delete organization by setting deleted_at
+      const { data: deletedOrg, error: deleteError } = await supabase
         .from('organizations')
-        .delete()
-        .eq('id', id);
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single();
 
       if (deleteError) throw deleteError;
 
@@ -142,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await supabase
         .from('audit_logs')
         .insert({
-          organization_id: null, // Organization no longer exists
+          organization_id: id as string,
           user_id: user.id,
           action: 'ORGANIZATION_DELETED',
           resource_type: 'organization',
@@ -150,11 +162,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           details: {
             deleted_organization_name: orgToDelete?.name,
             deleted_organization_slug: orgToDelete?.slug,
-            deleted_by: user.email
+            deleted_by: user.email,
+            soft_delete: true
           }
         });
 
-      res.status(200).json({ message: 'Organization deleted successfully' });
+      res.status(200).json({ 
+        message: 'Organization deleted successfully',
+        deleted_at: deletedOrg.deleted_at 
+      });
 
     } else {
       res.status(405).json({ error: 'Method not allowed' });
@@ -162,6 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Organization management error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    res.status(500).json({ error: message });
   }
 }

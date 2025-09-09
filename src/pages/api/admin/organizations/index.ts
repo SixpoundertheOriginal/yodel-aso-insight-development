@@ -39,8 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           app_limit_enforced,
           settings,
           created_at,
-          updated_at
+          updated_at,
+          deleted_at
         `)
+        .is('deleted_at', null) // Only active organizations
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -93,6 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('organizations')
         .select('id')
         .eq('slug', slug)
+        .is('deleted_at', null) // Only check active organizations
         .single();
 
       if (existingOrg) {
@@ -143,6 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Organization management error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    res.status(500).json({ error: message });
   }
 }
