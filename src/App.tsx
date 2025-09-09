@@ -15,13 +15,14 @@ import { SuperAdminProvider } from "./context/SuperAdminContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
+import Overview from "./pages/overview";
 
 // Lazy load components
 const Index = lazy(() => import("./pages/Index"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const TrafficSources = lazy(() => import("./pages/traffic-sources"));
 const ConversionAnalysis = lazy(() => import("./pages/conversion-analysis"));
-const Overview = lazy(() => import("./pages/overview"));
+// Overview statically imported to avoid chunk load failure
 const InsightsPage = lazy(() => import("./pages/insights"));
 const TrafficPerformanceMatrix = lazy(() => import("./pages/TrafficPerformanceMatrix"));
 
