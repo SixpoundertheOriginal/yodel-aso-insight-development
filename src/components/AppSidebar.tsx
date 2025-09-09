@@ -35,6 +35,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUIPermissions } from "@/hooks/useUIPermissions";
+import { resolvePermForPath } from "@/utils/navigation/navPermissionMap";
 import { PLATFORM_FEATURES } from "@/constants/features";
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
@@ -138,7 +139,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { isSuperAdmin, isOrganizationAdmin, roles = [], isLoading: permissionsLoading } = usePermissions();
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
-  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions();
+  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions(org?.id);
   const { user } = useAuth();
   const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
 
@@ -184,10 +185,26 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
   const filterOptions = { isDemoOrg, isSuperAdmin, routes, hasFeature, hasPermission };
 
   // Apply route filtering to all navigation sections
-  const filteredAnalyticsItems = filterNavigationByRoutes(analyticsItems, filterOptions);
-  const filteredAiToolsItems = filterNavigationByRoutes(aiToolsItems, filterOptions);
-  const filteredAiCopilotsItems = filterNavigationByRoutes(aiCopilotsItems, filterOptions);
-  const filteredControlCenterItems = filterNavigationByRoutes(controlCenterItems, filterOptions);
+  const filteredAnalyticsItemsBase = filterNavigationByRoutes(analyticsItems, filterOptions);
+  const filteredAiToolsItemsBase = filterNavigationByRoutes(aiToolsItems, filterOptions);
+  const filteredAiCopilotsItemsBase = filterNavigationByRoutes(aiCopilotsItems, filterOptions);
+  const filteredControlCenterItemsBase = filterNavigationByRoutes(controlCenterItems, filterOptions);
+
+  const NAV_FLAG = (import.meta as any).env?.VITE_NAV_PERMISSIONS_ENABLED === 'true';
+  const applyPermFilter = (items: NavigationItem[]) => {
+    if (!NAV_FLAG) return items;
+    // Default allow while loading to avoid accidental lockout
+    if (uiPermissionsLoading) return items;
+    return items.filter((it) => {
+      const perm = resolvePermForPath(it.url);
+      return !perm || hasPermission(perm);
+    });
+  };
+
+  const filteredAnalyticsItems = applyPermFilter(filteredAnalyticsItemsBase);
+  const filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
+  const filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
+  const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 
   // Debug logging for troubleshooting (temporary)
   if (process.env.NODE_ENV === 'development') {

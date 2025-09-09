@@ -5,6 +5,9 @@ import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getAllowedRoutes, type Role } from '@/config/allowedRoutes';
+import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { resolvePermForPath } from '@/utils/navigation/navPermissionMap';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,6 +21,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const allowed = getAllowedRoutes({ isDemoOrg, role });
+  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
+  const { toast } = useToast();
 
   // Show spinner while auth or org/permissions are loading
   if (loading || (user && (orgLoading || permissionsLoading))) {
@@ -51,6 +56,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const pathname = location.pathname;
   if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {
     return <Navigate to="/dashboard/executive" replace />;
+  }
+
+  // Optional nav permission enforcement (feature-flagged)
+  const NAV_FLAG = (import.meta as any).env?.VITE_NAV_PERMISSIONS_ENABLED === 'true';
+  if (NAV_FLAG && !isSuperAdmin) {
+    const perm = resolvePermForPath(pathname);
+    if (perm && !uiPermsLoading) {
+      const ok = hasPermission(perm);
+      if (!ok) {
+        toast({ title: 'Not permitted', description: 'You do not have access to this section.' });
+        return <Navigate to="/dashboard/executive" replace />;
+      }
+    }
   }
 
   return <>{children}</>;
