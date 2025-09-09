@@ -35,12 +35,17 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
 
   const loadOrganizations = async () => {
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
-        method: 'GET'
+      const response = await fetch('/api/admin/organizations', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
-      if (error) throw error;
-      if (response?.success) {
-        setOrganizations(response.data || []);
+      
+      const result = await response.json();
+      if (response.ok && result?.success) {
+        setOrganizations(result.data || []);
       }
     } catch (error) {
       console.error('Failed to load organizations:', error);

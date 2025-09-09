@@ -35,6 +35,16 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace('/api/admin/recent-activity', ''),
       },
+      '/api/admin/users/invite': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-users-invite',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/admin/users/invite', ''),
+      },
+      '/api/admin/users': {
+        target: 'https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-users',
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/admin/users', ''),
+      },
     },
   },
   plugins: [

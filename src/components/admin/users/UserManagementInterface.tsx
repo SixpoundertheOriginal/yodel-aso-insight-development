@@ -44,15 +44,21 @@ export const UserManagementInterface: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'list' }
+      const response = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Request failed');
+      }
 
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Request failed');
-
-      setUsers(response.data || []);
-      console.log(`Loaded ${response.data?.length || 0} users across all organizations`);
+      setUsers(result.data || []);
+      console.log(`Loaded ${result.data?.length || 0} users across all organizations`);
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Failed to load users:', error);
@@ -71,18 +77,26 @@ export const UserManagementInterface: React.FC = () => {
   }) => {
     try {
       const payload = {
-        ...userData,
+        email: userData.email,
+        org_id: userData.organization_id,
+        role: Array.isArray(userData.roles) ? userData.roles[0] : userData.roles,
         first_name: userData.first_name,
         last_name: userData.last_name,
-        organization_id: userData.organization_id,
-        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles]
-      }
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'invite', ...payload }
+      };
+      
+      const response = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to invite user');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to invite user');
+      }
 
       setShowInviteModal(false);
       loadUsers();
@@ -104,19 +118,28 @@ export const UserManagementInterface: React.FC = () => {
   }) => {
     try {
       const payload = {
-        ...userData,
+        action: 'create',
+        email: userData.email,
         first_name: userData.first_name,
         last_name: userData.last_name,
         organization_id: userData.organization_id,
         roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles],
         password: userData.password
-      }
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'create', ...payload }
+      };
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to create user');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to create user');
+      }
 
       setShowCreateModal(false);
       loadUsers();
@@ -136,22 +159,33 @@ export const UserManagementInterface: React.FC = () => {
   }) => {
     try {
       const payload = {
-        ...updates,
-        first_name: updates.first_name,
-        last_name: updates.last_name,
-        organization_id: updates.organization_id,
-        roles: updates.roles
-          ? Array.isArray(updates.roles)
-            ? updates.roles
-            : [updates.roles]
-          : undefined
-      }
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'update', id: userId, payload }
+        action: 'update',
+        id: userId,
+        payload: {
+          first_name: updates.first_name,
+          last_name: updates.last_name,
+          organization_id: updates.organization_id,
+          roles: updates.roles
+            ? Array.isArray(updates.roles)
+              ? updates.roles
+              : [updates.roles]
+            : undefined
+        }
+      };
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to update user');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to update user');
+      }
 
       setShowEditModal(false);
       setSelectedUser(null);
@@ -168,12 +202,24 @@ export const UserManagementInterface: React.FC = () => {
     }
 
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'delete', id: userId }
+      const payload = {
+        action: 'delete',
+        id: userId
+      };
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to delete user');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to delete user');
+      }
 
       loadUsers();
     } catch (error) {
@@ -188,14 +234,26 @@ export const UserManagementInterface: React.FC = () => {
     }
 
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'resetPassword', id: userId }
+      const payload = {
+        action: 'resetPassword',
+        id: userId
+      };
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to send password reset');
+      }
 
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to send password reset');
-
-      alert(`Password reset email sent to ${response.data?.email || 'user'}`);
+      alert(`Password reset email sent to ${result.data?.email || 'user'}`);
     } catch (error) {
       console.error('Failed to send password reset:', error);
       alert('Failed to send password reset email');

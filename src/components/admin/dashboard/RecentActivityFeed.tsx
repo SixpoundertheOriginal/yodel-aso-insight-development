@@ -21,10 +21,19 @@ export const RecentActivityFeed: React.FC = () => {
   const loadRecentActivity = async () => {
     try {
       setLoading(true);
-      const { data: response, error } = await supabase.functions.invoke('admin-recent-activity');
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Request failed');
-      setActivities(response.data || []);
+      const response = await fetch('/api/admin/recent-activity', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Request failed');
+      }
+      setActivities(result.data || []);
     } catch (error) {
       console.error('Failed to load recent activity:', error);
       setActivities([

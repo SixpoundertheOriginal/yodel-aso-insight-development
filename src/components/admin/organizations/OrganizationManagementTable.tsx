@@ -5,7 +5,6 @@ import { EditOrganizationModal } from './EditOrganizationModal';
 import { Edit3, Users, Trash2, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface Organization {
   id: string;
@@ -43,23 +42,25 @@ export const OrganizationManagementTable: React.FC = () => {
   const loadOrganizations = async () => {
     try {
       setLoading(true);
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
-        method: 'GET'
+      const response = await fetch('/api/admin/organizations', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Request failed');
       
-      setOrganizations(response.data || []);
-      console.log(`Loaded ${response.data?.length || 0} organizations`);
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Request failed');
+      }
+      
+      setOrganizations(result.data || []);
+      console.log(`Loaded ${result.data?.length || 0} organizations`);
     } catch (err: unknown) {
-      const error = err as FunctionsHttpError | Error;
-      const message =
-        error instanceof FunctionsHttpError
-          ? error.context?.error || error.message
-          : error.message;
-      console.error('Failed to load organizations:', message, error);
-      setError(message);
+      const error = err as Error;
+      console.error('Failed to load organizations:', error.message, error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -68,24 +69,27 @@ export const OrganizationManagementTable: React.FC = () => {
   const handleCreateOrganization = async (orgData: NewOrganization) => {
     try {
       setCreating(true);
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
-        body: orgData
+      const response = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orgData),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to create organization');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to create organization');
+      }
 
       setShowCreateModal(false);
       loadOrganizations();
-      alert(`Organization "${response.data.name}" created successfully!`);
+      alert(`Organization "${result.data.name}" created successfully!`);
     } catch (err: unknown) {
-      const error = err as FunctionsHttpError | Error;
-      const message =
-        error instanceof FunctionsHttpError
-          ? error.context?.error || error.message
-          : error.message;
-      console.error('Failed to create organization:', message, error);
-      alert(`Failed to create organization: ${message}`);
+      const error = err as Error;
+      console.error('Failed to create organization:', error.message, error);
+      alert(`Failed to create organization: ${error.message}`);
     } finally {
       setCreating(false);
     }
@@ -96,24 +100,27 @@ export const OrganizationManagementTable: React.FC = () => {
     updates: Partial<Organization>
   ) => {
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
-        body: { action: 'update', id: orgId, payload: updates }
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to update organization');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to update organization');
+      }
 
       loadOrganizations();
       setShowEditModal(false);
       alert('Organization updated successfully!');
     } catch (err: unknown) {
-      const error = err as FunctionsHttpError | Error;
-      const message =
-        error instanceof FunctionsHttpError
-          ? error.context?.error || error.message
-          : error.message;
-      console.error('Failed to update organization:', message, error);
-      alert(`Update failed: ${message}`);
+      const error = err as Error;
+      console.error('Failed to update organization:', error.message, error);
+      alert(`Update failed: ${error.message}`);
     }
   };
 
@@ -128,23 +135,25 @@ export const OrganizationManagementTable: React.FC = () => {
     }
 
     try {
-      const { data: response, error } = await supabase.functions.invoke('admin-organizations', {
-        body: { action: 'delete', id: orgId }
+      const response = await fetch(`/api/admin/organizations/${orgId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
-
-      if (error) throw error;
-      if (!response?.success) throw new Error(response?.error || 'Failed to delete organization');
+      
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to delete organization');
+      }
 
       loadOrganizations();
       alert('Organization deleted successfully');
     } catch (err: unknown) {
-      const error = err as FunctionsHttpError | Error;
-      const message =
-        error instanceof FunctionsHttpError
-          ? error.context?.error || error.message
-          : error.message;
-      console.error('Delete failed:', message, error);
-      alert(`Failed to delete organization: ${message}`);
+      const error = err as Error;
+      console.error('Delete failed:', error.message, error);
+      alert(`Failed to delete organization: ${error.message}`);
     }
   };
 
