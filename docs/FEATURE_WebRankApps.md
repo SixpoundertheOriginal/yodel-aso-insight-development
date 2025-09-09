@@ -25,3 +25,5 @@ Minimal MVP page to check web SERP rank for an App Store URL by keyword.
 - Client uses `zod` to validate the response.
 - Graceful error states are shown and detailed errors logged to console.
 
+## Edge Function Backend
+- See `supabase/functions/webrank/README.md` for the Supabase Edge Function that powers rank, Top-10 results, optional storage, and history endpoints.
