@@ -70,6 +70,32 @@ export class UIPermissionService {
     return PermissionCache.getPermissions(userId);
   }
 
+  async getOrgPermissions(orgId: string): Promise<{ roleBaseline: UIPermissions; orgDefaults: UIPermissions; resolved: UIPermissions; }>{
+    const base = (import.meta as any).env?.VITE_SUPABASE_FUNCTIONS_BASE || '/admin-ui-permissions';
+    const url = `${base}?org_id=${encodeURIComponent(orgId)}`;
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (url.includes('.supabase.co/functions/v1') && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) {
+      h['Authorization'] = `Bearer ${(import.meta as any).env.VITE_SUPABASE_ANON_KEY}`;
+    }
+    const r = await fetch(url, { headers: h });
+    if (!r.ok) throw new Error(`GET org perms failed: ${r.status}`);
+    const j = await r.json();
+    return { roleBaseline: j.roleBaseline || {}, orgDefaults: j.orgDefaults || {}, resolved: j.resolved || {} };
+  }
+
+  async updateOrgPermissions(orgId: string, updates: UIPermissions): Promise<{ orgDefaults: UIPermissions; resolved: UIPermissions; }>{
+    const base = (import.meta as any).env?.VITE_SUPABASE_FUNCTIONS_BASE || '/admin-ui-permissions';
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    const url = base;
+    if (url.includes('.supabase.co/functions/v1') && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) {
+      h['Authorization'] = `Bearer ${(import.meta as any).env.VITE_SUPABASE_ANON_KEY}`;
+    }
+    const r = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify({ org_id: orgId, updates }) });
+    if (!r.ok) throw new Error(`PUT org perms failed: ${r.status}`);
+    const j = await r.json();
+    return { orgDefaults: j.orgDefaults || {}, resolved: j.resolved || {} };
+  }
+
   async logUIAccess(
     userId: string,
     organizationId: string | null,

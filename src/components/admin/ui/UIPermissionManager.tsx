@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { uiPermissionService } from '@/services/uiPermissions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Save, RefreshCw } from 'lucide-react';
 
@@ -39,6 +42,9 @@ const ROLE_HIERARCHY = [
 ];
 
 export const UIPermissionManager: React.FC = () => {
+  const { profile } = useUserProfile();
+  const orgId = profile?.organization_id;
+  const { roleBaseline, orgDefaults, refreshPermissions } = useUIPermissions(orgId);
   const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -199,6 +205,40 @@ export const UIPermissionManager: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {orgId && (import.meta as any).env?.VITE_UI_PERMISSIONS_ORG_DEFAULTS_ENABLED === 'true' && (
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold text-lg mb-4 text-foreground">Org Defaults (current org)</h3>
+            <div className="grid gap-4">
+              {Object.entries(PERMISSION_CATEGORIES).map(([category, keys]) => (
+                <div key={`org-${category}`} className="space-y-2">
+                  <h4 className="text-sm text-muted-foreground">{category}</h4>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {keys.map((permission) => {
+                      const current = orgDefaults?.[permission] ?? roleBaseline?.[permission] ?? false;
+                      return (
+                        <div key={`org-${permission}`} className="flex items-center justify-between">
+                          <div className="text-sm">{permission}</div>
+                          <Switch
+                            checked={!!current}
+                            onCheckedChange={async (checked) => {
+                              if (!orgId) return;
+                              try {
+                                await uiPermissionService.updateOrgPermissions(orgId, { [permission]: checked });
+                                await refreshPermissions();
+                              } catch (e) {
+                                toast({ title: 'Update failed', description: String(e), variant: 'destructive' });
+                              }
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {Object.entries(PERMISSION_CATEGORIES).map(([category, categoryPermissions]) => (
           <div key={category}>
             <h3 className="font-semibold text-lg mb-4 text-foreground">{category}</h3>

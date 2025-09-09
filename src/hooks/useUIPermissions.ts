@@ -3,11 +3,13 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePermissions } from '@/hooks/usePermissions';
 import { uiPermissionService, UIPermissions } from '@/services/uiPermissions';
 
-export const useUIPermissions = () => {
+export const useUIPermissions = (orgId?: string) => {
   const { profile } = useUserProfile();
   const { isSuperAdmin } = usePermissions();
   const [permissions, setPermissions] = useState<UIPermissions>({});
   const [loading, setLoading] = useState(true);
+  const [roleBaseline, setRoleBaseline] = useState<UIPermissions>({});
+  const [orgDefaults, setOrgDefaults] = useState<UIPermissions>({});
 
   // Memoized permission checker with audit logging
   const hasPermission = useCallback((key: string, logAccess = false): boolean => {
@@ -84,9 +86,16 @@ export const useUIPermissions = () => {
       setLoading(true);
       try {
         const userPermissions = await uiPermissionService.getUserPermissions(profile.id);
-        if (mounted) {
-          setPermissions(userPermissions);
+        let final = userPermissions;
+        const ORG_ENABLED = (import.meta as any).env?.VITE_UI_PERMISSIONS_ORG_DEFAULTS_ENABLED === 'true';
+        if (ORG_ENABLED && orgId) {
+          try {
+            const o = await uiPermissionService.getOrgPermissions(orgId);
+            if (mounted) { setRoleBaseline(o.roleBaseline); setOrgDefaults(o.orgDefaults); }
+            final = o.resolved;
+          } catch (e) { /* ignore org overlay errors; fall back */ }
         }
+        if (mounted) setPermissions(final);
       } catch (error) {
         console.error('Failed to load UI permissions:', error);
         if (mounted) {
@@ -118,15 +127,22 @@ export const useUIPermissions = () => {
     setLoading(true);
     try {
       uiPermissionService.invalidateUserCache(profile.id);
-      const userPermissions = await uiPermissionService.getUserPermissions(profile.id);
-      setPermissions(userPermissions);
+      const base = await uiPermissionService.getUserPermissions(profile.id);
+      let final = base;
+      const ORG_ENABLED = (import.meta as any).env?.VITE_UI_PERMISSIONS_ORG_DEFAULTS_ENABLED === 'true';
+      if (ORG_ENABLED && orgId) {
+        const o = await uiPermissionService.getOrgPermissions(orgId);
+        setRoleBaseline(o.roleBaseline); setOrgDefaults(o.orgDefaults);
+        final = o.resolved;
+      }
+      setPermissions(final);
     } catch (error) {
       console.error('Failed to refresh UI permissions:', error);
       setPermissions({});
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, profile?.id]);
+  }, [isSuperAdmin, profile?.id, orgId]);
 
   // Return consistent structure regardless of isSuperAdmin
   return {
@@ -135,6 +151,8 @@ export const useUIPermissions = () => {
     permissions: isSuperAdmin ? SUPER_ADMIN_PERMISSIONS : permissions,
     loading: isSuperAdmin ? false : loading,
     refreshPermissions,
+    roleBaseline,
+    orgDefaults,
     
     // Commonly used permission checks (optimized)
     canAccessDevTools: isSuperAdmin || hasPermission('ui.debug.show_test_buttons'),
