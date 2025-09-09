@@ -26,7 +26,8 @@ export type WebRankResponse = {
   serpTop?: SerpItem[];
 };
 
-const BASE: string = (import.meta as any).env?.VITE_SERP_API_BASE ?? 'http://localhost:8787';
+const BASE: string = (import.meta as any).env.DEV ? '/webrank' : ((import.meta as any).env?.VITE_SERP_API_BASE ?? '/webrank');
+const FN_AUTH: string | undefined = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 
 const serpItemSchema = z.object({
   pos: z.number().int().min(1),
@@ -53,9 +54,13 @@ export async function getAppWebRank({ appUrl, keyword, gl = 'dk', hl = 'da' }: W
   try {
     const res = await fetch(`${BASE}/rank`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: (() => {
+        const h: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (BASE.includes('.supabase.co/functions/v1') && FN_AUTH) {
+          h['Authorization'] = `Bearer ${FN_AUTH}`;
+        }
+        return h;
+      })(),
       body: JSON.stringify({ appUrl, keyword, gl, hl }),
       signal: controller.signal,
     });
