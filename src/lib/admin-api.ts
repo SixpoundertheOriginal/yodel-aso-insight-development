@@ -78,7 +78,7 @@ type ActivityItem = {
 
 // Organizations API
 export const organizationsApi = {
-  list: (): Promise<Organization[]> => adminClient.get<Organization[]>('admin-organizations'),
+  list: (): Promise<Organization[]> => adminClient.invoke<Organization[]>('admin-organizations', { action: 'list' }),
   
   create: (data: any): Promise<Organization> => adminClient.post<Organization>('admin-organizations', data),
     
@@ -89,7 +89,7 @@ export const organizationsApi = {
 
 // Users API
 export const usersApi = {
-  list: (): Promise<User[]> => adminClient.get<User[]>('admin-users'),
+  list: (): Promise<User[]> => adminClient.invoke<User[]>('admin-users', { action: 'list' }),
   
   invite: (data: any): Promise<User> => adminClient.invoke<User>('admin-users-invite', data),
     
