@@ -1,159 +1,116 @@
-import { supabase } from '@/integrations/supabase/client';
+import { adminClient, AdminApiError } from './adminClient';
+import type { Organization } from '@/types/organization';
 
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
+// Re-export AdminApiError for backward compatibility
+export { AdminApiError };
 
-export class AdminApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public response?: any
-  ) {
-    super(message);
-    this.name = 'AdminApiError';
-  }
-}
-
-async function getAuthHeaders(orgId?: string): Promise<Record<string, string>> {
-  const { data: session } = await supabase.auth.getSession();
-  
-  if (!session.session?.access_token) {
-    throw new AdminApiError('No valid session found', 401);
-  }
-
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${session.session.access_token}`,
-    'Content-Type': 'application/json',
+// Import existing types used by components
+type User = {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  roles: { role: string; organization_id: string }[];
+  organization_id: string;
+  organizations?: {
+    id: string;
+    name: string;
+    slug: string;
+    [key: string]: unknown;
   };
+  status?: string;
+  last_sign_in_at?: string;
+  email_confirmed: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
 
-  // Add org context if available
-  if (orgId) {
-    headers['X-Org-Id'] = orgId;
-  } else {
-    // Try to get current org from localStorage
-    const currentOrgId = localStorage.getItem('currentOrgId');
-    if (currentOrgId) {
-      headers['X-Org-Id'] = currentOrgId;
-    }
-  }
+type WhoAmIResponse = {
+  is_super_admin: boolean;
+  user: User;
+  organization?: Organization;
+  organizations?: Organization[];
+};
 
-  return headers;
-}
+type AdminDashboardMetrics = {
+  platform_health: {
+    status: 'excellent' | 'good' | 'warning' | 'critical';
+    uptime_percentage: number;
+    response_time_avg: number;
+    error_rate: number;
+  };
+  organizations: {
+    total: number;
+    active: number;
+    enterprise_tier: number;
+    pending_invitations: number;
+    partnerships_active: number;
+  };
+  users: {
+    total_users: number;
+    active_last_30_days: number;
+    new_this_month: number;
+    pending_invitations: number;
+    by_role: Record<string, number>;
+  };
+  bigquery_clients: {
+    total_approved: number;
+    data_volume_gb: number;
+    query_count_today: number;
+    organizations_with_access?: number;
+  };
+  security: {
+    failed_login_attempts_24h: number;
+    suspicious_activities: number;
+    audit_log_entries_today?: number;
+    compliance_score: number;
+  };
+};
 
-async function apiCall<T = any>(
-  endpoint: string,
-  options: RequestInit = {},
-  orgId?: string
-): Promise<T> {
-  try {
-    const headers = await getAuthHeaders(orgId);
-    
-    const response = await fetch(endpoint, {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new AdminApiError(
-        result?.error || `HTTP ${response.status}: ${response.statusText}`,
-        response.status,
-        result
-      );
-    }
-
-    if (!result?.success) {
-      throw new AdminApiError(
-        result?.error || 'API call failed',
-        response.status,
-        result
-      );
-    }
-
-    return result.data;
-  } catch (error) {
-    if (error instanceof AdminApiError) {
-      throw error;
-    }
-    throw new AdminApiError(
-      error instanceof Error ? error.message : 'Unknown API error'
-    );
-  }
-}
+type ActivityItem = {
+  id: string;
+  type: 'user_login' | 'org_created' | 'app_approved' | 'partnership_created';
+  message: string;
+  user: string;
+  timestamp: Date | string;
+  metadata?: Record<string, unknown>;
+};
 
 // Organizations API
 export const organizationsApi = {
-  list: () => apiCall('/api/admin/organizations'),
+  list: (): Promise<Organization[]> => adminClient.get<Organization[]>('admin-organizations'),
   
-  create: (data: any) =>
-    apiCall('/api/admin/organizations', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  create: (data: any): Promise<Organization> => adminClient.post<Organization>('admin-organizations', data),
     
-  update: (id: string, data: any) =>
-    apiCall(`/api/admin/organizations/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
+  update: (id: string, data: any): Promise<Organization> => adminClient.put<Organization>('admin-organizations', id, data),
     
-  delete: (id: string) =>
-    apiCall(`/api/admin/organizations/${id}`, {
-      method: 'DELETE',
-    }),
+  delete: (id: string): Promise<void> => adminClient.delete<void>('admin-organizations', id),
 };
 
 // Users API
 export const usersApi = {
-  list: () => apiCall('/api/admin/users'),
+  list: (): Promise<User[]> => adminClient.get<User[]>('admin-users'),
   
-  invite: (data: any) =>
-    apiCall('/api/admin/users/invite', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  invite: (data: any): Promise<User> => adminClient.invoke<User>('admin-users-invite', data),
     
   // Legacy action-based calls for compatibility
-  create: (data: any) =>
-    apiCall('/api/admin/users', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'create', ...data }),
-    }),
+  create: (data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'create', ...data }),
     
-  update: (id: string, data: any) =>
-    apiCall('/api/admin/users', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'update', id, payload: data }),
-    }),
+  update: (id: string, data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'update', id, payload: data }),
     
-  delete: (id: string) =>
-    apiCall('/api/admin/users', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'delete', id }),
-    }),
+  delete: (id: string): Promise<void> => adminClient.invoke<void>('admin-users', { action: 'delete', id }),
     
-  resetPassword: (id: string) =>
-    apiCall('/api/admin/users', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'resetPassword', id }),
-    }),
+  resetPassword: (id: string): Promise<{ email: string }> => adminClient.invoke<{ email: string }>('admin-users', { action: 'resetPassword', id }),
 };
 
 // Dashboard API
 export const dashboardApi = {
-  metrics: () => apiCall('/api/admin/dashboard-metrics'),
-  activity: () => apiCall('/api/admin/recent-activity'),
+  metrics: (): Promise<AdminDashboardMetrics> => adminClient.get<AdminDashboardMetrics>('admin-dashboard-metrics'),
+  activity: (): Promise<ActivityItem[]> => adminClient.get<ActivityItem[]>('admin-recent-activity'),
 };
 
 // System Health API
 export const systemApi = {
-  whoami: () => apiCall('/api/whoami'),
-  health: () => apiCall('/api/health'),
+  whoami: (): Promise<WhoAmIResponse> => adminClient.get<WhoAmIResponse>('admin-whoami'),
+  health: (): Promise<{ status: string; timestamp: string; service: string; version: string }> => adminClient.get('admin-health'),
 };

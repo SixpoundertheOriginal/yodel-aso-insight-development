@@ -6,18 +6,44 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const healthData = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'ASO Platform Admin API',
-    version: '1.0.0'
-  }
+  try {
+    const healthData = {
+      success: true,
+      data: {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'ASO Platform Admin API',
+        version: '1.0.0',
+        environment: Deno.env.get('ENVIRONMENT') || 'development'
+      }
+    }
 
-  return new Response(JSON.stringify(healthData), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  })
+    return new Response(JSON.stringify(healthData), {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json' 
+      }
+    })
+  } catch (error) {
+    console.error('Health check error:', error)
+    
+    const errorResponse = {
+      success: false,
+      error: 'Health check failed',
+      timestamp: new Date().toISOString()
+    }
+
+    return new Response(JSON.stringify(errorResponse), {
+      status: 500,
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json' 
+      }
+    })
+  }
 })
