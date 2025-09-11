@@ -3,7 +3,10 @@ import { MainLayout } from '@/layouts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
+import { featureEnabledForRole, type UserRole } from '@/constants/features';
+import { NotAuthorized } from '@/components/NotAuthorized';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { 
@@ -58,11 +61,25 @@ interface App {
 
 function ChatGPTVisibilityAudit() {
   const { toast } = useToast();
+  const { isSuperAdmin } = usePermissions();
+  
+  // Route-level access control
+  const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 'viewer';
+  const hasAccess = featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', currentUserRole);
+  
+  if (!hasAccess) {
+    return (
+      <NotAuthorized 
+        title="ChatGPT Visibility Audit Access Required"
+        message="This feature is currently available to platform administrators only. Contact support for more information."
+      />
+    );
+  }
   const [apps, setApps] = useState<App[]>([]);
   const [auditRuns, setAuditRuns] = useState<AuditRun[]>([]);
   const [selectedAuditRun, setSelectedAuditRun] = useState<AuditRun | null>(null);
   const [organizationId, setOrganizationId] = useState<string>('');
-  const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
+  const { selectedOrganizationId } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'setup' | 'runs' | 'results'>('setup');
 

@@ -12,6 +12,8 @@ import { useState } from 'react';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { Brain, Target } from 'lucide-react';
+import { featureEnabledForRole, type UserRole } from '@/constants/features';
+import { NotAuthorized } from '@/components/NotAuthorized';
 
 const AsoAiHubPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +21,19 @@ const AsoAiHubPage: React.FC = () => {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
     dataContext.organizationId
   );
+
+  // Route-level access control
+  const currentUserRole: UserRole = dataContext.canAccessAllOrgs ? 'super_admin' : 'viewer';
+  const hasAccess = featureEnabledForRole('ASO_AI_HUB', currentUserRole);
+  
+  if (!hasAccess) {
+    return (
+      <NotAuthorized 
+        title="ASO AI Hub Access Required"
+        message="This feature is currently available to platform administrators only. Contact support for more information."
+      />
+    );
+  }
 
   const handleOrgChange = (orgId: string | null) => {
     setSelectedOrgId(orgId);

@@ -5,6 +5,28 @@
  * through the organization-level permission system.
  */
 
+// Define user roles and feature flags
+export type UserRole = 'super_admin' | 'org_admin' | 'aso_manager' | 'analyst' | 'viewer' | 'client';
+export type FeatureFlag = { enabled: boolean; roles?: UserRole[] };
+
+// Platform feature flags with role-based access control
+export const PLATFORM_FEATURES_CONFIG: Record<string, FeatureFlag> = {
+  PERFORMANCE_INTELLIGENCE: { enabled: true },
+  EXECUTIVE_DASHBOARD: { enabled: true },
+  ANALYTICS: { enabled: true },
+  CONVERSION_INTELLIGENCE: { enabled: true },
+  KEYWORD_INTELLIGENCE: { enabled: true },
+  METADATA_GENERATOR: { enabled: true },
+  CREATIVE_REVIEW: { enabled: true },
+  ASO_CHAT: { enabled: true },
+  COMPETITIVE_INTELLIGENCE: { enabled: true },
+  APP_DISCOVERY: { enabled: true },
+  ADMIN_PANEL: { enabled: true, roles: ['super_admin', 'org_admin'] },
+  // New AI audit features
+  ASO_AI_HUB: { enabled: true, roles: ['super_admin'] },
+  CHATGPT_VISIBILITY_AUDIT: { enabled: true, roles: ['super_admin'] },
+};
+
 // Legacy platform features (for backward compatibility)
 export const PLATFORM_FEATURES = {
   PERFORMANCE_INTELLIGENCE: 'performance_intelligence',
@@ -17,7 +39,9 @@ export const PLATFORM_FEATURES = {
   ASO_CHAT: 'aso_chat',
   COMPETITIVE_INTELLIGENCE: 'competitive_intelligence',
   APP_DISCOVERY: 'app_discovery',
-  ADMIN_PANEL: 'admin_panel'
+  ADMIN_PANEL: 'admin_panel',
+  ASO_AI_HUB: 'aso_ai_hub',
+  CHATGPT_VISIBILITY_AUDIT: 'chatgpt_visibility_audit'
 } as const;
 
 export type PlatformFeature = typeof PLATFORM_FEATURES[keyof typeof PLATFORM_FEATURES];
@@ -91,3 +115,20 @@ export const ROLE_FEATURE_DEFAULTS = {
 
 export type FeatureKey = typeof FEATURE_KEYS[keyof typeof FEATURE_KEYS];
 export type RoleKey = keyof typeof ROLE_FEATURE_DEFAULTS;
+
+/**
+ * Defensive helper to check feature access for a role
+ * Prevents super_admin lockout due to missing flags
+ */
+export function featureEnabledForRole(
+  key: keyof typeof PLATFORM_FEATURES_CONFIG,
+  role: UserRole
+): boolean {
+  const feature = PLATFORM_FEATURES_CONFIG[key];
+  if (!feature) {
+    // Safety valve: never lock out super_admin due to a missing flag
+    return role === 'super_admin';
+  }
+  const roleAllowed = feature.roles ? feature.roles.includes(role) : true;
+  return Boolean(feature.enabled && roleAllowed);
+}

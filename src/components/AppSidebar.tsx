@@ -36,7 +36,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { resolvePermForPath } from "@/utils/navigation/navPermissionMap";
-import { PLATFORM_FEATURES } from "@/constants/features";
+import { PLATFORM_FEATURES, PLATFORM_FEATURES_CONFIG, featureEnabledForRole, type UserRole } from "@/constants/features";
+import '../utils/featureTestHelper'; // Auto-run feature validation in development
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
 import { useDemoOrgDetection } from "@/hooks/useDemoOrgDetection";
@@ -221,15 +222,34 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     return false;
   });
   let filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
-  // Server-truth gate for ASO AI Audit (Demo)
+  
+  // Apply feature-based access control with defensive super_admin handling
   if (filteredAiToolsItems?.length) {
-    const isDemo = !!whoami?.is_demo;
-    const hasDemoFeature = (whoami?.features || []).includes('aso_audit_demo');
+    const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 
+      (isOrganizationAdmin ? 'org_admin' : 
+      (role?.toLowerCase().includes('aso') ? 'aso_manager' :
+      (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
+    
     filteredAiToolsItems = filteredAiToolsItems.filter(item => {
-      if (item.url === '/aso-ai-hub' || item.url === '/chatgpt-visibility-audit') {
-        return isDemo && hasDemoFeature;
+      if (item.url === '/aso-ai-hub') {
+        return featureEnabledForRole('ASO_AI_HUB', currentUserRole);
+      }
+      if (item.url === '/chatgpt-visibility-audit') {
+        return featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', currentUserRole);
       }
       return true;
+    });
+  }
+  
+  // Debug logging for troubleshooting sidebar visibility
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 [SIDEBAR] Feature access debug:', {
+      isSuperAdmin,
+      currentUserRole: isSuperAdmin ? 'super_admin' : role,
+      asoAiHubAccess: featureEnabledForRole('ASO_AI_HUB', isSuperAdmin ? 'super_admin' : 'viewer'),
+      chatGptAuditAccess: featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', isSuperAdmin ? 'super_admin' : 'viewer'),
+      platformFeatures: PLATFORM_FEATURES_CONFIG,
+      filteredAiToolsItemsCount: filteredAiToolsItems?.length || 0
     });
   }
   const filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
