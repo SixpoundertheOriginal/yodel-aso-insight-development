@@ -59,7 +59,7 @@ const UpdatePassword = lazy(() => import("./pages/auth/update-password"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const NoAccess = lazy(() => import("./pages/no-access"));
-const WebRankAppsPage = lazy(() => import("./pages/growth/WebRankAppsPage"));
+const WebRankAppsPage = lazy(() => import("./pages/growth/WebRankAppsPage.simple"));
 
 const queryClient = new QueryClient();
 
