@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
@@ -8,6 +8,10 @@ import { getAllowedRoutes, type Role } from '@/config/allowedRoutes';
 import { useUIPermissions } from '@/hooks/useUIPermissions';
 import { resolvePermForPath } from '@/utils/navigation/navPermissionMap';
 import { useToast } from '@/hooks/use-toast';
+import { useAccessControl } from '@/hooks/useAccessControl';
+
+// Lazy load NoAccess to avoid circular dependencies
+const NoAccess = lazy(() => import('@/pages/no-access'));
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,40 +22,40 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { roles = [], organizationId, isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { isDemoOrg, loading: orgLoading } = useDemoOrgDetection();
   const location = useLocation();
-  const role =
-    (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
-  const allowed = getAllowedRoutes({ isDemoOrg, role });
-  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
   const { toast } = useToast();
+  
+  // Enhanced access control check
+  const currentPath = location.pathname + location.search;
+  const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
 
   // Show spinner while auth or org/permissions are loading
-  if (loading || (user && (orgLoading || permissionsLoading))) {
+  if (loading || (user && (orgLoading || permissionsLoading)) || isLoading) {
     return <AuthLoadingSpinner />;
   }
 
   // If no authenticated user, store intended path and redirect to sign in
-  if (!user) {
+  if (!isAuthenticated) {
     const intended = location.pathname + location.search;
     sessionStorage.setItem('postLoginRedirect', intended);
     return <Navigate to="/auth/sign-in" replace />;
   }
 
-  // 🔧 FIX: Check if user is in auth flow - don't redirect during auth processes
-  const isInAuthFlow = location.search.includes('access_token') || 
-                      location.search.includes('token_hash') || 
-                      location.search.includes('type=') ||
-                      location.pathname.startsWith('/auth/');
-
-  // ✅ ENHANCED: Only redirect non-super-admin users without organization
-  // BUT NOT if they're in the middle of an auth flow (email confirmation, password reset, etc.)
-  if (!permissionsLoading && organizationId === null && !isInAuthFlow) {
-    if (!isSuperAdmin) {
-      return <Navigate to="/apps" replace />;
-    }
+  // 🔥 NEW: Show NoAccess screen for users without org/roles (unless super admin)
+  if (shouldShowNoAccess) {
+    return (
+      <Suspense fallback={<AuthLoadingSpinner />}>
+        <NoAccess />
+      </Suspense>
+    );
   }
 
-  // Clear any stored intent once authenticated and organization validated
+  // Clear any stored intent once authenticated and access validated
   sessionStorage.removeItem('postLoginRedirect');
+
+  // Role-based route checking (existing logic preserved)
+  const role = (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
+  const allowed = getAllowedRoutes({ isDemoOrg, role });
+  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
 
   const pathname = location.pathname;
   if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {

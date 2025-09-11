@@ -60,17 +60,41 @@ async function auditLog(
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const url = new URL(req.url);
+  
+  // DEBUG: Log request details
+  console.log("=== ADMIN-USERS DEBUG START ===");
+  console.log("Method:", req.method);
+  console.log("URL:", req.url);
+  console.log("Headers:", Object.fromEntries(req.headers.entries()));
+  console.log("Authorization header present:", !!req.headers.get("Authorization"));
+  
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
   });
-  const { data: userRes } = await supabase.auth.getUser();
+  
+  // Service role client for admin operations
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+  
+  const { data: userRes, error: authError } = await supabase.auth.getUser();
+  console.log("Auth getUser result:", { user: userRes?.user?.id, error: authError });
+  
   const uid = userRes?.user?.id;
-  if (!uid) return json({ error: "unauthorized" }, 401);
-  const { data: isSA } = await supabase.rpc("is_super_admin");
+  if (!uid) {
+    console.log("No user ID found, returning 401");
+    return json({ error: "unauthorized" }, 401);
+  }
+  
+  const { data: isSA, error: saError } = await supabase.rpc("is_super_admin");
+  console.log("Super admin check:", { isSA, error: saError });
   
   // Get user's primary role for audit logging
-  const { data: userRoles } = await supabase.from("user_roles").select("role, organization_id").eq("user_id", uid).limit(1);
+  const { data: userRoles, error: rolesError } = await supabase.from("user_roles").select("role, organization_id").eq("user_id", uid).limit(1);
+  console.log("User roles query:", { userRoles, error: rolesError });
   const actorRole = isSA ? "SUPER_ADMIN" : (userRoles?.[0]?.role || "UNKNOWN");
+  console.log("Final actor role:", actorRole);
 
   // GET list users (scoped)
   if (req.method === "GET") {
@@ -94,8 +118,13 @@ serve(async (req) => {
     if (error) return json({ error: error.message }, 500);
     
     // Get auth.users data for email confirmation status
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    if (authError) return json({ error: authError.message }, 500);
+    console.log("Attempting supabaseAdmin.auth.admin.listUsers()...");
+    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    console.log("Admin listUsers result:", { usersCount: authUsers?.users?.length, error: authError });
+    if (authError) {
+      console.log("Admin listUsers FAILED - returning 500:", authError.message);
+      return json({ error: authError.message }, 500);
+    }
     
     // Transform data to match UI expectations
     const transformedData = (rawData || []).map((user: any) => {
@@ -145,8 +174,13 @@ serve(async (req) => {
       if (error) return json({ error: error.message }, 500);
       
       // Get auth.users data for email confirmation status
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) return json({ error: authError.message }, 500);
+      console.log("Attempting supabaseAdmin.auth.admin.listUsers() (POST action=list)...");
+      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+      console.log("Admin listUsers result (POST):", { usersCount: authUsers?.users?.length, error: authError });
+      if (authError) {
+        console.log("Admin listUsers FAILED (POST) - returning 500:", authError.message);
+        return json({ error: authError.message }, 500);
+      }
       
       // Transform data to match UI expectations
       const transformedData = (rawData || []).map((user: any) => {

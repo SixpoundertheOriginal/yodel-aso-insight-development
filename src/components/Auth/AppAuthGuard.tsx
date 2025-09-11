@@ -1,0 +1,73 @@
+import React, { lazy, Suspense } from 'react';
+import { useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useAccessControl } from '@/hooks/useAccessControl';
+import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
+
+// Lazy load NoAccess to avoid bundle bloat
+const NoAccess = lazy(() => import('@/pages/no-access'));
+
+interface AppAuthGuardProps {
+  children: React.ReactNode;
+}
+
+/**
+ * High-level auth guard that handles global app access control
+ * This runs before any route-level protection and handles:
+ * - Unauthenticated users -> redirect to sign-in
+ * - Authenticated users without org/roles -> show NoAccess
+ * - Normal users -> continue to app
+ */
+export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
+  const location = useLocation();
+  const { user, loading } = useAuth();
+  const currentPath = location.pathname + location.search;
+  const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
+
+  // Public routes that don't need auth
+  const publicRoutes = [
+    '/auth/sign-in',
+    '/auth/sign-up', 
+    '/auth/confirm-email',
+    '/auth/complete-signup',
+    '/auth/update-password',
+    '/404',
+    '/no-access',
+    '/' // Landing page
+  ];
+
+  const isPublicRoute = publicRoutes.some(route => 
+    location.pathname === route || location.pathname.startsWith(route)
+  );
+
+  // Show loading during initial auth check
+  if (loading || isLoading) {
+    return <AuthLoadingSpinner />;
+  }
+
+  // Allow public routes without auth
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // Redirect unauthenticated users to sign-in
+  if (!isAuthenticated) {
+    const intended = location.pathname + location.search;
+    sessionStorage.setItem('postLoginRedirect', intended);
+    return <Navigate to="/auth/sign-in" replace />;
+  }
+
+  // Show NoAccess for authenticated users without proper access
+  if (shouldShowNoAccess) {
+    return (
+      <Suspense fallback={<AuthLoadingSpinner />}>
+        <NoAccess />
+      </Suspense>
+    );
+  }
+
+  // Continue to app for valid users
+  return <>{children}</>;
+};
+
+export default AppAuthGuard;

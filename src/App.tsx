@@ -54,6 +54,7 @@ const CompleteSignup = lazy(() => import("./pages/auth/complete-signup"));
 const UpdatePassword = lazy(() => import("./pages/auth/update-password"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const NoAccess = lazy(() => import("./pages/no-access"));
 const WebRankAppsPage = lazy(() => import("./pages/growth/WebRankAppsPage"));
 
 const queryClient = new QueryClient();
@@ -79,6 +80,7 @@ function App() {
                           <Route path="/auth/confirm-email" element={<ConfirmEmail />} />
                           <Route path="/auth/complete-signup" element={<CompleteSignup />} />
                           <Route path="/auth/update-password" element={<UpdatePassword />} />
+                          <Route path="/no-access" element={<NoAccess />} />
                           <Route path="/" element={<Index />} />
                           <Route
                             path="/dashboard"
