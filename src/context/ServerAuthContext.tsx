@@ -18,6 +18,11 @@ export const ServerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const w = await fetchWhoAmI();
       setWhoami(w);
+      const DEMO_DEBUG = (import.meta as any).env?.VITE_DEMO_DEBUG === 'true';
+      if (DEMO_DEBUG) {
+        // eslint-disable-next-line no-console
+        console.debug('[DEMO DEBUG] whoami.features:', w?.features);
+      }
     } finally {
       setLoading(false);
     }
@@ -33,4 +38,3 @@ export const ServerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 };
 
 export const useServerAuth = () => useContext(Ctx);
-

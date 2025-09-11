@@ -30,3 +30,6 @@ Summary (10–15 lines)
 - RLS must enforce tenant isolation on all org-scoped tables and permit super-admin via RPC.
 - Avoid all client-only heuristics for demo detection (e.g., slug checks) where possible; the source of truth is `admin-whoami`/`authorize`.
 
+See also
+- WhoAmI payload → `docs/whoami_contract.md`
+- Authorize rules → `docs/authz_matrix.md`

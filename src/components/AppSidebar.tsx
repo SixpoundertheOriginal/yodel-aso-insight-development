@@ -43,6 +43,7 @@ import { useDemoOrgDetection } from "@/hooks/useDemoOrgDetection";
 import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
 import { filterNavigationByRoutes, type NavigationItem } from "@/utils/navigation";
 import { useServerAuth } from '@/context/ServerAuthContext';
+import { ROUTES } from '@/constants/routes';
 
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
@@ -204,6 +205,21 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
   };
 
   const filteredAnalyticsItems = applyPermFilter(filteredAnalyticsItemsBase);
+
+  // Demo Sections (server-truth gated)
+  const demoItems: NavigationItem[] = [
+    { title: 'Creative Review (Demo)', url: ROUTES.demoCreativeReview, icon: Palette },
+    { title: 'Keyword Insights (Demo)', url: ROUTES.demoKeywordInsights, icon: Search },
+  ];
+  let filteredDemoItems = applyPermFilter(demoItems);
+  const isDemo = !!whoami?.is_demo;
+  const feat = new Set((whoami?.features || []) as string[]);
+  filteredDemoItems = filteredDemoItems.filter(item => {
+    if (!isDemo) return false;
+    if (item.url === ROUTES.demoCreativeReview) return feat.has('creative_review_demo');
+    if (item.url === ROUTES.demoKeywordInsights) return feat.has('keyword_insights_demo');
+    return false;
+  });
   let filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
   // Server-truth gate for ASO AI Audit (Demo)
   if (filteredAiToolsItems?.length) {
@@ -410,6 +426,22 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredAiCopilotsItems.map(renderNavItem).filter(Boolean)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {filteredDemoItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full"></div>
+                Demo Sections
+              </div>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredDemoItems.map(renderNavItem).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

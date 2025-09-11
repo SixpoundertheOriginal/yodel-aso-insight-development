@@ -112,16 +112,22 @@ serve(async (req) => {
     (featRows || []).forEach(r => features[r.feature_key] = !!r.is_enabled);
     console.log("[AUTHORIZE] Features:", { count: (featRows || []).length, features, fe });
 
-    // Central policy: ASO AI Audit (Demo) access
-    const isAsoAuditPath = ['/aso-ai-hub', '/chatgpt-visibility-audit', '/aso-unified'].some(p => path.startsWith(p));
-    if (isAsoAuditPath) {
-      const hasDemoFeature = features['aso_audit_demo'] === true;
-      const allow = isDemo && hasDemoFeature;
-      console.log("[AUTHORIZE] ASO AI Audit policy:", { path, method, role, isDemo, hasDemoFeature, allow });
-      if (allow) {
-        return new Response(JSON.stringify({ allow: true, reason: 'demo_feature_enabled' }), { status: 200, headers: corsHeaders });
+    // Central policy: Demo sections
+    const demoPolicies: Array<{ match: (p: string) => boolean; feature: string; label: string }> = [
+      { match: (p) => ['/aso-ai-hub', '/chatgpt-visibility-audit', '/aso-unified', '/demo/aso-ai-audit'].some(x => p.startsWith(x)), feature: 'aso_audit_demo', label: 'ASO Audit' },
+      { match: (p) => ['/demo/creative-review'].some(x => p.startsWith(x)), feature: 'creative_review_demo', label: 'Creative Review' },
+      { match: (p) => ['/demo/keyword-insights'].some(x => p.startsWith(x)), feature: 'keyword_insights_demo', label: 'Keyword Insights' },
+    ];
+    for (const pol of demoPolicies) {
+      if (pol.match(path)) {
+        const hasDemoFeature = features[pol.feature] === true;
+        const allow = isDemo && hasDemoFeature;
+        console.log("[AUTHORIZE] DEMO policy:", { path, feature: pol.feature, isDemo, hasDemoFeature, allow });
+        if (allow) {
+          return new Response(JSON.stringify({ allow: true, reason: 'demo_feature_enabled' }), { status: 200, headers: corsHeaders });
+        }
+        return new Response(JSON.stringify({ allow: false, reason: 'feature_not_enabled_or_not_demo' }), { status: 403, headers: corsHeaders });
       }
-      return new Response(JSON.stringify({ allow: false, reason: 'feature_not_enabled_or_not_demo' }), { status: 403, headers: corsHeaders });
     }
 
     // Default allow other paths (existing app guards may still apply)

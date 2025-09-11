@@ -42,6 +42,9 @@ const Apps = lazy(() => import("./pages/apps"));
 const AppDiscovery = lazy(() => import("./pages/app-discovery"));
 const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
+const DemoCreativeReview = lazy(() => import("./pages/demo-creative-review"));
+const DemoKeywordInsights = lazy(() => import("./pages/demo-keyword-insights"));
+import { ROUTES } from '@/constants/routes';
 const Admin = lazy(() => import("./pages/admin"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
 const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
@@ -158,6 +161,8 @@ function App() {
                             path="/aso-unified"
                             element={<ProtectedRoute><ASOUnified /></ProtectedRoute>}
                           />
+                          <Route path={ROUTES.demoCreativeReview} element={<ProtectedRoute><DemoCreativeReview /></ProtectedRoute>} />
+                          <Route path={ROUTES.demoKeywordInsights} element={<ProtectedRoute><DemoKeywordInsights /></ProtectedRoute>} />
                           <Route
                             path="/apps"
                             element={<ProtectedRoute><Apps /></ProtectedRoute>}

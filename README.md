@@ -1,5 +1,18 @@
 # Welcome to your Lovable project
 
+> Start here — Single Sources of Truth (SoT)
+
+This project uses a backend‑first, server‑truth model (Supabase Edge Functions) for auth, RBAC, and demo‑mode. Use these owner docs:
+
+- Architecture → `docs/aso_platform_architecture.md`
+- Auth/RBAC/Demo map → `docs/auth_map.md`
+- WhoAmI contract → `docs/whoami_contract.md`
+- Authorize rules → `docs/authz_matrix.md`
+- Demo sections (features/endpoints/contracts) → `docs/demo_sections.md`
+- Routing/JSON/CORS → `docs/routing_fixes.md`
+- Admin panel overview → `docs/admin_panel_overview.md`
+- Verification/Smoke → `scripts/verify-demo-foundation.md`
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/ecbe3725-c282-42cd-9b9e-33605f2db95a

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke:admin": "./scripts/admin-smoke.sh",
-    "token:bot": "node scripts/get-token.ts"
+    "token:bot": "node scripts/get-token.ts",
+    "smoke:demo": "node scripts/smoke-demo.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
