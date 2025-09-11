@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
-import KpiCard from "../components/KpiCard";
+import KpiCard from "@/components/kpi/KpiCard";
+import DashboardStatsCard from "../components/DashboardStatsCard";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import { TrafficSourceSelect } from "../components/Filters";
 import CVRTypeToggle from "../components/CVRTypeToggle";
@@ -98,9 +99,20 @@ const ConversionAnalysisContent: React.FC = () => {
     }));
   }, [data?.cvrTimeSeries, cvrType]);
 
+  // Diagnostics parity (optional)
+  if ((import.meta as any).env?.VITE_KPI_DIAGNOSTICS_ENABLED === 'true' && data?.summary) {
+    console.debug('[KPI Parity][CR]', {
+      product_page_cvr: data.summary.product_page_cvr.value,
+      product_page_cvr_delta: data.summary.product_page_cvr.delta,
+      impressions_cvr: data.summary.impressions_cvr.value,
+      impressions_cvr_delta: data.summary.impressions_cvr.delta,
+    });
+  }
+
   const { data: benchmarkData, availableCategories } = useBenchmarkData(
     selectedCategory
   );
+  const KPI_UNIFIED = (import.meta as any).env?.VITE_KPI_CARD_UNIFIED !== 'false';
 
   useEffect(() => {
     const fetchOrganizationId = async () => {
@@ -257,36 +269,55 @@ const ConversionAnalysisContent: React.FC = () => {
                 {/* Cumulative Section */}
                 <section>
                   <h2 className="text-xl font-semibold mb-4">Cumulative</h2>
-                  <div className="flex justify-center gap-4">
-                    <div className="w-64">
-                      <KpiCard
-                        title="Product Page CVR"
-                        value={data.summary.product_page_cvr.value}
-                        delta={data.summary.product_page_cvr.delta}
-                        isPercentage
-                      />
-                      {benchmarkData && (
-                        <BenchmarkIndicator
-                          clientValue={data.summary.product_page_cvr.value}
-                          benchmarkValue={benchmarkData.page_views_to_installs}
+                  {KPI_UNIFIED ? (
+                    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+                      <div>
+                        <KpiCard
+                          label="Product Page CVR"
+                          unit="%"
+                          value={data.summary.product_page_cvr.value}
+                          delta={data.summary.product_page_cvr.delta}
+                          mode="regular"
                         />
-                      )}
-                    </div>
-                    <div className="w-64">
-                      <KpiCard
-                        title="Impressions CVR"
-                        value={data.summary.impressions_cvr.value}
-                        delta={data.summary.impressions_cvr.delta}
-                        isPercentage
-                      />
-                      {benchmarkData && (
-                        <BenchmarkIndicator
-                          clientValue={data.summary.impressions_cvr.value}
-                          benchmarkValue={benchmarkData.impressions_to_page_views}
+                        {benchmarkData && (
+                          <BenchmarkIndicator
+                            clientValue={data.summary.product_page_cvr.value}
+                            benchmarkValue={benchmarkData.page_views_to_installs}
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <KpiCard
+                          label="Impressions CVR"
+                          unit="%"
+                          value={data.summary.impressions_cvr.value}
+                          delta={data.summary.impressions_cvr.delta}
+                          mode="regular"
                         />
-                      )}
+                        {benchmarkData && (
+                          <BenchmarkIndicator
+                            clientValue={data.summary.impressions_cvr.value}
+                            benchmarkValue={benchmarkData.impressions_to_page_views}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+                      <div>
+                        <DashboardStatsCard label="Product Page CVR" value={data.summary.product_page_cvr.value} delta={data.summary.product_page_cvr.delta} variant="percentage" decimals={1} />
+                        {benchmarkData && (
+                          <BenchmarkIndicator clientValue={data.summary.product_page_cvr.value} benchmarkValue={benchmarkData.page_views_to_installs} />
+                        )}
+                      </div>
+                      <div>
+                        <DashboardStatsCard label="Impressions CVR" value={data.summary.impressions_cvr.value} delta={data.summary.impressions_cvr.delta} variant="percentage" decimals={1} />
+                        {benchmarkData && (
+                          <BenchmarkIndicator clientValue={data.summary.impressions_cvr.value} benchmarkValue={benchmarkData.impressions_to_page_views} />
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <CVRTypeToggle currentType={cvrType} onTypeChange={setCvrType} />

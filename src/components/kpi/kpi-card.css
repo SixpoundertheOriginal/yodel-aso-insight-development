@@ -1,0 +1,32 @@
+.kpi-card {
+  container-type: inline-size;
+}
+
+/* Typography scales via container queries */
+@container (max-width: 360px) {
+  .kpi .kpi-value {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+}
+
+@container (min-width: 361px) and (max-width: 560px) {
+  .kpi .kpi-value {
+    font-size: 1.25rem;
+    line-height: 1.15;
+  }
+}
+
+@container (min-width: 561px) {
+  .kpi .kpi-value {
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+}
+
+/* Hide chip on very narrow cards (lowered threshold to avoid false hides) */
+@container (max-width: 360px) {
+  .kpi .kpi-chip {
+    display: none;
+  }
+}

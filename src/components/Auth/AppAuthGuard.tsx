@@ -2,6 +2,8 @@ import React, { lazy, Suspense } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useAccessControl } from '@/hooks/useAccessControl';
+import { useServerAuth } from '@/context/ServerAuthContext';
+import { authorizePath } from '@/services/authz';
 import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 
 // Lazy load NoAccess to avoid bundle bloat
@@ -23,6 +25,8 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const currentPath = location.pathname + location.search;
   const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
+  const { loading: serverAuthLoading } = useServerAuth();
+  const [routeAllowed, setRouteAllowed] = React.useState<boolean | null>(null);
 
   // Public routes that don't need auth
   const publicRoutes = [
@@ -40,8 +44,27 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
     location.pathname === route || location.pathname.startsWith(route)
   );
 
-  // Show loading during initial auth check
-  if (loading || isLoading) {
+  // Kick off server-side authorization for protected routes
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      // Only check for non-public routes
+      if (isPublicRoute) {
+        setRouteAllowed(true);
+        return;
+      }
+      const result = await authorizePath(location.pathname, 'GET');
+      if (!cancelled) setRouteAllowed(result.allow);
+      if (!result.allow) {
+        sessionStorage.setItem('lastAuthzReason', result.reason || 'denied');
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  // Show loading during initial auth + server auth
+  if (loading || isLoading || serverAuthLoading || routeAllowed === null) {
     return <AuthLoadingSpinner />;
   }
 
@@ -58,7 +81,7 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
   }
 
   // Show NoAccess for authenticated users without proper access
-  if (shouldShowNoAccess) {
+  if (shouldShowNoAccess || routeAllowed === false) {
     return (
       <Suspense fallback={<AuthLoadingSpinner />}>
         <NoAccess />

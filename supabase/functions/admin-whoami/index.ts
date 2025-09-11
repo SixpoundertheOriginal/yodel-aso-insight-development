@@ -61,17 +61,13 @@ serve(async (req) => {
 
     console.log('[ADMIN-WHOAMI] Getting user roles for user:', jwtUserId);
 
-    // Get user roles using the user_roles system with organization data  
+    // Get user roles using the user_roles system with organization data and org settings
     const { data: extendedUserRoles, error: extendedRolesError } = await supabase
       .from('user_roles')
       .select(`
-        role, 
+        role,
         organization_id,
-        organizations:organization_id (
-          id,
-          name,
-          slug
-        )
+        organizations:organization_id ( id, name, slug, settings )
       `)
       .eq('user_id', jwtUserId)
 
@@ -101,16 +97,31 @@ serve(async (req) => {
 
     console.log('[ADMIN-WHOAMI] Extracted organizations:', organizations);
 
+    // Resolve active organization as first available (or null)
+    const activeOrg = organizations.length > 0 ? organizations[0] : null;
+    let features: string[] = [];
+    let is_demo = false;
+    if (activeOrg?.id) {
+      // features from organization_features table
+      const { data: featRows } = await supabase
+        .from('organization_features')
+        .select('feature_key, is_enabled')
+        .eq('organization_id', activeOrg.id);
+      features = (featRows || []).filter(r => r.is_enabled).map(r => r.feature_key);
+      // demo-mode from org.settings or slug
+      is_demo = Boolean(activeOrg.settings?.demo_mode) || (activeOrg.slug || '').toLowerCase() === 'next';
+    }
+
     const whoamiData = {
       user_id: jwtUserId,
       email: userResult.data.user.email,
       roles: finalUserRoles || [],
       is_super_admin: isSuperAdmin,
       organization_access: isSuperAdmin ? 'all' : 'limited',
-      
-      // Primary organization (first one)
-      organization: organizations.length > 0 ? organizations[0] : null,
-      org_id: organizations.length > 0 ? organizations[0].id : null,
+      organization: activeOrg,
+      org_id: activeOrg?.id || null,
+      is_demo,
+      features,
       
       // All organizations for super admin or multi-org users
       organizations: organizations,

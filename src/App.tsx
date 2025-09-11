@@ -9,6 +9,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { AsoDataProvider } from "./context/AsoDataContext";
 import { AppProvider } from "./context/AppContext";
 import { AsoAiHubProvider } from "./context/AsoAiHubContext";
+import { ServerAuthProvider } from "./context/ServerAuthContext";
 import { WorkflowProvider } from "./context/WorkflowContext";
 import { BigQueryAppProvider } from "./context/BigQueryAppContext";
 import { SuperAdminProvider } from "./context/SuperAdminContext";
@@ -71,6 +72,7 @@ function App() {
               <BigQueryAppProvider>
                 <AsoDataProvider>
                 <AppProvider>
+                  <ServerAuthProvider>
                   <AsoAiHubProvider>
                     <WorkflowProvider>
                       <Suspense fallback={<BrandedLoadingSpinner />}>
@@ -206,6 +208,7 @@ function App() {
                       </Suspense>
                     </WorkflowProvider>
                   </AsoAiHubProvider>
+                  </ServerAuthProvider>
                 </AppProvider>
               </AsoDataProvider>
             </BigQueryAppProvider>

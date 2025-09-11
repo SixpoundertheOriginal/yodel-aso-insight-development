@@ -1,7 +1,8 @@
 
 // Update dashboard to integrate country picker
 import React, { useState, useEffect } from "react";
-import KpiCard from "../components/KpiCard";
+import KpiCard from "@/components/kpi/KpiCard";
+import DashboardStatsCard from "../components/DashboardStatsCard";
 import AnalyticsTrafficSourceChart from "../components/AnalyticsTrafficSourceChart";
 import ComparisonChart from "../components/ComparisonChart";
 import { CountryPicker } from "../components/CountryPicker";
@@ -10,6 +11,7 @@ import { MarketProvider, useMarketData } from "../contexts/MarketContext";
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
+import { useKpiData } from "../hooks/useKpiData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Calendar, Database, Filter, TestTube, Globe } from "lucide-react";
@@ -27,6 +29,7 @@ import { OrganizationSelector } from '@/components/Organization/OrganizationSele
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
+import { KpiDataConsistencyTest } from '@/components/KpiDataConsistencyTest';
 
 const DashboardContent: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('downloads');
@@ -62,6 +65,12 @@ const DashboardContent: React.FC = () => {
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
   const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
+  
+  // Use standardized KPI data hook
+  const { kpiData } = useKpiData({
+    trafficSourceView: 'all', // Analytics dashboard doesn't filter by traffic source view
+    includeDerivedMetrics: false
+  });
   
   // Remove duplicate useBigQueryData call - isDemo now comes from context
 
@@ -132,9 +141,7 @@ const DashboardContent: React.FC = () => {
 
   // Check for empty data state
   const hasNoData = !data.timeseriesData || data.timeseriesData.length === 0;
-  const impressionsValue = data.summary?.impressions?.value || 0;
-  const downloadsValue = data.summary?.downloads?.value || 0;
-  const hasAnyMetrics = impressionsValue > 0 || downloadsValue > 0;
+  const hasAnyMetrics = kpiData.impressions.value > 0 || kpiData.downloads.value > 0;
 
   const isDashboardDataReady = !loading && data && data.summary;
 
@@ -175,31 +182,41 @@ const DashboardContent: React.FC = () => {
     </Card>
   );
 
-  // Add null/undefined checks for the summary data
-  const impressionsDelta = data.summary?.impressions?.delta || 0;
-  const downloadsDelta = data.summary?.downloads?.delta || 0;
-  const pageViewsValue = data.summary?.product_page_views?.value || 0;
-  const pageViewsDelta = data.summary?.product_page_views?.delta || 0;
-  const productPageCvrValue = data.summary?.product_page_cvr?.value || 0;
-  const productPageCvrDelta = data.summary?.product_page_cvr?.delta || 0;
-  const impressionsCvrValue = data.summary?.impressions_cvr?.value || 0;
-  const impressionsCvrDelta = data.summary?.impressions_cvr?.delta || 0;
+  // Extract standardized KPI values
+  const impressionsValue = kpiData.impressions.value;
+  const impressionsDelta = kpiData.impressions.delta;
+  const downloadsValue = kpiData.downloads.value;
+  const downloadsDelta = kpiData.downloads.delta;
+  const pageViewsValue = kpiData.product_page_views.value;
+  const pageViewsDelta = kpiData.product_page_views.delta;
+  const productPageCvrValue = kpiData.product_page_cvr.value;
+  const productPageCvrDelta = kpiData.product_page_cvr.delta;
+  const impressionsCvrValue = kpiData.impressions_cvr.value;
+  const impressionsCvrDelta = kpiData.impressions_cvr.delta;
 
   const shouldShowKPI = (kpiId: string) => {
     return selectedKPI === kpiId;
   };
 
   const visibleKPIs = [selectedKPI];
+  // Diagnostics parity (optional)
+  if ((import.meta as any).env?.VITE_KPI_DIAGNOSTICS_ENABLED === 'true' && data?.summary) {
+    console.debug('[KPI Parity][Analytics]', {
+      impressions_dashboard: data.summary.impressions?.value || 0,
+      impressions_delta_dashboard: data.summary.impressions?.delta || 0,
+    });
+  }
 
-  const gridColsClass: Record<number, string> = {
-    1: 'xl:grid-cols-1',
-    2: 'xl:grid-cols-2',
-    3: 'xl:grid-cols-3',
-    4: 'xl:grid-cols-4',
-    5: 'xl:grid-cols-5',
+  // Dynamic grid calculation - count only visible KPIs
+  const visibleKPICount = visibleKPIs.length;
+  
+  // Generate dynamic grid classes based on actual visible card count
+  const getGridClasses = (cardCount: number) => {
+    // Mobile: always 2 columns, Tablet: always 3 columns
+    // Desktop: match the exact card count (never more than available cards)
+    const desktopCols = Math.min(cardCount, 6);
+    return `grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-${desktopCols} gap-4`;
   };
-
-  const gridCols = gridColsClass[visibleKPIs.length] || 'xl:grid-cols-5';
 
   return (
     <MainLayout>
@@ -254,45 +271,44 @@ const DashboardContent: React.FC = () => {
         )}
 
       <div className="flex justify-between items-start mb-6">
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
-          {shouldShowKPI('impressions') && (
-            <KpiCard
-              title="Impressions"
-              value={impressionsValue}
-              delta={impressionsDelta}
-            />
-          )}
-          {shouldShowKPI('downloads') && (
-            <KpiCard
-              title="Downloads"
-              value={downloadsValue}
-              delta={downloadsDelta}
-            />
-          )}
-          {shouldShowKPI('product_page_views') && (
-            <KpiCard
-              title="Product Page Views"
-              value={pageViewsValue}
-              delta={pageViewsDelta}
-            />
-          )}
-          {shouldShowKPI('product_page_cvr') && (
-            <KpiCard
-              title="Product Page CVR"
-              value={productPageCvrValue}
-              delta={productPageCvrDelta}
-              isPercentage
-            />
-          )}
-          {shouldShowKPI('impressions_cvr') && (
-            <KpiCard
-              title="Impressions CVR"
-              value={impressionsCvrValue}
-              delta={impressionsCvrDelta}
-              isPercentage
-            />
-          )}
-        </div>
+        {/* Feature-flagged unified KPI grid */}
+        {((import.meta as any).env?.VITE_KPI_CARD_UNIFIED !== 'false') ? (
+          <div className={"grid gap-4 flex-1 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]"}>
+           {shouldShowKPI('impressions') && (
+             <KpiCard label="Impressions" value={impressionsValue} delta={impressionsDelta} mode="regular" />
+           )}
+           {shouldShowKPI('downloads') && (
+             <KpiCard label="Downloads" value={downloadsValue} delta={downloadsDelta} mode="regular" />
+           )}
+           {shouldShowKPI('product_page_views') && (
+             <KpiCard label="Product Page Views" value={pageViewsValue} delta={pageViewsDelta} mode="regular" />
+           )}
+           {shouldShowKPI('product_page_cvr') && (
+             <KpiCard label="Product Page CVR" value={productPageCvrValue} delta={productPageCvrDelta} unit="%" mode="regular" />
+           )}
+           {shouldShowKPI('impressions_cvr') && (
+             <KpiCard label="Impressions CVR" value={impressionsCvrValue} delta={impressionsCvrDelta} unit="%" mode="regular" />
+           )}
+          </div>
+        ) : (
+          <div className={`${getGridClasses(visibleKPICount)} flex-1`}>
+            {shouldShowKPI('impressions') && (
+              <DashboardStatsCard label="Impressions" value={impressionsValue} delta={impressionsDelta} />
+            )}
+            {shouldShowKPI('downloads') && (
+              <DashboardStatsCard label="Downloads" value={downloadsValue} delta={downloadsDelta} />
+            )}
+            {shouldShowKPI('product_page_views') && (
+              <DashboardStatsCard label="Product Page Views" value={pageViewsValue} delta={pageViewsDelta} />
+            )}
+            {shouldShowKPI('product_page_cvr') && (
+              <DashboardStatsCard label="Product Page CVR" value={productPageCvrValue} delta={productPageCvrDelta} variant="percentage" decimals={1} />
+            )}
+            {shouldShowKPI('impressions_cvr') && (
+              <DashboardStatsCard label="Impressions CVR" value={impressionsCvrValue} delta={impressionsCvrDelta} variant="percentage" decimals={1} />
+            )}
+          </div>
+        )}
         
         {/* Test Button */}
         <div className="ml-4 flex flex-col items-end gap-2">
@@ -398,6 +414,13 @@ const DashboardContent: React.FC = () => {
         )}
           </div>
           </div>
+
+          {/* Temporary KPI Consistency Test */}
+          <KpiDataConsistencyTest 
+            label="Analytics Dashboard"
+            trafficSourceView="all"
+            includeDerivedMetrics={false}
+          />
         </div>
 
         {/* Sidebar - Pass collapse state */}

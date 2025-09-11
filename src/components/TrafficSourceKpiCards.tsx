@@ -1,7 +1,13 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrafficSource, AsoMetrics, MetricSummary } from '@/hooks/useMockAsoData';
-import { formatPercentage } from '@/utils/format';
+import { formatNumber, formatPercentageWithSuffix } from '@/utils/format';
+import { 
+  StatCardBase, 
+  StatCardLabel, 
+  StatCardValue, 
+  StatCardDelta, 
+  StatCardSubLabel 
+} from './StatCardBase';
 
 interface TrafficSourceKpiCardsProps {
   sources: TrafficSource[];
@@ -20,11 +26,11 @@ const getKPIValueForTrafficSource = (source: TrafficSource, kpiId: string): Metr
 
 const categorizeTrafficSource = (metric: MetricSummary, threshold: number) => {
   const { value, delta } = metric;
-  if (value > threshold && delta > 0) return { action: 'Scale', color: 'text-green-500' };
-  if (value > threshold && delta < 0) return { action: 'Optimize', color: 'text-yellow-500' };
-  if (value < threshold && delta < 0) return { action: 'Investigate', color: 'text-red-500' };
-  if (value < threshold && delta > 0) return { action: 'Expand', color: 'text-blue-500' };
-  return { action: 'Monitor', color: 'text-zinc-500' };
+  if (value > threshold && delta > 0) return { action: 'Scale', variant: 'success' as const };
+  if (value > threshold && delta < 0) return { action: 'Optimize', variant: 'warning' as const };
+  if (value < threshold && delta < 0) return { action: 'Investigate', variant: 'error' as const };
+  if (value < threshold && delta > 0) return { action: 'Expand', variant: 'info' as const };
+  return { action: 'Monitor', variant: 'neutral' as const };
 };
 
 export const TrafficSourceKpiCards: React.FC<TrafficSourceKpiCardsProps> = ({
@@ -50,27 +56,38 @@ export const TrafficSourceKpiCards: React.FC<TrafficSourceKpiCardsProps> = ({
         const metric = getKPIValueForTrafficSource(source, selectedKPI);
         const category = categorizeTrafficSource(metric, threshold);
         const isPercentage = selectedKPI.includes('cvr');
-        const displayValue = isPercentage
-          ? `${metric.value.toFixed(2)}%`
-          : metric.value.toLocaleString();
+        const formattedValue = isPercentage
+          ? formatPercentageWithSuffix(metric.value, 2)
+          : formatNumber(metric.value);
         const clickable = !disableClicks && !!onSourceClick;
+        
         return (
-          <Card
+          <StatCardBase
             key={source.name}
-            className={`bg-zinc-800 ${clickable ? 'hover:bg-zinc-700 cursor-pointer' : ''}`}
+            interactive={clickable}
             onClick={clickable ? () => onSourceClick!(source.name) : undefined}
+            data-testid="traffic-source-kpi-card"
           >
-            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium">{source.name}</CardTitle>
-              <span className={`text-xs font-semibold ${category.color}`}>{category.action}</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{displayValue}</div>
-              <p className={`text-xs ${metric.delta >= 0 ? 'text-green-500' : 'text-red-500'} flex items-center`}>
-                {metric.delta >= 0 ? '+' : ''}{formatPercentage(Math.abs(metric.delta))}%
-              </p>
-            </CardContent>
-          </Card>
+            <div className="flex flex-col items-center text-center gap-2 w-full">
+              {/* Header with source name and action indicator */}
+              <div className="flex items-center justify-between w-full mb-1">
+                <StatCardLabel className="flex-1 text-left">{source.name}</StatCardLabel>
+                <StatCardSubLabel variant={category.variant}>
+                  {category.action}
+                </StatCardSubLabel>
+              </div>
+              
+              {/* Main value */}
+              <StatCardValue>
+                {formattedValue}
+              </StatCardValue>
+              
+              {/* Delta indicator */}
+              {metric.delta !== 0 && (
+                <StatCardDelta delta={metric.delta} />
+              )}
+            </div>
+          </StatCardBase>
         );
       })}
     </div>

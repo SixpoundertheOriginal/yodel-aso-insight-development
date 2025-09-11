@@ -16,5 +16,8 @@ port = 54324
 
 [functions]
 
+[functions.authorize]
+verify_jwt = false
+
 [functions.admin-organizations]
 verify_jwt = true

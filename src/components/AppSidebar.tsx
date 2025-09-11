@@ -42,6 +42,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useDemoOrgDetection } from "@/hooks/useDemoOrgDetection";
 import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
 import { filterNavigationByRoutes, type NavigationItem } from "@/utils/navigation";
+import { useServerAuth } from '@/context/ServerAuthContext';
 
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
@@ -142,6 +143,7 @@ export function AppSidebar() {
   const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
   const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions(organizationId || undefined);
+  const { whoami } = useServerAuth();
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 DEMO DETECTION VALIDATION', {
@@ -202,7 +204,18 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
   };
 
   const filteredAnalyticsItems = applyPermFilter(filteredAnalyticsItemsBase);
-  const filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
+  let filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
+  // Server-truth gate for ASO AI Audit (Demo)
+  if (filteredAiToolsItems?.length) {
+    const isDemo = !!whoami?.is_demo;
+    const hasDemoFeature = (whoami?.features || []).includes('aso_audit_demo');
+    filteredAiToolsItems = filteredAiToolsItems.filter(item => {
+      if (item.url === '/aso-ai-hub' || item.url === '/chatgpt-visibility-audit') {
+        return isDemo && hasDemoFeature;
+      }
+      return true;
+    });
+  }
   const filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
   const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 

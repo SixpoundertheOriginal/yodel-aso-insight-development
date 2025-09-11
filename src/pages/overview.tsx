@@ -4,7 +4,9 @@ import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PermissionWrapper } from "@/components/PermissionWrapper";
 import ExecutiveTimeSeriesChart from "../components/ExecutiveTimeSeriesChart";
-import KpiCard from "../components/KpiCard";
+// Unified stats card for dashboard summaries
+import KpiCard from "@/components/kpi/KpiCard";
+import DashboardStatsCard from "../components/DashboardStatsCard";
 import TrafficSourceSelector from "../components/TrafficSourceSelector";
 import {
   aggregateTrafficSources,
@@ -19,6 +21,7 @@ import {
   TrafficSourceData,
 } from '@/utils/derivedKPICalculator';
 import { useDerivedKPIs } from '@/hooks/useDerivedKPIs';
+import { useKpiData } from '@/hooks/useKpiData';
 import {
   PremiumCard,
   PremiumCardHeader,
@@ -39,6 +42,7 @@ import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
+import { KpiDataConsistencyTest } from '@/components/KpiDataConsistencyTest';
 
 const OverviewContent: React.FC = () => {
   const contextValue = useAsoData(); // NEW: Get demo flag from context
@@ -112,6 +116,12 @@ const OverviewContent: React.FC = () => {
     () => derivedKPIs.find((k) => k.id === 'true-organic-search'),
     [derivedKPIs]
   );
+
+  // Use standardized KPI data hook
+  const { kpiData } = useKpiData({
+    trafficSourceView,
+    includeDerivedMetrics: true
+  });
 
   const trueOrganicTimeseries = useMemo(() => {
     if (!trafficSourceTimeseries.length) return [];
@@ -244,35 +254,16 @@ const OverviewContent: React.FC = () => {
     error: !!error
   });
 
-  const impressionsValue =
-    trafficSourceView === 'true-organic-search'
-      ? trueOrganicSummary?.metrics.impressions || 0
-      : data?.summary?.impressions?.value || 0;
-  const impressionsDelta =
-    trafficSourceView === 'true-organic-search'
-      ? 0
-      : data?.summary?.impressions?.delta || 0;
-  const downloadsValue =
-    trafficSourceView === 'true-organic-search'
-      ? trueOrganicSummary?.metrics.downloads || 0
-      : data?.summary?.downloads?.value || 0;
-  const downloadsDelta =
-    trafficSourceView === 'true-organic-search'
-      ? 0
-      : data?.summary?.downloads?.delta || 0;
-  const pageViewsValue =
-    trafficSourceView === 'true-organic-search'
-      ? trueOrganicSummary?.metrics.product_page_views || 0
-      : data?.summary?.product_page_views?.value || 0;
-  const pageViewsDelta =
-    trafficSourceView === 'true-organic-search'
-      ? 0
-      : data?.summary?.product_page_views?.delta || 0;
+  // Extract standardized KPI values
+  const impressionsValue = kpiData.impressions.value;
+  const impressionsDelta = kpiData.impressions.delta;
+  const downloadsValue = kpiData.downloads.value;
+  const downloadsDelta = kpiData.downloads.delta;
+  const pageViewsValue = kpiData.product_page_views.value;
+  const pageViewsDelta = kpiData.product_page_views.delta;
 
-  const trueSearchImpressionsValue =
-    trueOrganicSummary?.metrics.impressions || 0;
-  const trueSearchDownloadsValue =
-    trueOrganicSummary?.metrics.downloads || 0;
+  const trueSearchImpressionsValue = kpiData.true_search_impressions?.value || 0;
+  const trueSearchDownloadsValue = kpiData.true_search_downloads?.value || 0;
 
   const appStoreSearchSource = data?.trafficSources?.find(
     (s) => s.name === 'App Store Search'
@@ -295,15 +286,43 @@ const OverviewContent: React.FC = () => {
     return isFinite(delta) ? delta : 0;
   };
 
-  const trueSearchImpressionsDelta = computeTrueDelta(
-    appStoreSearchSource?.metrics.impressions,
-    appleSearchAdsSource?.metrics.impressions
-  );
-  const trueSearchDownloadsDelta = computeTrueDelta(
-    appStoreSearchSource?.metrics.downloads,
-    appleSearchAdsSource?.metrics.downloads
-  );
-  const gridCols = 'xl:grid-cols-5';
+  const trueSearchImpressionsDelta = kpiData.true_search_impressions?.delta || 0;
+  const trueSearchDownloadsDelta = kpiData.true_search_downloads?.delta || 0;
+  // Dynamic grid calculation based on card count (legacy helper)
+  const kpiCards = [
+    { label: "Impressions", value: impressionsValue, delta: impressionsDelta },
+    { label: "Downloads", value: downloadsValue, delta: downloadsDelta },
+    { label: "Product Page Views", value: pageViewsValue, delta: pageViewsDelta },
+    { label: "True Search Impressions", value: trueSearchImpressionsValue, delta: trueSearchImpressionsDelta },
+    { label: "True Search Downloads", value: trueSearchDownloadsValue, delta: trueSearchDownloadsDelta },
+  ];
+
+  // Generate dynamic grid classes based on actual card count
+  const getGridClasses = (_cardCount: number) => {
+    // Unified responsive grid with min card width 280px
+    return 'grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]';
+  };
+
+  const summaryCards = data?.summary ? [
+    { label: "Total Impressions", value: kpiData.impressions.value, delta: kpiData.impressions.delta },
+    { label: "Total Downloads", value: kpiData.downloads.value, delta: kpiData.downloads.delta },
+    { label: "Total True Search Impressions", value: trueSearchImpressionsValue, delta: trueSearchImpressionsDelta },
+    { label: "Total True Search Downloads", value: trueSearchDownloadsValue, delta: trueSearchDownloadsDelta },
+    { label: "Product Page CVR", value: kpiData.product_page_cvr.value, delta: kpiData.product_page_cvr.delta, variant: "percentage" as const, decimals: 1 },
+    { label: "Impressions CVR", value: kpiData.impressions_cvr.value, delta: kpiData.impressions_cvr.delta, variant: "percentage" as const, decimals: 1 },
+  ] : [];
+
+  const KPI_UNIFIED = (import.meta as any).env?.VITE_KPI_CARD_UNIFIED !== 'false';
+  const KPI_DIAG = (import.meta as any).env?.VITE_KPI_DIAGNOSTICS_ENABLED === 'true';
+  if (KPI_DIAG && data?.summary) {
+    // Simple parity debug for one KPI
+    console.debug('[KPI Parity][Exec]', {
+      impressions_exec: kpiData.impressions.value,
+      impressions_delta_exec: kpiData.impressions.delta,
+      impressions_analytics: data.summary.impressions.value,
+      impressions_delta_analytics: data.summary.impressions.delta,
+    });
+  }
 
   return (
     <MainLayout>
@@ -357,39 +376,31 @@ const OverviewContent: React.FC = () => {
               {data && (
                 <div className="flex flex-col space-y-8">
 
-                  {/* KPI Cards Section */}
-                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridCols} gap-6 flex-1`}>
-                    <KpiCard
-                      title="Impressions"
-                      value={impressionsValue}
-                      delta={impressionsDelta}
-                      className="bg-zinc-800 border border-zinc-700"
-                    />
-                    <KpiCard
-                      title="Downloads"
-                      value={downloadsValue}
-                      delta={downloadsDelta}
-                      className="bg-zinc-800 border border-zinc-700"
-                    />
-                    <KpiCard
-                      title="Product Page Views"
-                      value={pageViewsValue}
-                      delta={pageViewsDelta}
-                      className="bg-zinc-800 border border-zinc-700"
-                    />
-                    <KpiCard
-                      title="True Search Impressions"
-                      value={trueSearchImpressionsValue}
-                      delta={trueSearchImpressionsDelta}
-                      className="bg-zinc-800 border border-zinc-700"
-                    />
-                    <KpiCard
-                      title="True Search Downloads"
-                      value={trueSearchDownloadsValue}
-                      delta={trueSearchDownloadsDelta}
-                      className="bg-zinc-800 border border-zinc-700"
-                    />
-                  </div>
+                  {/* KPI Cards Section (Unified or fallback) */}
+                  {KPI_UNIFIED ? (
+                    <div className={getGridClasses(kpiCards.length)}>
+                      {kpiCards.map((card) => (
+                        <KpiCard
+                          key={card.label}
+                          label={card.label}
+                          value={card.value}
+                          delta={card.delta}
+                          mode="compact"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={getGridClasses(kpiCards.length)}>
+                      {kpiCards.map((card) => (
+                        <DashboardStatsCard
+                          key={card.label}
+                          label={card.label}
+                          value={card.value}
+                          delta={card.delta}
+                        />
+                      ))}
+                    </div>
+                  )}
 
                   {/* Time Series Chart */}
                   <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
@@ -421,44 +432,34 @@ const OverviewContent: React.FC = () => {
                         </PremiumTypography.SectionTitle>
                       </PremiumCardHeader>
                       <PremiumCardContent className="p-8">
-                        <ResponsiveGrid cols={{ default: 1, md: 3, lg: 6 }} gap="lg">
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Total Impressions</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="group-hover:text-blue-400 transition-colors">
-                              {(data.summary.impressions ? data.summary.impressions.value : 0).toLocaleString()}
-                            </PremiumTypography.MetricValue>
+                        {/* Unified KpiCard for absolute parity (with fallback) */}
+                        {KPI_UNIFIED ? (
+                          <div className={getGridClasses(summaryCards.length)}>
+                            {summaryCards.map((card) => (
+                              <KpiCard
+                                key={card.label}
+                                label={card.label}
+                                value={card.value}
+                                delta={card.delta}
+                                unit={card.variant === 'percentage' ? '%' : undefined}
+                                mode="compact"
+                              />
+                            ))}
                           </div>
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Total Downloads</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="group-hover:text-emerald-400 transition-colors">
-                              {(data.summary.downloads ? data.summary.downloads.value : 0).toLocaleString()}
-                            </PremiumTypography.MetricValue>
+                        ) : (
+                          <div className={getGridClasses(summaryCards.length)}>
+                            {summaryCards.map((card) => (
+                              <DashboardStatsCard
+                                key={card.label}
+                                label={card.label}
+                                value={card.value}
+                                delta={card.delta || 0}
+                                variant={card.variant}
+                                decimals={card.decimals}
+                              />
+                            ))}
                           </div>
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Total True Search Impressions</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="group-hover:text-blue-400 transition-colors">
-                              {trueSearchImpressionsValue.toLocaleString()}
-                            </PremiumTypography.MetricValue>
-                          </div>
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Total True Search Downloads</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="group-hover:text-emerald-400 transition-colors">
-                              {trueSearchDownloadsValue.toLocaleString()}
-                            </PremiumTypography.MetricValue>
-                          </div>
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Product Page CVR</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="text-orange-500 group-hover:text-orange-400 transition-colors">
-                              {(data.summary.product_page_cvr ? data.summary.product_page_cvr.value : 0).toFixed(2)}%
-                            </PremiumTypography.MetricValue>
-                          </div>
-                          <div className="text-center group">
-                            <PremiumTypography.DataLabel className="mb-3 block">Impressions CVR</PremiumTypography.DataLabel>
-                            <PremiumTypography.MetricValue className="text-orange-500 group-hover:text-orange-400 transition-colors">
-                              {(data.summary.impressions_cvr ? data.summary.impressions_cvr.value : 0).toFixed(2)}%
-                            </PremiumTypography.MetricValue>
-                          </div>
-                        </ResponsiveGrid>
+                        )}
                       </PremiumCardContent>
                     </PremiumCard>
                   )}
@@ -474,6 +475,14 @@ const OverviewContent: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Temporary KPI Consistency Test */}
+              <KpiDataConsistencyTest 
+                label="Executive Dashboard"
+                trafficSourceView={trafficSourceView}
+                includeDerivedMetrics={true}
+              />
+
             </LayoutSection>
           </div>
         </div>

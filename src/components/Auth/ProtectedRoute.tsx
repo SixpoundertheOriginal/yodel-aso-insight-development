@@ -9,6 +9,8 @@ import { useUIPermissions } from '@/hooks/useUIPermissions';
 import { resolvePermForPath } from '@/utils/navigation/navPermissionMap';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessControl } from '@/hooks/useAccessControl';
+import { useServerAuth } from '@/context/ServerAuthContext';
+import { authorizePath } from '@/services/authz';
 
 // Lazy load NoAccess to avoid circular dependencies
 const NoAccess = lazy(() => import('@/pages/no-access'));
@@ -28,6 +30,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Enhanced access control check
   const currentPath = location.pathname + location.search;
   const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
+  const { loading: serverAuthLoading } = useServerAuth();
+  const [routeAllowed, setRouteAllowed] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const result = await authorizePath(location.pathname, 'GET');
+      if (!cancelled) setRouteAllowed(result.allow);
+      if (!result.allow) sessionStorage.setItem('lastAuthzReason', result.reason || 'denied');
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   // ✅ MOVED: All other hooks must be called before any returns
   const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
@@ -40,7 +55,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // ✅ NOW we can do conditional returns - all hooks have been called
   
   // Show spinner while auth or org/permissions are loading
-  if (loading || (user && (orgLoading || permissionsLoading)) || isLoading) {
+  if (loading || (user && (orgLoading || permissionsLoading)) || isLoading || serverAuthLoading || routeAllowed === null) {
     return <AuthLoadingSpinner />;
   }
 
@@ -52,7 +67,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Show NoAccess screen for users without org/roles (unless super admin)
-  if (shouldShowNoAccess) {
+  if (shouldShowNoAccess || routeAllowed === false) {
     return (
       <Suspense fallback={<AuthLoadingSpinner />}>
         <NoAccess />
