@@ -261,6 +261,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
           href: '/admin?tab=ui-permissions',
           status: navigationConfig['ui-permissions'],
         },
+        {
+          id: 'feature-permissions-demo',
+          label: 'Feature Permissions Demo',
+          icon: Shield,
+          href: '/admin?tab=feature-permissions-demo',
+          status: 'ready',
+        },
       ],
     },
   ];

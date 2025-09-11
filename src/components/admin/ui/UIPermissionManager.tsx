@@ -29,6 +29,15 @@ const PERMISSION_CATEGORIES = {
   'Admin Features': [
     'ui.admin.show_user_management',
     'ui.admin.show_system_info'
+  ],
+  'Application Features': [
+    'features.aso_ai_audit',
+    'features.growth_accelerators',
+    'features.metadata_generator',
+    'features.keyword_intelligence',
+    'features.creative_intelligence',
+    'features.competitive_analysis',
+    'features.advanced_analytics'
   ]
 };
 
