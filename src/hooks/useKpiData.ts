@@ -101,7 +101,6 @@ export const useKpiData = (options: KpiDataOptions = {}): UseKpiDataResult => {
 
     // Sanitize all metrics
     (Object.keys(standardizedData) as (keyof StandardKpiData)[]).forEach((k) => {
-      // @ts-expect-error dynamic assignment safe for known keys
       standardizedData[k] = sanitize(standardizedData[k] as StandardKpiMetric);
     });
 

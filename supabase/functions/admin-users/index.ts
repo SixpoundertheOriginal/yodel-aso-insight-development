@@ -299,15 +299,21 @@ serve(async (req) => {
     // Create new user with organization assignment
     if (action === 'create') {
       console.log('[ADMIN-USERS] POST action=create - Processing user creation');
-      const { email, password, first_name, last_name, organization_id, role = 'VIEWER' } = body || {};
+      console.log('[ADMIN-USERS] POST action=create - Raw payload received:', JSON.stringify(body, null, 2));
+      
+      // Handle both role formats: single role or roles array
+      const { email, password, first_name, last_name, organization_id, role, roles } = body || {};
+      const finalRole = role || (Array.isArray(roles) ? roles[0] : roles) || 'VIEWER';
       
       console.log('[ADMIN-USERS] POST action=create - Extracted fields:', {
         email: email || 'MISSING',
         organization_id: organization_id || 'MISSING',
-        role,
+        role: role || 'not provided',
+        roles: roles || 'not provided',
+        finalRole,
         has_password: !!password,
-        first_name,
-        last_name
+        first_name: first_name || 'not provided',
+        last_name: last_name || 'not provided'
       });
       
       // Validate required fields
@@ -432,7 +438,7 @@ serve(async (req) => {
         const roleData = {
           user_id: newUserId,
           organization_id,
-          role: role.toUpperCase()
+          role: finalRole.toUpperCase()
         };
         console.log('[ADMIN-USERS] POST action=create - Assigning role:', roleData);
         

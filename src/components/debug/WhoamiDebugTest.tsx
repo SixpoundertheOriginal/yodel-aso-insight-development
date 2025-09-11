@@ -43,7 +43,7 @@ export const WhoamiDebugTest: React.FC = () => {
         <p>📋 <strong>INSTRUCTIONS:</strong></p>
         <ol className="list-decimal list-inside ml-4 mt-2">
           <li>Click the "Test /whoami Endpoint" button above</li>
-          <li>Open browser dev tools (F12) > Console tab</li>
+          <li>Open browser dev tools (F12) &gt; Console tab</li>
           <li>Look for debug output from the API call</li>
           <li>Go to <a href="https://supabase.com/dashboard/project/bkbcqocpjahewqjmlgvf/functions" className="text-orange-400 underline" target="_blank">Supabase Functions Dashboard</a></li>
           <li>Click "admin-whoami" → "Logs" tab</li>
