@@ -7,24 +7,41 @@ import { Users, UserPlus, Edit3, Trash2, RotateCcw } from 'lucide-react';
 import { usersApi, AdminApiError } from '@/lib/admin-api';
 
 interface User {
+  // Canonical fields
+  user_id: string;
+  organization_id: string;
+  
+  // Backward compatibility
   id: string;
+  
+  // User data
   email: string;
   first_name?: string;
   last_name?: string;
-  roles: { role: string; organization_id: string }[];
-  organization_id: string;
+  
+  // Organization data
+  organization?: {
+    id: string;
+    name: string;
+    slug: string;
+    [key: string]: unknown;
+  };
   organizations?: {
     id: string;
     name: string;
     slug: string;
     [key: string]: unknown;
   };
+  roles: { role: string; organization_id: string }[];
+  role?: string;
+  
+  // Status fields
   status?: string;
-  last_sign_in_at?: string;
-  created_at?: string;
   email_confirmed: boolean;
   last_sign_in?: string;
-  email_confirmed_at?: string; // From auth.users
+  last_sign_in_at?: string;
+  created_at?: string;
+  updated_at?: string;
   [key: string]: unknown;
 }
 
@@ -124,13 +141,14 @@ export const UserManagementInterface: React.FC = () => {
   }) => {
     try {
       const payload = {
+        user_id: userId, // Use canonical field name
         first_name: updates.first_name,
         last_name: updates.last_name,
         organization_id: updates.organization_id,
-        roles: updates.roles
+        role: updates.roles
           ? Array.isArray(updates.roles)
-            ? updates.roles
-            : [updates.roles]
+            ? updates.roles[0] // Take first role for canonical API
+            : updates.roles
           : undefined
       };
       
@@ -204,10 +222,10 @@ export const UserManagementInterface: React.FC = () => {
       cell: (user: User) => (
         <div>
           <div className="text-sm text-white">
-            {user.organizations?.name || 'Unknown'}
+            {user.organization?.name || user.organizations?.name || 'Unknown'}
           </div>
           <div className="text-sm text-gray-400">
-            {user.organizations?.slug || user.organization_id}
+            {user.organization?.slug || user.organizations?.slug || user.organization_id}
           </div>
         </div>
       )
@@ -217,18 +235,18 @@ export const UserManagementInterface: React.FC = () => {
       accessor: 'roles',
       cell: (user: User) => {
         const roles = Array.isArray(user.roles) ? user.roles : [];
-        const rolePriority = ['super_admin', 'org_admin', 'aso_manager', 'analyst', 'viewer', 'client'];
+        const rolePriority = ['SUPER_ADMIN', 'ORG_ADMIN', 'ASO_MANAGER', 'ANALYST', 'VIEWER', 'CLIENT'];
         const highestRole = rolePriority.find(r => roles.some(ur => ur.role === r)) ||
           roles[0]?.role || 'unknown';
         const roleNames = roles.length
           ? roles.map(r => (r.role || '').replace('_', ' ')).join(', ')
           : 'no role';
         const colorClass =
-          highestRole === 'super_admin'
+          highestRole === 'SUPER_ADMIN'
             ? 'bg-red-100 text-red-800'
-            : highestRole === 'org_admin'
+            : highestRole === 'ORG_ADMIN'
             ? 'bg-purple-100 text-purple-800'
-            : highestRole === 'aso_manager'
+            : highestRole === 'ASO_MANAGER'
             ? 'bg-blue-100 text-blue-800'
             : 'bg-gray-100 text-gray-800';
         return (
@@ -270,14 +288,14 @@ export const UserManagementInterface: React.FC = () => {
             <Edit3 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleResetPassword(user.id)}
+            onClick={() => handleResetPassword(user.user_id || user.id)}
             className="text-orange-400 hover:text-orange-300 p-1"
             title="Reset Password"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDeleteUser(user.id)}
+            onClick={() => handleDeleteUser(user.user_id || user.id)}
             className="text-red-400 hover:text-red-300 p-1"
             title="Delete User"
           >
@@ -364,7 +382,7 @@ export const UserManagementInterface: React.FC = () => {
             setShowEditModal(false);
             setSelectedUser(null);
           }}
-          onSave={(updates) => handleEditUser(selectedUser.id, updates)}
+          onSave={(updates) => handleEditUser(selectedUser.user_id || selectedUser.id, updates)}
         />
       )}
     </div>

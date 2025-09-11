@@ -4,23 +4,41 @@ import type { Organization } from '@/types/organization';
 // Re-export AdminApiError for backward compatibility
 export { AdminApiError };
 
-// Import existing types used by components
+// User type matching canonical API contract
 type User = {
+  // Canonical fields
+  user_id: string;
+  organization_id: string;
+  
+  // Backward compatibility
   id: string;
+  
+  // User data
   email: string;
   first_name?: string;
   last_name?: string;
-  roles: { role: string; organization_id: string }[];
-  organization_id: string;
+  
+  // Organization data
+  organization?: {
+    id: string;
+    name: string;
+    slug: string;
+    [key: string]: unknown;
+  };
   organizations?: {
     id: string;
     name: string;
     slug: string;
     [key: string]: unknown;
   };
+  roles: { role: string; organization_id: string }[];
+  role?: string;
+  
+  // Status fields
   status?: string;
-  last_sign_in_at?: string;
   email_confirmed: boolean;
+  last_sign_in?: string;
+  last_sign_in_at?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -93,14 +111,14 @@ export const usersApi = {
   
   invite: (data: any): Promise<User> => adminClient.invoke<User>('admin-users-invite', data),
     
-  // Legacy action-based calls for compatibility
+  // Updated to use canonical field names
   create: (data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'create', ...data }),
     
-  update: (id: string, data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'update', id, payload: data }),
+  update: (user_id: string, data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'update', user_id, payload: data }),
     
-  delete: (id: string): Promise<void> => adminClient.invoke<void>('admin-users', { action: 'delete', id }),
+  delete: (user_id: string): Promise<void> => adminClient.invoke<void>('admin-users', { action: 'delete', user_id }),
     
-  resetPassword: (id: string): Promise<{ email: string }> => adminClient.invoke<{ email: string }>('admin-users', { action: 'resetPassword', id }),
+  resetPassword: (user_id: string): Promise<{ email: string }> => adminClient.invoke<{ email: string }>('admin-users', { action: 'resetPassword', user_id }),
 };
 
 // Dashboard API

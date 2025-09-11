@@ -4,6 +4,7 @@ import { BigQuerySmokeTest } from '@/components/BigQuerySmokeTest';
 import { BigQueryTestButtons } from '@/components/BigQueryTestButtons';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { TechnicalMetadataWrapper } from '@/components/DebugToolsWrapper';
+import { WhoamiDebugTest } from '@/components/debug/WhoamiDebugTest';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Database, Zap, Bug } from 'lucide-react';
 
@@ -48,6 +49,22 @@ export const SystemDebugPanel: React.FC = () => {
                 Debug Mode
               </Badge>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Authentication Debug Test */}
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-700">
+              <Bug className="h-5 w-5" />
+              Whoami Debug Test - ROOT CAUSE ANALYSIS
+            </CardTitle>
+            <p className="text-sm text-orange-600">
+              Debug logging active for user access issues. Test for user_id: 48977685-7795-49fa-953e-579d6a6739cb
+            </p>
+          </CardHeader>
+          <CardContent>
+            <WhoamiDebugTest />
           </CardContent>
         </Card>
 

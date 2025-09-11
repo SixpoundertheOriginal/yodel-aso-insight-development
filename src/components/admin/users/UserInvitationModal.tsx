@@ -22,7 +22,7 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
     email: '',
     first_name: '',
     last_name: '',
-    roles: ['viewer'],
+    roles: ['VIEWER'],
     organization_id: ''
   });
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -55,12 +55,12 @@ export const UserInvitationModal: React.FC<UserInvitationModalProps> = ({
   };
 
   const roles = [
-    { value: 'super_admin', label: 'Super Admin', description: 'Full platform access' },
-    { value: 'org_admin', label: 'Organization Admin', description: 'Full organization access' },
-    { value: 'aso_manager', label: 'ASO Manager', description: 'ASO data and insights access' },
-    { value: 'analyst', label: 'Analyst', description: 'Read-only data access' },
-    { value: 'viewer', label: 'Viewer', description: 'Basic dashboard access' },
-    { value: 'client', label: 'Client', description: 'Limited client portal access' }
+    { value: 'SUPER_ADMIN', label: 'Super Admin', description: 'Full platform access' },
+    { value: 'ORG_ADMIN', label: 'Organization Admin', description: 'Full organization access' },
+    { value: 'ASO_MANAGER', label: 'ASO Manager', description: 'ASO data and insights access' },
+    { value: 'ANALYST', label: 'Analyst', description: 'Read-only data access' },
+    { value: 'VIEWER', label: 'Viewer', description: 'Basic dashboard access' },
+    { value: 'CLIENT', label: 'Client', description: 'Limited client portal access' }
   ];
 
   return (

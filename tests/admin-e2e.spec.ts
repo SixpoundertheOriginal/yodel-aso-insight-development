@@ -139,7 +139,7 @@ test.describe('Admin Panel E2E Tests', () => {
       const testEmail = `test-${Date.now()}@example.com`;
       await page.fill('[data-testid="invite-email"]', testEmail);
       await page.selectOption('[data-testid="invite-organization"]', { index: 0 });
-      await page.selectOption('[data-testid="invite-role"]', 'viewer');
+      await page.selectOption('[data-testid="invite-role"]', 'VIEWER');
       
       await takeScreenshot(page, testName, '02_invite_form_filled');
       

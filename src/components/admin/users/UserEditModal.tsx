@@ -4,11 +4,17 @@ import { organizationsApi } from '@/lib/admin-api';
 
 interface UserEditModalProps {
   user: {
+    // Canonical fields
+    user_id: string;
+    organization_id: string;
+    
+    // Backward compatibility
     id: string;
+    
+    // User data
     first_name?: string;
     last_name?: string;
     roles: { role: string }[];
-    organization_id: string;
   };
   onClose: () => void;
   onSave: (updates: {

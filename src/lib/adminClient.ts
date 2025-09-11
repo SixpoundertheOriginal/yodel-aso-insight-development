@@ -40,19 +40,20 @@ async function getCurrentOrgId(): Promise<string | null> {
   const storedOrgId = localStorage.getItem('currentOrgId');
   if (storedOrgId) return storedOrgId;
   
-  // Fallback to user profile
+  // Fallback to user roles
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: userRoles } = await supabase
+        .from('user_roles')
         .select('organization_id')
-        .eq('id', user.id)
-        .single();
-      return profile?.organization_id || null;
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1);
+      return userRoles?.[0]?.organization_id || null;
     }
   } catch (error) {
-    console.warn('[AdminClient] Could not get org ID from profile:', error);
+    console.warn('[AdminClient] Could not get org ID from user roles:', error);
   }
   
   return null;
