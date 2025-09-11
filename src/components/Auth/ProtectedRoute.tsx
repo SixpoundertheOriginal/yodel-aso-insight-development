@@ -18,6 +18,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  // ✅ ALL HOOKS MUST BE CALLED FIRST - NO EXCEPTIONS
   const { user, loading } = useAuth();
   const { roles = [], organizationId, isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { isDemoOrg, loading: orgLoading } = useDemoOrgDetection();
@@ -28,6 +29,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const currentPath = location.pathname + location.search;
   const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
 
+  // ✅ MOVED: All other hooks must be called before any returns
+  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
+  
+  // Compute derived values after all hooks
+  const role = (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
+  const allowed = getAllowedRoutes({ isDemoOrg, role });
+  const pathname = location.pathname;
+
+  // ✅ NOW we can do conditional returns - all hooks have been called
+  
   // Show spinner while auth or org/permissions are loading
   if (loading || (user && (orgLoading || permissionsLoading)) || isLoading) {
     return <AuthLoadingSpinner />;
@@ -40,7 +51,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth/sign-in" replace />;
   }
 
-  // 🔥 NEW: Show NoAccess screen for users without org/roles (unless super admin)
+  // Show NoAccess screen for users without org/roles (unless super admin)
   if (shouldShowNoAccess) {
     return (
       <Suspense fallback={<AuthLoadingSpinner />}>
@@ -52,12 +63,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Clear any stored intent once authenticated and access validated
   sessionStorage.removeItem('postLoginRedirect');
 
-  // Role-based route checking (existing logic preserved)
-  const role = (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
-  const allowed = getAllowedRoutes({ isDemoOrg, role });
-  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
-
-  const pathname = location.pathname;
+  // Role-based route checking
   if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {
     return <Navigate to="/dashboard/executive" replace />;
   }
