@@ -14,6 +14,7 @@ export interface ReviewsServiceOptions {
   cc: string;
   appId: string;
   page: number;
+  pageSize?: number;
 }
 
 export interface ReviewsResponse {
@@ -32,7 +33,7 @@ export class ReviewsService {
    * Fetch reviews from iTunes RSS feed
    */
   async fetchReviews(options: ReviewsServiceOptions): Promise<ReviewsResponse> {
-    const { cc, appId, page } = options;
+    const { cc, appId, page, pageSize = 20 } = options;
     
     // Validate and clamp page to 1-10 as per requirements
     const clampedPage = Math.max(1, Math.min(10, page));

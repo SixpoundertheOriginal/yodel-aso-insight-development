@@ -12,12 +12,28 @@ import { ReviewsService } from './services/reviews.service.ts';
 import { ErrorHandler } from './utils/error-handler.ts';
 import { ResponseBuilder } from './utils/response-builder.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-transmission-method, x-correlation-id',
-};
+// Enhanced CORS with environment-based origins
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin');
+  const allowedOrigins = (Deno.env.get('CORS_ALLOW_ORIGIN') || '*').split(',').map(o => o.trim());
+  
+  let allowOrigin = '*';
+  if (origin && allowedOrigins.includes(origin)) {
+    allowOrigin = origin;
+  } else if (!allowedOrigins.includes('*')) {
+    allowOrigin = allowedOrigins[0]; // Default to first allowed origin
+  }
+  
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-transmission-method, x-correlation-id',
+  };
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -118,39 +134,52 @@ serve(async (req) => {
       }
     }
     
-    // NEW: Handle iTunes reviews route (GET /itunes/reviews)
-    const url = new URL(req.url);
-    if (req.method === 'GET' && url.pathname.includes('/itunes/reviews')) {
-      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler`);
+    // Handle iTunes reviews operation (POST and GET)
+    if (requestData.op === 'reviews') {
+      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (POST)`);
       
       const cc = requestData.cc || 'us';
       const appId = requestData.appId;
       const page = parseInt(requestData.page) || 1;
+      const pageSize = Math.min(parseInt(requestData.pageSize) || 20, 50);
+      
+      // Validate cc format (ISO-3166 2-letter)
+      if (!/^[a-z]{2}$/.test(cc)) {
+        console.error(`❌ [${requestId}] Invalid country code: ${cc}`);
+        return responseBuilder.error('Invalid input', 400, { field: 'cc' });
+      }
       
       // Validate required parameters for reviews
       if (!appId) {
         console.error(`❌ [${requestId}] Missing required field: appId`);
-        return responseBuilder.error('Missing required field: appId', 400);
+        return responseBuilder.error('Invalid input', 400, { field: 'appId' });
       }
       
       // Log analytics event
       console.log(`📊 [${requestId}] REVIEWS_FETCH_STARTED: {
   appId: "${appId}",
   country: "${cc}",
-  page: ${page}
+  page: ${page},
+  pageSize: ${pageSize}
 }`);
       
       try {
-        // Skip cache for reviews (simple implementation)
-        // Future: implement dedicated reviews cache table
+        const startTime = Date.now();
         
-        // Fetch reviews
-        const reviewsResult = await reviewsService.fetchReviews({ cc, appId, page });
+        // Fetch reviews with enhanced parameters
+        const reviewsResult = await reviewsService.fetchReviews({ 
+          cc, 
+          appId, 
+          page,
+          pageSize 
+        });
         
         if (!reviewsResult.success) {
           console.log(`📊 [${requestId}] REVIEWS_FETCH_FAILED: ${reviewsResult.error}`);
-          return responseBuilder.error(reviewsResult.error || 'Failed to fetch reviews', 500);
+          return responseBuilder.error(reviewsResult.error || 'Failed to fetch reviews', 502);
         }
+        
+        const processingTime = Date.now() - startTime;
         
         console.log(`📊 [${requestId}] REVIEWS_FETCH_SUCCEEDED: {
   appId: "${appId}",
@@ -159,13 +188,52 @@ serve(async (req) => {
   hasMore: ${reviewsResult.hasMore}
 }`);
         
-        return responseBuilder.success(reviewsResult);
+        // Transform to expected response format
+        const responseData = {
+          app_id: appId,
+          country: cc,
+          page: reviewsResult.currentPage,
+          page_size: pageSize,
+          has_next_page: reviewsResult.hasMore,
+          total_estimate: null,
+          reviews: reviewsResult.data || []
+        };
+        
+        const response = {
+          data: responseData,
+          meta: {
+            request_id: requestId,
+            duration_ms: processingTime,
+            upstream: { status: 200, content_type: 'application/json' }
+          }
+        };
+        
+        return responseBuilder.success(response);
         
       } catch (error: any) {
         console.error(`❌ [${requestId}] Reviews request failed:`, error);
         console.log(`📊 [${requestId}] REVIEWS_FETCH_FAILED: ${error.message}`);
-        return responseBuilder.error(`Reviews fetch failed: ${error.message}`, 500);
+        
+        if (error.message?.includes('timeout')) {
+          return responseBuilder.error('Upstream timeout', 504);
+        }
+        
+        return responseBuilder.error('Internal error', 500, undefined, requestId);
       }
+    }
+
+    // Handle GET iTunes reviews route (optional passthrough)
+    const url = new URL(req.url);
+    if (req.method === 'GET' && url.pathname.includes('/itunes/reviews')) {
+      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (GET passthrough)`);
+      
+      // Convert GET params to POST format and delegate
+      requestData.op = 'reviews';
+      requestData.cc = requestData.cc || 'us';
+      requestData.page = parseInt(requestData.page) || 1;
+      requestData.pageSize = Math.min(parseInt(requestData.pageSize) || 20, 50);
+      
+      // Fall through to reviews handler below
     }
     
     // Validate required fields for existing routes

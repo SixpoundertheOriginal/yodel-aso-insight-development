@@ -20,15 +20,26 @@ export async function searchApps(params: {
   limit?: number;
 }): Promise<AppSearchResultDto[]> {
   const { term, country = 'us', limit = 5 } = params;
-  const { data, error } = await supabase.functions.invoke('itunes', {
-    body: { op: 'search', term, country, limit },
+  const { data, error } = await supabase.functions.invoke('app-store-scraper', {
+    body: { 
+      op: 'search', 
+      searchTerm: term, 
+      country, 
+      limit,
+      searchType: 'keyword',
+      organizationId: 'reviews-ui'
+    },
   });
   if (error) throw new Error(error.message || 'Search failed');
-  const body: SearchResponse = data as SearchResponse;
-  if ((body as any).results && Array.isArray((body as any).results)) {
-    return (body as any).results.slice(0, 5) as AppSearchResultDto[];
+  
+  // Handle both single result and multiple results response formats
+  if (data?.results && Array.isArray(data.results)) {
+    return data.results.slice(0, limit) as AppSearchResultDto[];
+  } else if (data && !data.results) {
+    // Single app result
+    return [data] as AppSearchResultDto[];
   }
-  return [body as AppSearchResultDto];
+  return [];
 }
 
 export interface ReviewsResponseDto<T = any> {
@@ -37,21 +48,32 @@ export interface ReviewsResponseDto<T = any> {
   error?: string;
   currentPage: number;
   hasMore: boolean;
+  totalReviews?: number;
 }
 
 export async function fetchAppReviews(params: {
   appId: string;
   cc?: string;
   page?: number;
+  pageSize?: number;
 }): Promise<ReviewsResponseDto> {
-  const { appId, cc = 'us', page = 1 } = params;
-  const { data, error } = await supabase.functions.invoke('itunes', {
-    body: { op: 'reviews', cc, appId, page },
+  const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
+  const { data, error } = await supabase.functions.invoke('app-store-scraper', {
+    body: { op: 'reviews', cc, appId, page, pageSize },
   });
   if (error) throw new Error(error.message || 'Failed to fetch reviews');
-  const body = data as ReviewsResponseDto;
-  if (!body?.success) {
-    throw new Error(body?.error || 'Failed to fetch reviews');
+  
+  // Handle the new response format with nested data
+  const reviewsData = data?.data;
+  if (!reviewsData) {
+    throw new Error('No data received from reviews API');
   }
-  return body;
+  
+  return {
+    success: true,
+    data: reviewsData.reviews || [],
+    currentPage: reviewsData.page || page,
+    hasMore: reviewsData.has_next_page || false,
+    totalReviews: reviewsData.reviews?.length || 0
+  };
 }
