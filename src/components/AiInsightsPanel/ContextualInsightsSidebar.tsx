@@ -171,7 +171,10 @@ const filterContext = useMemo((): FilterContext => ({
     isLoading,
     generateComprehensiveInsights,
     refetchInsights
-  } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext, { isSuperAdmin });
+  } = useEnhancedAsoInsights(organizationId, metricsData as MetricsData, filterContext, { 
+    isSuperAdmin, 
+    enabled: sidebarState !== 'collapsed' // Only fetch when sidebar is open
+  });
 
   const statusIndicators = useMemo(() => ({
     insightCount: insights?.length || 0,

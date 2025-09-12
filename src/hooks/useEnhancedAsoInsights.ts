@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { AI_INSIGHTS_ENABLED } from '@/constants/features';
 import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
 export type { EnhancedAsoInsight } from '@/types/aso';
 
@@ -9,12 +10,42 @@ export const useEnhancedAsoInsights = (
   organizationId: string | null,
   metricsData: MetricsData | undefined = undefined,
   filterContext: FilterContext | undefined = undefined,
-  options: { isSuperAdmin?: boolean } = {}
+  options: { isSuperAdmin?: boolean; enabled?: boolean } = {}
 ) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const ready = true;
-  const { isSuperAdmin = false } = options;
+  const { isSuperAdmin = false, enabled = false } = options;
+  
+  // Global kill-switch: hard no-op when AI insights disabled
+  const isEnabled = !!enabled && AI_INSIGHTS_ENABLED;
+  
+  // Return early no-op state when disabled - no effects, no network calls
+  if (!isEnabled) {
+    return {
+      // Data
+      insights: [],
+      highPriorityInsights: [],
+      userRequestedInsights: [],
+
+      // State
+      isLoading: false,
+      isGenerating: false,
+      error: null,
+
+      // Actions - all no-ops
+      generateConversionAnalysis: async () => [],
+      generateImpressionTrends: async () => [],
+      generateTrafficSourceAnalysis: async () => [],
+      generateKeywordOptimization: async () => [],
+      generateSeasonalAnalysis: async () => [],
+      generateComprehensiveInsights: async () => [],
+      refetchInsights: async () => {},
+
+      // Utilities
+      hasInsightType: () => false
+    };
+  }
 
   // Handle missing organization context gracefully
   const hasValidOrganization = !!(organizationId && organizationId.trim());
@@ -61,7 +92,7 @@ export const useEnhancedAsoInsights = (
         created_at: insight.created_at
       })) as EnhancedAsoInsight[];
     },
-    enabled: hasValidOrganization && ready,
+    enabled: isEnabled && hasValidOrganization && ready,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,
@@ -103,13 +134,16 @@ export const useEnhancedAsoInsights = (
       
       return insights;
     } catch (error) {
-      console.error('Error generating insights:', error);
-      toast({
-        title: "Insight Generation Failed",
-        description: "Unable to generate insights. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
+      console.debug('Error generating insights:', error);
+      if (AI_INSIGHTS_ENABLED) {
+        toast({
+          title: "Insight Generation Failed",
+          description: "Unable to generate insights. Please try again.",
+          variant: "destructive"
+        });
+      }
+      // Return empty array instead of throwing
+      return [];
     } finally {
       setIsGenerating(false);
     }

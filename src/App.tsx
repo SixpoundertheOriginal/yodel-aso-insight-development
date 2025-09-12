@@ -44,6 +44,7 @@ const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
 const DemoCreativeReview = lazy(() => import("./pages/demo-creative-review"));
 const DemoKeywordInsights = lazy(() => import("./pages/demo-keyword-insights"));
+const ReviewManagement = lazy(() => import("./pages/growth-accelerators/reviews"));
 import { ROUTES } from '@/constants/routes';
 const Admin = lazy(() => import("./pages/admin"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
@@ -156,6 +157,10 @@ function App() {
                           <Route
                             path="/growth/web-rank-apps"
                             element={<ProtectedRoute><WebRankAppsPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/growth-accelerators/reviews"
+                            element={<ProtectedRoute><ReviewManagement /></ProtectedRoute>}
                           />
                           <Route
                             path="/aso-unified"

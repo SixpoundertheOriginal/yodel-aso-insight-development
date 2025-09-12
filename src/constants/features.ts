@@ -5,6 +5,10 @@
  * through the organization-level permission system.
  */
 
+// Global AI Insights Kill-Switch
+const bool = (v: any) => String(v).toLowerCase() === 'true' || v === true;
+export const AI_INSIGHTS_ENABLED = bool(import.meta.env.VITE_AI_INSIGHTS_ENABLED) || false;
+
 // Define user roles and feature flags
 export type UserRole = 'super_admin' | 'org_admin' | 'aso_manager' | 'analyst' | 'viewer' | 'client';
 export type FeatureFlag = { enabled: boolean; roles?: UserRole[] };
@@ -25,6 +29,8 @@ export const PLATFORM_FEATURES_CONFIG: Record<string, FeatureFlag> = {
   // New AI audit features
   ASO_AI_HUB: { enabled: true, roles: ['super_admin'] },
   CHATGPT_VISIBILITY_AUDIT: { enabled: true, roles: ['super_admin'] },
+  // Growth Accelerators
+  REVIEWS_PUBLIC_RSS_ENABLED: { enabled: true }, // Enabled for testing
 };
 
 // Legacy platform features (for backward compatibility)
@@ -41,7 +47,8 @@ export const PLATFORM_FEATURES = {
   APP_DISCOVERY: 'app_discovery',
   ADMIN_PANEL: 'admin_panel',
   ASO_AI_HUB: 'aso_ai_hub',
-  CHATGPT_VISIBILITY_AUDIT: 'chatgpt_visibility_audit'
+  CHATGPT_VISIBILITY_AUDIT: 'chatgpt_visibility_audit',
+  REVIEWS_PUBLIC_RSS_ENABLED: 'reviews_public_rss_enabled'
 } as const;
 
 export type PlatformFeature = typeof PLATFORM_FEATURES[keyof typeof PLATFORM_FEATURES];

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/premium";
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
+import { AI_INSIGHTS_ENABLED } from '@/constants/features';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -210,7 +211,7 @@ const OverviewContent: React.FC = () => {
                 : 'fixed right-0 top-0 h-full z-10'
             }
           >
-            {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && (
+            {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && AI_INSIGHTS_ENABLED && (
               <ContextualInsightsSidebar
                 metricsData={data}
                 organizationId={organizationId}
@@ -493,7 +494,7 @@ const OverviewContent: React.FC = () => {
               : 'fixed right-0 top-0 h-full z-10'
           }
         >
-          {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && (
+          {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && AI_INSIGHTS_ENABLED && (
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}

@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "smoke:admin": "./scripts/admin-smoke.sh",
     "token:bot": "node scripts/get-token.ts",
     "smoke:demo": "node scripts/smoke-demo.js"

@@ -8,6 +8,7 @@ import { CppAnalysisService } from './services/cpp-analysis.service.ts';
 import { SecurityService } from './services/security.service.ts';
 import { CacheManagerService } from './services/cache-manager.service.ts';
 import { AnalyticsService } from './services/analytics.service.ts';
+import { ReviewsService } from './services/reviews.service.ts';
 import { ErrorHandler } from './utils/error-handler.ts';
 import { ResponseBuilder } from './utils/response-builder.ts';
 
@@ -48,6 +49,7 @@ serve(async (req) => {
     const securityService = new SecurityService(supabase); // ✅ Pass Supabase client
     const cacheService = new CacheManagerService(supabase);
     const analyticsService = new AnalyticsService(supabase);
+    const reviewsService = new ReviewsService(supabase);
     const errorHandler = new ErrorHandler();
     const responseBuilder = new ResponseBuilder(corsHeaders); // ✅ Pass CORS headers
 
@@ -116,7 +118,57 @@ serve(async (req) => {
       }
     }
     
-    // Validate required fields
+    // NEW: Handle iTunes reviews route (GET /itunes/reviews)
+    const url = new URL(req.url);
+    if (req.method === 'GET' && url.pathname.includes('/itunes/reviews')) {
+      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler`);
+      
+      const cc = requestData.cc || 'us';
+      const appId = requestData.appId;
+      const page = parseInt(requestData.page) || 1;
+      
+      // Validate required parameters for reviews
+      if (!appId) {
+        console.error(`❌ [${requestId}] Missing required field: appId`);
+        return responseBuilder.error('Missing required field: appId', 400);
+      }
+      
+      // Log analytics event
+      console.log(`📊 [${requestId}] REVIEWS_FETCH_STARTED: {
+  appId: "${appId}",
+  country: "${cc}",
+  page: ${page}
+}`);
+      
+      try {
+        // Skip cache for reviews (simple implementation)
+        // Future: implement dedicated reviews cache table
+        
+        // Fetch reviews
+        const reviewsResult = await reviewsService.fetchReviews({ cc, appId, page });
+        
+        if (!reviewsResult.success) {
+          console.log(`📊 [${requestId}] REVIEWS_FETCH_FAILED: ${reviewsResult.error}`);
+          return responseBuilder.error(reviewsResult.error || 'Failed to fetch reviews', 500);
+        }
+        
+        console.log(`📊 [${requestId}] REVIEWS_FETCH_SUCCEEDED: {
+  appId: "${appId}",
+  reviewsCount: ${reviewsResult.data?.length || 0},
+  page: ${page},
+  hasMore: ${reviewsResult.hasMore}
+}`);
+        
+        return responseBuilder.success(reviewsResult);
+        
+      } catch (error: any) {
+        console.error(`❌ [${requestId}] Reviews request failed:`, error);
+        console.log(`📊 [${requestId}] REVIEWS_FETCH_FAILED: ${error.message}`);
+        return responseBuilder.error(`Reviews fetch failed: ${error.message}`, 500);
+      }
+    }
+    
+    // Validate required fields for existing routes
     if (!requestData.searchTerm || !requestData.organizationId) {
       console.error(`❌ [${requestId}] Missing required fields: searchTerm=${!!requestData.searchTerm}, organizationId=${!!requestData.organizationId}`);
       return responseBuilder.error('Missing required fields: searchTerm, organizationId', 400);

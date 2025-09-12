@@ -122,6 +122,12 @@ const aiCopilotsItems: NavigationItem[] = [
     icon: Search,
     featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
+  {
+    title: "Review Management",
+    url: "/growth-accelerators/reviews",
+    icon: Star,
+    // featureKey handled by custom filtering logic below
+  },
 ];
 
 // User account items
@@ -248,11 +254,29 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       currentUserRole: isSuperAdmin ? 'super_admin' : role,
       asoAiHubAccess: featureEnabledForRole('ASO_AI_HUB', isSuperAdmin ? 'super_admin' : 'viewer'),
       chatGptAuditAccess: featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', isSuperAdmin ? 'super_admin' : 'viewer'),
+      reviewManagementAccess: featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', isSuperAdmin ? 'super_admin' : 'viewer'),
       platformFeatures: PLATFORM_FEATURES_CONFIG,
       filteredAiToolsItemsCount: filteredAiToolsItems?.length || 0
     });
   }
-  const filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
+  
+  let filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
+  
+  // Apply feature-based access control for Growth Accelerators
+  if (filteredAiCopilotsItems?.length) {
+    const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 
+      (isOrganizationAdmin ? 'org_admin' : 
+      (role?.toLowerCase().includes('aso') ? 'aso_manager' :
+      (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
+    
+    filteredAiCopilotsItems = filteredAiCopilotsItems.filter(item => {
+      if (item.url === '/growth-accelerators/reviews') {
+        return featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
+      }
+      return true;
+    });
+  }
+  
   const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 
   // Debug logging for troubleshooting (temporary)
@@ -284,6 +308,10 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       aiToolsItemsVisible: filteredAiToolsItems.length,
       aiCopilotsItemsVisible: filteredAiCopilotsItems.length,
       controlCenterItemsVisible: filteredControlCenterItems.length,
+      
+      // Debug Reviews feature specifically
+      reviewsItemInBase: filteredAiCopilotsItemsBase?.some(item => item.url === '/growth-accelerators/reviews') || false,
+      reviewsItemInFinal: filteredAiCopilotsItems?.some(item => item.url === '/growth-accelerators/reviews') || false,
       
       // Expected for Next org
       expectedForNextOrg: isDemoOrg ? filteredAnalyticsItems.map(item => ({

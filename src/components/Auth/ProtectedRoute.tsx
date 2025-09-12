@@ -78,9 +78,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Clear any stored intent once authenticated and access validated
   sessionStorage.removeItem('postLoginRedirect');
 
-  // Role-based route checking
-  if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {
-    return <Navigate to="/dashboard/executive" replace />;
+  // Role-based route checking (fallback only):
+  // If server authorization has responded, trust it and skip static allowlist.
+  // Use allowlist only during initial loading before server auth result.
+  if (routeAllowed === null) {
+    if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {
+      return <Navigate to="/dashboard/executive" replace />;
+    }
   }
 
   // Optional nav permission enforcement (feature-flagged)
