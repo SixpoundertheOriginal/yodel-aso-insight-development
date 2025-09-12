@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.admin-organizations]
 verify_jwt = true
+
+[functions.app-store-scraper]
+verify_jwt = false

@@ -22,12 +22,11 @@ export async function searchApps(params: {
   const { term, country = 'us', limit = 5 } = params;
   const { data, error } = await supabase.functions.invoke('app-store-scraper', {
     body: { 
-      op: 'search', 
       searchTerm: term, 
       country, 
       limit,
       searchType: 'keyword',
-      organizationId: 'reviews-ui'
+      organizationId: crypto.randomUUID() // Use temporary UUID for public search
     },
   });
   if (error) throw new Error(error.message || 'Search failed');

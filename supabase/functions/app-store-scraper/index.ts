@@ -134,9 +134,9 @@ serve(async (req) => {
       }
     }
     
-    // Handle iTunes reviews operation (POST and GET)
+    // Handle iTunes reviews operation (POST and GET) - PUBLIC ACCESS
     if (requestData.op === 'reviews') {
-      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (POST)`);
+      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (PUBLIC)`);
       
       const cc = requestData.cc || 'us';
       const appId = requestData.appId;
@@ -236,8 +236,8 @@ serve(async (req) => {
       // Fall through to reviews handler below
     }
     
-    // Validate required fields for existing routes
-    if (!requestData.searchTerm || !requestData.organizationId) {
+    // Validate required fields for existing routes (skip for reviews)
+    if (requestData.op !== 'reviews' && (!requestData.searchTerm || !requestData.organizationId)) {
       console.error(`❌ [${requestId}] Missing required fields: searchTerm=${!!requestData.searchTerm}, organizationId=${!!requestData.organizationId}`);
       return responseBuilder.error('Missing required fields: searchTerm, organizationId', 400);
     }
@@ -260,8 +260,8 @@ serve(async (req) => {
   isKeywordDiscovery: ${!!(requestData.targetApp || requestData.competitorApps || requestData.seedKeywords)}
 }`);
 
-    // Route to appropriate service
-    if (requestData.searchTerm && !requestData.targetApp) {
+    // Route to appropriate service (skip for reviews which is handled above)
+    if (requestData.searchTerm && !requestData.targetApp && requestData.op !== 'reviews') {
       // App Search Route
       console.log(`📱 [${requestId}] ROUTING TO: App Search (searchType: ${searchType})`);
       
