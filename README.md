@@ -1,128 +1,189 @@
-# Welcome to your Lovable project
+# ASO Tool - Enterprise App Store Optimization Platform
 
-> Start here — Single Sources of Truth (SoT)
+An enterprise-grade App Store Optimization platform built to extract, validate, analyze, and visualize mobile app metrics at scale.
 
-This project uses a backend‑first, server‑truth model (Supabase Edge Functions) for auth, RBAC, and demo‑mode. Use these owner docs:
+## 🧭 Project Overview
 
-- Architecture → `docs/aso_platform_architecture.md`
-- Auth/RBAC/Demo map → `docs/auth_map.md`
-- WhoAmI contract → `docs/whoami_contract.md`
-- Authorize rules → `docs/authz_matrix.md`
-- Demo sections (features/endpoints/contracts) → `docs/demo_sections.md`
-- Routing/JSON/CORS → `docs/routing_fixes.md`
-- Admin panel overview → `docs/admin_panel_overview.md`
-- Verification/Smoke → `scripts/verify-demo-foundation.md`
+**ASO Tool** empowers ASO managers, analysts, and clients with precise app store data, AI-powered insights, and white-label reporting capabilities.
 
-## Project info
+### Key Differentiators
+- **Multi-tenant isolation** with row-level security
+- **Real-time sync** with BigQuery integration
+- **Advanced anomaly & predictive analytics**
+- **Modular promptable architecture**
+- **White-label client portal**
 
-**URL**: https://lovable.dev/projects/ecbe3725-c282-42cd-9b9e-33605f2db95a
+## 🛠 Technology Stack
 
-## How can I edit this code?
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Components**: shadcn/ui + Tailwind CSS
+- **Backend**: Supabase (Auth, RLS, Edge Functions)
+- **Database**: PostgreSQL with BigQuery integration
+- **State Management**: TanStack Query + React Context
+- **Analytics**: Custom BigQuery ML models
+- **Routing**: React Router DOM
 
-There are several ways of editing your application.
+## 🏗 Architecture
 
-**Use Lovable**
+### Multi-Tenant Security
+- **Row-Level Security (RLS)** enforced on all data tables
+- **Tenant isolation** via `tenant_id` scoping
+- **Role-based access control** (RBAC) with 6 permission levels
+- **Audit logging** for all CRUD operations
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ecbe3725-c282-42cd-9b9e-33605f2db95a) and start prompting.
+### User Personas & Roles
+- **Super Admin** - System-wide access and management
+- **Organization Admin** - Tenant-level configuration and oversight
+- **ASO Manager** - Data source configuration and report management
+- **Data Analyst** - Raw metrics extraction and custom analysis
+- **Client** - Curated dashboards and reports
+- **Viewer** - Read-only access to assigned data
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📊 Core Features
 
-**Use your preferred IDE**
+### Data Extraction & Validation
+- **Connectors**: App Store Connect, Google Play Console, third-party APIs
+- **Pattern Engine**: Regex + heuristics with confidence scoring
+- **Cross-Validation**: Multi-source comparison and discrepancy flagging
+- **Batch & Streaming**: Background jobs + real-time delta processing
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Metrics Engine & AI Insights
+- **Core Metrics**: Impressions, downloads, proceeds, conversion rates, keyword rankings
+- **Advanced Metrics**: Retention (D1/D7), crash rates, competitive indexing
+- **Anomaly Detection**: Z-score based alerts using BigQuery ML
+- **Predictive Forecasting**: ARIMA_PLUS models for download predictions
+- **Narrative Generation**: Template-based LLM summaries and recommendations
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Dashboard & Reporting
+- **Executive Dashboard**: KPI cards, trend charts, geographic heatmaps
+- **Advanced Query Builder**: No-code BigQuery SQL generation
+- **Custom Dashboards**: Drag-and-drop widget library
+- **Automated Reports**: PDF/HTML delivery via email or portal
 
-Follow these steps:
+### Growth Accelerators
+- **Review Management**: iTunes RSS feed analysis and export
+- **Creative Analysis**: Screenshot and metadata optimization
+- **Keyword Discovery**: Competitive intelligence and gap analysis
+- **Metadata Copilot**: AI-powered ASO recommendations
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🚀 Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
+- Node.js 18+ and npm/yarn
+- Supabase account with project setup
+- BigQuery project (optional for full functionality)
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Local Development
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+1. **Clone and install dependencies**
+   ```bash
+   git clone <repository-url>
+   cd aso-tool
+   npm install
+   ```
 
-**Edit a file directly in GitHub**
+2. **Environment Configuration**
+   ```bash
+   cp .env.example .env.local
+   # Configure your Supabase and BigQuery credentials
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. **Database Setup**
+   ```bash
+   # Apply Supabase migrations
+   npx supabase db reset
+   ```
 
-**Use GitHub Codespaces**
+4. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Deployment
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/ecbe3725-c282-42cd-9b9e-33605f2db95a) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
-
-## Environment Configuration
-
-The Creative Vision Analyzer Supabase function uses the OpenAI API. Configure it with the following environment variables:
-
-- `OPENAI_API_KEY`: your OpenAI API key.
-- `OPENAI_MODEL` (optional): the OpenAI model identifier. Defaults to `gpt-4.1-2025-04-14` if not set.
-
-## Admin Diagnostic Tools
-
-For developers working on the admin API integration, several diagnostic tools are available:
-
-### Scripts
-
-- **Smoke Tests**: `npm run smoke:admin` - Runs comprehensive API smoke tests
-  - Usage: `./scripts/admin-smoke.sh [BASE_URL] [SUPER_TOKEN] [ORG_TOKEN] [ORG_ID]`
-  - Tests health, whoami, organizations, and users endpoints with different auth levels
-  - Validates JSON content-type responses
-
-- **Bot Token**: `npm run token:bot` - Get JWT token for testing
-  - Usage: `BOT_EMAIL=test@example.com BOT_PASSWORD=password npm run token:bot`
-  - Returns access token for API testing
-
-### In-App Diagnostics Panel
-
-Enable with environment variable: `VITE_ADMIN_DIAGNOSTICS_ENABLED=true`
-
-- Access via Admin Panel → API Diagnostics
-- Real-time API testing with response analysis
-- JSON content-type validation
-- Organization context testing
-- Shell command templates for manual testing
-
-### Manual Testing Commands
+The application can be deployed using the built-in Lovable deployment system or manually:
 
 ```bash
-# Get tokens
-BOT_EMAIL=test@example.com BOT_PASSWORD=password node scripts/get-token.ts
-
-# Run smoke tests  
-./scripts/admin-smoke.sh http://localhost:8080 "$SUPER" "$ORGADM" "$ORGID"
+npm run build
+# Deploy to your preferred hosting platform
 ```
+
+## 🔧 Configuration
+
+### Environment Variables
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anon key
+- `VITE_BIGQUERY_PROJECT_ID` - BigQuery project ID (optional)
+
+### Feature Flags
+The platform uses a comprehensive feature flag system defined in `src/constants/features.ts`:
+- **REVIEWS_PUBLIC_RSS_ENABLED** - Public review access
+- **CREATIVE_ANALYSIS_ENABLED** - Screenshot analysis tools
+- **BIGQUERY_INTEGRATION_ENABLED** - Advanced analytics
+- **WHITE_LABEL_PORTAL_ENABLED** - Client portal features
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+├── pages/              # Application routes and pages
+├── hooks/              # Custom React hooks
+├── utils/              # Utility functions and helpers
+├── services/           # API service layers
+├── constants/          # Feature flags and configuration
+├── context/            # React context providers
+└── integrations/       # Third-party integrations
+
+supabase/
+├── functions/          # Edge functions (serverless API)
+├── migrations/         # Database schema migrations
+└── config.toml        # Supabase configuration
+```
+
+## 🔒 Security & Privacy
+
+1. **Row-Level Security** enforced on all data tables
+2. **Encryption**: TLS in transit, AES-256 at rest
+3. **Audit Logs**: Immutable CRUD operation tracking
+4. **Compliance**: GDPR-ready with deletion and export endpoints
+5. **API Security**: JWT tokens with tenant scoping and rate limiting
+
+## 🧪 Testing & Quality
+
+- **Unit Tests**: Jest + React Testing Library
+- **Integration Tests**: Supabase function testing
+- **Security Validation**: RLS policy verification
+- **Load Testing**: BigQuery performance benchmarks
+- **Edge Case Handling**: Data validation and error recovery
+
+## 📚 API Documentation
+
+### Core Endpoints
+- `POST /functions/v1/app-store-scraper` - App search and reviews
+- `POST /functions/v1/bigquery-aso-data` - Analytics data retrieval
+- `POST /functions/v1/competitive-intelligence` - Competitor analysis
+- `POST /functions/v1/creative-vision-analyzer` - Creative optimization
+
+### Authentication
+All API endpoints use Supabase JWT authentication with tenant-scoped access control.
+
+## 🤝 Contributing
+
+1. Follow the established TypeScript and React patterns
+2. Ensure all data operations respect tenant isolation
+3. Add comprehensive tests for new features
+4. Update feature flags for new functionality
+5. Document security implications of changes
+
+## 📄 License
+
+This project is proprietary and confidential. All rights reserved.
+
+## 📞 Support
+
+For technical support or questions about the ASO Tool platform, please contact the development team or refer to the internal documentation.
+
+---
+
+**Built with ❤️ for ASO professionals worldwide**
