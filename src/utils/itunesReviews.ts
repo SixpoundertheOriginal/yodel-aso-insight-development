@@ -20,13 +20,15 @@ export async function searchApps(params: {
   limit?: number;
 }): Promise<AppSearchResultDto[]> {
   const { term, country = 'us', limit = 5 } = params;
+  console.log('[searchApps] Searching for:', { term, country, limit });
+  
   const { data, error } = await supabase.functions.invoke('app-store-scraper', {
     body: { 
+      op: 'search',
       searchTerm: term, 
       country, 
       limit,
-      searchType: 'keyword',
-      organizationId: crypto.randomUUID() // Use temporary UUID for public search
+      searchType: 'keyword'
     },
   });
   if (error) throw new Error(error.message || 'Search failed');
@@ -57,6 +59,8 @@ export async function fetchAppReviews(params: {
   pageSize?: number;
 }): Promise<ReviewsResponseDto> {
   const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
+  console.log('[fetchAppReviews] Fetching reviews for:', { appId, cc, page, pageSize });
+  
   const { data, error } = await supabase.functions.invoke('app-store-scraper', {
     body: { op: 'reviews', cc, appId, page, pageSize },
   });

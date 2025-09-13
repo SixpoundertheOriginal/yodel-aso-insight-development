@@ -134,34 +134,83 @@ serve(async (req) => {
       }
     }
     
+    // Early operation detection for public operations
+    const operation = requestData.op || (requestData.searchTerm && !requestData.targetApp ? 'search' : null);
+    console.log(`🎯 [${requestId}] OPERATION DETECTED: "${operation}"`);
+
+    // Handle public search operation (no auth required)
+    if (operation === 'search' || (requestData.searchTerm && !requestData.targetApp && !requestData.organizationId)) {
+      console.log(`🔍 [${requestId}] ROUTING TO: Public App Search Handler`);
+      
+      if (!requestData.searchTerm) {
+        console.error(`❌ [${requestId}] Missing searchTerm for search operation`);
+        return responseBuilder.error('Missing required field: searchTerm', 400);
+      }
+
+      const searchType = requestData.searchType || 'keyword';
+      const country = requestData.country || 'us';
+      const limit = Math.min(parseInt(requestData.limit) || 15, 50);
+
+      console.log(`🔍 [${requestId}] PUBLIC SEARCH PARAMS: { searchTerm: "${requestData.searchTerm}", country: "${country}", limit: ${limit}, searchType: "${searchType}" }`);
+
+      try {
+        // Build iTunes API URL
+        let itunesUrl: string;
+        if (searchType === 'url') {
+          const appIdMatch = requestData.searchTerm.match(/id(\d+)/);
+          if (appIdMatch) {
+            itunesUrl = `https://itunes.apple.com/lookup?id=${appIdMatch[1]}&country=${country}`;
+          } else {
+            itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(requestData.searchTerm)}&country=${country}&media=software&limit=${limit}`;
+          }
+        } else {
+          itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(requestData.searchTerm)}&country=${country}&media=software&limit=${limit}`;
+        }
+
+        console.log(`🚀 [${requestId}] CALLING ITUNES API: ${itunesUrl}`);
+        const searchResponse = await fetch(itunesUrl);
+
+        if (!searchResponse.ok) {
+          throw new Error(`iTunes API error: ${searchResponse.status} ${searchResponse.statusText}`);
+        }
+
+        const searchData = await searchResponse.json();
+        console.log(`📊 [${requestId}] ITUNES API RESPONSE: Found ${searchData.results?.length || 0} results`);
+
+        // Transform results using metadata service
+        const transformedResults = metadataService.transformSearchResults(searchData.results || []);
+        
+        console.log(`✅ [${requestId}] PUBLIC SEARCH SUCCESS: Transformed ${transformedResults.length} results`);
+        return responseBuilder.success({ results: transformedResults });
+
+      } catch (error: any) {
+        console.error(`❌ [${requestId}] PUBLIC SEARCH ERROR:`, error);
+        return responseBuilder.error(`Search failed: ${error.message}`, 500);
+      }
+    }
+
     // Handle iTunes reviews operation (POST and GET) - PUBLIC ACCESS
-    if (requestData.op === 'reviews') {
+    if (operation === 'reviews' || requestData.op === 'reviews') {
       console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (PUBLIC)`);
       
       const cc = requestData.cc || 'us';
       const appId = requestData.appId;
-      const page = parseInt(requestData.page) || 1;
-      const pageSize = Math.min(parseInt(requestData.pageSize) || 20, 50);
-      
-      // Validate cc format (ISO-3166 2-letter)
-      if (!/^[a-z]{2}$/.test(cc)) {
-        console.error(`❌ [${requestId}] Invalid country code: ${cc}`);
-        return responseBuilder.error('Invalid input', 400, { field: 'cc' });
-      }
+      const page = Math.max(parseInt(requestData.page) || 1, 1);
+      const pageSize = Math.min(Math.max(parseInt(requestData.pageSize) || 20, 1), 50);
       
       // Validate required parameters for reviews
       if (!appId) {
         console.error(`❌ [${requestId}] Missing required field: appId`);
-        return responseBuilder.error('Invalid input', 400, { field: 'appId' });
+        return responseBuilder.error('Missing required field: appId', 400);
       }
       
-      // Log analytics event
-      console.log(`📊 [${requestId}] REVIEWS_FETCH_STARTED: {
-  appId: "${appId}",
-  country: "${cc}",
-  page: ${page},
-  pageSize: ${pageSize}
-}`);
+      // Validate cc format (ISO-3166 2-letter)
+      if (!/^[a-z]{2}$/.test(cc)) {
+        console.error(`❌ [${requestId}] Invalid country code: ${cc}`);
+        return responseBuilder.error('Invalid country code', 400);
+      }
+      
+      console.log(`📱 [${requestId}] REVIEWS PARAMS: { appId: "${appId}", cc: "${cc}", page: ${page}, pageSize: ${pageSize} }`);
       
       try {
         const startTime = Date.now();
@@ -212,7 +261,6 @@ serve(async (req) => {
         
       } catch (error: any) {
         console.error(`❌ [${requestId}] Reviews request failed:`, error);
-        console.log(`📊 [${requestId}] REVIEWS_FETCH_FAILED: ${error.message}`);
         
         if (error.message?.includes('timeout')) {
           return responseBuilder.error('Upstream timeout', 504);
@@ -222,23 +270,12 @@ serve(async (req) => {
       }
     }
 
-    // Handle GET iTunes reviews route (optional passthrough)
-    const url = new URL(req.url);
-    if (req.method === 'GET' && url.pathname.includes('/itunes/reviews')) {
-      console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (GET passthrough)`);
-      
-      // Convert GET params to POST format and delegate
-      requestData.op = 'reviews';
-      requestData.cc = requestData.cc || 'us';
-      requestData.page = parseInt(requestData.page) || 1;
-      requestData.pageSize = Math.min(parseInt(requestData.pageSize) || 20, 50);
-      
-      // Fall through to reviews handler below
-    }
+    // All remaining operations require authentication and organization validation
+    console.log(`🔒 [${requestId}] PROCEEDING TO PROTECTED OPERATIONS - Validation required`);
     
-    // Validate required fields for existing routes (skip for reviews)
-    if (requestData.op !== 'reviews' && (!requestData.searchTerm || !requestData.organizationId)) {
-      console.error(`❌ [${requestId}] Missing required fields: searchTerm=${!!requestData.searchTerm}, organizationId=${!!requestData.organizationId}`);
+    // Validate required fields for protected operations
+    if (!requestData.searchTerm || !requestData.organizationId) {
+      console.error(`❌ [${requestId}] Missing required fields for protected operation: searchTerm=${!!requestData.searchTerm}, organizationId=${!!requestData.organizationId}`);
       return responseBuilder.error('Missing required fields: searchTerm, organizationId', 400);
     }
 
@@ -260,10 +297,10 @@ serve(async (req) => {
   isKeywordDiscovery: ${!!(requestData.targetApp || requestData.competitorApps || requestData.seedKeywords)}
 }`);
 
-    // Route to appropriate service (skip for reviews which is handled above)
-    if (requestData.searchTerm && !requestData.targetApp && requestData.op !== 'reviews') {
-      // App Search Route
-      console.log(`📱 [${requestId}] ROUTING TO: App Search (searchType: ${searchType})`);
+    // Route to appropriate protected service  
+    if (requestData.searchTerm && !requestData.targetApp) {
+      // Protected App Search Route (requires auth)
+      console.log(`📱 [${requestId}] ROUTING TO: Protected App Search (searchType: ${searchType})`);
       
       const startTime = Date.now();
       
