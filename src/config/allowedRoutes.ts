@@ -27,6 +27,7 @@ const FULL_APP: string[] = [
   '/creative-analysis',
   '/growth/web-rank-apps',
   '/growth-accelerators/reviews',
+  '/growth-accelerators/review-management-v2',
   '/app-discovery',
   '/apps',
   '/admin',

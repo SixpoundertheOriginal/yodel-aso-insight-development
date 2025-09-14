@@ -128,6 +128,12 @@ const aiCopilotsItems: NavigationItem[] = [
     icon: Star,
     // featureKey handled by custom filtering logic below
   },
+  {
+    title: "Review Management v2",
+    url: "/growth-accelerators/review-management-v2",
+    icon: Star,
+    // featureKey handled by custom filtering logic below
+  },
 ];
 
 // User account items
@@ -270,7 +276,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
     
     filteredAiCopilotsItems = filteredAiCopilotsItems.filter(item => {
-      if (item.url === '/growth-accelerators/reviews') {
+      if (item.url === '/growth-accelerators/reviews' || item.url === '/growth-accelerators/review-management-v2') {
         return featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
       }
       return true;

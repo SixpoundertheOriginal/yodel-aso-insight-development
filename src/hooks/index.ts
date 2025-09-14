@@ -41,6 +41,9 @@ export { keywordDiscoveryService } from '../services/keyword-discovery.service';
 // Add debounced filters hook
 export { useDebouncedFilters } from './useDebouncedFilters';
 
+// Add debounced value hook  
+export { useDebouncedValue } from './useDebouncedValue';
+
 // Market data hooks
 export * from '../contexts/MarketContext';
 
