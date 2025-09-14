@@ -1,18 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const ALLOW_ORIGIN = Deno.env.get('CORS_ALLOW_ORIGIN') ?? 'http://localhost:8080';
-const corsHeaders: HeadersInit = {
-  "Access-Control-Allow-Origin": ALLOW_ORIGIN,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Content-Type": "application/json"
-};
+function getCorsHeaders(req: Request): HeadersInit {
+  const origin = req.headers.get('Origin');
+  const allowedOrigins = (Deno.env.get('CORS_ALLOW_ORIGIN') || 'http://localhost:8080').split(',').map(o => o.trim());
+  
+  let allowOrigin = 'http://localhost:8080';
+  if (origin && allowedOrigins.includes(origin)) {
+    allowOrigin = origin;
+  } else if (allowedOrigins.length > 0) {
+    allowOrigin = allowedOrigins[0];
+  }
+  
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json"
+  };
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
