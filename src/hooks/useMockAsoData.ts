@@ -161,32 +161,20 @@ export const useMockAsoData = (
 
           // Generate per-source metrics
           const sources = ['webReferrer', 'appStoreSearch', 'appReferrer', 'appleSearchAds', 'appStoreBrowse'] as const;
+          // Use profiles to ensure differing CVRs across sources
+          const PROFILE: Record<typeof sources[number], { imprCvr: number; ppvRatio: number }> = {
+            webReferrer: { imprCvr: 1.9, ppvRatio: 0.14 },
+            appStoreSearch: { imprCvr: 3.5, ppvRatio: 0.18 },
+            appReferrer: { imprCvr: 4.1, ppvRatio: 0.21 },
+            appleSearchAds: { imprCvr: 4.6, ppvRatio: 0.22 },
+            appStoreBrowse: { imprCvr: 2.6, ppvRatio: 0.15 },
+          };
           const sourceMetrics: Record<typeof sources[number], { impressions: number; downloads: number; product_page_views: number }> = {
-            webReferrer: {
-              impressions: Math.floor(Math.random() * 1000),
-              downloads: Math.floor(Math.random() * 200),
-              product_page_views: Math.floor(Math.random() * 600)
-            },
-            appStoreSearch: {
-              impressions: Math.floor(Math.random() * 1000),
-              downloads: Math.floor(Math.random() * 200),
-              product_page_views: Math.floor(Math.random() * 600)
-            },
-            appReferrer: {
-              impressions: Math.floor(Math.random() * 1000),
-              downloads: Math.floor(Math.random() * 200),
-              product_page_views: Math.floor(Math.random() * 600)
-            },
-            appleSearchAds: {
-              impressions: Math.floor(Math.random() * 1000),
-              downloads: Math.floor(Math.random() * 200),
-              product_page_views: Math.floor(Math.random() * 600)
-            },
-            appStoreBrowse: {
-              impressions: Math.floor(Math.random() * 1000),
-              downloads: Math.floor(Math.random() * 200),
-              product_page_views: Math.floor(Math.random() * 600)
-            }
+            webReferrer: (() => { const impr = Math.floor(Math.random() * 1000); return { impressions: impr, downloads: Math.round(impr * PROFILE.webReferrer.imprCvr / 100), product_page_views: Math.max(1, Math.round(impr * PROFILE.webReferrer.ppvRatio)) }; })(),
+            appStoreSearch: (() => { const impr = Math.floor(Math.random() * 1000); return { impressions: impr, downloads: Math.round(impr * PROFILE.appStoreSearch.imprCvr / 100), product_page_views: Math.max(1, Math.round(impr * PROFILE.appStoreSearch.ppvRatio)) }; })(),
+            appReferrer: (() => { const impr = Math.floor(Math.random() * 1000); return { impressions: impr, downloads: Math.round(impr * PROFILE.appReferrer.imprCvr / 100), product_page_views: Math.max(1, Math.round(impr * PROFILE.appReferrer.ppvRatio)) }; })(),
+            appleSearchAds: (() => { const impr = Math.floor(Math.random() * 1000); return { impressions: impr, downloads: Math.round(impr * PROFILE.appleSearchAds.imprCvr / 100), product_page_views: Math.max(1, Math.round(impr * PROFILE.appleSearchAds.ppvRatio)) }; })(),
+            appStoreBrowse: (() => { const impr = Math.floor(Math.random() * 1000); return { impressions: impr, downloads: Math.round(impr * PROFILE.appStoreBrowse.imprCvr / 100), product_page_views: Math.max(1, Math.round(impr * PROFILE.appStoreBrowse.ppvRatio)) }; })(),
           };
 
           const totalImpressions = sources.reduce((sum, s) => sum + sourceMetrics[s].impressions, 0);
@@ -263,21 +251,37 @@ export const useMockAsoData = (
           };
         });
         
-        // Generate traffic source data for ALL available sources, not just selected ones
-        // This fixes the circular dependency issue where only selected sources were available
+        // Profile per source to ensure distinct CVRs in demo
+        const SOURCE_PROFILES: Record<string, { imprCvr: number; ppvRatio: number }> = {
+          'App Store Search': { imprCvr: 3.5, ppvRatio: 0.18 },
+          'Apple Search Ads': { imprCvr: 4.6, ppvRatio: 0.22 },
+          'App Store Browse': { imprCvr: 2.6, ppvRatio: 0.15 },
+          'Web Referrer': { imprCvr: 1.9, ppvRatio: 0.14 },
+          'App Referrer': { imprCvr: 4.1, ppvRatio: 0.21 },
+          'Event Notification': { imprCvr: 5.0, ppvRatio: 0.24 },
+          'Institutional Purchase': { imprCvr: 6.5, ppvRatio: 0.25 },
+          'Other': { imprCvr: 2.0, ppvRatio: 0.16 },
+        };
+
+        // Generate traffic source data for ALL available sources using profiles
         const trafficSourceData: TrafficSource[] = ALL_AVAILABLE_TRAFFIC_SOURCES.map((source) => {
-          const impressions = generateMetric();
-          const downloads = generateMetric();
-          const product_page_views = generateMetric();
-          const conversion_rate = impressions.value > 0 ? (downloads.value / impressions.value) * 100 : 0;
-          
+          const profile = SOURCE_PROFILES[source] || { imprCvr: 3.0, ppvRatio: 0.18 };
+          const baseImpr = Math.floor(5000 + Math.random() * 50000); // 5k - 55k
+          const impressions = { value: baseImpr, delta: parseFloat((Math.random() * 6).toFixed(1)) };
+          const downloadsCount = Math.max(0, Math.round(baseImpr * (profile.imprCvr / 100)));
+          const productPageViewsCount = Math.max(1, Math.round(baseImpr * profile.ppvRatio));
+
+          const downloads = { value: downloadsCount, delta: parseFloat((Math.random() * 8).toFixed(1)) };
+          const product_page_views = { value: productPageViewsCount, delta: parseFloat((Math.random() * 4).toFixed(1)) };
+          const conversion_rate = baseImpr > 0 ? (downloadsCount / baseImpr) * 100 : 0;
+
           const product_page_cvr = {
-            value: parseFloat((Math.random() * 100).toFixed(2)),
-            delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
+            value: productPageViewsCount > 0 ? (downloadsCount / productPageViewsCount) * 100 : 0,
+            delta: parseFloat((Math.random() * 1.2).toFixed(1))
           };
           const impressions_cvr = {
-            value: parseFloat((Math.random() * 100).toFixed(2)),
-            delta: parseFloat((Math.random() * 40 - 20).toFixed(1))
+            value: conversion_rate,
+            delta: parseFloat((Math.random() * 1.2).toFixed(1))
           };
 
           return {
