@@ -6,7 +6,10 @@ import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart'
+import { demoDownloadsNextVsHM } from '@/config/demoCompetitorDownloads'
+import { demoCompetitorKeywords } from '@/config/demoCompetitorKeywords'
 import { Search, Users } from 'lucide-react'
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal'
 import { toast } from 'sonner'
@@ -84,6 +87,25 @@ const CompetitorOverviewPage: React.FC = () => {
 
   const chartData = React.useMemo(() => summary.map(s => ({ name: s.app.name, top10: s.top10 })), [summary])
 
+  const downloadsData = React.useMemo(() => {
+    // Always available in demo mode; safe to render regardless of selection
+    return demoDownloadsNextVsHM.map(r => ({ date: r.date, Next: r.next, HM: r.hm }))
+  }, [])
+
+  const compKwData = React.useMemo(() => {
+    // Filter to "competitor ranked well" (hmRank <= 10) and Next not ranked or rank > 10
+    return demoCompetitorKeywords
+      .filter(r => r.hmRank <= 10 && (!r.nextRank || r.nextRank > 10))
+      .map(r => ({
+        keyword: r.keyword,
+        popularity: r.popularity,
+        impressions: r.impressions,
+        results: r.results,
+        nextRank: r.nextRank,
+        hmRank: r.hmRank,
+      }));
+  }, [])
+
   const handleCompetitorsSelected = (apps: any[]) => {
     // normalize fields compatible with AppSelectionModal
     const norm: AppLite[] = apps.map(a => ({
@@ -139,32 +161,62 @@ const CompetitorOverviewPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Summary */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader><CardTitle className="text-base">Top‑10 Coverage</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
+          {/* Top‑10 Coverage card removed as requested */}
+
+          {/* Demo Downloads Trend: Next vs H&M */}
+          {isDemoOrg && (
+            <Card className="bg-zinc-900/50 border-zinc-800">
+              <CardHeader><CardTitle className="text-base">Downloads (Demo): Next vs H&M</CardTitle></CardHeader>
+              <CardContent>
+                <ChartContainer config={{ Next: { label: 'Next', color: '#60a5fa' }, HM: { label: 'H&M', color: '#ef4444' } }}>
+                  <ComposedChart data={downloadsData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={60} />
-                    <YAxis allowDecimals={false}/>
-                    <RTooltip />
-                    <Bar dataKey="top10" fill="#60a5fa" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                {summary.map(s => (
-                  <div key={s.app.appId} className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-                    <div className="text-xs text-muted-foreground truncate">{s.app.name}</div>
-                    <div className="text-lg font-semibold">{s.top10} Top‑10 keywords</div>
-                    <div className="text-xs text-muted-foreground">Avg rank: {s.avgRank ?? '—'}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                    <XAxis dataKey="date" interval={8} />
+                    <YAxis allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Line type="monotone" dataKey="Next" stroke="var(--color-Next)" dot={false} />
+                    <Line type="monotone" dataKey="HM" stroke="var(--color-HM)" dot={false} />
+                  </ComposedChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Demo Competitor Keywords: H&M advantage */}
+          {isDemoOrg && (
+            <Card className="bg-zinc-900/50 border-zinc-800">
+              <CardHeader><CardTitle className="text-base">Competitor Keywords (Demo): H&M strong vs Next</CardTitle></CardHeader>
+              <CardContent>
+                <div className="border rounded-md overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-zinc-900/60 backdrop-blur text-zinc-300">
+                      <tr>
+                        <th className="text-left p-2">Keyword</th>
+                        <th className="text-left p-2">Popularity</th>
+                        <th className="text-left p-2">Impressions</th>
+                        <th className="text-left p-2">Results</th>
+                        <th className="text-left p-2">Next Rank</th>
+                        <th className="text-left p-2">H&M Rank</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {compKwData.map(row => (
+                        <tr key={row.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                          <td className="p-2">{row.keyword}</td>
+                          <td className="p-2">{row.popularity}</td>
+                          <td className="p-2">{row.impressions.toLocaleString()}</td>
+                          <td className="p-2">{row.results.toLocaleString()}</td>
+                          <td className="p-2">{row.nextRank ?? '—'}</td>
+                          <td className="p-2 font-medium text-emerald-400">{row.hmRank}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Competitor picker modal */}
           {showPicker && (
