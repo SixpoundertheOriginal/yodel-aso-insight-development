@@ -129,6 +129,12 @@ const aiCopilotsItems: NavigationItem[] = [
     featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
   {
+    title: "Competitor Overview",
+    url: "/growth-accelerators/competitor-overview",
+    icon: Users,
+    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
+  },
+  {
     title: "Review Management",
     url: "/growth-accelerators/reviews",
     icon: Star,
@@ -285,6 +291,10 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       if (item.url === '/growth-accelerators/reviews' || item.url === '/growth-accelerators/review-management-v2') {
         // In demo orgs, always show Reviews entries
         return isDemoOrg || featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
+      }
+      if (item.url === '/growth-accelerators/competitor-overview' || item.url === '/growth-accelerators/keywords') {
+        // In demo orgs, always show competitor/keywords entries
+        return isDemoOrg || featureEnabledForRole('KEYWORD_INTELLIGENCE', currentUserRole);
       }
       return true;
     });
