@@ -13,6 +13,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/constants/features';
 import { getDemoPresetForSlug } from '@/config/demoPresets';
+import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext';
 import { searchApps as searchItunesApps, fetchAppReviews } from '@/utils/itunesReviews';
 import { exportService } from '@/services/export.service';
 import { MainLayout } from '@/layouts';
@@ -159,8 +160,31 @@ const ReviewManagementPage: React.FC = () => {
   };
 
   // Demo preset: auto-select app and load reviews (once)
+  const demoSel = (() => {
+    try { return isDemoOrg ? useDemoSelectedApp() : null } catch { return null }
+  })();
+
   React.useEffect(() => {
     if (!isDemoOrg || selectedApp) return;
+    if (demoSel && demoSel.app && demoSel.country) {
+      const a = demoSel.app;
+      const demoApp: AppSearchResult = {
+        name: a.name,
+        appId: a.appId,
+        developer: a.developer || 'Demo',
+        rating: a.rating ?? 0,
+        reviews: a.reviews ?? 0,
+        icon: a.icon || '',
+        applicationCategory: a.applicationCategory || 'App'
+      };
+      setSelectedCountry(demoSel.country || 'us');
+      setSelectedApp(demoApp);
+      setReviews([]);
+      setCurrentPage(1);
+      setHasMoreReviews(false);
+      fetchReviews(demoApp.appId, 1);
+      return;
+    }
     const preset = getDemoPresetForSlug(organization?.slug);
     if (!preset) return;
     const demoApp: AppSearchResult = {
@@ -179,7 +203,7 @@ const ReviewManagementPage: React.FC = () => {
     setHasMoreReviews(false);
     fetchReviews(demoApp.appId, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoOrg, organization?.slug, selectedApp]);
+  }, [isDemoOrg, organization?.slug, selectedApp, demoSel]);
 
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {

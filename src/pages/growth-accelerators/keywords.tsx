@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Respon
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
+import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext';
 import { getDemoPresetForSlug } from '@/config/demoPresets';
 import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
 import { Navigate } from 'react-router-dom';
@@ -49,6 +50,9 @@ const KeywordsIntelligencePage: React.FC = () => {
     (role?.toLowerCase().includes('aso') ? 'aso_manager' :
     (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
   const { isDemoOrg, organization } = useDemoOrgDetection();
+  const demoSel = (() => {
+    try { return isDemoOrg ? useDemoSelectedApp() : null } catch { return null }
+  })();
   const canAccess = featureEnabledForRole('KEYWORD_INTELLIGENCE', currentUserRole) || isDemoOrg;
   if (!canAccess) return <Navigate to="/dashboard" replace />;
 
@@ -260,19 +264,33 @@ const KeywordsIntelligencePage: React.FC = () => {
   // Demo preset auto-select (no app search needed)
   React.useEffect(() => {
     if (!isDemoOrg || selectedApp) return;
+    if (demoSel && demoSel.app && demoSel.country) {
+      setSelectedCountry(demoSel.country);
+      setSelectedApp({
+        name: demoSel.app.name,
+        appId: demoSel.app.appId,
+        developer: demoSel.app.developer || 'Demo',
+        rating: demoSel.app.rating ?? 0,
+        reviews: demoSel.app.reviews ?? 0,
+        icon: demoSel.app.icon || '',
+        applicationCategory: demoSel.app.applicationCategory || 'App'
+      });
+      return;
+    }
     const preset = getDemoPresetForSlug(organization?.slug);
-    if (!preset) return;
-    setSelectedCountry(preset.country || 'us');
-    setSelectedApp({
-      name: preset.app.name,
-      appId: preset.app.appId,
-      developer: preset.app.developer || 'Demo',
-      rating: preset.app.rating ?? 0,
-      reviews: preset.app.reviews ?? 0,
-      icon: preset.app.icon || '',
-      applicationCategory: preset.app.applicationCategory || 'App'
-    });
-  }, [isDemoOrg, organization?.slug, selectedApp]);
+    if (preset) {
+      setSelectedCountry(preset.country || 'us');
+      setSelectedApp({
+        name: preset.app.name,
+        appId: preset.app.appId,
+        developer: preset.app.developer || 'Demo',
+        rating: preset.app.rating ?? 0,
+        reviews: preset.app.reviews ?? 0,
+        icon: preset.app.icon || '',
+        applicationCategory: preset.app.applicationCategory || 'App'
+      });
+    }
+  }, [isDemoOrg, organization?.slug, selectedApp, demoSel]);
 
   return (
     <MainLayout>

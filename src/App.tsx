@@ -47,6 +47,7 @@ const DemoKeywordInsights = lazy(() => import("./pages/demo-keyword-insights"));
 const ReviewManagement = lazy(() => import("./pages/growth-accelerators/reviews"));
 const ReviewManagementV2 = lazy(() => import("./pages/growth-accelerators/review-management-v2"));
 const KeywordIntelligencePage = lazy(() => import("./pages/growth-accelerators/keywords"));
+import DemoGrowthAcceleratorsLayout from '@/layouts/DemoGrowthAcceleratorsLayout';
 import { ROUTES } from '@/constants/routes';
 const Admin = lazy(() => import("./pages/admin"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
@@ -162,7 +163,7 @@ function App() {
                           />
                           <Route
                             path="/growth-accelerators/reviews"
-                            element={<ProtectedRoute><ReviewManagement /></ProtectedRoute>}
+                            element={<ProtectedRoute><DemoGrowthAcceleratorsLayout><ReviewManagement /></DemoGrowthAcceleratorsLayout></ProtectedRoute>}
                           />
                           <Route
                             path="/growth-accelerators/review-management-v2"
@@ -170,7 +171,7 @@ function App() {
                           />
                           <Route
                             path="/growth-accelerators/keywords"
-                            element={<ProtectedRoute><KeywordIntelligencePage /></ProtectedRoute>}
+                            element={<ProtectedRoute><DemoGrowthAcceleratorsLayout><KeywordIntelligencePage /></DemoGrowthAcceleratorsLayout></ProtectedRoute>}
                           />
                           <Route
                             path="/aso-unified"
