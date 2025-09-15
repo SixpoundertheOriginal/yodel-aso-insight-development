@@ -44,6 +44,7 @@ import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
 import { KpiDataConsistencyTest } from '@/components/KpiDataConsistencyTest';
+import { DashboardAiInsights } from '@/components/DashboardAiInsights';
 
 const OverviewContent: React.FC = () => {
   const contextValue = useAsoData(); // NEW: Get demo flag from context
@@ -402,6 +403,19 @@ const OverviewContent: React.FC = () => {
                       ))}
                     </div>
                   )}
+
+                  {/* AI Insights Section - After KPIs, before Time Series */}
+                  <DashboardAiInsights
+                    metricsData={data}
+                    organizationId={organizationId}
+                    isDemoMode={isDemo}
+                    isSuperAdmin={isSuperAdmin}
+                    filterContext={{
+                      dateRange: { start: '30 days ago', end: 'today' },
+                      trafficSources: [],
+                      selectedApps: []
+                    }}
+                  />
 
                   {/* Time Series Chart */}
                   <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
