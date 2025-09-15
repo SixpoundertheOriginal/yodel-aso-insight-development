@@ -5,7 +5,9 @@ export const DEMO_REPORTING_ROUTES = [
   // Allow Keywords Intelligence in demo mode
   '/growth-accelerators/keywords',
   // Allow Reviews in demo mode
-  '/growth-accelerators/reviews'
+  '/growth-accelerators/reviews',
+  // Re-enable Competitor Overview in demo mode
+  '/growth-accelerators/competitor-overview'
 ] as const;
 
 export type Role =
