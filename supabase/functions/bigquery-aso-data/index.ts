@@ -11,6 +11,33 @@ const DEMO_ORG_ID = Deno.env.get('DEMO_ORG_ID') ?? 'demo-org';
 
 // SECURE Demo Data Service - prevents real client data exposure
 class SecureDemoDataService {
+  // --- Seeded RNG helpers for deterministic demo output ---
+  private static hashString(str: string): number {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^ (h >>> 16)) >>> 0;
+  }
+
+  private static mulberry32(a: number) {
+    return function () {
+      let t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  private static randBetween(seedKey: string, min: number, max: number): number {
+    const seed = this.hashString(seedKey);
+    const rnd = this.mulberry32(seed)();
+    return min + rnd * (max - min);
+  }
+
   private static readonly DEMO_APPS = [
     {
       name: 'DemoApp_ProductivitySuite',
@@ -48,6 +75,27 @@ class SecureDemoDataService {
     { name: 'Google Explore', weight: 0.02, raw: 'Google_Explore' },           // 2% - Android browse
     { name: 'Institutional Purchase', weight: 0.01, raw: 'Institutional_Purchase' } // 1% - Enterprise installs
   ];
+
+  // Per-source behavioral profile to diversify demo outputs
+  private static readonly SOURCE_PROFILES: Record<string, {
+    // impression->download CVR in percentage terms (baseline)
+    imprCvrBase: number;
+    imprCvrJitter: number; // +/- percentage points
+    // product page views as fraction of impressions
+    ppvRatioBase: number;
+    ppvRatioJitter: number; // +/- absolute fraction
+    // weekend multiplier for impressions
+    weekendImprFactor: number; // e.g., 0.9 means -10% on weekends
+  }> = {
+    App_Store_Search: { imprCvrBase: 3.5, imprCvrJitter: 0.4, ppvRatioBase: 0.18, ppvRatioJitter: 0.02, weekendImprFactor: 0.92 },
+    Apple_Search_Ads: { imprCvrBase: 4.6, imprCvrJitter: 0.5, ppvRatioBase: 0.22, ppvRatioJitter: 0.02, weekendImprFactor: 0.98 },
+    App_Store_Browse: { imprCvrBase: 2.6, imprCvrJitter: 0.4, ppvRatioBase: 0.15, ppvRatioJitter: 0.02, weekendImprFactor: 1.02 },
+    App_Referrer: { imprCvrBase: 4.1, imprCvrJitter: 0.6, ppvRatioBase: 0.21, ppvRatioJitter: 0.03, weekendImprFactor: 0.95 },
+    Web_Referrer: { imprCvrBase: 1.9, imprCvrJitter: 0.3, ppvRatioBase: 0.14, ppvRatioJitter: 0.02, weekendImprFactor: 0.97 },
+    Google_Search: { imprCvrBase: 3.2, imprCvrJitter: 0.4, ppvRatioBase: 0.17, ppvRatioJitter: 0.02, weekendImprFactor: 0.93 },
+    Google_Explore: { imprCvrBase: 2.4, imprCvrJitter: 0.4, ppvRatioBase: 0.15, ppvRatioJitter: 0.02, weekendImprFactor: 1.00 },
+    Institutional_Purchase: { imprCvrBase: 6.5, imprCvrJitter: 0.8, ppvRatioBase: 0.25, ppvRatioJitter: 0.03, weekendImprFactor: 1.00 }
+  };
 
   private static readonly COUNTRIES = [
     { code: 'US', weight: 0.45 },
@@ -88,9 +136,9 @@ class SecureDemoDataService {
       currentDate.setDate(currentDate.getDate() + day);
       const dateStr = currentDate.toISOString().split('T')[0];
       
-      // Weekend effect (reduce traffic 20% on weekends)
+      // Weekend indicator
       const dayOfWeek = currentDate.getDay();
-      const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.8 : 1.0;
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
       
       // Growth trend over time
       const growthMultiplier = 1 + (day / days) * 0.15; // 15% growth over period
@@ -100,21 +148,43 @@ class SecureDemoDataService {
         activeSources.forEach(source => {
           activeCountries.forEach(country => {
             
-            // Calculate base metrics with realistic variation
-            const dailyVariation = 0.8 + (Math.random() * 0.4); // ±20% daily variation
-            const impressions = Math.round(
-              app.baseImpressions * 
-              source.weight * 
-              country.weight * 
-              weekendMultiplier * 
-              growthMultiplier * 
+            const seedBase = `${organizationId}|${dateStr}|${app.name}|${source.raw}|${country.code}`;
+            const profile = this.SOURCE_PROFILES[source.raw] || this.SOURCE_PROFILES['App_Store_Search'];
+
+            // Source-specific weekend factor
+            const weekendMultiplier = isWeekend ? profile.weekendImprFactor : 1.0;
+
+            // Daily deterministic variation (±12%)
+            const dailyVariation = this.randBetween(`${seedBase}|var`, 0.88, 1.12);
+
+            // Impressions with growth and variations
+            const impressions = Math.max(0, Math.round(
+              app.baseImpressions *
+              source.weight *
+              country.weight *
+              weekendMultiplier *
+              growthMultiplier *
               dailyVariation
-            );
-            
-            const downloads = Math.round(impressions * (app.conversionRate / 100));
-            const productPageViews = Math.round(downloads * (1.2 + Math.random() * 0.3)); // 120-150% of downloads
+            ));
+
+            // Impression->Download CVR (%) with source bias and jitter
+            const imprCvr = Math.max(0.5, Math.min(12,
+              profile.imprCvrBase + this.randBetween(`${seedBase}|cvr`, -profile.imprCvrJitter, profile.imprCvrJitter)
+            ));
+            const downloads = Math.round(impressions * (imprCvr / 100));
+
+            // Product Page Views as fraction of impressions with source bias and jitter
+            const ppvRatio = Math.max(0.1, Math.min(0.35,
+              profile.ppvRatioBase + this.randBetween(`${seedBase}|ppv`, -profile.ppvRatioJitter, profile.ppvRatioJitter)
+            ));
+            const productPageViews = Math.max(1, Math.round(impressions * ppvRatio));
+
+            // Product Page CVR (%)
             const conversionRate = productPageViews > 0 ? (downloads / productPageViews) * 100 : 0;
-            const revenue = downloads * (2.99 + Math.random() * 7.01); // $2.99-$10.00 per download
+
+            // Revenue: deterministic ARPU in 1.49 - 4.99 range
+            const arpu = this.randBetween(`${seedBase}|arpu`, 1.49, 4.99);
+            const revenue = downloads * arpu;
             
             // Only include if impressions > 100 to avoid noise
             if (impressions > 100) {
