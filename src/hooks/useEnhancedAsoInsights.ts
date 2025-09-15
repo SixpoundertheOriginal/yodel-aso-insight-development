@@ -14,38 +14,10 @@ export const useEnhancedAsoInsights = (
 ) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
-  const ready = true;
   const { isSuperAdmin = false, enabled = false } = options;
   
   // Global kill-switch: hard no-op when AI insights disabled
   const isEnabled = !!enabled && AI_INSIGHTS_ENABLED;
-  
-  // Return early no-op state when disabled - no effects, no network calls
-  if (!isEnabled) {
-    return {
-      // Data
-      insights: [],
-      highPriorityInsights: [],
-      userRequestedInsights: [],
-
-      // State
-      isLoading: false,
-      isGenerating: false,
-      error: null,
-
-      // Actions - all no-ops
-      generateConversionAnalysis: async () => [],
-      generateImpressionTrends: async () => [],
-      generateTrafficSourceAnalysis: async () => [],
-      generateKeywordOptimization: async () => [],
-      generateSeasonalAnalysis: async () => [],
-      generateComprehensiveInsights: async () => [],
-      refetchInsights: async () => {},
-
-      // Utilities
-      hasInsightType: () => false
-    };
-  }
 
   // Handle missing organization context gracefully
   const hasValidOrganization = !!(organizationId && organizationId.trim());
@@ -92,7 +64,7 @@ export const useEnhancedAsoInsights = (
         created_at: insight.created_at
       })) as EnhancedAsoInsight[];
     },
-    enabled: isEnabled && hasValidOrganization && ready,
+    enabled: isEnabled && hasValidOrganization,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,
@@ -103,6 +75,11 @@ export const useEnhancedAsoInsights = (
     insightType: string,
     userRequested: boolean = true
   ): Promise<EnhancedAsoInsight[]> => {
+    // If feature disabled, do nothing
+    if (!isEnabled) {
+      return [];
+    }
+
     // Super admin without organization - return empty
     if (isSuperAdmin && !organizationId) {
       return [];
@@ -200,47 +177,30 @@ export const useEnhancedAsoInsights = (
     insight => insight.is_user_requested
   );
 
-  // Return empty state for users without valid organization context
-  if (shouldReturnEmpty) {
-    return {
-      insights: [],
-      highPriorityInsights: [],
-      userRequestedInsights: [],
-      isLoading: false,
-      isGenerating: false,
-      error: null,
-      generateConversionAnalysis: async () => [],
-      generateImpressionTrends: async () => [],
-      generateTrafficSourceAnalysis: async () => [],
-      generateKeywordOptimization: async () => [],
-      generateSeasonalAnalysis: async () => [],
-      generateComprehensiveInsights: async () => [],
-      refetchInsights: async () => {},
-      hasInsightType: () => false
-    };
-  }
+  // Normalize outputs based on flags without altering hook order
+  const gatedEmpty = !isEnabled || shouldReturnEmpty;
 
   return {
     // Data
-    insights: existingInsights,
-    highPriorityInsights,
-    userRequestedInsights,
+    insights: gatedEmpty ? [] : existingInsights,
+    highPriorityInsights: gatedEmpty ? [] : highPriorityInsights,
+    userRequestedInsights: gatedEmpty ? [] : userRequestedInsights,
 
     // State
-    isLoading,
-    isGenerating,
-    error,
+    isLoading: gatedEmpty ? false : isLoading,
+    isGenerating: gatedEmpty ? false : isGenerating,
+    error: gatedEmpty ? null : error,
 
     // Actions
-    generateConversionAnalysis,
-    generateImpressionTrends,
-    generateTrafficSourceAnalysis,
-    generateKeywordOptimization,
-    generateSeasonalAnalysis,
-    generateComprehensiveInsights,
-    refetchInsights: refetch,
+    generateConversionAnalysis: gatedEmpty ? (async () => []) : generateConversionAnalysis,
+    generateImpressionTrends: gatedEmpty ? (async () => []) : generateImpressionTrends,
+    generateTrafficSourceAnalysis: gatedEmpty ? (async () => []) : generateTrafficSourceAnalysis,
+    generateKeywordOptimization: gatedEmpty ? (async () => []) : generateKeywordOptimization,
+    generateSeasonalAnalysis: gatedEmpty ? (async () => []) : generateSeasonalAnalysis,
+    generateComprehensiveInsights: gatedEmpty ? (async () => []) : generateComprehensiveInsights,
+    refetchInsights: gatedEmpty ? (async () => {}) : refetch,
 
     // Utilities
-    hasInsightType
+    hasInsightType: gatedEmpty ? (() => false) : hasInsightType
   };
 };
