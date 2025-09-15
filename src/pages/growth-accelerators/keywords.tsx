@@ -17,7 +17,7 @@ import { getDemoPresetForSlug } from '@/config/demoPresets';
 import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
 import { Navigate } from 'react-router-dom';
 import { searchApps as searchItunesApps } from '@/utils/itunesReviews';
-import { keywordRankingService, keywordVisibilityCalculatorService } from '@/services';
+import { keywordRankingService } from '@/services';
 import { supabase } from '@/integrations/supabase/client';
 import { getDemoKeywordsPreset } from '@/config/demoKeywords';
 import { useSuperAdmin } from '@/context/SuperAdminContext';

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection'
 import { DemoSelectedAppProvider, useDemoSelectedApp } from '@/context/DemoSelectedAppContext'
-import { DemoAppSelectorOverlay } from '@/components/Demo/DemoAppSelectorOverlay'
+import { DemoAppSelectorOverlay } from '@/components/demo/DemoAppSelectorOverlay'
 
 const Inner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { app } = useDemoSelectedApp()
