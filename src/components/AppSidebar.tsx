@@ -9,6 +9,7 @@ import {
   Home,
   Shield,
   User,
+  Users,
   Settings as SettingsIcon,
   Smartphone,
   Database,
