@@ -10,10 +10,17 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Respon
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart'
 import { demoDownloadsNextVsHM } from '@/config/demoCompetitorDownloads'
 import { demoCompetitorKeywords } from '@/config/demoCompetitorKeywords'
-import { Search, Users } from 'lucide-react'
+import { Search, Users, BarChart3 } from 'lucide-react'
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal'
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
+import { 
+  PremiumCard, 
+  PremiumCardHeader, 
+  PremiumCardContent, 
+  PremiumTypography 
+} from '@/components/ui/premium'
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 
 type AppLite = {
   name: string
@@ -128,18 +135,23 @@ const CompetitorOverviewPage: React.FC = () => {
           </div>
 
           {/* Selection */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-base">Selection</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <PremiumCard variant="glow" intensity="medium" glowColor="blue" className="overflow-hidden">
+            <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
+              <div className="flex items-center justify-between">
+                <PremiumTypography.SectionTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-400" />
+                  Competitor Selection
+                </PremiumTypography.SectionTitle>
+              </div>
+            </PremiumCardHeader>
+            <PremiumCardContent>
               <div className="flex flex-wrap gap-3 items-center">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Anchor:</span>
+                  <span className="text-sm text-muted-foreground">Anchor App:</span>
                   {anchor ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-2 py-1 border border-zinc-700 rounded-lg bg-zinc-900/50">
                       {anchor.icon && <img src={anchor.icon} className="w-6 h-6 rounded"/>}
-                      <span className="font-medium">{anchor.name}</span>
+                      <span className="font-medium text-foreground">{anchor.name}</span>
                       <Badge variant="secondary" className="text-[10px]">{(country||'US').toUpperCase()}</Badge>
                     </div>
                   ) : (
@@ -149,25 +161,29 @@ const CompetitorOverviewPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Competitors:</span>
                   {competitors.length ? competitors.map(c => (
-                    <div key={c.appId} className="flex items-center gap-2 px-2 py-1 border border-zinc-700 rounded">
+                    <div key={c.appId} className="flex items-center gap-2 px-2 py-1 border border-zinc-700 rounded-lg bg-zinc-900/50">
                       {c.icon && <img src={c.icon} className="w-5 h-5 rounded"/>}
-                      <span className="text-sm">{c.name}</span>
+                      <span className="text-sm text-foreground">{c.name}</span>
                     </div>
                   )) : <span className="text-sm">None</span>}
                 </div>
-                <Button variant="outline" size="sm" onClick={openPicker}><Users className="w-4 h-4 mr-2"/>Choose Competitors</Button>
-                <Button onClick={discoverTop10} disabled={!anchor || !country || loadingDiscovery}><Search className="w-4 h-4 mr-2"/>{loadingDiscovery ? 'Discovering...' : 'Discover Top‑10'}</Button>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button variant="outline" size="sm" onClick={openPicker}><Users className="w-4 h-4 mr-2"/>Choose Competitors</Button>
+                  <Button onClick={discoverTop10} disabled={!anchor || !country || loadingDiscovery}><Search className="w-4 h-4 mr-2"/>{loadingDiscovery ? 'Discovering...' : 'Discover Top‑10'}</Button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </PremiumCardContent>
+          </PremiumCard>
 
           {/* Top‑10 Coverage card removed as requested */}
 
           {/* Demo Downloads Trend: Next vs H&M */}
           {isDemoOrg && (
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader><CardTitle className="text-base">Downloads (Demo): Next vs H&M</CardTitle></CardHeader>
-              <CardContent>
+            <PremiumCard variant="glow" intensity="strong" glowColor="orange" className="overflow-hidden">
+              <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
+                <PremiumTypography.SectionTitle gradient="orange">Downloads (Demo): Next vs H&M</PremiumTypography.SectionTitle>
+              </PremiumCardHeader>
+              <PremiumCardContent className="p-6">
                 <ChartContainer config={{ Next: { label: 'Next', color: '#60a5fa' }, HM: { label: 'H&M', color: '#ef4444' } }}>
                   <ComposedChart data={downloadsData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -179,43 +195,43 @@ const CompetitorOverviewPage: React.FC = () => {
                     <Line type="monotone" dataKey="HM" stroke="var(--color-HM)" dot={false} />
                   </ComposedChart>
                 </ChartContainer>
-              </CardContent>
-            </Card>
+              </PremiumCardContent>
+            </PremiumCard>
           )}
 
           {/* Demo Competitor Keywords: H&M advantage */}
           {isDemoOrg && (
-            <Card className="bg-zinc-900/50 border-zinc-800">
-              <CardHeader><CardTitle className="text-base">Competitor Keywords (Demo): H&M strong vs Next</CardTitle></CardHeader>
-              <CardContent>
-                <div className="border rounded-md overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-zinc-900/60 backdrop-blur text-zinc-300">
-                      <tr>
-                        <th className="text-left p-2">Keyword</th>
-                        <th className="text-left p-2">Popularity</th>
-                        <th className="text-left p-2">Impressions</th>
-                        <th className="text-left p-2">Results</th>
-                        <th className="text-left p-2">Next Rank</th>
-                        <th className="text-left p-2">H&M Rank</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {compKwData.map(row => (
-                        <tr key={row.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
-                          <td className="p-2">{row.keyword}</td>
-                          <td className="p-2">{row.popularity}</td>
-                          <td className="p-2">{row.impressions.toLocaleString()}</td>
-                          <td className="p-2">{row.results.toLocaleString()}</td>
-                          <td className="p-2">{row.nextRank ?? '—'}</td>
-                          <td className="p-2 font-medium text-emerald-400">{row.hmRank}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <PremiumCard variant="elevated" intensity="medium" className="overflow-hidden">
+              <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
+                <PremiumTypography.SectionTitle>Competitor Keywords (Demo): H&M strong vs Next</PremiumTypography.SectionTitle>
+              </PremiumCardHeader>
+              <PremiumCardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Keyword</TableHead>
+                      <TableHead>Popularity</TableHead>
+                      <TableHead>Impressions</TableHead>
+                      <TableHead>Results</TableHead>
+                      <TableHead>Next Rank</TableHead>
+                      <TableHead>H&M Rank</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {compKwData.map(row => (
+                      <TableRow key={row.keyword}>
+                        <TableCell className="font-medium">{row.keyword}</TableCell>
+                        <TableCell>{row.popularity}</TableCell>
+                        <TableCell>{row.impressions.toLocaleString()}</TableCell>
+                        <TableCell>{row.results.toLocaleString()}</TableCell>
+                        <TableCell>{row.nextRank ?? '—'}</TableCell>
+                        <TableCell className="text-emerald-400 font-medium">{row.hmRank}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </PremiumCardContent>
+            </PremiumCard>
           )}
 
           {/* Competitor picker modal */}
