@@ -660,7 +660,10 @@ function transformBigQueryToAsoData(
 
   // Demo-mode normalization: replace sentinel or extreme deltas with realistic positive ranges
   if (meta?.isDemo) {
-    const seedBase = `${stableFilters.organizationId}|${(stableFilters.dateRange as any).from}|${(stableFilters.dateRange as any).to}`;
+    const orgId = meta?.queryParams?.organizationId || 'demo-org';
+    const from = meta?.queryParams?.dateRange?.from || (bigQueryData[0]?.date ?? 'start');
+    const to = meta?.queryParams?.dateRange?.to || (bigQueryData[bigQueryData.length - 1]?.date ?? 'end');
+    const seedBase = `${orgId}|${from}|${to}`;
 
     // Summary ranges: tuned for believable demo uplift
     summary = {
