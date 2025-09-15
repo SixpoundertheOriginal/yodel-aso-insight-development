@@ -73,7 +73,7 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [rows, setRows] = useState<KeywordRow[]>([]);
-  const [topOneOnly, setTopOneOnly] = useState(false);
+  const [topTenOnly, setTopTenOnly] = useState(false);
 
   // Search apps
   const handleSearch = async () => {
@@ -194,7 +194,7 @@ const KeywordsIntelligencePage: React.FC = () => {
   }, [rows]);
 
   const rankDistribution = useMemo(() => {
-    const source = topOneOnly ? rows.filter(r => r.position === 1) : rows;
+    const source = topTenOnly ? rows.filter(r => (r.position ?? 999) <= 10) : rows;
     const buckets = [
       { label: '1', from: 1, to: 1 },
       { label: '2-5', from: 2, to: 5 },
@@ -206,10 +206,10 @@ const KeywordsIntelligencePage: React.FC = () => {
     return buckets.map(b => ({ bucket: b.label, count: source.filter(r => {
       const p = r.position ?? 9999; return p >= b.from && p <= b.to;
     }).length }));
-  }, [rows, topOneOnly]);
+  }, [rows, topTenOnly]);
 
   const exportCsv = () => {
-    const src = topOneOnly ? rows.filter(r => r.position === 1) : rows;
+    const src = topTenOnly ? rows.filter(r => (r.position ?? 999) <= 10) : rows;
     if (src.length === 0) { toast.error('Nothing to export'); return; }
     const header = 'keyword,position,volume,confidence,trend,last_checked\n';
     const body = src.map(r => [
@@ -228,7 +228,7 @@ const KeywordsIntelligencePage: React.FC = () => {
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
-  const discoverTopOne = async () => {
+  const discoverTopTen = async () => {
     if (!selectedApp) { toast.error('Select an app first'); return; }
     const nameSeeds = (selectedApp.name || '').split(/\s+/).filter(Boolean).slice(0, 3);
     const devSeeds = (selectedApp.developer || '').split(/\s+/).filter(Boolean).slice(0, 2);
@@ -236,22 +236,21 @@ const KeywordsIntelligencePage: React.FC = () => {
     if (seeds.length === 0) { toast.error('No seeds available for discovery'); return; }
     try {
       const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-        body: { op: 'serp-top1', cc: selectedCountry, appId: selectedApp.appId, seeds, maxCandidates: 120, maxPages: 8 }
+        body: { op: 'serp-topN', cc: selectedCountry, appId: selectedApp.appId, seeds, maxCandidates: 150, maxPages: 8, rankThreshold: 10 }
       });
       if (error) throw error;
-      const kws: string[] = Array.isArray(data?.keywords) ? data.keywords : [];
-      if (kws.length === 0) { toast.info('No Top-1 keywords discovered'); return; }
-      // Insert/override rows as Top-1
-      const newRows: KeywordRow[] = kws.map(k => ({ keyword: k, position: 1, volume: 'Low', confidence: 'actual', trend: 'stable', lastChecked: new Date() }));
+      const res: Array<{ keyword: string; rank: number }> = Array.isArray(data?.results) ? data.results : [];
+      if (res.length === 0) { toast.info('No Top-10 keywords discovered'); return; }
+      const newRows: KeywordRow[] = res.map(h => ({ keyword: h.keyword, position: h.rank, volume: 'Low', confidence: 'actual', trend: 'stable', lastChecked: new Date() }));
       setRows(prev => {
         const map = new Map<string, KeywordRow>();
         prev.forEach(r => map.set(r.keyword, r));
         newRows.forEach(r => map.set(r.keyword, r));
         return Array.from(map.values()).sort((a,b) => (a.position ?? 999) - (b.position ?? 999));
       });
-      setKeywords(prev => Array.from(new Set([...(prev || []), ...kws])).slice(0, 200));
-      setTopOneOnly(true);
-      toast.success(`Discovered ${kws.length} Top-1 keywords`);
+      setKeywords(prev => Array.from(new Set([...(prev || []), ...res.map(x=>x.keyword)])).slice(0, 300));
+      setTopTenOnly(true);
+      toast.success(`Discovered ${res.length} Top-10 keywords`);
     } catch (e: any) {
       toast.error(e?.message || 'Discovery failed');
     }
@@ -375,8 +374,8 @@ const KeywordsIntelligencePage: React.FC = () => {
                   }}
                 />
                 <YodelToolbarSpacer />
-                <Button variant={topOneOnly ? 'default' : 'outline'} onClick={() => setTopOneOnly(v => !v)} title="Show only Top-1 keywords"><Filter className="w-4 h-4 mr-2" /> {topOneOnly ? 'Top-1: ON' : 'Top-1: OFF'}</Button>
-                <Button variant="outline" onClick={discoverTopOne} title="Discover keywords where this app ranks #1"><Trophy className="w-4 h-4 mr-2" /> Discover Top-1</Button>
+                <Button variant={topTenOnly ? 'default' : 'outline'} onClick={() => setTopTenOnly(v => !v)} title="Show only Top-10 keywords"><Filter className="w-4 h-4 mr-2" /> {topTenOnly ? 'Top-10: ON' : 'Top-10: OFF'}</Button>
+                <Button variant="outline" onClick={discoverTopTen} title="Discover keywords where this app ranks Top 10"><Trophy className="w-4 h-4 mr-2" /> Discover Top-10</Button>
                 <Button onClick={analyze} disabled={analyzing}><Rocket className="w-4 h-4 mr-2" /> {analyzing? 'Analyzing...' : 'Analyze'}</Button>
                 <Button variant="outline" onClick={exportCsv} disabled={rows.length===0}><Download className="w-4 h-4 mr-2" /> Export</Button>
               </YodelToolbar>
@@ -427,7 +426,7 @@ const KeywordsIntelligencePage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                {(topOneOnly ? rows.filter(r => r.position === 1) : rows).map(r => (
+                {(topTenOnly ? rows.filter(r => (r.position ?? 999) <= 10) : rows).map(r => (
                   <tr key={r.keyword} className="border-t border-zinc-800">
                     <td className="p-2">{r.keyword}</td>
                     <td className="p-2">{r.position ?? '—'}</td>

@@ -230,13 +230,15 @@ serve(async (req) => {
     }
 
     // Discover Top-1 keywords using SERP (best-effort suggestions expansion)
-    if (operation === 'serp-top1' || requestData.op === 'serp-top1') {
+    if (operation === 'serp-top1' || requestData.op === 'serp-top1' || operation === 'serp-topN' || requestData.op === 'serp-topN') {
       let cc = (requestData.cc || requestData.country || 'us').toString().toLowerCase();
       const appId = requestData.appId ? String(requestData.appId) : '';
       const seeds = Array.isArray(requestData.seeds) ? requestData.seeds.map((s: any) => String(s)).filter(Boolean) : [];
       const maxCandidates = Math.min(parseInt(requestData.maxCandidates) || 150, 300);
       const maxPagesRaw = parseInt(requestData.maxPages);
       const maxPages = isNaN(maxPagesRaw) ? 5 : Math.max(1, Math.min(10, maxPagesRaw));
+      const rankThresholdRaw = parseInt(requestData.rankThreshold);
+      const rankThreshold = isNaN(rankThresholdRaw) ? (operation === 'serp-top1' ? 1 : 10) : Math.max(1, Math.min(50, rankThresholdRaw));
 
       if (!appId) return responseBuilder.error('Missing required field: appId', 400);
       if (!/^[a-z]{2}$/.test(cc)) cc = 'us';
@@ -285,19 +287,19 @@ serve(async (req) => {
         }
 
         const candidates = Array.from(candSet).slice(0, maxCandidates);
-        const top1: string[] = [];
+        const hits: Array<{ keyword: string; rank: number }> = [];
 
         for (const term of candidates) {
           try {
-            const serp = await serpService.fetchSerp({ cc, term, limit: 30, maxPages });
+            const serp = await serpService.fetchSerp({ cc, term, limit: 50, maxPages });
             const hit = serp.items.find(it => it.appId === appId);
-            if (hit && hit.rank === 1) {
-              top1.push(term);
+            if (hit && hit.rank <= rankThreshold) {
+              hits.push({ keyword: term, rank: hit.rank });
             }
           } catch {
             // ignore fails per term
           }
-          if (top1.length >= 100) break; // safety cap
+          if (hits.length >= 150) break; // safety cap
           await new Promise(r => setTimeout(r, 80));
         }
 
@@ -307,7 +309,9 @@ serve(async (req) => {
           seedsUsed: seeds.slice(0, 10),
           candidatesScanned: candidates.length,
           maxPages,
-          keywords: top1
+          rankThreshold,
+          results: hits,
+          keywords: hits.map(h => h.keyword)
         });
       } catch (e) {
         console.error(`❌ [${requestId}] SERP top1 discovery failed:`, e);
