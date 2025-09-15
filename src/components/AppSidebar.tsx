@@ -293,8 +293,12 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
         // In demo orgs, always show Reviews entries
         return isDemoOrg || featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
       }
-      if (item.url === '/growth-accelerators/competitor-overview' || item.url === '/growth-accelerators/keywords') {
-        // In demo orgs, always show competitor/keywords entries
+      if (item.url === '/growth-accelerators/competitor-overview') {
+        // Hide competitor overview in demo; otherwise require feature
+        return !isDemoOrg && featureEnabledForRole('KEYWORD_INTELLIGENCE', currentUserRole);
+      }
+      if (item.url === '/growth-accelerators/keywords') {
+        // Show keywords in demo or when feature is enabled
         return isDemoOrg || featureEnabledForRole('KEYWORD_INTELLIGENCE', currentUserRole);
       }
       return true;

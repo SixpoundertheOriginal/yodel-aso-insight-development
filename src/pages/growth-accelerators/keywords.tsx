@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { MainLayout } from '@/layouts';
-import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
+import { YodelCard, YodelCardHeader, YodelCardContent, MetricStat, EmptyState } from '@/components/ui/design-system';
 import { YodelToolbar, YodelToolbarSpacer } from '@/components/ui/design-system';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Rocket, Download, BarChart3, Eye, Filter, Trophy } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from 'recharts';
+import { Search, Rocket, Download, BarChart3, Eye, Filter, Trophy, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
@@ -18,9 +19,11 @@ import { Navigate } from 'react-router-dom';
 import { searchApps as searchItunesApps } from '@/utils/itunesReviews';
 import { keywordRankingService, keywordVisibilityCalculatorService } from '@/services';
 import { supabase } from '@/integrations/supabase/client';
+import { getDemoKeywordsPreset } from '@/config/demoKeywords';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import type { ScrapedMetadata } from '@/types/aso';
+import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 
 type AppSearchResult = {
   name: string;
@@ -74,6 +77,58 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [rows, setRows] = useState<KeywordRow[]>([]);
   const [topTenOnly, setTopTenOnly] = useState(false);
+  const [appPickerOpen, setAppPickerOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<'keyword' | 'position' | 'volume' | 'confidence' | 'trend' | 'lastChecked'>('position');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const volumeRank = (v: KeywordRow['volume']) => (v === 'High' ? 3 : v === 'Medium' ? 2 : 1);
+  const trendRank = (t: KeywordRow['trend']) => (t === 'up' ? 3 : t === 'stable' ? 2 : 1);
+
+  const displayedRows = useMemo(() => {
+    const base = topTenOnly ? rows.filter(r => (r.position ?? 999) <= 10) : rows.slice();
+    base.sort((a, b) => {
+      let av: number | string = 0;
+      let bv: number | string = 0;
+      switch (sortKey) {
+        case 'keyword': av = a.keyword; bv = b.keyword; break;
+        case 'position': av = a.position ?? 9999; bv = b.position ?? 9999; break;
+        case 'volume': av = volumeRank(a.volume); bv = volumeRank(b.volume); break;
+        case 'confidence': av = a.confidence; bv = b.confidence; break;
+        case 'trend': av = trendRank(a.trend); bv = trendRank(b.trend); break;
+        case 'lastChecked': av = a.lastChecked ? a.lastChecked.getTime() : 0; bv = b.lastChecked ? b.lastChecked.getTime() : 0; break;
+      }
+      if (av < (bv as any)) return sortDir === 'asc' ? -1 : 1;
+      if (av > (bv as any)) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return base;
+  }, [rows, topTenOnly, sortKey, sortDir]);
+
+  const headerClick = (key: typeof sortKey) => {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const PositionPill: React.FC<{ value: number | null }> = ({ value }) => {
+    if (value == null) return <span className="px-2 py-0.5 text-xs rounded bg-zinc-800 text-zinc-300">—</span>;
+    const cls = value <= 3 ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
+      : value <= 10 ? 'bg-sky-600/20 text-sky-400 border-sky-500/30'
+      : 'bg-zinc-800 text-zinc-300 border-zinc-700';
+    return <span className={`px-2 py-0.5 text-xs rounded border ${cls}`}>{value}</span>;
+  };
+
+  const VolumePill: React.FC<{ v: KeywordRow['volume'] }> = ({ v }) => {
+    const cls = v === 'High' ? 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+      : v === 'Medium' ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+      : 'bg-zinc-800 text-zinc-300 border-zinc-700';
+    return <span className={`px-2 py-0.5 text-xs rounded border ${cls}`}>{v}</span>;
+  };
+
+  const TrendCell: React.FC<{ t: KeywordRow['trend'] }> = ({ t }) => {
+    if (t === 'up') return <span className="inline-flex items-center text-emerald-400 text-xs"><ArrowUp className="w-3 h-3 mr-1"/>Up</span>;
+    if (t === 'down') return <span className="inline-flex items-center text-rose-400 text-xs"><ArrowDown className="w-3 h-3 mr-1"/>Down</span>;
+    return <span className="inline-flex items-center text-zinc-400 text-xs"><Minus className="w-3 h-3 mr-1"/>Stable</span>;
+  };
 
   // Search apps
   const handleSearch = async () => {
@@ -97,6 +152,22 @@ const KeywordsIntelligencePage: React.FC = () => {
     setSelectedApp(app);
     setKeywords([]);
     setRows([]);
+  };
+
+  const handleAppPicked = (apps: any[] | ScrapedMetadata | undefined) => {
+    const picked = Array.isArray(apps) ? apps[0] : (apps as any);
+    if (!picked) return;
+    const normalized: AppSearchResult = {
+      name: picked.name,
+      appId: picked.appId,
+      developer: picked.developer || 'Unknown Developer',
+      rating: picked.rating || 0,
+      reviews: picked.reviews || 0,
+      icon: picked.icon || '',
+      applicationCategory: picked.applicationCategory || 'App'
+    };
+    selectApp(normalized);
+    setAppPickerOpen(false);
   };
 
   // Keywords helpers
@@ -256,6 +327,45 @@ const KeywordsIntelligencePage: React.FC = () => {
     }
   };
 
+  // Populate demo keywords on demand
+  const populateDemoKeywords = () => {
+    if (!isDemoOrg) { toast.error('Demo data is only available in demo mode'); return; }
+    const preset = getDemoKeywordsPreset(organization?.slug);
+    if (!preset) { toast.error('No demo dataset configured for this organization'); return; }
+    // Ensure the Next demo app is selected; if not, auto-select it for demo convenience
+    const targetAppId = selectedApp?.appId || demoSel?.app?.appId;
+    if (targetAppId !== preset.appId) {
+      const nextApp = {
+        name: 'Next: Shop Fashion & Homeware',
+        appId: preset.appId,
+        developer: 'NEXT Retail Ltd',
+        rating: 0,
+        reviews: 0,
+        icon: '',
+        applicationCategory: 'Shopping'
+      } as AppSearchResult;
+      setSelectedApp(nextApp);
+    }
+    const mapVolume = (pop: number): 'Low' | 'Medium' | 'High' => {
+      if (pop >= 50) return 'High';
+      if (pop >= 30) return 'Medium';
+      return 'Low';
+    };
+    const now = new Date();
+    const demoRows: KeywordRow[] = preset.rows.map(r => ({
+      keyword: r.keyword,
+      position: r.rank,
+      volume: mapVolume(r.popularity),
+      confidence: 'actual',
+      trend: r.rank <= 3 ? 'up' : (r.rank > 10 ? 'down' : 'stable'),
+      lastChecked: now,
+    }));
+    setRows(demoRows);
+    setKeywords(preset.rows.map(r => r.keyword));
+    setTopTenOnly(false);
+    toast.success('Loaded demo Top Install Keywords');
+  };
+
   const ccToFlag = (cc: string) => {
     try { const up = cc.toUpperCase(); const cps = [...up].map(c => 127397 + c.charCodeAt(0)); return String.fromCodePoint(...cps); } catch { return cc; }
   };
@@ -359,6 +469,20 @@ const KeywordsIntelligencePage: React.FC = () => {
               </div>
             </YodelCardHeader>
             <YodelCardContent className="space-y-4">
+              {/* Context controls: market + change app */}
+              <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md">
+                <div className="text-xs text-muted-foreground">Market</div>
+                <Select value={selectedCountry} onValueChange={(v)=>{ setSelectedCountry(v); setRows([]); }}>
+                  <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="us">🇺🇸 US</SelectItem>
+                    <SelectItem value="gb">🇬🇧 UK</SelectItem>
+                    <SelectItem value="ca">🇨🇦 CA</SelectItem>
+                    <SelectItem value="au">🇦🇺 AU</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={()=>setAppPickerOpen(true)} className="h-8 text-sm">Change App</Button>
+              </div>
               <YodelToolbar>
                 <Input
                   placeholder="Enter keywords (comma or newline separated) and press Enter or Analyze"
@@ -375,7 +499,12 @@ const KeywordsIntelligencePage: React.FC = () => {
                 />
                 <YodelToolbarSpacer />
                 <Button variant={topTenOnly ? 'default' : 'outline'} onClick={() => setTopTenOnly(v => !v)} title="Show only Top-10 keywords"><Filter className="w-4 h-4 mr-2" /> {topTenOnly ? 'Top-10: ON' : 'Top-10: OFF'}</Button>
-                <Button variant="outline" onClick={discoverTopTen} title="Discover keywords where this app ranks Top 10"><Trophy className="w-4 h-4 mr-2" /> Discover Top-10</Button>
+                <Button variant="outline" onClick={discoverTopTen} title="Discover keywords where this app ranks Top 10"><Trophy className="w-4 h-4 mr-2" /> Discover Top‑10</Button>
+                {isDemoOrg && (
+                  <Button variant="outline" onClick={populateDemoKeywords} title="Load demo Top Install Keywords">
+                    Top Install Keywords
+                  </Button>
+                )}
                 <Button onClick={analyze} disabled={analyzing}><Rocket className="w-4 h-4 mr-2" /> {analyzing? 'Analyzing...' : 'Analyze'}</Button>
                 <Button variant="outline" onClick={exportCsv} disabled={rows.length===0}><Download className="w-4 h-4 mr-2" /> Export</Button>
               </YodelToolbar>
@@ -391,53 +520,70 @@ const KeywordsIntelligencePage: React.FC = () => {
 
               {/* Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"><div className="text-xs text-muted-foreground">Keywords</div><div className="text-xl font-semibold">{summary.total}</div></div>
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"><div className="text-xs text-muted-foreground">Avg Position</div><div className="text-xl font-semibold">{summary.avg}</div></div>
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"><div className="text-xs text-muted-foreground">Top 10 %</div><div className="text-xl font-semibold">{summary.top10Pct}%</div></div>
+                <MetricStat label="Keywords" value={summary.total.toLocaleString()} />
+                <MetricStat label="Avg Position" value={summary.avg} />
+                <MetricStat label="Top‑10 %" value={`${summary.top10Pct}%`} />
               </div>
 
               {/* Chart */}
               <div className="border rounded-md p-3 bg-zinc-900/40">
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Rank distribution</h4>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={rankDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="bucket" />
-                      <YAxis allowDecimals={false} />
-                      <RTooltip />
-                      <Bar dataKey="count" fill="#60a5fa" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer config={{ count: { label: 'Keywords', color: 'hsl(var(--primary))' } }}>
+                  <BarChart data={rankDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="bucket" />
+                    <YAxis allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="count">
+                      {rankDistribution.map((entry, index) => {
+                        const COLORS = ['#22c55e', '#60a5fa', '#0ea5e9', '#f59e0b', '#ef4444', '#a3a3a3'];
+                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
               </div>
 
               {/* Table */}
               <div className="border rounded-md overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-zinc-900/50 text-zinc-300">
+                  <thead className="sticky top-0 bg-zinc-900/60 backdrop-blur text-zinc-300">
                     <tr>
-                      <th className="text-left p-2">Keyword</th>
-                      <th className="text-left p-2">Position</th>
-                      <th className="text-left p-2">Volume</th>
-                      <th className="text-left p-2">Confidence</th>
-                      <th className="text-left p-2">Trend</th>
-                      <th className="text-left p-2">Last Checked</th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('keyword')}>
+                        <span className="inline-flex items-center gap-1">Keyword {sortKey==='keyword' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('position')}>
+                        <span className="inline-flex items-center gap-1">Position {sortKey==='position' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('volume')}>
+                        <span className="inline-flex items-center gap-1">Volume {sortKey==='volume' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('confidence')}>
+                        <span className="inline-flex items-center gap-1">Confidence {sortKey==='confidence' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('trend')}>
+                        <span className="inline-flex items-center gap-1">Trend {sortKey==='trend' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
+                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('lastChecked')}>
+                        <span className="inline-flex items-center gap-1">Last Checked {sortKey==='lastChecked' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                {(topTenOnly ? rows.filter(r => (r.position ?? 999) <= 10) : rows).map(r => (
-                  <tr key={r.keyword} className="border-t border-zinc-800">
-                    <td className="p-2">{r.keyword}</td>
-                    <td className="p-2">{r.position ?? '—'}</td>
-                    <td className="p-2">{r.volume}</td>
-                    <td className="p-2 capitalize">{r.confidence}</td>
-                        <td className="p-2 capitalize">{r.trend}</td>
+                    {displayedRows.map(r => (
+                      <tr key={r.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                        <td className="p-2">{r.keyword}</td>
+                        <td className="p-2"><PositionPill value={r.position} /></td>
+                        <td className="p-2"><VolumePill v={r.volume} /></td>
+                        <td className="p-2 capitalize">
+                          <span className={`px-2 py-0.5 text-xs rounded border ${r.confidence === 'actual' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>{r.confidence}</span>
+                        </td>
+                        <td className="p-2"><TrendCell t={r.trend} /></td>
                         <td className="p-2">{r.lastChecked ? new Date(r.lastChecked).toLocaleString() : '—'}</td>
                       </tr>
                     ))}
                     {rows.length === 0 && (
-                      <tr><td className="p-6 text-center text-muted-foreground" colSpan={6}>No results yet. Add keywords and run Analyze.</td></tr>
+                      <tr><td className="p-6" colSpan={6}><EmptyState title="No results yet" description="Enter keywords and press Analyze, or try Discover Top‑10." /></td></tr>
                     )}
                   </tbody>
                 </table>
@@ -446,6 +592,20 @@ const KeywordsIntelligencePage: React.FC = () => {
           </YodelCard>
         )}
       </div>
+      {/* App picker modal */}
+      {appPickerOpen && (
+        <AppSelectionModal
+          isOpen={appPickerOpen}
+          onClose={()=>setAppPickerOpen(false)}
+          candidates={[]}
+          onSelect={(app)=> handleAppPicked(app as any)}
+          searchTerm={''}
+          selectMode="single"
+          maxSelections={1}
+          selectedApps={selectedApp ? [selectedApp as any] : []}
+          searchCountry={selectedCountry}
+        />
+      )}
     </MainLayout>
   );
 };

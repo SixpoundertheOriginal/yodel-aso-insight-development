@@ -139,13 +139,25 @@ class DirectItunesService {
 
   private buildSearchUrl(term: string, config: DirectSearchConfig): string {
     const params = new URLSearchParams({
-      term: encodeURIComponent(term),
-      country: config.country || 'us',
+      // Let URLSearchParams handle encoding exactly once
+      term,
+      country: (config.country || 'us').toLowerCase(),
       entity: 'software',
-      limit: (config.limit || 25).toString()
+      limit: String(config.limit || 25),
     });
-
     return `${this.baseUrl}?${params.toString()}`;
+  }
+
+  /**
+   * Direct lookup by App Store id (adamId)
+   */
+  async lookupById(id: string, config: { country?: string }): Promise<ScrapedMetadata> {
+    const url = `https://itunes.apple.com/lookup?id=${id}&country=${(config.country || 'us').toLowerCase()}`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'ASO-Insights-Platform/Lookup' } });
+    if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
+    const data = await res.json();
+    if (!data.results || !data.results[0]) throw new Error('No app found for id');
+    return this.transformItunesResult(data.results[0]);
   }
 
   private transformItunesResult(app: any): ScrapedMetadata {

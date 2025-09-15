@@ -179,6 +179,7 @@ const CompetitorOverviewPage: React.FC = () => {
               maxSelections={5}
               selectedApps={competitors as any}
               searchCountry={country || 'us'}
+              requireConfirm
             />
           )}
         </div>
@@ -188,4 +189,3 @@ const CompetitorOverviewPage: React.FC = () => {
 }
 
 export default CompetitorOverviewPage
-

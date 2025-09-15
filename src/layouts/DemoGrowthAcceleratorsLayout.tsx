@@ -24,4 +24,3 @@ const DemoGrowthAcceleratorsLayout: React.FC<{ children: React.ReactNode }> = ({
 }
 
 export default DemoGrowthAcceleratorsLayout
-

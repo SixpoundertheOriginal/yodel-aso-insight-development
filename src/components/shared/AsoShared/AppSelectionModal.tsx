@@ -15,6 +15,7 @@ import { Star, Target, BarChart3, TrendingUp } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 import { isDebugTarget } from '@/lib/debugTargets';
 import { asoSearchService } from '@/services/aso-search.service';
+import { directItunesService } from '@/services/direct-itunes.service';
 
 interface AppSelectionModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ interface AppSelectionModalProps {
   maxSelections?: number;
   selectedApps?: ScrapedMetadata[];
   searchCountry?: string;
+  requireConfirm?: boolean; // when true and selectMode multi: show explicit confirm button instead of applying on close
 }
 
 interface ButtonProps {
@@ -56,6 +58,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   maxSelections = 5,
   selectedApps,
   searchCountry = 'US',
+  requireConfirm = false,
 }) => {
   const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
   const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
@@ -71,6 +74,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ScrapedMetadata[]>(candidates);
   const [searching, setSearching] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
 
   useEffect(() => {
     const uniqueApps = stableSelectedApps.filter(
@@ -100,7 +104,8 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   };
 
   const handleClose = () => {
-    if (selectMode === 'multi' && onMultiSelect) {
+    // In confirm-required mode, cancel on close
+    if (!(requireConfirm && selectMode === 'multi') && selectMode === 'multi' && onMultiSelect) {
       onMultiSelect(internalSelectedApps);
     }
     onClose();
@@ -132,6 +137,23 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
       setSearchResults(results.slice(0, 10));
     } catch (e) {
       console.error('Search failed', e);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleUseUrl = async () => {
+    const m = urlInput.match(/id(\d{5,})/);
+    if (!m) {
+      console.error('URL must include id<digits>');
+      return;
+    }
+    setSearching(true);
+    try {
+      const app = await directItunesService.lookupById(m[1], { country: searchCountry.toLowerCase() });
+      setSearchResults([app]);
+    } catch (e) {
+      console.error('Lookup failed', e);
     } finally {
       setSearching(false);
     }
@@ -169,6 +191,15 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
             />
             <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
               {searching ? 'Searching...' : 'Search'}
+            </Button>
+            <Input
+              value={urlInput}
+              onChange={(e)=>setUrlInput(e.target.value)}
+              placeholder="Or paste App Store URL (…/id1234567890)"
+              className="bg-zinc-800 border-zinc-700 text-foreground"
+            />
+            <Button variant="outline" onClick={handleUseUrl} disabled={searching || !urlInput.trim()}>
+              Use URL
             </Button>
           </div>
         )}
@@ -280,6 +311,14 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
               </div>
             </div>
           </>
+        )}
+        {requireConfirm && selectMode === 'multi' && (
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => { onMultiSelect?.(internalSelectedApps); onClose(); }} disabled={internalSelectedApps.length === 0}>
+              Confirm {internalSelectedApps.length || ''}
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>

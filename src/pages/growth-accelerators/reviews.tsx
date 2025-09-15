@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
@@ -98,8 +99,9 @@ const ReviewManagementPage: React.FC = () => {
   const [toDate, setToDate] = useState<string>('');
   const [quickRange, setQuickRange] = useState<'all' | '7d' | '30d' | '90d' | '1y' | 'custom'>('30d');
 
-  // Development self-test state
+  // Development self-test state; only for super admins without an assigned org (platform scope)
   const [showDevTest, setShowDevTest] = useState(import.meta.env.DEV);
+  const canShowDevPanel = isSuperAdmin && (!organizationId || String(organizationId).trim() === '');
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
@@ -687,32 +689,36 @@ const ReviewManagementPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border rounded-md p-3 bg-zinc-900/40">
               <h4 className="text-sm font-medium mb-2">Rating distribution</h4>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ratingDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="rating" />
-                      <YAxis allowDecimals={false} />
-                      <RTooltip />
-                      <Bar dataKey="count" fill="#60a5fa" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+              <ChartContainer config={{ count: { label: 'Reviews', color: 'hsl(var(--primary))' } }}>
+                <BarChart data={ratingDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="rating" />
+                  <YAxis allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="count">
+                    {ratingDistribution.map((entry: any) => {
+                      const label = entry.rating as string; // like "1★"
+                      const n = parseInt(label);
+                      // Color mapping per star: 1 red -> 5 emerald
+                      const color = n === 5 ? '#22c55e' : n === 4 ? '#60a5fa' : n === 3 ? '#f59e0b' : n === 2 ? '#f97316' : '#ef4444';
+                      return <Cell key={`cell-${label}`} fill={color} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
               </div>
             <div className="border rounded-md p-3 bg-zinc-900/40">
               <h4 className="text-sm font-medium mb-2">Sentiment breakdown</h4>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={sentimentBreakdown} dataKey="count" nameKey="label" outerRadius={70} label>
-                        {sentimentBreakdown.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={['#22c55e', '#a3a3a3', '#ef4444'][index % 3]} />
-                        ))}
-                      </Pie>
-                      <RTooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+              <ChartContainer config={{ positive: { label: 'Positive', color: '#22c55e' }, neutral: { label: 'Neutral', color: '#a3a3a3' }, negative: { label: 'Negative', color: '#ef4444' }}}>
+                <PieChart>
+                  <Pie data={sentimentBreakdown} dataKey="count" nameKey="label" outerRadius={70} label>
+                    <Cell key="pos" fill="var(--color-positive)" />
+                    <Cell key="neu" fill="var(--color-neutral)" />
+                    <Cell key="neg" fill="var(--color-negative)" />
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
               </div>
             </div>
 
@@ -743,40 +749,26 @@ const ReviewManagementPage: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={trendOverTime} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis yAxisId="left" allowDecimals={false} />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      domain={trendMetric === 'avg' ? [0, 5] : [0, 100]}
-                      tickFormatter={(v: number) => trendMetric === 'avg' ? v.toFixed(1) : `${v}%`}
-                    />
-                    <RTooltip />
-                    <Legend />
-                    {trendBarMode === 'total' ? (
-                      <Bar yAxisId="left" dataKey="count" name="# Reviews" fill="#93c5fd" />
-                    ) : (
-                      <>
-                        <Bar yAxisId="left" dataKey="positive" name="Positive" stackId="s" fill="#22c55e" />
-                        <Bar yAxisId="left" dataKey="neutral" name="Neutral" stackId="s" fill="#a3a3a3" />
-                        <Bar yAxisId="left" dataKey="negative" name="Negative" stackId="s" fill="#ef4444" />
-                      </>
-                    )}
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey={trendMetric === 'avg' ? 'avgRating' : 'percentPositive'}
-                      name={trendMetric === 'avg' ? 'Avg Rating' : 'Positive %'}
-                      stroke="#0ea5e9"
-                      dot={false}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <ChartContainer config={{ count: { label: '# Reviews', color: '#93c5fd' }, positive: { label: 'Positive', color: '#22c55e' }, neutral: { label: 'Neutral', color: '#a3a3a3' }, negative: { label: 'Negative', color: '#ef4444' }, avgRating: { label: 'Avg Rating', color: '#0ea5e9' }, percentPositive: { label: 'Positive %', color: '#0ea5e9' }}}>
+                <ComposedChart data={trendOverTime} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis yAxisId="left" allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" domain={trendMetric === 'avg' ? [0, 5] : [0, 100]} tickFormatter={(v: number) => trendMetric === 'avg' ? v.toFixed(1) : `${v}%`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  {trendBarMode === 'total' ? (
+                    <Bar yAxisId="left" dataKey="count" name="# Reviews" fill="var(--color-count)" />
+                  ) : (
+                    <>
+                      <Bar yAxisId="left" dataKey="positive" name="Positive" stackId="s" fill="var(--color-positive)" />
+                      <Bar yAxisId="left" dataKey="neutral" name="Neutral" stackId="s" fill="var(--color-neutral)" />
+                      <Bar yAxisId="left" dataKey="negative" name="Negative" stackId="s" fill="var(--color-negative)" />
+                    </>
+                  )}
+                  <Line yAxisId="right" type="monotone" dataKey={trendMetric === 'avg' ? 'avgRating' : 'percentPositive'} name={trendMetric === 'avg' ? 'Avg Rating' : 'Positive %'} stroke="var(--color-avgRating)" dot={false} />
+                </ComposedChart>
+              </ChartContainer>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -841,8 +833,8 @@ const ReviewManagementPage: React.FC = () => {
         </YodelCard>
       )}
 
-      {/* Dev Self-Test Panel */}
-      {showDevTest && (
+      {/* Dev Self-Test Panel - visible only for super admin without organization */}
+      {canShowDevPanel && showDevTest && (
         <Card className="border-orange-200 bg-orange-50/50">
           <CardHeader>
             <CardTitle className="text-sm text-orange-800">Development Self-Test Panel</CardTitle>
