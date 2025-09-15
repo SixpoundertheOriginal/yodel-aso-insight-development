@@ -137,8 +137,9 @@ serve(async (req) => {
     }
     
     // Early operation detection for public operations
-    const operation = requestData.op || (requestData.searchTerm && !requestData.targetApp ? 'search' : null);
-    console.log(`🎯 [${requestId}] OPERATION DETECTED: "${operation}"`);
+    const opStr = requestData.op ? String(requestData.op).toLowerCase() : null;
+    const operation = opStr || (requestData.searchTerm && !requestData.targetApp ? 'search' : null);
+    console.log(`🎯 [${requestId}] OPERATION DETECTED: "${operation}" (raw: "${requestData.op}")`);
 
     // Handle public search operation (no auth required)
     if (operation === 'search' || (requestData.searchTerm && !requestData.targetApp && !requestData.organizationId)) {
@@ -192,7 +193,7 @@ serve(async (req) => {
     }
 
     // Handle App Store SERP operation (search results parsing) - PUBLIC ACCESS
-    if (operation === 'serp' || requestData.op === 'serp') {
+    if (operation === 'serp') {
       const term = (requestData.term || requestData.searchTerm || '').toString().trim();
       const cc = (requestData.cc || requestData.country || 'us').toString().toLowerCase();
       const targetAppId = requestData.appId ? String(requestData.appId) : undefined;
@@ -230,7 +231,7 @@ serve(async (req) => {
     }
 
     // Discover Top-1 keywords using SERP (best-effort suggestions expansion)
-    if (operation === 'serp-top1' || requestData.op === 'serp-top1' || operation === 'serp-topN' || requestData.op === 'serp-topN') {
+    if (operation === 'serp-top1' || operation === 'serp-topn') {
       let cc = (requestData.cc || requestData.country || 'us').toString().toLowerCase();
       const appId = requestData.appId ? String(requestData.appId) : '';
       const seeds = Array.isArray(requestData.seeds) ? requestData.seeds.map((s: any) => String(s)).filter(Boolean) : [];

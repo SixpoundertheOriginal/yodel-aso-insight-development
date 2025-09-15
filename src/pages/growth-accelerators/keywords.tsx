@@ -236,7 +236,7 @@ const KeywordsIntelligencePage: React.FC = () => {
     if (seeds.length === 0) { toast.error('No seeds available for discovery'); return; }
     try {
       const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-        body: { op: 'serp-topN', cc: selectedCountry, appId: selectedApp.appId, seeds, maxCandidates: 150, maxPages: 8, rankThreshold: 10 }
+        body: { op: 'serp-topn', cc: selectedCountry, appId: selectedApp.appId, seeds, maxCandidates: 150, maxPages: 8, rankThreshold: 10 }
       });
       if (error) throw error;
       const res: Array<{ keyword: string; rank: number }> = Array.isArray(data?.results) ? data.results : [];
