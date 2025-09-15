@@ -75,28 +75,6 @@ const ReviewManagementPage: React.FC = () => {
   // Disable insights auto-fetching on this page
   useEnhancedAsoInsights(null, undefined, undefined, { enabled: false });
 
-  // Demo preset: auto-select app and load reviews (once)
-  React.useEffect(() => {
-    if (!isDemoOrg || selectedApp) return;
-    const preset = getDemoPresetForSlug(organization?.slug);
-    if (!preset) return;
-    const demoApp: AppSearchResult = {
-      name: preset.app.name,
-      appId: preset.app.appId,
-      developer: preset.app.developer || 'Demo',
-      rating: preset.app.rating ?? 0,
-      reviews: preset.app.reviews ?? 0,
-      icon: preset.app.icon || '',
-      applicationCategory: preset.app.applicationCategory || 'App'
-    };
-    setSelectedCountry(preset.country || 'us');
-    setSelectedApp(demoApp);
-    setReviews([]);
-    setCurrentPage(1);
-    setHasMoreReviews(false);
-    fetchReviews(demoApp.appId, 1);
-  }, [isDemoOrg, organization?.slug, selectedApp]);
-
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<AppSearchResult[]>([]);
@@ -179,6 +157,29 @@ const ReviewManagementPage: React.FC = () => {
       setReviewsLoading(false);
     }
   };
+
+  // Demo preset: auto-select app and load reviews (once)
+  React.useEffect(() => {
+    if (!isDemoOrg || selectedApp) return;
+    const preset = getDemoPresetForSlug(organization?.slug);
+    if (!preset) return;
+    const demoApp: AppSearchResult = {
+      name: preset.app.name,
+      appId: preset.app.appId,
+      developer: preset.app.developer || 'Demo',
+      rating: preset.app.rating ?? 0,
+      reviews: preset.app.reviews ?? 0,
+      icon: preset.app.icon || '',
+      applicationCategory: preset.app.applicationCategory || 'App'
+    };
+    setSelectedCountry(preset.country || 'us');
+    setSelectedApp(demoApp);
+    setReviews([]);
+    setCurrentPage(1);
+    setHasMoreReviews(false);
+    fetchReviews(demoApp.appId, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoOrg, organization?.slug, selectedApp]);
 
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
