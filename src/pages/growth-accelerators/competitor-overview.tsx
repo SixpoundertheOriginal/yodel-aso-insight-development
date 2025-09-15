@@ -18,7 +18,9 @@ import {
   PremiumCard, 
   PremiumCardHeader, 
   PremiumCardContent, 
-  PremiumTypography 
+  PremiumTypography,
+  ResponsiveGrid,
+  AnimatedCounter
 } from '@/components/ui/premium'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 
@@ -175,28 +177,94 @@ const CompetitorOverviewPage: React.FC = () => {
             </PremiumCardContent>
           </PremiumCard>
 
-          {/* Top‑10 Coverage card removed as requested */}
+          {/* Summary metrics */}
+          {summary.length > 0 && (
+            <div className="space-y-2">
+              <PremiumTypography.SectionTitle>Summary</PremiumTypography.SectionTitle>
+              <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }} gap="lg">
+                {summary.map(({ app, top10, avgRank }) => (
+                  <PremiumCard key={app.appId} variant="elevated" intensity="subtle" className="overflow-hidden">
+                    <PremiumCardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        {app.icon && <img src={app.icon} className="w-8 h-8 rounded" alt="" />}
+                        <div className="flex flex-col">
+                          <span className="text-sm text-muted-foreground">{app.developer || 'App'}</span>
+                          <span className="font-medium text-foreground">{app.name}</span>
+                        </div>
+                      </div>
+                    </PremiumCardHeader>
+                    <PremiumCardContent className="pt-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Top‑10 Keywords</div>
+                          <div className="text-2xl font-bold"><AnimatedCounter value={top10} /></div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Avg. Rank</div>
+                          <div className="text-2xl font-bold">{avgRank ?? '—'}</div>
+                        </div>
+                      </div>
+                    </PremiumCardContent>
+                  </PremiumCard>
+                ))}
+              </ResponsiveGrid>
+            </div>
+          )}
 
           {/* Demo Downloads Trend: Next vs H&M */}
           {isDemoOrg && (
-            <PremiumCard variant="glow" intensity="strong" glowColor="orange" className="overflow-hidden">
-              <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
-                <PremiumTypography.SectionTitle gradient="orange">Downloads (Demo): Next vs H&M</PremiumTypography.SectionTitle>
-              </PremiumCardHeader>
-              <PremiumCardContent className="p-6">
-                <ChartContainer config={{ Next: { label: 'Next', color: '#60a5fa' }, HM: { label: 'H&M', color: '#ef4444' } }}>
-                  <ComposedChart data={downloadsData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" interval={8} />
-                    <YAxis allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Line type="monotone" dataKey="Next" stroke="var(--color-Next)" dot={false} />
-                    <Line type="monotone" dataKey="HM" stroke="var(--color-HM)" dot={false} />
-                  </ComposedChart>
-                </ChartContainer>
-              </PremiumCardContent>
-            </PremiumCard>
+            <ResponsiveGrid cols={{ default: 1, lg: 2 }} gap="lg">
+              <PremiumCard variant="glow" intensity="strong" glowColor="orange" className="overflow-hidden">
+                <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
+                  <PremiumTypography.SectionTitle gradient="orange">Downloads (Demo): Next vs H&M</PremiumTypography.SectionTitle>
+                </PremiumCardHeader>
+                <PremiumCardContent className="p-6">
+                  <ChartContainer config={{ Next: { label: 'Next', color: '#60a5fa' }, HM: { label: 'H&M', color: '#ef4444' } }}>
+                    <ComposedChart data={downloadsData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" interval={8} />
+                      <YAxis allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Line type="monotone" dataKey="Next" stroke="var(--color-Next)" dot={false} />
+                      <Line type="monotone" dataKey="HM" stroke="var(--color-HM)" dot={false} />
+                    </ComposedChart>
+                  </ChartContainer>
+                </PremiumCardContent>
+              </PremiumCard>
+
+              <PremiumCard variant="elevated" intensity="medium" className="overflow-hidden">
+                <PremiumCardHeader className="bg-zinc-900/70 backdrop-blur border-b border-zinc-800/50">
+                  <PremiumTypography.SectionTitle>Competitor Keywords (Demo): H&M strong vs Next</PremiumTypography.SectionTitle>
+                </PremiumCardHeader>
+                <PremiumCardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Keyword</TableHead>
+                        <TableHead>Popularity</TableHead>
+                        <TableHead>Impressions</TableHead>
+                        <TableHead>Results</TableHead>
+                        <TableHead>Next Rank</TableHead>
+                        <TableHead>H&M Rank</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {compKwData.map(row => (
+                        <TableRow key={row.keyword}>
+                          <TableCell className="font-medium">{row.keyword}</TableCell>
+                          <TableCell>{row.popularity}</TableCell>
+                          <TableCell>{row.impressions.toLocaleString()}</TableCell>
+                          <TableCell>{row.results.toLocaleString()}</TableCell>
+                          <TableCell>{row.nextRank ?? '—'}</TableCell>
+                          <TableCell className="text-emerald-400 font-medium">{row.hmRank}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </PremiumCardContent>
+              </PremiumCard>
+            </ResponsiveGrid>
           )}
 
           {/* Demo Competitor Keywords: H&M advantage */}
