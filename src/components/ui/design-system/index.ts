@@ -6,6 +6,7 @@ export { YodelCard, YodelCardHeader, YodelCardContent, YodelCardFooter } from '.
 export { PremiumCard, PremiumCardHeader, PremiumCardContent } from './PremiumCard';
 export { HeroSection } from './HeroSection';
 export { MetricCard } from './MetricCard';
+export { YodelToolbar, YodelToolbarGroup, YodelToolbarSpacer } from './Toolbar';
 
 // Re-export premium components for easier access
 export * from '../premium';

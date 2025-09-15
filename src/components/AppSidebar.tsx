@@ -123,6 +123,12 @@ const aiCopilotsItems: NavigationItem[] = [
     featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
   },
   {
+    title: "Keyword Intelligence",
+    url: "/growth-accelerators/keywords",
+    icon: Search,
+    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
+  },
+  {
     title: "Review Management",
     url: "/growth-accelerators/reviews",
     icon: Star,
@@ -277,7 +283,8 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     
     filteredAiCopilotsItems = filteredAiCopilotsItems.filter(item => {
       if (item.url === '/growth-accelerators/reviews' || item.url === '/growth-accelerators/review-management-v2') {
-        return featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
+        // In demo orgs, always show Reviews entries
+        return isDemoOrg || featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
       }
       return true;
     });

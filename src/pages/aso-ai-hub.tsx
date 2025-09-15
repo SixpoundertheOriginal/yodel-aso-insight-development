@@ -92,14 +92,8 @@ const AsoAiHubPage: React.FC = () => {
             )}
             
             {/* Main Audit Hub */}
-            {(selectedOrgId || dataContext.organizationId) ? (
-              <AppAuditHub organizationId={selectedOrgId || dataContext.organizationId} />
-            ) : dataContext.canAccessAllOrgs ? (
-              <div className="text-center py-12 bg-blue-50/50 rounded-lg border border-blue-200">
-                <Brain className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-blue-700 mb-2">Select Organization</h3>
-                <p className="text-blue-600">Choose an organization above to access ASO AI Audit features</p>
-              </div>
+            {(selectedOrgId || dataContext.organizationId || dataContext.canAccessAllOrgs) ? (
+              <AppAuditHub organizationId={(selectedOrgId || dataContext.organizationId || '__platform__') as string} />
             ) : (
               <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">
                 <Brain className="h-16 w-16 text-zinc-600 mx-auto mb-4" />

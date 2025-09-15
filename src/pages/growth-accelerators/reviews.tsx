@@ -4,14 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/constants/features';
+import { getDemoPresetForSlug } from '@/config/demoPresets';
 import { searchApps as searchItunesApps, fetchAppReviews } from '@/utils/itunesReviews';
 import { exportService } from '@/services/export.service';
+import { MainLayout } from '@/layouts';
+import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
+import { YodelToolbar, YodelToolbarGroup, YodelToolbarSpacer } from '@/components/ui/design-system';
 
 interface AppSearchResult {
   name: string;
@@ -53,7 +59,8 @@ const ReviewManagementPage: React.FC = () => {
     (role?.toLowerCase().includes('aso') ? 'aso_manager' :
     (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
   
-  const canAccessReviews = featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
+  const { isDemoOrg, organization } = useDemoOrgDetection();
+  const canAccessReviews = featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole) || isDemoOrg;
 
   // Debug logging for troubleshooting
   console.log('ReviewManagement - Debug Info:', {
@@ -68,6 +75,28 @@ const ReviewManagementPage: React.FC = () => {
   // Disable insights auto-fetching on this page
   useEnhancedAsoInsights(null, undefined, undefined, { enabled: false });
 
+  // Demo preset: auto-select app and load reviews (once)
+  React.useEffect(() => {
+    if (!isDemoOrg || selectedApp) return;
+    const preset = getDemoPresetForSlug(organization?.slug);
+    if (!preset) return;
+    const demoApp: AppSearchResult = {
+      name: preset.app.name,
+      appId: preset.app.appId,
+      developer: preset.app.developer || 'Demo',
+      rating: preset.app.rating ?? 0,
+      reviews: preset.app.reviews ?? 0,
+      icon: preset.app.icon || '',
+      applicationCategory: preset.app.applicationCategory || 'App'
+    };
+    setSelectedCountry(preset.country || 'us');
+    setSelectedApp(demoApp);
+    setReviews([]);
+    setCurrentPage(1);
+    setHasMoreReviews(false);
+    fetchReviews(demoApp.appId, 1);
+  }, [isDemoOrg, organization?.slug, selectedApp]);
+
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<AppSearchResult[]>([]);
@@ -80,6 +109,15 @@ const ReviewManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('us');
+
+  // Local analysis + filters (Phase 1 - client only)
+  const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
+  const [sentimentFilter, setSentimentFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
+  const [textQuery, setTextQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'rating_high' | 'rating_low'>('newest');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+  const [quickRange, setQuickRange] = useState<'all' | '7d' | '30d' | '90d' | '1y' | 'custom'>('30d');
 
   // Development self-test state
   const [showDevTest, setShowDevTest] = useState(import.meta.env.DEV);
@@ -148,6 +186,15 @@ const ReviewManagementPage: React.FC = () => {
     setReviews([]);
     setCurrentPage(1);
     setHasMoreReviews(false);
+    // Default to last 30 days on app change
+    const today = new Date();
+    const end = formatDateInputLocal(today);
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 29);
+    const start = formatDateInputLocal(startDate);
+    setFromDate(start);
+    setToDate(end);
+    setQuickRange('30d');
     fetchReviews(app.appId, 1);
   };
 
@@ -197,6 +244,191 @@ const ReviewManagementPage: React.FC = () => {
     }
   };
 
+  // Convert country code to emoji flag
+  const ccToFlag = (cc: string): string => {
+    try {
+      const up = cc?.toUpperCase();
+      if (!up || up.length !== 2) return up || '';
+      const codePoints = [...up].map(c => 127397 + c.charCodeAt(0));
+      return String.fromCodePoint(...codePoints);
+    } catch {
+      return cc;
+    }
+  };
+
+  // Local date formatting for <input type="date"> (avoid UTC shift)
+  const formatDateInputLocal = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const applyQuickRange = (range: 'all' | '7d' | '30d' | '90d' | '1y' | 'custom') => {
+    setQuickRange(range);
+    if (range === 'all') {
+      setFromDate('');
+      setToDate('');
+      return;
+    }
+    if (range === 'custom') return;
+    const today = new Date();
+    const end = formatDateInputLocal(today);
+    const startDate = new Date(today);
+    if (range === '7d') startDate.setDate(today.getDate() - 6); // include today
+    if (range === '30d') startDate.setDate(today.getDate() - 29);
+    if (range === '90d') startDate.setDate(today.getDate() - 89);
+    if (range === '1y') startDate.setFullYear(today.getFullYear() - 1);
+    const start = formatDateInputLocal(startDate);
+    setFromDate(start);
+    setToDate(end);
+  };
+
+  // Default the page to last 30 days on first render
+  React.useEffect(() => {
+    applyQuickRange('30d');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Very lightweight sentiment estimation (client-only, Phase 1)
+  const estimateSentiment = (r: ReviewItem): 'positive' | 'neutral' | 'negative' => {
+    // Primary signal: star rating
+    if (r.rating >= 4) return 'positive';
+    if (r.rating <= 2) return 'negative';
+
+    const text = (r.text || '').toLowerCase();
+    const positives = ['love', 'great', 'awesome', 'excellent', 'amazing', 'good', 'fantastic', 'best'];
+    const negatives = ['bad', 'terrible', 'awful', 'bug', 'crash', 'hate', 'worst', 'poor'];
+    const posHit = positives.some(w => text.includes(w));
+    const negHit = negatives.some(w => text.includes(w));
+    if (posHit && !negHit) return 'positive';
+    if (negHit && !posHit) return 'negative';
+    return 'neutral';
+  };
+
+  // Enrich reviews with derived fields + apply filters
+  const processedReviews = useMemo(() => {
+    return reviews.map(r => ({ ...r, sentiment: estimateSentiment(r) as 'positive' | 'neutral' | 'negative' }));
+  }, [reviews]);
+
+  const filteredReviews = useMemo(() => {
+    let list = processedReviews;
+    if (ratingFilter !== 'all') {
+      list = list.filter(r => r.rating === ratingFilter);
+    }
+    if (sentimentFilter !== 'all') {
+      list = list.filter(r => (r as any).sentiment === sentimentFilter);
+    }
+    if (textQuery.trim()) {
+      const q = textQuery.toLowerCase();
+      list = list.filter(r =>
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.text || '').toLowerCase().includes(q) ||
+        (r.author || '').toLowerCase().includes(q)
+      );
+    }
+    if (fromDate) {
+      const from = new Date(fromDate).getTime();
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t >= from;
+      });
+    }
+    if (toDate) {
+      const to = new Date(toDate).getTime();
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t <= to;
+      });
+    }
+
+    // Sorting
+    const sorted = [...list];
+    switch (sortBy) {
+      case 'newest':
+        sorted.sort((a, b) => (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime()));
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime()));
+        break;
+      case 'rating_high':
+        sorted.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'rating_low':
+        sorted.sort((a, b) => a.rating - b.rating);
+        break;
+    }
+    return sorted;
+  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy]);
+
+  // Chart data
+  const ratingDistribution = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    processedReviews.forEach(r => { if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++; });
+    return [1,2,3,4,5].map(v => ({ rating: `${v}★`, count: counts[v] }));
+  }, [processedReviews]);
+
+  const sentimentBreakdown = useMemo(() => {
+    const counts: Record<string, number> = { positive: 0, neutral: 0, negative: 0 };
+    processedReviews.forEach(r => { counts[(r as any).sentiment] = (counts[(r as any).sentiment] || 0) + 1; });
+    return [
+      { label: 'Positive', key: 'positive', count: counts.positive },
+      { label: 'Neutral', key: 'neutral', count: counts.neutral },
+      { label: 'Negative', key: 'negative', count: counts.negative },
+    ];
+  }, [processedReviews]);
+
+  // Summary metrics
+  const summary = useMemo(() => {
+    const total = filteredReviews.length;
+    const positive = filteredReviews.filter((r: any) => r.sentiment === 'positive').length;
+    const avg = total ? +(filteredReviews.reduce((s, r) => s + (r.rating || 0), 0) / total).toFixed(2) : 0;
+    const posPct = total ? +((positive / total) * 100).toFixed(1) : 0;
+    return { total, avg, posPct };
+  }, [filteredReviews]);
+
+  // Period-only metric (ignores rating/sentiment/text filters): new reviews in chosen date window
+  const periodTotal = useMemo(() => {
+    if (!fromDate && !toDate) return reviews.length; // all loaded
+    const from = fromDate ? new Date(fromDate).getTime() : Number.NEGATIVE_INFINITY;
+    const to = toDate ? new Date(toDate).getTime() : Number.POSITIVE_INFINITY;
+    return reviews.filter(r => {
+      const t = r.updated_at ? new Date(r.updated_at).getTime() : Number.NEGATIVE_INFINITY;
+      return t >= from && t <= to;
+    }).length;
+  }, [reviews, fromDate, toDate]);
+
+  // Trend over time (daily): counts and average rating from filtered set
+  const trendOverTime = useMemo(() => {
+    const buckets: Record<string, { date: string; count: number; sumRating: number; avgRating: number } & { positive: number; neutral: number; negative: number }> = {};
+    for (const r of filteredReviews) {
+      if (!r.updated_at) continue;
+      const d = new Date(r.updated_at);
+      if (isNaN(d.getTime())) continue;
+      const key = d.toISOString().slice(0, 10);
+      if (!buckets[key]) {
+        buckets[key] = { date: key, count: 0, sumRating: 0, avgRating: 0, positive: 0, neutral: 0, negative: 0 };
+      }
+      buckets[key].count += 1;
+      buckets[key].sumRating += r.rating || 0;
+      const s = (r as any).sentiment as 'positive' | 'neutral' | 'negative' | undefined;
+      if (s) buckets[key][s] += 1;
+    }
+    const rows = Object.values(buckets)
+      .map(b => ({
+        ...b,
+        avgRating: b.count ? +(b.sumRating / b.count).toFixed(2) : 0,
+        percentPositive: b.count ? +((b.positive / b.count) * 100).toFixed(1) : 0,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return rows;
+  }, [filteredReviews]);
+
+  // Trend metric toggle: average rating vs positive percentage
+  const [trendMetric, setTrendMetric] = useState<'avg' | 'positive'>('avg');
+  // Bar mode: total reviews vs stacked sentiment counts
+  const [trendBarMode, setTrendBarMode] = useState<'total' | 'stacked'>('total');
+
   const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(star => (
@@ -209,7 +441,8 @@ const ReviewManagementPage: React.FC = () => {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Review Management</h1>
@@ -221,17 +454,20 @@ const ReviewManagementPage: React.FC = () => {
       </div>
 
       {/* Card A: App Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <YodelCard variant="glass" padding="md" className="shadow-sm">
+        <YodelCardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Search className="w-5 h-5" />
             App Search
-          </CardTitle>
-          <CardDescription>
-            Search and select an app to fetch reviews from iTunes
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+            </h2>
+            {showDevTest && (
+              <Badge variant="outline" className="text-xs">DEV MODE</Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">Search and select an app to fetch reviews from iTunes</p>
+        </YodelCardHeader>
+        <YodelCardContent className="space-y-4">
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
@@ -287,22 +523,236 @@ const ReviewManagementPage: React.FC = () => {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </YodelCardContent>
+      </YodelCard>
 
       {/* Card B: Reviews Fetching & Export */}
       {selectedApp && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Reviews for {selectedApp.name}
-            </CardTitle>
-            <CardDescription>
-              Fetch and export customer reviews (default: 3 pages, max 10)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <YodelCard variant="elevated" padding="md" className="shadow-md">
+          <YodelCardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedApp.icon && (
+                  <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
+                )}
+                <div className="flex flex-col">
+                  <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    <span>Reviews for {selectedApp.name}</span>
+                    <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StarRating rating={Math.round(selectedApp?.rating || 0)} />
+                    <span className="text-xs text-muted-foreground">
+                      {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground">Fetch and export customer reviews</span>
+            </div>
+          </YodelCardHeader>
+          <YodelCardContent className="space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="text-xs text-muted-foreground">Total (filtered)</div>
+                <div className="text-xl font-semibold">{summary.total.toLocaleString()}</div>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="text-xs text-muted-foreground">App Store rating</div>
+                <div className="text-xl font-semibold">
+                  {(selectedApp?.rating ?? 0).toFixed(2)}
+                  <span className="text-xs text-muted-foreground"> / 5</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">{(selectedApp?.reviews ?? 0).toLocaleString()} ratings</div>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="text-xs text-muted-foreground">Average rating</div>
+                <div className="text-xl font-semibold">{summary.avg.toFixed(2)}</div>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="text-xs text-muted-foreground">Positive %</div>
+                <div className="text-xl font-semibold">{summary.posPct}%</div>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="text-xs text-muted-foreground">New reviews (period)</div>
+                <div className="text-xl font-semibold">{periodTotal.toLocaleString()}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">based on loaded pages</div>
+              </div>
+            </div>
+            {/* Filters Row */}
+            <YodelToolbar>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Filters</span>
+              </div>
+              {/* Rating chips */}
+              <div className="flex items-center gap-1">
+                {(['all', 5, 4, 3, 2, 1] as const).map(val => (
+                  <Button
+                    key={String(val)}
+                    size="sm"
+                    variant={ratingFilter === val ? 'default' : 'outline'}
+                    onClick={() => setRatingFilter(val as any)}
+                    className="text-xs"
+                  >
+                    {val === 'all' ? 'All' : `${val}★`}
+                  </Button>
+                ))}
+              </div>
+              {/* Sentiment chips */}
+              <div className="flex items-center gap-1 ml-2">
+                {[{k:'all', icon:Meh, label:'All'}, {k:'positive', icon:Smile, label:'Positive'}, {k:'neutral', icon:Meh, label:'Neutral'}, {k:'negative', icon:Frown, label:'Negative'}].map(({k, icon:Icon, label}) => (
+                  <Button
+                    key={k}
+                    size="sm"
+                    variant={sentimentFilter === (k as any) ? 'default' : 'outline'}
+                    onClick={() => setSentimentFilter(k as any)}
+                    className="text-xs"
+                  >
+                    <Icon className="w-3 h-3 mr-1" /> {label}
+                  </Button>
+                ))}
+              </div>
+              <YodelToolbarSpacer />
+              {/* Text search */}
+              <div className="min-w-[220px]">
+                <Input placeholder="Search title, text, author" value={textQuery} onChange={e => setTextQuery(e.target.value)} />
+              </div>
+              {/* Date range */}
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                <Select value={quickRange} onValueChange={(v: any) => applyQuickRange(v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                    <SelectItem value="90d">Last 90 days</SelectItem>
+                    <SelectItem value="1y">Last year</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
+              </div>
+              {/* Sort */}
+              <div className="flex items-center gap-2">
+                <SortAsc className="w-4 h-4 text-muted-foreground" />
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                    <SelectItem value="rating_high">Rating: High to Low</SelectItem>
+                    <SelectItem value="rating_low">Rating: Low to High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </YodelToolbar>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border rounded-md p-3 bg-zinc-900/40">
+              <h4 className="text-sm font-medium mb-2">Rating distribution</h4>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ratingDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="rating" />
+                      <YAxis allowDecimals={false} />
+                      <RTooltip />
+                      <Bar dataKey="count" fill="#60a5fa" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            <div className="border rounded-md p-3 bg-zinc-900/40">
+              <h4 className="text-sm font-medium mb-2">Sentiment breakdown</h4>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={sentimentBreakdown} dataKey="count" nameKey="label" outerRadius={70} label>
+                        {sentimentBreakdown.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={['#22c55e', '#a3a3a3', '#ef4444'][index % 3]} />
+                        ))}
+                      </Pie>
+                      <RTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Trend Over Time */}
+            <div className="border rounded-md p-3 bg-zinc-900/40">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium">Trend over time</h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Line metric</span>
+                  <Select value={trendMetric} onValueChange={(v: any) => setTrendMetric(v)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="avg">Avg Rating</SelectItem>
+                      <SelectItem value="positive">Positive %</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground ml-2">Bar mode</span>
+                  <Select value={trendBarMode} onValueChange={(v: any) => setTrendBarMode(v)}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Total reviews</SelectItem>
+                      <SelectItem value="stacked">Stacked sentiment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={trendOverTime} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis yAxisId="left" allowDecimals={false} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={trendMetric === 'avg' ? [0, 5] : [0, 100]}
+                      tickFormatter={(v: number) => trendMetric === 'avg' ? v.toFixed(1) : `${v}%`}
+                    />
+                    <RTooltip />
+                    <Legend />
+                    {trendBarMode === 'total' ? (
+                      <Bar yAxisId="left" dataKey="count" name="# Reviews" fill="#93c5fd" />
+                    ) : (
+                      <>
+                        <Bar yAxisId="left" dataKey="positive" name="Positive" stackId="s" fill="#22c55e" />
+                        <Bar yAxisId="left" dataKey="neutral" name="Neutral" stackId="s" fill="#a3a3a3" />
+                        <Bar yAxisId="left" dataKey="negative" name="Negative" stackId="s" fill="#ef4444" />
+                      </>
+                    )}
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey={trendMetric === 'avg' ? 'avgRating' : 'percentPositive'}
+                      name={trendMetric === 'avg' ? 'Avg Rating' : 'Positive %'}
+                      stroke="#0ea5e9"
+                      dot={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <p className="text-sm text-muted-foreground">
@@ -320,15 +770,23 @@ const ReviewManagementPage: React.FC = () => {
               </Button>
             </div>
 
-            {reviews.length > 0 && (
+            {filteredReviews.length > 0 && (
               <div className="max-h-96 overflow-y-auto space-y-3 border rounded-md p-4">
-                {reviews.map((review, index) => (
+                {filteredReviews.map((review: any, index) => (
                   <div key={review.review_id || index} className="border-b pb-3 last:border-b-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h5 className="font-medium text-sm">{review.title || 'No title'}</h5>
                         <p className="text-xs text-muted-foreground">
                           {review.author || 'Anonymous'} • {formatDate(review.updated_at)} • v{review.version || '—'}
+                          {review.sentiment && (
+                            <span className="ml-2 inline-flex items-center gap-1">
+                              {review.sentiment === 'positive' && <Smile className="w-3 h-3 text-green-500" />}
+                              {review.sentiment === 'neutral' && <Meh className="w-3 h-3 text-zinc-500" />}
+                              {review.sentiment === 'negative' && <Frown className="w-3 h-3 text-red-500" />}
+                              <span className="capitalize">{review.sentiment}</span>
+                            </span>
+                          )}
                         </p>
                       </div>
                       <StarRating rating={review.rating} />
@@ -341,10 +799,10 @@ const ReviewManagementPage: React.FC = () => {
               </div>
             )}
 
-            {reviews.length === 0 && !reviewsLoading && (
+            {filteredReviews.length === 0 && !reviewsLoading && (
               <div className="text-center py-8 text-muted-foreground">
                 <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Select an app to fetch reviews</p>
+                <p>{reviews.length === 0 ? 'Select an app to fetch reviews' : 'No reviews match current filters'}</p>
               </div>
             )}
 
@@ -354,8 +812,8 @@ const ReviewManagementPage: React.FC = () => {
                 <p className="text-muted-foreground">Loading reviews...</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </YodelCardContent>
+        </YodelCard>
       )}
 
       {/* Dev Self-Test Panel */}
@@ -389,6 +847,7 @@ const ReviewManagementPage: React.FC = () => {
         </Card>
       )}
     </div>
+    </MainLayout>
   );
 };
 

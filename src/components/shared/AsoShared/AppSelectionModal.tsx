@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -54,14 +54,16 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   selectMode = 'single',
   onMultiSelect,
   maxSelections = 5,
-  selectedApps = [],
+  selectedApps,
   searchCountry = 'US',
 }) => {
   const buttonText = mode === 'analyze' ? 'Analyze This App' : 'Select';
   const buttonIcon = mode === 'analyze' ? <Target className="w-4 h-4 mr-2" /> : null;
 
+  const stableSelectedApps = useMemo(() => selectedApps || [], [selectedApps]);
+
   const [internalSelectedApps, setInternalSelectedApps] = useState<ScrapedMetadata[]>(() => {
-    const uniqueApps = (selectedApps || []).filter(
+    const uniqueApps = stableSelectedApps.filter(
       (app, index, arr) => arr.findIndex((a) => a.appId === app.appId) === index
     );
     return uniqueApps;
@@ -71,11 +73,16 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    const uniqueApps = (selectedApps || []).filter(
+    const uniqueApps = stableSelectedApps.filter(
       (app, index, arr) => arr.findIndex((a) => a.appId === app.appId) === index
     );
-    setInternalSelectedApps(uniqueApps);
-  }, [selectedApps]);
+    // Avoid unnecessary state updates to prevent render loops
+    const sameLength = uniqueApps.length === internalSelectedApps.length;
+    const sameIds = sameLength && uniqueApps.every((u) => internalSelectedApps.some((i) => i.appId === u.appId));
+    if (!sameIds) {
+      setInternalSelectedApps(uniqueApps);
+    }
+  }, [stableSelectedApps]);
 
   useEffect(() => {
     if (selectMode === 'single') {
@@ -278,4 +285,3 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
     </Dialog>
   );
 };
-

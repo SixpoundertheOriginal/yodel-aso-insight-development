@@ -34,11 +34,33 @@ export async function searchApps(params: {
   if (error) throw new Error(error.message || 'Search failed');
   
   // Handle both single result and multiple results response formats
+  const normalize = (item: any): AppSearchResultDto => {
+    // Try to ensure we always have an appId
+    let appId: string | undefined = item.appId;
+    if (!appId && typeof item.url === 'string') {
+      const m = item.url.match(/id(\d+)/);
+      if (m) appId = m[1];
+    }
+    if (!appId && item.trackId) {
+      appId = String(item.trackId);
+    }
+
+    return {
+      name: item.name || item.trackName || 'Unknown App',
+      appId: appId || '',
+      developer: item.developer || item.artistName || 'Unknown Developer',
+      rating: typeof item.rating === 'number' ? item.rating : (item.averageUserRating || 0),
+      reviews: typeof item.reviews === 'number' ? item.reviews : (item.userRatingCount || 0),
+      icon: item.icon || item.artworkUrl512 || item.artworkUrl100 || '',
+      applicationCategory: item.applicationCategory || item.primaryGenreName || 'App',
+    };
+  };
+
   if (data?.results && Array.isArray(data.results)) {
-    return data.results.slice(0, limit) as AppSearchResultDto[];
+    return data.results.slice(0, limit).map(normalize);
   } else if (data && !data.results) {
     // Single app result
-    return [data] as AppSearchResultDto[];
+    return [normalize(data)];
   }
   return [];
 }

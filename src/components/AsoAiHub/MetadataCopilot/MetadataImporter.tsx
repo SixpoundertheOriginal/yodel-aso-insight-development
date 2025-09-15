@@ -74,11 +74,13 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           if (isSuperAdmin) {
-            setOrganizationId(selectedOrganizationId || null);
+            // Super admin can operate platform-wide without selecting an org
+            const effectiveOrg = selectedOrganizationId || '__platform__';
+            setOrganizationId(effectiveOrg);
             if (selectedOrganizationId) {
               console.log('✅ [METADATA-IMPORTER] Super admin organization context:', selectedOrganizationId);
             } else {
-              console.warn('⚠️ [METADATA-IMPORTER] Super admin has no organization selected.');
+              console.warn('⚠️ [METADATA-IMPORTER] Super admin has no organization selected. Using platform scope.');
             }
           } else {
             const { data: profile, error } = await supabase

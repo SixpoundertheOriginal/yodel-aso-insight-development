@@ -2,6 +2,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { SecurityContext, AuditLogEntry, RateLimitConfig, SecureResponse, ValidationError } from '@/types/security';
 
 class SecurityService {
+  private isValidUuid(v?: string): boolean {
+    if (!v) return false;
+    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
+  }
   /**
    * Validate and sanitize App Store URL input
    */
@@ -104,9 +108,12 @@ class SecurityService {
    */
   async logAuditEntry(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<SecureResponse<string>> {
     try {
+      // Guard against non-UUID values in platform-wide mode
+      const orgId = this.isValidUuid(entry.organizationId) ? entry.organizationId : null;
+      const userId = this.isValidUuid(entry.userId) ? entry.userId : null;
       const auditEntryForDb = {
-        organization_id: entry.organizationId,
-        user_id: entry.userId,
+        organization_id: orgId,
+        user_id: userId,
         action: entry.action,
         resource_type: entry.resourceType,
         resource_id: entry.resourceId,

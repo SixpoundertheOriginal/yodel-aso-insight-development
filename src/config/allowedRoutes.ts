@@ -1,7 +1,11 @@
 export const DEMO_REPORTING_ROUTES = [
   '/dashboard/executive',
   '/dashboard/analytics',
-  '/dashboard/conversion-rate'
+  '/dashboard/conversion-rate',
+  // Allow Keywords Intelligence in demo mode
+  '/growth-accelerators/keywords',
+  // Allow Reviews in demo mode
+  '/growth-accelerators/reviews'
 ] as const;
 
 export type Role =
@@ -28,6 +32,7 @@ const FULL_APP: string[] = [
   '/growth/web-rank-apps',
   '/growth-accelerators/reviews',
   '/growth-accelerators/review-management-v2',
+  '/growth-accelerators/keywords',
   '/app-discovery',
   '/apps',
   '/admin',

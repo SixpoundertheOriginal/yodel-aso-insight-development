@@ -31,6 +31,9 @@ export interface KeywordAnalysisConfig {
   debugMode?: boolean;
   cacheEnabled?: boolean;
   batchProcessing?: boolean;
+  country?: string;
+  serpMaxPages?: number; // Preferred SERP depth
+  serpDeepScan?: boolean; // Allow second attempt with higher depth if not found
 }
 
 export interface KeywordAnalysisResult {
@@ -137,15 +140,84 @@ class KeywordRankingService {
 
       console.log(`🔍 [KEYWORD-RANKING] Checking ranking for "${sanitizedKeyword}" for app ${targetAppId}`);
 
-      // Use existing search service
-      const searchResult = await asoSearchService.search(sanitizedKeyword, {
-        organizationId: config.organizationId,
-        includeIntelligence: false,
-        debugMode: config.debugMode
-      });
+      // First attempt: App Store SERP provider (edge function)
+      if (config.country) {
+        try {
+          const { data: serpData, error: serpError } = await supabase.functions.invoke('app-store-scraper', {
+            body: { op: 'serp', term: sanitizedKeyword, cc: config.country, appId: targetAppId, limit: 50, maxPages: (config.serpMaxPages || 5) }
+          });
+          if (!serpError && serpData && Array.isArray(serpData.items)) {
+            const hit = serpData.items.find((it: any) => String(it.appId) === String(targetAppId));
+            if (hit) {
+              const directRanking: KeywordRanking = {
+                keyword: sanitizedKeyword,
+                position: hit.rank,
+                volume: 'Low',
+                trend: 'stable',
+                searchResults: serpData.total || serpData.items.length || 0,
+                lastChecked: new Date(),
+                confidence: 'actual',
+                reason: 'app_store_serp'
+              };
+              if (config.cacheEnabled) {
+                keywordCacheService.set(cacheKey, directRanking, config.organizationId, 30 * 60 * 1000);
+              }
+              this.circuitBreaker.recordSuccess();
+              return directRanking;
+            } else if ((config.serpDeepScan ?? true)) {
+              // Deep scan attempt with higher maxPages
+              try {
+                const { data: deepSerp, error: deepErr } = await supabase.functions.invoke('app-store-scraper', {
+                  body: { op: 'serp', term: sanitizedKeyword, cc: config.country, appId: targetAppId, limit: 50, maxPages: 10 }
+                });
+                if (!deepErr && deepSerp && Array.isArray(deepSerp.items)) {
+                  const deepHit = deepSerp.items.find((it: any) => String(it.appId) === String(targetAppId));
+                  if (deepHit) {
+                    const deepRanking: KeywordRanking = {
+                      keyword: sanitizedKeyword,
+                      position: deepHit.rank,
+                      volume: 'Low', trend: 'stable',
+                      searchResults: deepSerp.total || deepSerp.items.length || 0,
+                      lastChecked: new Date(), confidence: 'actual', reason: 'app_store_serp_deep'
+                    };
+                    if (config.cacheEnabled) {
+                      keywordCacheService.set(cacheKey, deepRanking, config.organizationId, 30 * 60 * 1000);
+                    }
+                    this.circuitBreaker.recordSuccess();
+                    return deepRanking;
+                  }
+                }
+              } catch (e) {
+                console.warn('⚠️ [KEYWORD-RANKING] SERP deep scan failed:', (e as any)?.message || e);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ [KEYWORD-RANKING] SERP provider failed:', (e as any)?.message || e);
+        }
+      }
+
+      // Next: Use existing search service; handle ambiguous results by using candidates as result set
+      let allApps: ScrapedMetadata[] = [];
+      try {
+        const searchResult = await asoSearchService.search(sanitizedKeyword, {
+          organizationId: config.organizationId,
+          includeIntelligence: false,
+          debugMode: config.debugMode,
+          country: config.country,
+        });
+        allApps = [searchResult.targetApp, ...(searchResult.competitors || [])];
+      } catch (err: any) {
+        // If ambiguous, use candidates as the search result set
+        if (err?.name === 'AmbiguousSearchError' && Array.isArray(err.candidates)) {
+          console.log(`🎯 [KEYWORD-RANKING] Ambiguous search for "${sanitizedKeyword}"; using ${err.candidates.length} candidates for ranking calculation`);
+          allApps = err.candidates as ScrapedMetadata[];
+        } else {
+          throw err;
+        }
+      }
 
       // Calculate ranking using the dedicated calculator
-      const allApps = [searchResult.targetApp, ...searchResult.competitors];
       const calculationResult = keywordRankingCalculatorService.calculateRanking(
         sanitizedKeyword,
         targetAppId,
@@ -158,7 +230,42 @@ class KeywordRankingService {
         }
       );
 
+      // If no ranking from calculator, attempt a lightweight web SERP fallback (optional)
       if (!calculationResult.ranking) {
+        try {
+          if (config.country) {
+            const appUrl = `https://apps.apple.com/${config.country.toLowerCase()}/app/id${targetAppId}`;
+            const gl = config.country.toLowerCase();
+            const hl = gl === 'us' ? 'en' : (gl === 'gb' ? 'en' : (gl === 'ca' ? 'en' : (gl === 'au' ? 'en' : 'en')));
+            const { data, error } = await supabase.functions.invoke('webrank', {
+              body: { appUrl, keyword: sanitizedKeyword, gl, hl }
+            });
+            if (!error && data && typeof data.rank !== 'undefined') {
+              const rank: number | null = data.rank ?? null;
+              if (rank != null) {
+                const fallbackRanking: KeywordRanking = {
+                  keyword: sanitizedKeyword,
+                  position: rank,
+                  volume: 'Low',
+                  trend: 'stable',
+                  searchResults: 0,
+                  lastChecked: new Date(),
+                  confidence: 'estimated',
+                  reason: 'google_cse_fallback'
+                };
+                // Cache fallback as well to avoid repeated calls
+                if (config.cacheEnabled) {
+                  keywordCacheService.set(cacheKey, fallbackRanking, config.organizationId, 10 * 60 * 1000);
+                }
+                this.circuitBreaker.recordSuccess();
+                return fallbackRanking;
+              }
+            }
+          }
+        } catch (e) {
+          // Swallow fallback errors; continue returning null below
+          console.warn('⚠️ [KEYWORD-RANKING] Web SERP fallback failed:', (e as any)?.message || e);
+        }
         this.circuitBreaker.recordSuccess(); // Not a failure, just no result
         return null;
       }

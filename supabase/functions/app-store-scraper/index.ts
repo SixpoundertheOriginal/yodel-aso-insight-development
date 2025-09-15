@@ -9,6 +9,7 @@ import { SecurityService } from './services/security.service.ts';
 import { CacheManagerService } from './services/cache-manager.service.ts';
 import { AnalyticsService } from './services/analytics.service.ts';
 import { ReviewsService } from './services/reviews.service.ts';
+import { AppStoreSerpService } from './services/serp.service.ts';
 import { ErrorHandler } from './utils/error-handler.ts';
 import { ResponseBuilder } from './utils/response-builder.ts';
 
@@ -35,7 +36,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   const requestId = crypto.randomUUID().substring(0, 8);
@@ -66,6 +67,7 @@ serve(async (req) => {
     const cacheService = new CacheManagerService(supabase);
     const analyticsService = new AnalyticsService(supabase);
     const reviewsService = new ReviewsService(supabase);
+    const serpService = new AppStoreSerpService();
     const errorHandler = new ErrorHandler();
     const responseBuilder = new ResponseBuilder(corsHeaders); // ✅ Pass CORS headers
 
@@ -186,6 +188,130 @@ serve(async (req) => {
       } catch (error: any) {
         console.error(`❌ [${requestId}] PUBLIC SEARCH ERROR:`, error);
         return responseBuilder.error(`Search failed: ${error.message}`, 500);
+      }
+    }
+
+    // Handle App Store SERP operation (search results parsing) - PUBLIC ACCESS
+    if (operation === 'serp' || requestData.op === 'serp') {
+      const term = (requestData.term || requestData.searchTerm || '').toString().trim();
+      const cc = (requestData.cc || requestData.country || 'us').toString().toLowerCase();
+      const targetAppId = requestData.appId ? String(requestData.appId) : undefined;
+      const limit = Math.min(parseInt(requestData.limit) || 50, 100);
+      const maxPagesRaw = parseInt(requestData.maxPages);
+      const maxPages = isNaN(maxPagesRaw) ? 5 : Math.max(1, Math.min(10, maxPagesRaw));
+
+      if (!term) {
+        return responseBuilder.error('Missing required field: term', 400);
+      }
+      if (!/^[a-z]{2}$/.test(cc)) {
+        return responseBuilder.error('Invalid country code', 400);
+      }
+
+      try {
+        const serp = await serpService.fetchSerp({ cc, term, limit, maxPages });
+        let rank: number | null = null;
+        if (targetAppId) {
+          const hit = serp.items.find(it => it.appId === targetAppId);
+          rank = hit ? hit.rank : null;
+        }
+
+        return responseBuilder.success({
+          term,
+          country: cc,
+          total: serp.items.length,
+          rank,
+          items: serp.items,
+          maxPages
+        });
+      } catch (error: any) {
+        console.error(`❌ [${requestId}] SERP fetch failed:`, error);
+        return responseBuilder.error('SERP fetch failed', 502);
+      }
+    }
+
+    // Discover Top-1 keywords using SERP (best-effort suggestions expansion)
+    if (operation === 'serp-top1' || requestData.op === 'serp-top1') {
+      let cc = (requestData.cc || requestData.country || 'us').toString().toLowerCase();
+      const appId = requestData.appId ? String(requestData.appId) : '';
+      const seeds = Array.isArray(requestData.seeds) ? requestData.seeds.map((s: any) => String(s)).filter(Boolean) : [];
+      const maxCandidates = Math.min(parseInt(requestData.maxCandidates) || 150, 300);
+      const maxPagesRaw = parseInt(requestData.maxPages);
+      const maxPages = isNaN(maxPagesRaw) ? 5 : Math.max(1, Math.min(10, maxPagesRaw));
+
+      if (!appId) return responseBuilder.error('Missing required field: appId', 400);
+      if (!/^[a-z]{2}$/.test(cc)) cc = 'us';
+
+      async function fetchSuggestions(term: string): Promise<string[]> {
+        try {
+          const url = `https://itunes.apple.com/WebObjects/MZStoreServices.woa/wa/searchSuggestions?term=${encodeURIComponent(term)}&cc=${cc}&media=software`;
+          const res = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0',
+              'Accept': 'application/json, text/javascript, */*; q=0.01'
+            }
+          });
+          if (!res.ok) return [];
+          const data = await res.json();
+          const out: string[] = [];
+          if (Array.isArray(data?.suggestions)) {
+            for (const s of data.suggestions) {
+              const q = (s?.term || s?.query || s)?.toString?.();
+              if (q) out.push(q);
+            }
+          } else if (Array.isArray(data)) {
+            for (const s of data) {
+              const q = (s?.term || s?.query || s)?.toString?.();
+              if (q) out.push(q);
+            }
+          }
+          return out;
+        } catch {
+          return [];
+        }
+      }
+
+      try {
+        // Build candidate set
+        const candSet = new Set<string>();
+        for (const base of seeds.slice(0, 10)) {
+          candSet.add(base);
+          const sug = await fetchSuggestions(base);
+          for (const t of sug) {
+            if (candSet.size >= maxCandidates) break;
+            candSet.add(String(t));
+          }
+          if (candSet.size >= maxCandidates) break;
+          await new Promise(r => setTimeout(r, 120));
+        }
+
+        const candidates = Array.from(candSet).slice(0, maxCandidates);
+        const top1: string[] = [];
+
+        for (const term of candidates) {
+          try {
+            const serp = await serpService.fetchSerp({ cc, term, limit: 30, maxPages });
+            const hit = serp.items.find(it => it.appId === appId);
+            if (hit && hit.rank === 1) {
+              top1.push(term);
+            }
+          } catch {
+            // ignore fails per term
+          }
+          if (top1.length >= 100) break; // safety cap
+          await new Promise(r => setTimeout(r, 80));
+        }
+
+        return responseBuilder.success({
+          appId,
+          country: cc,
+          seedsUsed: seeds.slice(0, 10),
+          candidatesScanned: candidates.length,
+          maxPages,
+          keywords: top1
+        });
+      } catch (e) {
+        console.error(`❌ [${requestId}] SERP top1 discovery failed:`, e);
+        return responseBuilder.error('Top1 discovery failed', 500);
       }
     }
 

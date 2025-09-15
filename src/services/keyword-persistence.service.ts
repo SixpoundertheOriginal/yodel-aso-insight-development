@@ -28,6 +28,10 @@ export interface ServiceMetric {
 }
 
 class KeywordPersistenceService {
+  private isValidUuid(v?: string): boolean {
+    if (!v) return false;
+    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
+  }
   /**
    * Save keyword rankings to historical data
    */
@@ -41,6 +45,10 @@ class KeywordPersistenceService {
     let savedCount = 0;
 
     try {
+      if (!this.isValidUuid(organizationId)) {
+        console.warn('⚠️ [PERSISTENCE] Skipping saveRankingHistory: invalid organizationId');
+        return { success: true, saved: 0, errors: [] };
+      }
       const historyData = rankings.map(ranking => ({
         organization_id: organizationId,
         app_id: appId,
@@ -94,6 +102,10 @@ class KeywordPersistenceService {
     daysBack = 30
   ): Promise<KeywordRankingHistory[]> {
     try {
+      if (!this.isValidUuid(organizationId)) {
+        console.warn('⚠️ [PERSISTENCE] Skipping getRankingHistory: invalid organizationId');
+        return [];
+      }
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
@@ -135,6 +147,10 @@ class KeywordPersistenceService {
     tags: Record<string, any> = {}
   ): Promise<boolean> {
     try {
+      if (!this.isValidUuid(organizationId)) {
+        console.warn('⚠️ [PERSISTENCE] Skipping recordMetric: invalid organizationId');
+        return false;
+      }
       const { error } = await supabase
         .from('keyword_service_metrics')
         .insert({

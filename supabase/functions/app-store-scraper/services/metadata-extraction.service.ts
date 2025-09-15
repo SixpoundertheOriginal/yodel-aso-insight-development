@@ -170,6 +170,11 @@ export class MetadataExtractionService {
     const metadata: any = {};
     
     metadata.name = itunesData.trackName;
+    // Ensure downstream consumers receive a stable app identifier
+    // iOS apps expose `trackId`; normalize to string `appId`
+    if (itunesData.trackId) {
+      metadata.appId = String(itunesData.trackId);
+    }
     if (metadata.name) {
       const parts = itunesData.trackName.split(' - ');
       if (parts.length > 1 && parts[0].length > 0) {
