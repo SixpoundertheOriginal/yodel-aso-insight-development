@@ -191,7 +191,7 @@ const ConversionAnalysisContent: React.FC = () => {
                 : 'fixed right-0 top-0 h-full z-10'
             }
           >
-            {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && AI_INSIGHTS_ENABLED && (
+            {AI_INSIGHTS_ENABLED && (
               <ContextualInsightsSidebar
                 metricsData={data}
                 organizationId={organizationId}
@@ -381,7 +381,7 @@ const ConversionAnalysisContent: React.FC = () => {
               : 'fixed right-0 top-0 h-full z-10'
           }
         >
-          {!permissionsLoading && isSuperAdmin && user?.email === 'igor@yodelmobile.com' && AI_INSIGHTS_ENABLED && (
+          {AI_INSIGHTS_ENABLED && (
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}

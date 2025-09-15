@@ -13,6 +13,7 @@ import {
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
 import { filterByTrafficSources } from '@/utils/filterByTrafficSources';
+import { randBetween } from '@/lib/utils/demoRng';
 
 // Development-only logging helper
 const devLog = (message: string, data?: any) => {
@@ -584,7 +585,7 @@ function transformBigQueryToAsoData(
     ? (previousTotals.downloads / previousTotals.impressions) * 100
     : 0;
 
-  const summary = {
+  let summary = {
     impressions: { value: totals.impressions, delta: calculateRealDelta(totals.impressions, previousTotals?.impressions) },
     downloads: { value: totals.downloads, delta: calculateRealDelta(totals.downloads, previousTotals?.downloads) },
     product_page_views: { value: totals.product_page_views, delta: calculateRealDelta(totals.product_page_views, previousTotals?.product_page_views) },
@@ -617,7 +618,7 @@ function transformBigQueryToAsoData(
     return acc;
   }, {} as Record<string, { impressions: number; downloads: number; product_page_views: number }>);
 
-  const trafficSourceData: TrafficSource[] = Object.entries(trafficSourceGroups).map(([source, values]) => {
+  let trafficSourceData: TrafficSource[] = Object.entries(trafficSourceGroups).map(([source, values]) => {
     const comparison = meta.periodComparison?.trafficSources?.find(ts => ts.name === source);
     const productPageCvr = values.product_page_views > 0
       ? (values.downloads / values.product_page_views) * 100
@@ -656,6 +657,69 @@ function transformBigQueryToAsoData(
       }
     };
   });
+
+  // Demo-mode normalization: replace sentinel or extreme deltas with realistic positive ranges
+  if (meta?.isDemo) {
+    const seedBase = `${stableFilters.organizationId}|${(stableFilters.dateRange as any).from}|${(stableFilters.dateRange as any).to}`;
+
+    // Summary ranges: tuned for believable demo uplift
+    summary = {
+      impressions: {
+        value: summary.impressions.value,
+        delta: randBetween(`${seedBase}|summary|impr`, 1, 6)
+      },
+      downloads: {
+        value: summary.downloads.value,
+        delta: randBetween(`${seedBase}|summary|dl`, 1, 8)
+      },
+      product_page_views: {
+        value: summary.product_page_views.value,
+        delta: randBetween(`${seedBase}|summary|ppv`, 0.5, 4)
+      },
+      cvr: {
+        value: summary.cvr.value,
+        delta: randBetween(`${seedBase}|summary|cvr_impr`, 0.1, 1.2)
+      },
+      product_page_cvr: {
+        value: summary.product_page_cvr.value,
+        delta: randBetween(`${seedBase}|summary|cvr_ppv`, 0.1, 1.2)
+      },
+      impressions_cvr: {
+        value: summary.impressions_cvr.value,
+        delta: randBetween(`${seedBase}|summary|cvr_impr2`, 0.1, 1.2)
+      }
+    } as typeof summary;
+
+    trafficSourceData = trafficSourceData.map((ts) => {
+      const sSeed = `${seedBase}|source|${ts.traffic_source_display}`;
+      return {
+        ...ts,
+        delta: randBetween(`${sSeed}|overall`, 1, 9),
+        metrics: ts.metrics && {
+          impressions: {
+            value: ts.metrics.impressions.value,
+            delta: randBetween(`${sSeed}|impr`, 0.5, 5)
+          },
+          downloads: {
+            value: ts.metrics.downloads.value,
+            delta: randBetween(`${sSeed}|dl`, 1, 9)
+          },
+          product_page_views: {
+            value: ts.metrics.product_page_views.value,
+            delta: randBetween(`${sSeed}|ppv`, 0.2, 3)
+          },
+          product_page_cvr: {
+            value: ts.metrics.product_page_cvr.value,
+            delta: randBetween(`${sSeed}|ppv_cvr`, 0.1, 1.5)
+          },
+          impressions_cvr: {
+            value: ts.metrics.impressions_cvr.value,
+            delta: randBetween(`${sSeed}|impr_cvr`, 0.1, 1.5)
+          }
+        }
+      } as typeof ts;
+    });
+  }
 
   debugLog.verbose('Transform complete', {
     totalItems: bigQueryData.length,
