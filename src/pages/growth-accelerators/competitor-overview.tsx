@@ -39,7 +39,22 @@ type TopNHit = { keyword: string; rank: number }
 const CompetitorOverviewPage: React.FC = () => {
   const { isDemoOrg, organization } = useDemoOrgDetection()
   const demoKey = organization?.slug ? organization.slug.toLowerCase() : 'demo'
-  const { app: anchor, country } = useDemoSelectedApp()
+  
+  // Only use demo selected app context when in demo mode
+  let anchor = null
+  let country = null
+  
+  if (isDemoOrg) {
+    try {
+      const demoContext = useDemoSelectedApp()
+      anchor = demoContext.app
+      country = demoContext.country
+    } catch {
+      // Fallback if context is not available
+      anchor = null
+      country = null
+    }
+  }
 
   // competitors state (persist to localStorage for demo)
   const storageKey = `demo:competitors:${demoKey}`
