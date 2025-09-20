@@ -148,7 +148,7 @@ const CompetitorOverviewPage: React.FC = () => {
               <h1 className="text-2xl font-semibold">Competitor Overview</h1>
               <p className="text-sm text-muted-foreground">Compare Top‑10 keyword coverage and ratings across competitors</p>
             </div>
-            {isDemoOrg && <Badge variant="outline" className="text-xs">DEMO</Badge>}
+            {/* Hide demo badge per request */}
           </div>
 
           {/* Selection */}

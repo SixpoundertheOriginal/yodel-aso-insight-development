@@ -63,6 +63,7 @@ const CompleteSignup = lazy(() => import("./pages/auth/complete-signup"));
 const UpdatePassword = lazy(() => import("./pages/auth/update-password"));
 const SmokeTest = lazy(() => import("./pages/smoke-test"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const PreviewPage = lazy(() => import("./pages/preview"));
 const NoAccess = lazy(() => import("./pages/no-access"));
 const WebRankAppsPage = lazy(() => import("./pages/growth/WebRankAppsPage.simple"));
 
@@ -228,6 +229,8 @@ function App() {
                             path="/ui-demo"
                             element={<ProtectedRoute><UIPermissionDemoPage /></ProtectedRoute>}
                           />
+                          {/* Public marketing/preview route (feature-flagged) */}
+                          <Route path="/preview" element={<PreviewPage />} />
                           <Route path="/404" element={<NotFound />} />
                           <Route path="*" element={<Navigate to="/404" replace />} />
                         </Routes>

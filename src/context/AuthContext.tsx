@@ -36,19 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
-        // Force refresh tokens if session exists but may be stale
-        if (currentSession?.user && event === 'SIGNED_IN') {
-          setTimeout(async () => {
-            try {
-              const { data } = await supabase.auth.refreshSession();
-              if (data.session) {
-                debugLog.verbose('Token refreshed successfully');
-              }
-            } catch (error) {
-              console.warn('Token refresh failed:', error);
-            }
-          }, 100);
-        }
+        // Avoid forcing an immediate token refresh on sign-in.
+        // Supabase client handles refresh automatically when needed.
+        // Removing the manual refresh prevents spurious 400s in dev tools.
         
         if (event === 'SIGNED_IN') {
           toast({

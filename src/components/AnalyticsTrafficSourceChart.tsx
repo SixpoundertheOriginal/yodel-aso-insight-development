@@ -1,16 +1,7 @@
 import React, { useMemo } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import { TrafficSourceTimeSeriesPoint } from '@/hooks/useMockAsoData';
 import { TRAFFIC_SOURCE_COLORS } from '@/utils/trafficSourceColors';
+import BrandLineChart from '@/components/charts/BrandLineChart';
 
 interface AnalyticsTrafficSourceChartProps {
   trafficSourceTimeseriesData: TrafficSourceTimeSeriesPoint[];
@@ -72,39 +63,20 @@ export function AnalyticsTrafficSourceChart({
     <div className="bg-background border border-border p-6 rounded-lg">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-foreground text-lg font-semibold">Performance Metrics</h3>
-        <span className="text-muted-foreground text-sm">
-          {metricLabel} by Traffic Source
-        </span>
+        <span className="text-muted-foreground text-sm">{metricLabel} by Traffic Source</span>
       </div>
 
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-          <YAxis stroke="hsl(var(--muted-foreground))" />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--background))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '6px',
-              color: 'hsl(var(--foreground))',
-            }}
-          />
-          <Legend />
-          {trafficSourceKeys.map(({ key, name }) => (
-            <Line
-              key={`${key}_${metric}`}
-              dataKey={key}
-              stroke={
-                TRAFFIC_SOURCE_COLORS[name as keyof typeof TRAFFIC_SOURCE_COLORS]
-              }
-              name={`${name} ${metricLabel}`}
-              strokeWidth={2}
-              dot={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <BrandLineChart
+        data={chartData}
+        series={trafficSourceKeys.map(({ key, name }) => ({
+          key,
+          label: name,
+          color: TRAFFIC_SOURCE_COLORS[name as keyof typeof TRAFFIC_SOURCE_COLORS],
+        }))}
+        height={450}
+        tooltipIndicator="dot"
+        showLegend
+      />
     </div>
   );
 }

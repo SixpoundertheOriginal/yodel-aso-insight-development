@@ -24,6 +24,8 @@ import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import type { ScrapedMetadata } from '@/types/aso';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
+import SuggestKeywordsDialog from '@/components/keywords/SuggestKeywordsDialog';
+import { PremiumCard, PremiumCardHeader, PremiumCardContent, PremiumTypography } from '@/components/ui/premium';
 
 type AppSearchResult = {
   name: string;
@@ -80,6 +82,7 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [appPickerOpen, setAppPickerOpen] = useState(false);
   const [sortKey, setSortKey] = useState<'keyword' | 'position' | 'volume' | 'confidence' | 'trend' | 'lastChecked'>('position');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [showSuggestDialog, setShowSuggestDialog] = useState(false);
 
   const volumeRank = (v: KeywordRow['volume']) => (v === 'High' ? 3 : v === 'Medium' ? 2 : 1);
   const trendRank = (t: KeywordRow['trend']) => (t === 'up' ? 3 : t === 'stable' ? 2 : 1);
@@ -157,17 +160,35 @@ const KeywordsIntelligencePage: React.FC = () => {
   const handleAppPicked = (apps: any[] | ScrapedMetadata | undefined) => {
     const picked = Array.isArray(apps) ? apps[0] : (apps as any);
     if (!picked) return;
+    // Robust normalization across different providers/shapes
+    const extractAppId = () => {
+      if (picked.appId) return String(picked.appId);
+      if (picked.trackId) return String(picked.trackId);
+      if (picked.url && typeof picked.url === 'string') {
+        const m = picked.url.match(/id(\d{5,})/); if (m) return m[1];
+      }
+      return '';
+    };
     const normalized: AppSearchResult = {
-      name: picked.name,
-      appId: picked.appId,
-      developer: picked.developer || 'Unknown Developer',
-      rating: picked.rating || 0,
-      reviews: picked.reviews || 0,
-      icon: picked.icon || '',
-      applicationCategory: picked.applicationCategory || 'App'
+      name: picked.name || picked.title || picked.trackName || 'Unknown App',
+      appId: extractAppId(),
+      developer: picked.developer || picked.artistName || 'Unknown Developer',
+      rating: typeof picked.rating === 'number'
+        ? picked.rating
+        : (typeof picked.averageUserRating === 'number' ? picked.averageUserRating : 0),
+      reviews: typeof picked.reviews === 'number'
+        ? picked.reviews
+        : (typeof picked.userRatingCount === 'number' ? picked.userRatingCount : (picked.reviewCount || 0)),
+      icon: picked.icon || picked.artworkUrl512 || picked.artworkUrl100 || picked.screenshot || (picked.screenshots?.[0] || ''),
+      applicationCategory: picked.applicationCategory || picked.primaryGenreName || 'App'
     };
     selectApp(normalized);
     setAppPickerOpen(false);
+    if (autoGenerateAfterPick) {
+      // give the UI a tick to settle
+      setTimeout(() => { void discoverTopTen(); }, 100);
+      setAutoGenerateAfterPick(false);
+    }
   };
 
   // Keywords helpers
@@ -370,36 +391,30 @@ const KeywordsIntelligencePage: React.FC = () => {
     try { const up = cc.toUpperCase(); const cps = [...up].map(c => 127397 + c.charCodeAt(0)); return String.fromCodePoint(...cps); } catch { return cc; }
   };
 
-  // Demo preset auto-select (no app search needed)
+  // Show suggest/manual prompt after user selects an app (first time; respects "don't show again")
   React.useEffect(() => {
-    if (!isDemoOrg || selectedApp) return;
-    if (demoSel && demoSel.app && demoSel.country) {
-      setSelectedCountry(demoSel.country);
-      setSelectedApp({
-        name: demoSel.app.name,
-        appId: demoSel.app.appId,
-        developer: demoSel.app.developer || 'Demo',
-        rating: demoSel.app.rating ?? 0,
-        reviews: demoSel.app.reviews ?? 0,
-        icon: demoSel.app.icon || '',
-        applicationCategory: demoSel.app.applicationCategory || 'App'
-      });
-      return;
+    if (!selectedApp) return;
+    try {
+      const never = localStorage.getItem('kw_intro_never') === 'true';
+      const seen = sessionStorage.getItem('kw_intro_shown') === 'true';
+      if (!never && !seen) setShowSuggestDialog(true);
+    } catch {
+      setShowSuggestDialog(true);
     }
-    const preset = getDemoPresetForSlug(organization?.slug);
-    if (preset) {
-      setSelectedCountry(preset.country || 'us');
-      setSelectedApp({
-        name: preset.app.name,
-        appId: preset.app.appId,
-        developer: preset.app.developer || 'Demo',
-        rating: preset.app.rating ?? 0,
-        reviews: preset.app.reviews ?? 0,
-        icon: preset.app.icon || '',
-        applicationCategory: preset.app.applicationCategory || 'App'
-      });
-    }
-  }, [isDemoOrg, organization?.slug, selectedApp, demoSel]);
+  }, [selectedApp]);
+
+  const handleSuggest = () => {
+    try { sessionStorage.setItem('kw_intro_shown', 'true'); } catch {}
+    setShowSuggestDialog(false);
+    if (selectedApp) void discoverTopTen();
+  };
+
+  const handleManual = () => {
+    try { sessionStorage.setItem('kw_intro_shown', 'true'); } catch {}
+    setShowSuggestDialog(false);
+  };
+
+  // Demo preset auto-select removed: require manual app selection in demo mode
 
   return (
     <MainLayout>
@@ -410,7 +425,9 @@ const KeywordsIntelligencePage: React.FC = () => {
             <YodelCardHeader>
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold flex items-center gap-2"><Search className="w-5 h-5" /> Keyword Intelligence</h2>
-                <Badge variant="outline" className="text-xs">BETA</Badge>
+                {(isSuperAdmin && !isDemoOrg) && (
+                  <Badge variant="outline" className="text-xs">BETA</Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">Search and select an app to analyze its keyword performance</p>
             </YodelCardHeader>
@@ -420,10 +437,23 @@ const KeywordsIntelligencePage: React.FC = () => {
                 <Select value={selectedCountry} onValueChange={setSelectedCountry}>
                   <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="us">🇺🇸 US</SelectItem>
-                    <SelectItem value="gb">🇬🇧 UK</SelectItem>
-                    <SelectItem value="ca">🇨🇦 CA</SelectItem>
-                    <SelectItem value="au">🇦🇺 AU</SelectItem>
+                    <SelectItem value="us">🇺🇸 United States</SelectItem>
+                    <SelectItem value="gb">🇬🇧 United Kingdom</SelectItem>
+                    <SelectItem value="ca">🇨🇦 Canada</SelectItem>
+                    <SelectItem value="au">🇦🇺 Australia</SelectItem>
+                    <SelectItem value="de">🇩🇪 Germany</SelectItem>
+                    <SelectItem value="fr">🇫🇷 France</SelectItem>
+                    <SelectItem value="it">🇮🇹 Italy</SelectItem>
+                    <SelectItem value="es">🇪🇸 Spain</SelectItem>
+                    <SelectItem value="nl">🇳🇱 Netherlands</SelectItem>
+                    <SelectItem value="se">🇸🇪 Sweden</SelectItem>
+                    <SelectItem value="no">🇳🇴 Norway</SelectItem>
+                    <SelectItem value="dk">🇩🇰 Denmark</SelectItem>
+                    <SelectItem value="jp">🇯🇵 Japan</SelectItem>
+                    <SelectItem value="kr">🇰🇷 South Korea</SelectItem>
+                    <SelectItem value="br">🇧🇷 Brazil</SelectItem>
+                    <SelectItem value="in">🇮🇳 India</SelectItem>
+                    <SelectItem value="mx">🇲🇽 Mexico</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button onClick={handleSearch} disabled={searchLoading}>{searchLoading ? 'Searching...' : 'Search'}</Button>
@@ -455,34 +485,60 @@ const KeywordsIntelligencePage: React.FC = () => {
 
         {/* Keywords + Results */}
         {selectedApp && (
-          <YodelCard variant="elevated" padding="md">
-            <YodelCardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {selectedApp.icon && <img src={selectedApp.icon} className="w-10 h-10 rounded-md" alt={selectedApp.name} />}
-                  <div>
-                    <div className="text-lg font-semibold flex items-center gap-2"><Eye className="w-5 h-5" /> {selectedApp.name}</div>
-                    <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+          <PremiumCard variant="glass" intensity="medium" className="overflow-hidden">
+            <PremiumCardHeader className="bg-zinc-900/70 border-b border-zinc-800/50">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {selectedApp.icon ? (
+                    <img src={selectedApp.icon} className="w-12 h-12 rounded-md ring-1 ring-zinc-700 shadow" alt={selectedApp.name} />
+                  ) : (
+                    <div className="w-12 h-12 rounded-md bg-zinc-800 ring-1 ring-zinc-700 flex items-center justify-center text-zinc-300 text-lg font-semibold">
+                      {selectedApp.name?.[0] || 'A'}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <PremiumTypography.SectionTitle className="flex items-center gap-2 truncate">
+                      <Eye className="w-5 h-5" />
+                      <span className="truncate">{selectedApp.name}</span>
+                    </PremiumTypography.SectionTitle>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {selectedApp.developer} • {selectedApp.applicationCategory}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                      <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800/60">Rating: {(selectedApp.rating || 0).toFixed(2)}/5</span>
+                      <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800/60">Reviews: {selectedApp.reviews?.toLocaleString() || 0}</span>
+                    </div>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-xs text-muted-foreground hidden sm:block">Market</div>
+                  <Select value={selectedCountry} onValueChange={(v)=>{ setSelectedCountry(v); setRows([]); }}>
+                    <SelectTrigger className="w-28 h-8 text-sm"><SelectValue placeholder={`${ccToFlag(selectedCountry)} ${selectedCountry.toUpperCase()}`} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="us">🇺🇸 United States</SelectItem>
+                      <SelectItem value="gb">🇬🇧 United Kingdom</SelectItem>
+                      <SelectItem value="ca">🇨🇦 Canada</SelectItem>
+                      <SelectItem value="au">🇦🇺 Australia</SelectItem>
+                      <SelectItem value="de">🇩🇪 Germany</SelectItem>
+                      <SelectItem value="fr">🇫🇷 France</SelectItem>
+                      <SelectItem value="it">🇮🇹 Italy</SelectItem>
+                      <SelectItem value="es">🇪🇸 Spain</SelectItem>
+                      <SelectItem value="nl">🇳🇱 Netherlands</SelectItem>
+                      <SelectItem value="se">🇸🇪 Sweden</SelectItem>
+                      <SelectItem value="no">🇳🇴 Norway</SelectItem>
+                      <SelectItem value="dk">🇩🇰 Denmark</SelectItem>
+                      <SelectItem value="jp">🇯🇵 Japan</SelectItem>
+                      <SelectItem value="kr">🇰🇷 South Korea</SelectItem>
+                      <SelectItem value="br">🇧🇷 Brazil</SelectItem>
+                      <SelectItem value="in">🇮🇳 India</SelectItem>
+                      <SelectItem value="mx">🇲🇽 Mexico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" onClick={()=>setAppPickerOpen(true)} className="h-8 text-sm">Change App</Button>
+                </div>
               </div>
-            </YodelCardHeader>
-            <YodelCardContent className="space-y-4">
-              {/* Context controls: market + change app */}
-              <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md">
-                <div className="text-xs text-muted-foreground">Market</div>
-                <Select value={selectedCountry} onValueChange={(v)=>{ setSelectedCountry(v); setRows([]); }}>
-                  <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="us">🇺🇸 US</SelectItem>
-                    <SelectItem value="gb">🇬🇧 UK</SelectItem>
-                    <SelectItem value="ca">🇨🇦 CA</SelectItem>
-                    <SelectItem value="au">🇦🇺 AU</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" onClick={()=>setAppPickerOpen(true)} className="h-8 text-sm">Change App</Button>
-              </div>
+            </PremiumCardHeader>
+            <PremiumCardContent className="space-y-4 p-5">
               <YodelToolbar>
                 <Input
                   placeholder="Enter keywords (comma or newline separated) and press Enter or Analyze"
@@ -588,8 +644,8 @@ const KeywordsIntelligencePage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            </YodelCardContent>
-          </YodelCard>
+            </PremiumCardContent>
+          </PremiumCard>
         )}
       </div>
       {/* App picker modal */}
@@ -606,6 +662,15 @@ const KeywordsIntelligencePage: React.FC = () => {
           searchCountry={selectedCountry}
         />
       )}
+      {/* First-visit suggestion dialog */}
+      <SuggestKeywordsDialog
+        open={showSuggestDialog}
+        onOpenChange={setShowSuggestDialog}
+        onSuggest={handleSuggest}
+        onManual={handleManual}
+        onSetDontShow={(never) => { try { if (never) localStorage.setItem('kw_intro_never', 'true'); } catch {} }}
+        selectedAppName={selectedApp?.name}
+      />
     </MainLayout>
   );
 };

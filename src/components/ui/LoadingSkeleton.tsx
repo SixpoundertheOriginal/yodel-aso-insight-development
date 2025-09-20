@@ -1,4 +1,5 @@
 import React from 'react';
+import BrandBackground from '@/components/marketing/BrandBackground';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
@@ -253,42 +254,31 @@ export const BrandedLoadingSpinner: React.FC<{
 
   return (
     <div 
-      className={`flex h-screen w-full items-center justify-center bg-gradient-to-br from-background via-muted to-accent ${className}`}
+      className={`relative flex h-screen w-full items-center justify-center ${className}`}
+      style={{ backgroundColor: '#0B0F14' }}
       role="status"
       aria-label="Loading"
     >
-      <div className="relative">
+      {/* Reuse preview background for unity */}
+      <BrandBackground />
+      <div className="relative z-10">
         {/* Theme-adaptive glow overlay */}
-        <div className={`absolute inset-0 rounded-full ${
-          theme === 'dark' 
-            ? 'bg-gradient-to-br from-blue-400/30 to-purple-500/30' 
-            : 'bg-gradient-to-br from-blue-200/20 to-purple-300/20'
-        } blur-3xl ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
+        <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-[#FF9E42]/20 to-[#FF7A1A]/20 blur-3xl ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
         
         {/* Main loading content */}
         <div className="relative z-10 text-center space-y-8 animate-scale-in">
           {/* Enhanced multi-layer spinner */}
           <div className="relative mx-auto w-20 h-20">
             {/* Outer static ring */}
-            <div className={`absolute inset-0 rounded-full border-4 ${
-              theme === 'dark' ? 'border-blue-400/20' : 'border-blue-300/30'
-            }`} />
+            <div className={`absolute inset-0 rounded-full border-4 border-[#FF9E42]/25`} />
             
             {/* Middle spinning ring */}
-            <div className={`absolute inset-0 rounded-full border-4 border-transparent bg-gradient-to-r ${
-              theme === 'dark' 
-                ? 'from-blue-400 via-blue-500 to-purple-500' 
-                : 'from-blue-300 via-blue-400 to-purple-400'
-            } bg-clip-border ${prefersReducedMotion ? 'animate-pulse' : 'animate-spin [animation-duration:2s]'}`}>
+            <div className={`absolute inset-0 rounded-full border-4 border-transparent bg-gradient-to-r from-[#FF7A1A] via-[#FF9E42] to-[#FF7A1A] bg-clip-border ${prefersReducedMotion ? 'animate-pulse' : 'animate-spin [animation-duration:2s]'}`}>
               <div className="absolute inset-1 rounded-full bg-background" />
             </div>
             
             {/* Inner pulsing core */}
-            <div className={`absolute inset-6 rounded-full bg-gradient-to-r ${
-              theme === 'dark' 
-                ? 'from-blue-400 to-purple-500' 
-                : 'from-blue-300 to-purple-400'
-            } ${prefersReducedMotion ? 'opacity-75' : 'animate-pulse'}`} />
+            <div className={`absolute inset-6 rounded-full bg-gradient-to-r from-[#FF7A1A] to-[#FF9E42] ${prefersReducedMotion ? 'opacity-75' : 'animate-pulse'}`} />
             
             {/* Floating particles around spinner */}
             {!prefersReducedMotion && (
@@ -296,9 +286,7 @@ export const BrandedLoadingSpinner: React.FC<{
                 {Array.from({ length: 8 }, (_, i) => (
                   <div
                     key={i}
-                    className={`absolute w-0.5 h-0.5 rounded-full ${
-                      theme === 'dark' ? 'bg-blue-400/60' : 'bg-blue-300/60'
-                    } animate-ping`}
+                    className={`absolute w-0.5 h-0.5 rounded-full bg-[#21E6C1]/40 animate-ping`}
                     style={{
                       transform: `rotate(${i * 45}deg) translateY(-35px)`,
                       animationDelay: `${i * 0.15}s`,
@@ -310,20 +298,12 @@ export const BrandedLoadingSpinner: React.FC<{
             )}
             
             {/* Enhanced glow effect */}
-            <div className={`absolute inset-0 rounded-full ${
-              theme === 'dark'
-                ? 'bg-gradient-to-r from-blue-400/30 to-purple-500/30'
-                : 'bg-gradient-to-r from-blue-200/20 to-purple-300/20'
-            } blur-lg ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
+            <div className={`absolute inset-0 rounded-full bg-gradient-to-r from-[#FF9E42]/30 to-[#FF7A1A]/30 blur-lg ${prefersReducedMotion ? 'opacity-50' : 'animate-pulse'}`} />
           </div>
           
           {/* Enhanced branded text with theme-adaptive styling */}
           <div className="space-y-3">
-            <div className={`text-xl font-semibold ${
-              theme === 'dark'
-                ? 'bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent'
-                : 'text-foreground'
-            } animate-fade-in [animation-delay:0.3s]`}>
+            <div className={`text-xl font-semibold bg-gradient-to-r from-[#FF7A1A] to-[#FF9E42] bg-clip-text text-transparent animate-fade-in [animation-delay:0.3s]`}>
               {message}
             </div>
             <div className="text-sm text-muted-foreground animate-fade-in [animation-delay:0.6s]">
@@ -335,9 +315,7 @@ export const BrandedLoadingSpinner: React.FC<{
               {Array.from({ length: 3 }, (_, i) => (
                 <div
                   key={i}
-                  className={`w-2 h-2 rounded-full ${
-                    theme === 'dark' ? 'bg-blue-400' : 'bg-blue-500'
-                  } ${prefersReducedMotion ? 'opacity-75' : 'animate-bounce'}`}
+                  className={`w-2 h-2 rounded-full bg-[#FF7A1A] ${prefersReducedMotion ? 'opacity-75' : 'animate-bounce'}`}
                   style={{ 
                     animationDelay: `${i * 0.2}s`,
                     animationDuration: '1.5s'
@@ -353,11 +331,7 @@ export const BrandedLoadingSpinner: React.FC<{
               {Array.from({ length: 6 }, (_, i) => (
                 <div
                   key={i}
-                  className={`absolute w-1 h-1 rounded-full ${
-                    i % 2 === 0 
-                      ? (theme === 'dark' ? 'bg-blue-400/40' : 'bg-blue-300/40')
-                      : (theme === 'dark' ? 'bg-purple-500/40' : 'bg-purple-400/40')
-                  } animate-ping`}
+                  className={`absolute w-1 h-1 rounded-full ${ i % 2 === 0 ? 'bg-[#FF9E42]/40' : 'bg-[#21E6C1]/30' } animate-ping`}
                   style={{
                     top: `${Math.sin(i * Math.PI / 3) * 60 + 50}%`,
                     left: `${Math.cos(i * Math.PI / 3) * 60 + 50}%`,

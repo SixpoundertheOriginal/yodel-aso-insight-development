@@ -219,6 +219,16 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
   const filteredAiCopilotsItemsBase = filterNavigationByRoutes(aiCopilotsItems, filterOptions);
   const filteredControlCenterItemsBase = filterNavigationByRoutes(controlCenterItems, filterOptions);
 
+  // Marketing Preview entry should appear at the very top when preview is enabled or in demo mode
+  const showPreviewEntry = ((import.meta as any).env?.VITE_PREVIEW_PAGE_ENABLED === 'true')
+    || ((import.meta as any).env?.VITE_DEMO_DEBUG === 'true')
+    || isDemoOrg;
+  const previewNavItem: NavigationItem = {
+    title: 'Preview',
+    url: '/preview',
+    icon: Star,
+  };
+
   const NAV_FLAG = (import.meta as any).env?.VITE_NAV_PERMISSIONS_ENABLED === 'true';
   const applyPermFilter = (items: NavigationItem[]) => {
     if (!NAV_FLAG) return items;
@@ -452,6 +462,22 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
+        {/* Preview (Marketing) - top placement above Performance Intelligence */}
+        {showPreviewEntry && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full"></div>
+                Preview
+              </div>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderNavItem(previewNavItem)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {/* Performance Intelligence Section */}
         {filteredAnalyticsItems.length > 0 && (
           <SidebarGroup>

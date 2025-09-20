@@ -102,6 +102,7 @@ const ReviewManagementPage: React.FC = () => {
   // Development self-test state; only for super admins without an assigned org (platform scope)
   const [showDevTest, setShowDevTest] = useState(import.meta.env.DEV);
   const canShowDevPanel = isSuperAdmin && (!organizationId || String(organizationId).trim() === '');
+  const showDevBadge = isSuperAdmin && !isDemoOrg;
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
@@ -161,51 +162,7 @@ const ReviewManagementPage: React.FC = () => {
     }
   };
 
-  // Demo preset: auto-select app and load reviews (once)
-  const demoSel = (() => {
-    try { return isDemoOrg ? useDemoSelectedApp() : null } catch { return null }
-  })();
-
-  React.useEffect(() => {
-    if (!isDemoOrg || selectedApp) return;
-    if (demoSel && demoSel.app && demoSel.country) {
-      const a = demoSel.app;
-      const demoApp: AppSearchResult = {
-        name: a.name,
-        appId: a.appId,
-        developer: a.developer || 'Demo',
-        rating: a.rating ?? 0,
-        reviews: a.reviews ?? 0,
-        icon: a.icon || '',
-        applicationCategory: a.applicationCategory || 'App'
-      };
-      setSelectedCountry(demoSel.country || 'us');
-      setSelectedApp(demoApp);
-      setReviews([]);
-      setCurrentPage(1);
-      setHasMoreReviews(false);
-      fetchReviews(demoApp.appId, 1);
-      return;
-    }
-    const preset = getDemoPresetForSlug(organization?.slug);
-    if (!preset) return;
-    const demoApp: AppSearchResult = {
-      name: preset.app.name,
-      appId: preset.app.appId,
-      developer: preset.app.developer || 'Demo',
-      rating: preset.app.rating ?? 0,
-      reviews: preset.app.reviews ?? 0,
-      icon: preset.app.icon || '',
-      applicationCategory: preset.app.applicationCategory || 'App'
-    };
-    setSelectedCountry(preset.country || 'us');
-    setSelectedApp(demoApp);
-    setReviews([]);
-    setCurrentPage(1);
-    setHasMoreReviews(false);
-    fetchReviews(demoApp.appId, 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoOrg, organization?.slug, selectedApp, demoSel]);
+  // Demo preset auto-select removed: require manual app selection in demo mode
 
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
@@ -475,12 +432,13 @@ const ReviewManagementPage: React.FC = () => {
           <h1 className="text-3xl font-bold">Review Management</h1>
           <p className="text-muted-foreground">Search apps and fetch public customer reviews from iTunes RSS</p>
         </div>
-        {showDevTest && (
+        {showDevBadge && (
           <Badge variant="outline" className="text-xs">DEV MODE</Badge>
         )}
       </div>
 
-      {/* Card A: App Search */}
+      {/* Card A: App Search (hidden after app selected) */}
+      {!selectedApp && (
       <YodelCard variant="glass" padding="md" className="shadow-sm">
         <YodelCardHeader>
           <div className="flex items-center justify-between">
@@ -488,7 +446,7 @@ const ReviewManagementPage: React.FC = () => {
             <Search className="w-5 h-5" />
             App Search
             </h2>
-            {showDevTest && (
+            {showDevBadge && (
               <Badge variant="outline" className="text-xs">DEV MODE</Badge>
             )}
           </div>
@@ -509,10 +467,23 @@ const ReviewManagementPage: React.FC = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="us">🇺🇸 US</SelectItem>
-                <SelectItem value="gb">🇬🇧 UK</SelectItem>
-                <SelectItem value="ca">🇨🇦 CA</SelectItem>
-                <SelectItem value="au">🇦🇺 AU</SelectItem>
+                <SelectItem value="us">🇺🇸 United States</SelectItem>
+                <SelectItem value="gb">🇬🇧 United Kingdom</SelectItem>
+                <SelectItem value="ca">🇨🇦 Canada</SelectItem>
+                <SelectItem value="au">🇦🇺 Australia</SelectItem>
+                <SelectItem value="de">🇩🇪 Germany</SelectItem>
+                <SelectItem value="fr">🇫🇷 France</SelectItem>
+                <SelectItem value="it">🇮🇹 Italy</SelectItem>
+                <SelectItem value="es">🇪🇸 Spain</SelectItem>
+                <SelectItem value="nl">🇳🇱 Netherlands</SelectItem>
+                <SelectItem value="se">🇸🇪 Sweden</SelectItem>
+                <SelectItem value="no">🇳🇴 Norway</SelectItem>
+                <SelectItem value="dk">🇩🇰 Denmark</SelectItem>
+                <SelectItem value="jp">🇯🇵 Japan</SelectItem>
+                <SelectItem value="kr">🇰🇷 South Korea</SelectItem>
+                <SelectItem value="br">🇧🇷 Brazil</SelectItem>
+                <SelectItem value="in">🇮🇳 India</SelectItem>
+                <SelectItem value="mx">🇲🇽 Mexico</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleAppSearch} disabled={searchLoading}>
@@ -552,6 +523,7 @@ const ReviewManagementPage: React.FC = () => {
           )}
         </YodelCardContent>
       </YodelCard>
+      )}
 
       {/* Card B: Reviews Fetching & Export */}
       {selectedApp && (

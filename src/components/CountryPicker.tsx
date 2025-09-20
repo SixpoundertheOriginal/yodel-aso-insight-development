@@ -101,11 +101,15 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({
 
 // Utility functions
 const getFlagEmoji = (countryCode: string): string => {
+  const code = (countryCode || '').toUpperCase();
   const flags: Record<string, string> = {
     'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺',
-    'DE': '🇩🇪', 'FR': '🇫🇷', 'JP': '🇯🇵', 'BR': '🇧🇷'
+    'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸',
+    'NL': '🇳🇱', 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰',
+    'CH': '🇨🇭', 'IE': '🇮🇪', 'PL': '🇵🇱', 'JP': '🇯🇵',
+    'KR': '🇰🇷', 'BR': '🇧🇷', 'IN': '🇮🇳', 'MX': '🇲🇽'
   };
-  return flags[countryCode] || '🌍';
+  return flags[code] || '🌍';
 };
 
 const getCountryName = (countryCode: string, markets: Market[]): string => {

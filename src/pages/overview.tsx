@@ -3,9 +3,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAsoData } from "../context/AsoDataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PermissionWrapper } from "@/components/PermissionWrapper";
-import ExecutiveTimeSeriesChart from "../components/ExecutiveTimeSeriesChart";
+// Rebuilt chart with centralized design system
+import BrandLineChart from "@/components/charts/BrandLineChart";
+import { chartColors } from "@/utils/chartConfig";
+import { TRAFFIC_SOURCE_COLORS } from "@/utils/trafficSourceColors";
 // Unified stats card for dashboard summaries
 import KpiCard from "@/components/kpi/KpiCard";
+import { MetricCard } from "@/components/ui/design-system/MetricCard";
 import DashboardStatsCard from "../components/DashboardStatsCard";
 import TrafficSourceSelector from "../components/TrafficSourceSelector";
 import {
@@ -70,7 +74,7 @@ const OverviewContent: React.FC = () => {
   // const { isDemo } = useBigQueryData(...) - REMOVED
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
+  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed');
   const [trafficSourceView, setTrafficSourceView] = useState<string>('all');
   const [selectedSources, setSelectedSources] = useState<string[]>([...executiveTrafficSources]);
 
@@ -381,15 +385,18 @@ const OverviewContent: React.FC = () => {
                   {/* KPI Cards Section (Unified or fallback) */}
                   {KPI_UNIFIED ? (
                     <div className={getGridClasses(kpiCards.length)}>
-                      {kpiCards.map((card) => (
-                        <KpiCard
-                          key={card.label}
-                          label={card.label}
-                          value={card.value}
-                          delta={card.delta}
-                          mode="compact"
-                        />
-                      ))}
+                      {kpiCards.map((card) => {
+                        const d = typeof card.delta === 'number' ? card.delta : 0;
+                        const trend = d >= 0 ? 'up' as const : 'down' as const;
+                        return (
+                          <MetricCard
+                            key={card.label}
+                            title={card.label}
+                            value={card.value}
+                            change={{ value: Math.abs(Number(d.toFixed(1))), period: 'previous period', trend }}
+                          />
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className={getGridClasses(kpiCards.length)}>
@@ -425,59 +432,56 @@ const OverviewContent: React.FC = () => {
                         <StatusIndicator status="info" size="sm" />
                       </PremiumTypography.SectionTitle>
                     </PremiumCardHeader>
-                    <PremiumCardContent className="p-8">
-                      <ExecutiveTimeSeriesChart
-                        data={chartData}
-                        trafficSourceTimeseriesData={trafficSourceTimeseries as any}
-                        mode={chartMode}
-                        showModeToggle={false}
-                        visibleMetrics={['impressions','downloads','product_page_views']}
-                        breakdownMetric="downloads"
-                        selectedTrafficSources={selectedSources}
-                      />
+                  <PremiumCardContent className="p-8">
+                      {chartMode === 'total' ? (
+                        <BrandLineChart
+                          data={chartData as any}
+                          series={([
+                            ['impressions', 'Impressions', chartColors.impressions],
+                            ['downloads', 'Downloads', chartColors.downloads],
+                            ['product_page_views', 'Product Page Views', chartColors.product_page_views],
+                          ] as const).map(([key, label, color]) => ({ key, label, color }))}
+                          height={450}
+                          tooltipIndicator="dot"
+                          showLegend
+                        />
+                      ) : (
+                        (() => {
+                          const keyMap: Record<string, string> = {
+                            'App Store Search': 'appStoreSearch',
+                            'App Store Browse': 'appStoreBrowse',
+                            'App Referrer': 'appReferrer',
+                            'Apple Search Ads': 'appleSearchAds',
+                            'Web Referrer': 'webReferrer',
+                          };
+                          const metric = 'downloads' as const;
+                          const rows = (trafficSourceTimeseries as any[] || []).map((pt: any) => {
+                            const row: any = { date: pt.date };
+                            selectedSources.forEach((source) => {
+                              const k = keyMap[source] || source;
+                              row[k] = pt[`${k}_${metric}`] || 0;
+                            });
+                            return row;
+                          });
+                          const series = selectedSources.map((source) => {
+                            const k = keyMap[source] || source;
+                            return { key: k, label: source, color: (TRAFFIC_SOURCE_COLORS as any)[source] };
+                          });
+                          return (
+                            <BrandLineChart
+                              data={rows}
+                              series={series}
+                              height={450}
+                              tooltipIndicator="dot"
+                              showLegend
+                            />
+                          );
+                        })()
+                      )}
                     </PremiumCardContent>
                   </PremiumCard>
 
-                  {/* Summary Stats */}
-                  {data.summary && (
-                    <PremiumCard variant="gradient" intensity="strong" className="overflow-hidden">
-                      <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
-                        <PremiumTypography.SectionTitle gradient="success">
-                          Summary Statistics
-                        </PremiumTypography.SectionTitle>
-                      </PremiumCardHeader>
-                      <PremiumCardContent className="p-8">
-                        {/* Unified KpiCard for absolute parity (with fallback) */}
-                        {KPI_UNIFIED ? (
-                          <div className={getGridClasses(summaryCards.length)}>
-                            {summaryCards.map((card) => (
-                              <KpiCard
-                                key={card.label}
-                                label={card.label}
-                                value={card.value}
-                                delta={card.delta}
-                                unit={card.variant === 'percentage' ? '%' : undefined}
-                                mode="compact"
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className={getGridClasses(summaryCards.length)}>
-                            {summaryCards.map((card) => (
-                              <DashboardStatsCard
-                                key={card.label}
-                                label={card.label}
-                                value={card.value}
-                                delta={card.delta || 0}
-                                variant={card.variant}
-                                decimals={card.decimals}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </PremiumCardContent>
-                    </PremiumCard>
-                  )}
+                  {/* Summary Statistics section removed per request */}
 
                 </div>
               )}

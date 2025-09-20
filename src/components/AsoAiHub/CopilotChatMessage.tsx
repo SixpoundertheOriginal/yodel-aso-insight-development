@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { User, Bot } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 interface Message {
   id: string;
@@ -32,9 +33,15 @@ export const CopilotChatMessage: React.FC<CopilotChatMessageProps> = ({ message 
             ? 'bg-yodel-orange text-foreground rounded-br-sm' 
             : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
         }`}>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-            {message.content}
-          </div>
+          {isUser ? (
+            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+              {message.content}
+            </div>
+          ) : (
+            <div className="text-sm leading-relaxed">
+              <MarkdownRenderer content={message.content} />
+            </div>
+          )}
           <div className={`text-xs mt-2 ${
             isUser ? 'text-orange-200' : 'text-zinc-500'
           }`}>

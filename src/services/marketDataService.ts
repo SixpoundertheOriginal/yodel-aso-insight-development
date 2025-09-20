@@ -42,10 +42,41 @@ export class MarketDataService {
     
     if (error) {
       console.error('Failed to fetch markets:', error);
-      return [];
     }
-    
-    return data || [];
+
+    const dbMarkets = data || [];
+
+    // Fallback/default markets to ensure at least 15–20 options in reporting dashboard
+    const defaultMarkets: Market[] = [
+      { id: 'DEF-US', country_code: 'US', country_name: 'United States', region: 'North America', is_available: true, data_source: 'bigquery', priority_order: 1 },
+      { id: 'DEF-GB', country_code: 'GB', country_name: 'United Kingdom', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 2 },
+      { id: 'DEF-CA', country_code: 'CA', country_name: 'Canada', region: 'North America', is_available: true, data_source: 'placeholder', priority_order: 3 },
+      { id: 'DEF-AU', country_code: 'AU', country_name: 'Australia', region: 'Oceania', is_available: true, data_source: 'placeholder', priority_order: 4 },
+      { id: 'DEF-DE', country_code: 'DE', country_name: 'Germany', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 5 },
+      { id: 'DEF-FR', country_code: 'FR', country_name: 'France', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 6 },
+      { id: 'DEF-IT', country_code: 'IT', country_name: 'Italy', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 7 },
+      { id: 'DEF-ES', country_code: 'ES', country_name: 'Spain', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 8 },
+      { id: 'DEF-NL', country_code: 'NL', country_name: 'Netherlands', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 9 },
+      { id: 'DEF-SE', country_code: 'SE', country_name: 'Sweden', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 10 },
+      { id: 'DEF-NO', country_code: 'NO', country_name: 'Norway', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 11 },
+      { id: 'DEF-DK', country_code: 'DK', country_name: 'Denmark', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 12 },
+      { id: 'DEF-CH', country_code: 'CH', country_name: 'Switzerland', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 13 },
+      { id: 'DEF-IE', country_code: 'IE', country_name: 'Ireland', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 14 },
+      { id: 'DEF-PL', country_code: 'PL', country_name: 'Poland', region: 'Europe', is_available: true, data_source: 'placeholder', priority_order: 15 },
+      { id: 'DEF-JP', country_code: 'JP', country_name: 'Japan', region: 'Asia', is_available: true, data_source: 'placeholder', priority_order: 16 },
+      { id: 'DEF-KR', country_code: 'KR', country_name: 'South Korea', region: 'Asia', is_available: true, data_source: 'placeholder', priority_order: 17 },
+      { id: 'DEF-BR', country_code: 'BR', country_name: 'Brazil', region: 'South America', is_available: true, data_source: 'placeholder', priority_order: 18 },
+      { id: 'DEF-IN', country_code: 'IN', country_name: 'India', region: 'Asia', is_available: true, data_source: 'placeholder', priority_order: 19 },
+      { id: 'DEF-MX', country_code: 'MX', country_name: 'Mexico', region: 'North America', is_available: true, data_source: 'placeholder', priority_order: 20 },
+    ];
+
+    // Merge DB markets over defaults (DB wins), ensure uniqueness by country_code
+    const mergedMap = new Map<string, Market>();
+    for (const m of defaultMarkets) mergedMap.set(m.country_code, m);
+    for (const m of dbMarkets) mergedMap.set(m.country_code, m);
+    const merged = Array.from(mergedMap.values()).sort((a, b) => (a.priority_order || 999) - (b.priority_order || 999));
+
+    return merged;
   }
 
   // Get only available markets

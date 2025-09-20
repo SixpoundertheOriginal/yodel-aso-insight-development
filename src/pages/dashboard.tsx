@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import KpiCard from "@/components/kpi/KpiCard";
 import DashboardStatsCard from "../components/DashboardStatsCard";
-import AnalyticsTrafficSourceChart from "../components/AnalyticsTrafficSourceChart";
+import BrandLineChart from "@/components/charts/BrandLineChart";
+import { TRAFFIC_SOURCE_COLORS } from "@/utils/trafficSourceColors";
 import ComparisonChart from "../components/ComparisonChart";
 import { CountryPicker } from "../components/CountryPicker";
 import { PlaceholderDataIndicator } from "../components/PlaceholderDataIndicator";
@@ -13,6 +14,7 @@ import { useAsoData } from "../context/AsoDataContext";
 import { useComparisonData } from "../hooks/useComparisonData";
 import { useKpiData } from "../hooks/useKpiData";
 import { Card, CardContent } from "@/components/ui/card";
+import { PremiumCard, PremiumCardHeader, PremiumCardContent, PremiumTypography, StatusIndicator } from "@/components/ui/premium";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Calendar, Database, Filter, TestTube, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -65,7 +67,7 @@ const DashboardContent: React.FC = () => {
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedOrganizationId, setSelectedOrganizationId, isPlatformWideMode } = useSuperAdmin();
   const [organizationId, setOrganizationId] = useState('');
-  const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
+  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed');
   
   // Use standardized KPI data hook
   const { kpiData } = useKpiData({
@@ -366,52 +368,103 @@ const DashboardContent: React.FC = () => {
           <EmptyDataState />
         </div>
       ) : (
-        <Card className="bg-zinc-800 rounded-md mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-medium mb-4">Performance Metrics</h2>
-            <AnalyticsTrafficSourceChart
-              trafficSourceTimeseriesData={data.trafficSourceTimeseriesData || []}
-              selectedMetric={selectedKPI}
-            />
-          </CardContent>
-        </Card>
+        <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden mb-8">
+          <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+            <PremiumTypography.SectionTitle className="flex items-center gap-3">
+              Performance Over Time
+              <StatusIndicator status="info" size="sm" />
+            </PremiumTypography.SectionTitle>
+          </PremiumCardHeader>
+          <PremiumCardContent className="p-8">
+            {(() => {
+              const metric = selectedKPI === 'all' ? 'downloads' : selectedKPI;
+              const trafficSourceKeys = [
+                { key: 'webReferrer', name: 'Web Referrer' },
+                { key: 'appStoreSearch', name: 'App Store Search' },
+                { key: 'appReferrer', name: 'App Referrer' },
+                { key: 'appleSearchAds', name: 'Apple Search Ads' },
+                { key: 'appStoreBrowse', name: 'App Store Browse' },
+              ];
+              const chartData = (data.trafficSourceTimeseriesData || []).map((point: any) => {
+                const row: any = { date: point.date };
+                trafficSourceKeys.forEach(({ key }) => {
+                  if (metric === 'product_page_cvr') {
+                    const downloads = (point as any)[`${key}_downloads`] || 0;
+                    const views = (point as any)[`${key}_product_page_views`] || 0;
+                    row[key] = views > 0 ? (downloads / views) * 100 : 0;
+                  } else if (metric === 'impressions_cvr') {
+                    const downloads = (point as any)[`${key}_downloads`] || 0;
+                    const impressions = (point as any)[`${key}_impressions`] || 0;
+                    row[key] = impressions > 0 ? (downloads / impressions) * 100 : 0;
+                  } else {
+                    row[key] = (point as any)[`${key}_${metric}`] || 0;
+                  }
+                });
+                return row;
+              });
+              return (
+                <BrandLineChart
+                  data={chartData}
+                  series={trafficSourceKeys.map(({ key, name }) => ({
+                    key,
+                    label: name,
+                    color: (TRAFFIC_SOURCE_COLORS as any)[name],
+                  }))}
+                  height={450}
+                  tooltipIndicator="dot"
+                  showLegend
+                />
+              );
+            })()}
+          </PremiumCardContent>
+        </PremiumCard>
       )}
 
       {/* Previous Period Comparison */}
       {!periodComparison.loading &&
         periodComparison.current &&
         periodComparison.previous && (
-          <Card className="bg-zinc-800 rounded-md mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium">Previous Period</h2>
+          <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden mb-8">
+            <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+              <div className="flex items-center justify-between">
+                <PremiumTypography.SectionTitle className="flex items-center gap-3">
+                  Previous Period
+                  <StatusIndicator status="info" size="sm" />
+                </PremiumTypography.SectionTitle>
                 <MetricSelector value={selectedMetric} onChange={setSelectedMetric} />
               </div>
+            </PremiumCardHeader>
+            <PremiumCardContent className="p-8">
               <ComparisonChart
                 currentData={periodComparison.current.timeseriesData}
                 previousData={periodComparison.previous.timeseriesData}
                 title="Previous Period"
                 metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
               />
-            </CardContent>
-          </Card>
+            </PremiumCardContent>
+          </PremiumCard>
         )}
 
       {/* Previous Year Comparison */}
       {!yearComparison.loading &&
         yearComparison.current &&
         yearComparison.previous && (
-          <Card className="bg-zinc-800 rounded-md mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-medium mb-4">Previous Year</h2>
+          <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden mb-8">
+            <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+              <PremiumTypography.SectionTitle className="flex items-center gap-3">
+                Previous Year
+                <StatusIndicator status="info" size="sm" />
+              </PremiumTypography.SectionTitle>
+            </PremiumCardHeader>
+            <PremiumCardContent className="p-8">
               <ComparisonChart
                 currentData={yearComparison.current.timeseriesData}
                 previousData={yearComparison.previous.timeseriesData}
                 title="Previous Year"
                 metric={selectedMetric as 'downloads' | 'impressions' | 'product_page_views'}
               />
-            </CardContent>
-          </Card>
+            </PremiumCardContent>
+          </PremiumCard>
         )}
           </div>
           </div>

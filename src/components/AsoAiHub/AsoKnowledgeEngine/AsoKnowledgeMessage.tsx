@@ -2,7 +2,7 @@
 import React from 'react';
 import { User, Bot, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 interface Message {
   id: string;
@@ -49,8 +49,9 @@ export const AsoKnowledgeMessage: React.FC<AsoKnowledgeMessageProps> = ({ messag
             {isUser ? (
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
             ) : (
-              <ReactMarkdown
-                components={{
+              <MarkdownRenderer
+                content={message.content}
+                componentsOverride={{
                   h1: ({ children }) => <h1 className="text-lg font-bold text-foreground mb-3">{children}</h1>,
                   h2: ({ children }) => <h2 className="text-base font-semibold text-foreground mb-2">{children}</h2>,
                   h3: ({ children }) => <h3 className="text-sm font-medium text-foreground mb-2">{children}</h3>,
@@ -72,9 +73,7 @@ export const AsoKnowledgeMessage: React.FC<AsoKnowledgeMessageProps> = ({ messag
                   th: ({ children }) => <th className="px-3 py-2 text-left text-xs font-medium text-zinc-200 uppercase tracking-wider">{children}</th>,
                   td: ({ children }) => <td className="px-3 py-2 text-sm text-zinc-100">{children}</td>,
                 }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              />
             )}
           </div>
           

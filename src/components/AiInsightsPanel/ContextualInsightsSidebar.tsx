@@ -19,6 +19,7 @@ import { useConversationalChat } from '@/hooks/useConversationalChat';
 import type { MetricsData, FilterContext } from '@/types/aso';
 import { useTheme } from '@/hooks/useTheme';
 import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
+import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 
 export type SidebarState = 'collapsed' | 'normal' | 'expanded' | 'fullscreen';
 
@@ -38,7 +39,8 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   isSuperAdmin = false
 }) => {
   const { filters } = useAsoData();
-  const [internalState, setInternalState] = useState<SidebarState>('normal');
+  const { isDemoOrg } = useDemoOrgDetection();
+  const [internalState, setInternalState] = useState<SidebarState>('collapsed');
   const sidebarState = onStateChange ? state : internalState;
   const setSidebarState: React.Dispatch<React.SetStateAction<SidebarState>> = onStateChange || setInternalState;
   const [isMobile, setIsMobile] = useState(false);
@@ -156,7 +158,8 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
     dateRange: { start: new Date().toISOString(), end: new Date().toISOString() },
     trafficSources: [],
     selectedApps: []
-  }
+  },
+  isDemoMode: isDemoOrg || metricsData?.meta?.isDemo
 });
 
 
@@ -280,6 +283,7 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
                 onGenerateInsight={generateChatResponse}
                 isGenerating={isChatGenerating}
                 className="flex-1"
+                isDemoMode={isDemoOrg || metricsData?.meta?.isDemo}
               />
             </PremiumCardContent>
           </PremiumCard>
@@ -327,10 +331,10 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
     return (
       <>
         <div
-          className="fixed inset-0 z-40 bg-black/50"
+          className="fixed top-16 left-0 right-0 bottom-0 z-30 bg-black/50"
           onClick={() => setSidebarState('normal')}
         />
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed top-16 left-0 right-0 bottom-0 z-35 flex items-center justify-center">
           <div className="bg-background dark:bg-gray-900 w-3/4 h-3/4 mx-auto my-auto rounded-lg shadow-2xl overflow-hidden flex flex-col">
             {sidebarContent}
           </div>
@@ -343,10 +347,10 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/50 z-15 mobile-overlay"
+          className="fixed top-16 left-0 right-0 bottom-0 bg-black/50 z-15 mobile-overlay"
           onClick={() => setSidebarState('collapsed')}
         />
-        <div className="fixed inset-y-0 right-0 w-full max-w-sm z-20 transition-transform duration-300 sidebar-container" role="complementary" aria-label="AI Chat Panel">
+        <div className="fixed top-16 right-0 bottom-0 w-full max-w-sm z-20 transition-transform duration-300 sidebar-container" role="complementary" aria-label="AI Chat Panel">
           {sidebarContent}
         </div>
       </>
@@ -355,7 +359,7 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
 
   return (
     <div
-      className="h-screen bg-background/50 border-l border-border flex flex-col transition-all duration-300 ease-in-out sidebar-container relative"
+      className="h-screen pt-16 bg-background/50 border-l border-border flex flex-col transition-all duration-300 ease-in-out sidebar-container relative"
       style={{ width: `${chatPanelWidth}px` }}
       role="complementary"
       aria-label="AI Chat Panel"

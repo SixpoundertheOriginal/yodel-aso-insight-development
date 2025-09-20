@@ -2,13 +2,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { useAuth } from '@/context/AuthContext';
 
 export const usePermissions = () => {
+  // Gate fetching on auth state to avoid early null results
+  const { user, loading: authLoading } = useAuth();
+
   const { data: permissions, isLoading } = useQuery({
-    queryKey: ['userPermissions'],
+    queryKey: ['userPermissions', user?.id || 'anonymous'],
+    enabled: !!user && !authLoading,
     queryFn: async () => {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
       // Get user profile with roles
@@ -63,7 +66,8 @@ export const usePermissions = () => {
 
   return {
     ...permissions,
-    isLoading,
+    // Combine auth and query loading to prevent premature decisions
+    isLoading: authLoading || isLoading,
     permissions: permissions?.permissions || [],
     isSuperAdmin: permissions?.isSuperAdmin || false,
     isOrganizationAdmin: permissions?.isOrganizationAdmin || false,

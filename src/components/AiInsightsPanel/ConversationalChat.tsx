@@ -8,9 +8,8 @@ import React, {
 import { ChatInput } from './ChatInput';
 import { MessageBubble } from './MessageBubble';
 import type { MetricsData, FilterContext } from '@/types/aso';
-import ReactMarkdown from 'react-markdown';
-// remark-gfm temporarily disabled to prevent runtime error
-// import remarkGfm from 'remark-gfm';
+import { DemoAIChatService } from '@/services/demoAIChatService';
+// Markdown rendering is handled inside MessageBubble via MarkdownRenderer
 import { Copy, Bookmark, Share, User } from 'lucide-react';
 
 interface Message {
@@ -43,26 +42,96 @@ interface ConversationalChatProps {
   onGenerateInsight: (question: string) => Promise<string>;
   isGenerating?: boolean;
   className?: string;
+  isDemoMode?: boolean;
 }
 
-// Auto-detect table-like content and convert to markdown tables
+// Auto-detect table-like content and convert to markdown tables (GFM) without dropping other text
 const formatAIResponse = (content: string): string => {
-  const kpiPattern = /(\w+(?:\s+\w+)*)\s*[:|]\s*([^|]+)(?:\s*\|\s*([^|\n]+))?/g;
+  // Do not attempt to transform fenced code blocks
+  if (content.includes('```')) return content;
 
-  if (kpiPattern.test(content)) {
-    let formatted = content.replace(
-      /(\w+(?:\s+\w+)*)\s*[:|]\s*([^|]+)(?:\s*\|\s*([^|\n]+))?/g,
-      '| $1 | $2 | $3 |'
-    );
+  const lines = content.split(/\n/);
+  const out: string[] = [];
+  let i = 0;
 
-    if (!formatted.includes('|---')) {
-      formatted =
-        '| Metric | Value | Change |\n|-------|-------|--------|\n' + formatted;
+  const isKpiLine = (l: string) => /\w(?:[\w\s])*\s*[:|]\s*[^|\n]+/.test(l);
+  const isPipeRow = (l: string) => (l.includes('|') && (l.match(/\|/g)?.length || 0) >= 2);
+  const isCsvRow = (l: string) => (l.match(/,/g)?.length || 0) >= 1 && !l.includes('|');
+
+  while (i < lines.length) {
+    const l = lines[i];
+
+    // KPI block
+    if (isKpiLine(l)) {
+      const start = i;
+      const block: string[] = [];
+      while (i < lines.length && isKpiLine(lines[i])) { block.push(lines[i]); i++; }
+      // Build table
+      const rows = block.map(row => {
+        const m = row.match(/^(.*?)\s*[:|]\s*([^|\n]+?)(?:\s*\|\s*([^|\n]+))?\s*$/);
+        const c1 = m?.[1]?.trim() || '';
+        const c2 = m?.[2]?.trim() || '';
+        const c3 = m?.[3]?.trim() || '';
+        return `| ${c1} | ${c2} | ${c3} |`;
+      });
+      if (rows.length) {
+        out.push('| Metric | Value | Change |');
+        out.push('| --- | --- | --- |');
+        out.push(...rows);
+      } else {
+        out.push(...block);
+      }
+      continue;
     }
-    return formatted;
+
+    // Pipe table block (normalize by ensuring header separator exists)
+    if (isPipeRow(l)) {
+      const block: string[] = [];
+      while (i < lines.length && isPipeRow(lines[i])) { block.push(lines[i]); i++; }
+      const hasSep = block.some(r => /\|\s*-{3,}\s*/.test(r));
+      if (!hasSep && block.length >= 2) {
+        const normalizeRow = (r: string) => {
+          let t = r.trim();
+          if (!t.startsWith('|')) t = `| ${t}`;
+          if (!t.endsWith('|')) t = `${t} |`;
+          return t;
+        };
+        const normalized = block.map(normalizeRow);
+        const cols = (normalized[0].match(/\|/g)?.length || 0) - 1;
+        const sep = '|' + Array.from({ length: cols }).map(() => ' --- ').join('|') + '|';
+        out.push(normalized[0]);
+        out.push(sep);
+        out.push(...normalized.slice(1));
+      } else {
+        out.push(...block);
+      }
+      continue;
+    }
+
+    // CSV block
+    if (isCsvRow(l)) {
+      const block: string[] = [];
+      while (i < lines.length && isCsvRow(lines[i])) { block.push(lines[i]); i++; }
+      if (block.length >= 2) {
+        const toCells = (r: string) => r.split(',').map(x => x.trim()).join(' | ');
+        const header = toCells(block[0]);
+        const colCount = header.split('|').length;
+        const sep = Array.from({ length: colCount }).map(() => '---').join(' | ');
+        out.push(`| ${header} |`);
+        out.push(`| ${sep} |`);
+        for (const r of block.slice(1)) out.push(`| ${toCells(r)} |`);
+      } else {
+        out.push(...block);
+      }
+      continue;
+    }
+
+    // Default: passthrough
+    out.push(l);
+    i++;
   }
 
-  return content;
+  return out.join('\n');
 };
 
 // Generate premium welcome message with enhanced formatting
@@ -143,7 +212,8 @@ export const ConversationalChat = forwardRef<
       organizationId,
       onGenerateInsight,
       isGenerating = false,
-      className = 'h-full'
+      className = 'h-full',
+      isDemoMode = false
     },
     ref
   ) => {
@@ -178,10 +248,14 @@ export const ConversationalChat = forwardRef<
     // Initialize with welcome message
     useEffect(() => {
       if (!activeConversation && metricsData) {
+        const welcomeContent = isDemoMode || metricsData?.meta?.isDemo 
+          ? DemoAIChatService.generateDemoWelcomeMessage(filterContext)
+          : generatePremiumWelcomeMessage(filterContext);
+
         const welcome: Message = {
           id: 'welcome',
           role: 'assistant',
-          content: generatePremiumWelcomeMessage(filterContext),
+          content: welcomeContent,
           timestamp: new Date().toISOString(),
           dashboardContext: `Analysis: ${
             filterContext.trafficSources.join(', ') || 'all traffic sources'
@@ -200,7 +274,7 @@ export const ConversationalChat = forwardRef<
         setConversations([convo]);
         setActiveConversationId(convo.id);
       }
-    }, [activeConversation, filterContext, metricsData]);
+    }, [activeConversation, filterContext, metricsData, isDemoMode]);
 
     // Auto-scroll
     const scrollToBottom = () => {
@@ -210,6 +284,11 @@ export const ConversationalChat = forwardRef<
     useEffect(() => {
       scrollToBottom();
     }, [activeConversation]);
+
+    // Ensure we scroll on each new message as well
+    useEffect(() => {
+      scrollToBottom();
+    }, [activeConversation?.messages?.length]);
 
     const handleSendMessage = async (userMessage: string) => {
       let convoId = activeConversationId;
@@ -248,6 +327,8 @@ export const ConversationalChat = forwardRef<
         )
       );
       setIsLoading(true);
+      // Failsafe: clear local loading if something goes wrong silently
+      const loadingGuard = setTimeout(() => setIsLoading(false), 30000);
 
       try {
         const aiResponse = await onGenerateInsight(userMessage);
@@ -281,6 +362,7 @@ export const ConversationalChat = forwardRef<
           )
         );
       } finally {
+        clearTimeout(loadingGuard);
         setIsLoading(false);
       }
     };
@@ -407,13 +489,24 @@ export const ConversationalChat = forwardRef<
           )}
         </div>
         <div className="flex-shrink-0">
+          {/**
+           * Disable input only while a response is generating or local send is pending.
+           * Allow follow-up messages even if metricsData becomes temporarily undefined.
+           */}
+          {/** Compute disabled: if no metricsData AND no messages yet, keep disabled; otherwise allow. */}
+          {/** This prevents the "stuck after first reply" condition caused by strict metrics gating. */}
+          {(() => {
+            const messagesCount = messagesToRender.length;
+            const inputDisabled = isLoading || isGenerating || (!metricsData && messagesCount === 0);
+            return (
           <ChatInput
             onSendMessage={handleSendMessage}
-            disabled={isLoading || isGenerating || !metricsData}
+            disabled={inputDisabled}
             placeholder={
               !metricsData ? 'Loading dashboard data...' : 'Ask about your KPIs...'
             }
-          />
+          />);
+          })()}
         </div>
       </div>
     );
@@ -421,4 +514,3 @@ export const ConversationalChat = forwardRef<
 );
 
 export default ConversationalChat;
-

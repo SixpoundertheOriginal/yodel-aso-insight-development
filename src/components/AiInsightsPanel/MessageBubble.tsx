@@ -4,7 +4,7 @@ import { PremiumCard } from '@/components/ui/design-system/PremiumCard';
 import { Body, BodySmall, Caption } from '@/components/ui/design-system/Typography';
 import { User, Sparkles, Copy, Bookmark, Share } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant';
@@ -137,9 +137,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Body className="text-white leading-relaxed">{content}</Body>
             ) : (
               <div className="text-zinc-100 leading-relaxed">
-                <ReactMarkdown components={markdownComponents}>
-                  {content}
-                </ReactMarkdown>
+                <MarkdownRenderer content={content} componentsOverride={markdownComponents} />
               </div>
             )}
           </div>

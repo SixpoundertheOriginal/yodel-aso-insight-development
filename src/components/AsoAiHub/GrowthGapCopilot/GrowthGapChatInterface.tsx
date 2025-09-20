@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Upload, BarChart, TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -339,7 +340,11 @@ export const GrowthGapChatInterface: React.FC<GrowthGapChatInterfaceProps> = ({
                       <span className="text-red-200 text-sm font-semibold">AI Service Issue</span>
                     </div>
                   )}
-                  {message.content}
+                  {message.role === "assistant" ? (
+                    <MarkdownRenderer content={message.content} />
+                  ) : (
+                    message.content
+                  )}
                 </div>
               </div>
             ))}

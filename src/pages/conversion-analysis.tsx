@@ -27,6 +27,9 @@ import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
 import { useBigQueryData } from '@/hooks/useBigQueryData';
 import DashboardBrandingLine from '@/components/DashboardBrandingLine';
+import BrandLineChart from "@/components/charts/BrandLineChart";
+import { PremiumCard, PremiumCardHeader, PremiumCardContent, PremiumTypography, StatusIndicator } from "@/components/ui/premium";
+import { TRAFFIC_SOURCE_COLORS } from "@/utils/trafficSourceColors";
 
 const ConversionAnalysisContent: React.FC = () => {
   const asoContext = useAsoData();
@@ -38,7 +41,7 @@ const ConversionAnalysisContent: React.FC = () => {
   const [organizationId, setOrganizationId] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarState, setSidebarState] = useState<SidebarState>('normal');
+  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed');
   
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [cvrType, setCvrType] = useState<CVRType>('impression');
@@ -273,34 +276,82 @@ const ConversionAnalysisContent: React.FC = () => {
                   {KPI_UNIFIED ? (
                     <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
                       <div>
-                        <KpiCard
-                          label="Product Page CVR"
-                          unit="%"
-                          value={data.summary.product_page_cvr.value}
-                          delta={data.summary.product_page_cvr.delta}
-                          mode="regular"
-                        />
-                        {benchmarkData && (
-                          <BenchmarkIndicator
-                            clientValue={data.summary.product_page_cvr.value}
-                            benchmarkValue={benchmarkData.page_views_to_installs}
-                          />
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCvrType('productpage')}
+                          aria-pressed={cvrType === 'productpage'}
+                          className="w-full text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+                        >
+                          <PremiumCard variant="glass" intensity="medium" className={`${cvrType === 'productpage' ? 'border-teal-500/60 bg-teal-500/5 ring-1 ring-teal-500/30' : 'hover:border-teal-500/30 hover:bg-teal-500/5 transition-colors'}`}>
+                            <PremiumCardHeader className="bg-zinc-900/60 border-b border-zinc-800/40">
+                              <PremiumTypography.SectionTitle>Product Page CVR</PremiumTypography.SectionTitle>
+                            </PremiumCardHeader>
+                            <PremiumCardContent className="p-5">
+                              {(() => {
+                                const value = data.summary.product_page_cvr.value;
+                                const delta = data.summary.product_page_cvr.delta;
+                                const up = delta >= 0;
+                                const deltaColor = up ? 'text-emerald-400' : 'text-red-400';
+                                const deltaBg = up ? 'bg-emerald-400/15 border-emerald-400/30' : 'bg-red-400/15 border-red-400/30';
+                                const arrow = up ? '↗' : '↘';
+                                const sign = up ? '+' : '';
+                                return (
+                                  <div className="flex items-end gap-3">
+                                    <div className="text-3xl font-semibold text-foreground">{value.toFixed(1)}%</div>
+                                    <span className={`text-xs px-2 py-0.5 rounded border ${deltaBg} ${deltaColor}`}>{sign}{delta.toFixed(1)}% {arrow}</span>
+                                  </div>
+                                );
+                              })()}
+                              {benchmarkData && (
+                                <div className="mt-3">
+                                  <BenchmarkIndicator
+                                    clientValue={data.summary.product_page_cvr.value}
+                                    benchmarkValue={benchmarkData.page_views_to_installs}
+                                  />
+                                </div>
+                              )}
+                            </PremiumCardContent>
+                          </PremiumCard>
+                        </button>
                       </div>
                       <div>
-                        <KpiCard
-                          label="Impressions CVR"
-                          unit="%"
-                          value={data.summary.impressions_cvr.value}
-                          delta={data.summary.impressions_cvr.delta}
-                          mode="regular"
-                        />
-                        {benchmarkData && (
-                          <BenchmarkIndicator
-                            clientValue={data.summary.impressions_cvr.value}
-                            benchmarkValue={benchmarkData.impressions_to_page_views}
-                          />
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCvrType('impression')}
+                          aria-pressed={cvrType === 'impression'}
+                          className="w-full text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+                        >
+                          <PremiumCard variant="glass" intensity="medium" className={`${cvrType === 'impression' ? 'border-teal-500/60 bg-teal-500/5 ring-1 ring-teal-500/30' : 'hover:border-teal-500/30 hover:bg-teal-500/5 transition-colors'}`}>
+                            <PremiumCardHeader className="bg-zinc-900/60 border-b border-zinc-800/40">
+                              <PremiumTypography.SectionTitle>Impressions CVR</PremiumTypography.SectionTitle>
+                            </PremiumCardHeader>
+                            <PremiumCardContent className="p-5">
+                              {(() => {
+                                const value = data.summary.impressions_cvr.value;
+                                const delta = data.summary.impressions_cvr.delta;
+                                const up = delta >= 0;
+                                const deltaColor = up ? 'text-emerald-400' : 'text-red-400';
+                                const deltaBg = up ? 'bg-emerald-400/15 border-emerald-400/30' : 'bg-red-400/15 border-red-400/30';
+                                const arrow = up ? '↗' : '↘';
+                                const sign = up ? '+' : '';
+                                return (
+                                  <div className="flex items-end gap-3">
+                                    <div className="text-3xl font-semibold text-foreground">{value.toFixed(1)}%</div>
+                                    <span className={`text-xs px-2 py-0.5 rounded border ${deltaBg} ${deltaColor}`}>{sign}{delta.toFixed(1)}% {arrow}</span>
+                                  </div>
+                                );
+                              })()}
+                              {benchmarkData && (
+                                <div className="mt-3">
+                                  <BenchmarkIndicator
+                                    clientValue={data.summary.impressions_cvr.value}
+                                    benchmarkValue={benchmarkData.impressions_to_page_views}
+                                  />
+                                </div>
+                              )}
+                            </PremiumCardContent>
+                          </PremiumCard>
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -324,14 +375,23 @@ const ConversionAnalysisContent: React.FC = () => {
                 <CVRTypeToggle currentType={cvrType} onTypeChange={setCvrType} />
 
                 <section className="mt-4">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
-                    <h2 className="text-xl font-semibold">Conversion Rate by Traffic Source</h2>
-                    <TrafficSourceSelect
-                      selectedSources={selectedSources}
-                      onSourceChange={setSelectedSources}
-                    />
-                  </div>
-                  <ConversionRateChart data={processedSources} cvrType={cvrType} />
+                  <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
+                    <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <PremiumTypography.SectionTitle className="flex items-center gap-3">
+                          Conversion Rate by Traffic Source
+                          <StatusIndicator status="info" size="sm" />
+                        </PremiumTypography.SectionTitle>
+                        <TrafficSourceSelect
+                          selectedSources={selectedSources}
+                          onSourceChange={setSelectedSources}
+                        />
+                      </div>
+                    </PremiumCardHeader>
+                    <PremiumCardContent className="p-6">
+                      <ConversionRateChart data={processedSources} cvrType={cvrType} />
+                    </PremiumCardContent>
+                  </PremiumCard>
                 </section>
 
                 <section className="mt-8">
@@ -349,13 +409,49 @@ const ConversionAnalysisContent: React.FC = () => {
                         ))}
                       </div>
 
-                      <TimeSeriesChart
-                        data={data.timeseriesData}
-                        trafficSourceTimeseriesData={cvrChartData as any}
-                        mode="breakdown"
-                        showModeToggle={false}
-                        breakdownMetric="cvr"
-                      />
+                      <PremiumCard variant="glow" intensity="strong" glowColor="blue" className="overflow-hidden">
+                        <PremiumCardHeader className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800/50">
+                          <PremiumTypography.SectionTitle className="flex items-center gap-3">
+                            CVR Over Time (By Source)
+                            <StatusIndicator status="info" size="sm" />
+                          </PremiumTypography.SectionTitle>
+                        </PremiumCardHeader>
+                        <PremiumCardContent className="p-6">
+                          {(() => {
+                            const allSeries = [
+                              { key: 'webReferrer_cvr', label: 'Web Referrer' },
+                              { key: 'appStoreSearch_cvr', label: 'App Store Search' },
+                              { key: 'appleSearchAds_cvr', label: 'Apple Search Ads' },
+                              { key: 'appStoreBrowse_cvr', label: 'App Store Browse' },
+                              { key: 'other_cvr', label: 'Other' },
+                            ];
+                            const labelToKey: Record<string, string> = {
+                              'Web Referrer': 'webReferrer_cvr',
+                              'App Store Search': 'appStoreSearch_cvr',
+                              'Apple Search Ads': 'appleSearchAds_cvr',
+                              'App Store Browse': 'appStoreBrowse_cvr',
+                              'Other': 'other_cvr',
+                            };
+                            const activeSeries = (selectedSources.length > 0
+                              ? allSeries.filter(s => selectedSources.includes(s.label))
+                              : allSeries
+                            ).map(s => ({
+                              key: s.key,
+                              label: s.label,
+                              color: (TRAFFIC_SOURCE_COLORS as any)[s.label] || '#9e9e9e',
+                            }));
+                            return (
+                              <BrandLineChart
+                                data={cvrChartData as any}
+                                series={activeSeries}
+                                height={450}
+                                tooltipIndicator="dot"
+                                showLegend
+                              />
+                            );
+                          })()}
+                        </PremiumCardContent>
+                      </PremiumCard>
                     </>
                   )}
                 </section>
