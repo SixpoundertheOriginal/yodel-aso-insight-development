@@ -1106,6 +1106,42 @@ export type Database = {
           },
         ]
       }
+      feature_usage_logs: {
+        Row: {
+          created_at: string
+          feature_key: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          organization_id: string
+          usage_type: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_key: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          organization_id: string
+          usage_type?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_key?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          organization_id?: string
+          usage_type?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       keyword_clusters: {
         Row: {
           avg_difficulty: number | null
@@ -2072,6 +2108,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_features: {
+        Row: {
+          category: Database["public"]["Enums"]["feature_category"]
+          created_at: string
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["feature_category"]
+          created_at?: string
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["feature_category"]
+          created_at?: string
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -2381,6 +2450,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_feature_overrides: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          feature_key: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_enabled: boolean
+          organization_id: string
+          reason: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          feature_key: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_enabled: boolean
+          organization_id: string
+          reason?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          feature_key?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          organization_id?: string
+          reason?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feature_overrides_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["feature_key"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -2753,6 +2872,12 @@ export type Database = {
         | "VIEWER"
         | "ASO_MANAGER"
         | "CLIENT"
+      feature_category:
+        | "performance_intelligence"
+        | "ai_command_center"
+        | "growth_accelerators"
+        | "control_center"
+        | "account"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2888,6 +3013,13 @@ export const Constants = {
         "VIEWER",
         "ASO_MANAGER",
         "CLIENT",
+      ],
+      feature_category: [
+        "performance_intelligence",
+        "ai_command_center",
+        "growth_accelerators",
+        "control_center",
+        "account",
       ],
     },
   },
