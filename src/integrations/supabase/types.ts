@@ -987,7 +987,7 @@ export type Database = {
           created_by: string | null
           id: string
           keyword: string
-          organization_id: string
+          organization_id: string | null
           search_type: string
           total_apps: number
           updated_at: string
@@ -998,7 +998,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           keyword: string
-          organization_id: string
+          organization_id?: string | null
           search_type: string
           total_apps?: number
           updated_at?: string
@@ -1009,7 +1009,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           keyword?: string
-          organization_id?: string
+          organization_id?: string | null
           search_type?: string
           total_apps?: number
           updated_at?: string
