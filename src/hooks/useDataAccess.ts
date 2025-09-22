@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export interface DataAccessContext {
   scope: 'PLATFORM' | 'ORGANIZATION';
@@ -11,10 +11,10 @@ export interface DataAccessContext {
 
 export const useDataAccess = () => {
   const { profile } = useUserProfile();
-  const { canAccessAllOrganizations } = useUIPermissions();
+  const { isSuperAdmin } = usePermissions();
 
   const getDataContext = useCallback((): DataAccessContext => {
-    if (canAccessAllOrganizations) {
+    if (isSuperAdmin) {
       // Super admin - platform-wide access
       return {
         scope: 'PLATFORM',
@@ -31,7 +31,7 @@ export const useDataAccess = () => {
       canAccessAllOrgs: false,
       availableOrgs: profile?.organization_id ? [profile.organization_id] : []
     };
-  }, [canAccessAllOrganizations, profile?.organization_id]);
+  }, [isSuperAdmin, profile?.organization_id]);
 
   return getDataContext();
 };

@@ -3,7 +3,7 @@ import { Crown } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SuperAdminBadge } from '@/components/SuperAdminBadge';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,12 +26,12 @@ export const SuperAdminOrganizationSelector: React.FC<SuperAdminOrganizationSele
   allowAllOrgs = true,
   className
 }) => {
-  const { canAccessAllOrganizations } = useUIPermissions();
+  const { isSuperAdmin } = usePermissions();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (canAccessAllOrganizations) {
+    if (isSuperAdmin) {
       setLoading(true);
       
       const fetchOrganizations = async () => {
@@ -57,9 +57,9 @@ export const SuperAdminOrganizationSelector: React.FC<SuperAdminOrganizationSele
 
       fetchOrganizations();
     }
-  }, [canAccessAllOrganizations]);
+  }, [isSuperAdmin]);
 
-  if (!canAccessAllOrganizations) return null;
+  if (!isSuperAdmin) return null;
 
   return (
     <Card className={`border-blue-200 bg-blue-50/50 ${className}`}>

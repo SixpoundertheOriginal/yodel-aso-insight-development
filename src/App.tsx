@@ -56,8 +56,8 @@ const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
 const FeatureManagement = lazy(() => import("./pages/admin/FeatureManagement"));
 const FeatureTestingLab = lazy(() => import("./pages/admin/FeatureTestingLab"));
-const OrganizationFeaturesPage = lazy(() => import("./pages/admin/organization-features"));
-const UIPermissionDemoPage = lazy(() => import("./pages/UIPermissionDemoPage"));
+
+
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
 const ConfirmEmail = lazy(() => import("./pages/auth/confirm-email"));
@@ -216,10 +216,6 @@ function App() {
                             element={<ProtectedRoute><AdminOrganizations /></ProtectedRoute>}
                           />
                           <Route
-                            path="/admin/organizations/:id/features"
-                            element={<ProtectedRoute><OrganizationFeaturesPage /></ProtectedRoute>}
-                          />
-                          <Route
                             path="/admin/users"
                             element={<ProtectedRoute><AdminUsers /></ProtectedRoute>}
                           />
@@ -234,10 +230,6 @@ function App() {
                           <Route
                             path="/smoke-test"
                             element={<ProtectedRoute><SmokeTest /></ProtectedRoute>}
-                          />
-                          <Route
-                            path="/ui-demo"
-                            element={<ProtectedRoute><UIPermissionDemoPage /></ProtectedRoute>}
                           />
                           {/* Public marketing/preview route (feature-flagged) */}
                           <Route path="/preview" element={<PreviewPage />} />

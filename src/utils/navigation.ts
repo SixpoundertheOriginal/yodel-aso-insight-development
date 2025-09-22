@@ -14,16 +14,15 @@ export interface FilterOptions {
   isDemoOrg: boolean;
   isSuperAdmin: boolean;
   hasFeature: (featureKey: string) => boolean;
-  hasPermission: (permission: string) => boolean;
 }
 
 export const filterNavigationByRoutes = (
   items: NavigationItem[],
-  { routes, isDemoOrg, isSuperAdmin, hasFeature, hasPermission }: FilterOptions
+  { routes, isDemoOrg, isSuperAdmin, hasFeature }: FilterOptions
 ): NavigationItem[] => {
   return items.filter(item => {
     // Super admin bypass - can see everything
-    if (isSuperAdmin && hasPermission('ui.admin.platform_settings')) {
+    if (isSuperAdmin) {
       return true;
     }
 

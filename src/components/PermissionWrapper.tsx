@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PermissionWrapperProps {
@@ -19,16 +19,17 @@ export const PermissionWrapper = memo<PermissionWrapperProps>(({
   loading = <Skeleton className="w-full h-8" />,
   logAccess = false
 }) => {
-  const { hasContextPermission, loading: permissionsLoading, canAccessAllOrganizations } = useUIPermissions();
+  const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   
   if (permissionsLoading) return <>{loading}</>;
   
-  if (canAccessAllOrganizations) {
+  if (isSuperAdmin) {
     return <>{children}</>;
   }
   
-  const hasAccess = hasContextPermission(permission, context, logAccess);
-  return hasAccess ? <>{children}</> : <>{fallback}</>;
+  // For now, return fallback for non-super-admin users
+  // This can be enhanced with feature access checks later
+  return <>{fallback}</>;
 });
 
 PermissionWrapper.displayName = 'PermissionWrapper';

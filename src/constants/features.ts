@@ -238,8 +238,8 @@ export function featureEnabledForRole(
 /**
  * LEGACY COMPATIBILITY - Keep for backward compatibility during migration
  */
+// Legacy compatibility - use PLATFORM_FEATURES_ENHANCED directly
 export const PLATFORM_FEATURES = PLATFORM_FEATURES_ENHANCED;
-export const FEATURE_KEYS = PLATFORM_FEATURES_ENHANCED;
 
 export type FeatureKey = PlatformFeature;
 export type RoleKey = UserRole;

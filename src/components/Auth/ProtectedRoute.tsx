@@ -5,7 +5,7 @@ import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getAllowedRoutes, type Role } from '@/config/allowedRoutes';
-import { useUIPermissions } from '@/hooks/useUIPermissions';
+import { useUnifiedFeatureAccess } from '@/hooks/useUnifiedFeatureAccess';
 import { resolvePermForPath } from '@/utils/navigation/navPermissionMap';
 import { useToast } from '@/hooks/use-toast';
 import { useAccessControl } from '@/hooks/useAccessControl';
@@ -45,7 +45,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }, [location.pathname]);
 
   // ✅ MOVED: All other hooks must be called before any returns
-  const { hasPermission, loading: uiPermsLoading } = useUIPermissions(organizationId || undefined);
+  // Simplified: No UI permissions check needed
   
   // Compute derived values after all hooks
   const role = (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
@@ -87,18 +87,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
   }
 
-  // Optional nav permission enforcement (feature-flagged)
-  const NAV_FLAG = (import.meta as any).env?.VITE_NAV_PERMISSIONS_ENABLED === 'true';
-  if (NAV_FLAG && !isSuperAdmin) {
-    const perm = resolvePermForPath(pathname);
-    if (perm && !uiPermsLoading) {
-      const ok = hasPermission(perm);
-      if (!ok) {
-        toast({ title: 'Not permitted', description: 'You do not have access to this section.' });
-        return <Navigate to="/dashboard/executive" replace />;
-      }
-    }
-  }
+  // Simplified: No nav permission enforcement
 
   return <>{children}</>;
 };

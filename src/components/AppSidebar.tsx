@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { useUIPermissions } from "@/hooks/useUIPermissions";
+import { useUnifiedFeatureAccess } from "@/hooks/useUnifiedFeatureAccess";
 import { resolvePermForPath } from "@/utils/navigation/navPermissionMap";
 import { PLATFORM_FEATURES_ENHANCED as PLATFORM_FEATURES, featureEnabledForRole, UserRole } from '@/constants/features';
 import '../utils/featureTestHelper'; // Auto-run feature validation in development
@@ -169,7 +169,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
-  const { hasPermission, loading: uiPermissionsLoading } = useUIPermissions(organizationId || undefined);
+  // Simplified: No UI permissions check needed
   const { whoami } = useServerAuth();
 
   if (process.env.NODE_ENV === 'development') {
@@ -204,14 +204,14 @@ export function AppSidebar() {
   }
   
   // Coordinate loading states to prevent race condition UI flicker
-const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermissionsLoading && !orgLoading;
+const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoading;
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const routes = getAllowedRoutes({ isDemoOrg, role });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
-  const filterOptions = { isDemoOrg, isSuperAdmin, routes, hasFeature, hasPermission };
+  const filterOptions = { isDemoOrg, isSuperAdmin, routes, hasFeature };
 
   // Apply route filtering to all navigation sections
   const filteredAnalyticsItemsBase = filterNavigationByRoutes(analyticsItems, filterOptions);
@@ -231,13 +231,8 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
 
   const NAV_FLAG = (import.meta as any).env?.VITE_NAV_PERMISSIONS_ENABLED === 'true';
   const applyPermFilter = (items: NavigationItem[]) => {
-    if (!NAV_FLAG) return items;
-    // Default allow while loading to avoid accidental lockout
-    if (uiPermissionsLoading) return items;
-    return items.filter((it) => {
-      const perm = resolvePermForPath(it.url);
-      return !perm || hasPermission(perm);
-    });
+    // Simplified: no nav permission filtering for now
+    return items;
   };
 
   const filteredAnalyticsItems = applyPermFilter(filteredAnalyticsItemsBase);
@@ -330,7 +325,6 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
       // Hook loading states
       permissionsLoading,
       featuresLoading,
-      uiPermissionsLoading,
       orgLoading,
       allPermissionsLoaded,
       
