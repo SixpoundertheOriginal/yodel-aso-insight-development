@@ -20,6 +20,7 @@ import { exportService } from '@/services/export.service';
 import { MainLayout } from '@/layouts';
 import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
 import { YodelToolbar, YodelToolbarGroup, YodelToolbarSpacer } from '@/components/ui/design-system';
+import { ConnectionStatus } from '@/components/ui/connection-status';
 
 interface AppSearchResult {
   name: string;
@@ -129,7 +130,20 @@ const ReviewManagementPage: React.FC = () => {
       
     } catch (error: any) {
       console.error('App search failed:', error);
-      toast.error(`Search failed: ${error.message}`);
+      
+      // Enhanced error messaging based on error type
+      let errorMessage = 'Search failed';
+      if (error.message.includes('timeout')) {
+        errorMessage = 'Search timed out - please check your connection and try again';
+      } else if (error.message.includes('temporarily unavailable')) {
+        errorMessage = 'Search service temporarily unavailable - please try again in a moment';
+      } else if (error.message.includes('Connection timeout')) {
+        errorMessage = 'Connection timeout - please check your internet connection';
+      } else {
+        errorMessage = `Search failed: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -432,9 +446,12 @@ const ReviewManagementPage: React.FC = () => {
           <h1 className="text-3xl font-bold">Review Management</h1>
           <p className="text-muted-foreground">Search apps and fetch public customer reviews from iTunes RSS</p>
         </div>
-        {showDevBadge && (
-          <Badge variant="outline" className="text-xs">DEV MODE</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          <ConnectionStatus showDetails />
+          {showDevBadge && (
+            <Badge variant="outline" className="text-xs">DEV MODE</Badge>
+          )}
+        </div>
       </div>
 
       {/* Card A: App Search (hidden after app selected) */}

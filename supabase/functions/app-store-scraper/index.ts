@@ -141,6 +141,21 @@ serve(async (req) => {
     const operation = opStr || (requestData.searchTerm && !requestData.targetApp ? 'search' : null);
     console.log(`🎯 [${requestId}] OPERATION DETECTED: "${operation}" (raw: "${requestData.op}")`);
 
+    // Handle health check first (no auth required)
+    if (operation === 'health') {
+      console.log(`💓 [${requestId}] ROUTING TO: Health Check Handler`);
+      return responseBuilder.success({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: '2025-09-22-enhanced',
+        services: {
+          metadata: 'operational',
+          reviews: 'operational',
+          search: 'operational'
+        }
+      });
+    }
+
     // Handle public search operation (no auth required)
     if (operation === 'search' || (requestData.searchTerm && !requestData.targetApp && !requestData.organizationId)) {
       console.log(`🔍 [${requestId}] ROUTING TO: Public App Search Handler`);
