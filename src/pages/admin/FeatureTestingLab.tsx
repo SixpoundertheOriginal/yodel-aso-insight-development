@@ -58,16 +58,27 @@ export default function FeatureTestingLab() {
         details: { count: platformFeatures?.length || 0 }
       });
 
-      // Test org feature access table
-      const { data: orgFeatures, error: ofError } = await supabase
-        .from('org_feature_access')
+      // Test unified feature system tables
+      const { data: unifiedFeatures, error: unfError } = await supabase
+        .from('platform_features')
         .select('count')
         .limit(1);
 
       tests.push({
-        name: 'Organization Features Table Access',
-        passed: !ofError,
-        message: ofError ? `Error: ${ofError.message}` : 'Successfully accessed org_feature_access table'
+        name: 'Platform Features Table Access',
+        passed: !unfError,
+        message: unfError ? `Error: ${unfError.message}` : 'Successfully accessed platform_features table'
+      });
+
+      const { data: orgEntitlements, error: oeError } = await supabase
+        .from('org_feature_entitlements')
+        .select('count')
+        .limit(1);
+
+      tests.push({
+        name: 'Organization Feature Entitlements Table Access',
+        passed: !oeError,
+        message: oeError ? `Error: ${oeError.message}` : 'Successfully accessed org_feature_entitlements table'
       });
 
       // Test user overrides table

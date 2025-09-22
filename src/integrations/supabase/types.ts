@@ -1694,48 +1694,6 @@ export type Database = {
         }
         Relationships: []
       }
-      org_feature_access: {
-        Row: {
-          created_at: string | null
-          feature_key: string
-          id: string
-          is_enabled: boolean | null
-          organization_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          feature_key: string
-          id?: string
-          is_enabled?: boolean | null
-          organization_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          feature_key?: string
-          id?: string
-          is_enabled?: boolean | null
-          organization_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "org_feature_access_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_app_usage"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "org_feature_access_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       org_feature_entitlements: {
         Row: {
           created_at: string | null
@@ -2457,36 +2415,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ui_permissions: {
-        Row: {
-          context: Json | null
-          created_at: string | null
-          id: string
-          is_granted: boolean | null
-          permission_key: string
-          role: string
-          updated_at: string | null
-        }
-        Insert: {
-          context?: Json | null
-          created_at?: string | null
-          id?: string
-          is_granted?: boolean | null
-          permission_key: string
-          role: string
-          updated_at?: string | null
-        }
-        Update: {
-          context?: Json | null
-          created_at?: string | null
-          id?: string
-          is_granted?: boolean | null
-          permission_key?: string
-          role?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       user_feature_overrides: {
         Row: {
           created_at: string
@@ -2856,14 +2784,6 @@ export type Database = {
       get_user_organization_with_fallback: {
         Args: Record<PropertyKey, never>
         Returns: string
-      }
-      get_user_ui_permissions: {
-        Args: { p_user_id?: string }
-        Returns: {
-          context: Json
-          is_granted: boolean
-          permission_key: string
-        }[]
       }
       is_super_admin: {
         Args: { user_id?: string }
