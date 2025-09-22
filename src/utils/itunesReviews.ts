@@ -134,34 +134,43 @@ async function searchViaDirectItunesAPI(params: {
   }
 }
 
-// Enhanced search with edge function and fallback
-async function searchViaEdgeFunction(params: {
+// Direct HTTP call to edge function as fallback
+async function searchViaDirectHTTP(params: {
   term: string;
   country?: string;
   limit?: number;
 }): Promise<AppSearchResultDto[]> {
   const { term, country = 'us', limit = 5 } = params;
   
-  // Create abort controller for timeout
+  console.log('[searchApps] Using direct HTTP to edge function');
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
   
   try {
-    const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-      body: { 
+    const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/app-store-scraper`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYmNxb2NwamFoZXdxam1sZ3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MDcwOTgsImV4cCI6MjA2MjM4MzA5OH0.K00WoAEZNf93P-6r3dCwOZaYah51bYuBPwHtDdW82Ek`,
+      },
+      body: JSON.stringify({
         op: 'search',
-        searchTerm: term, 
-        country, 
+        searchTerm: term,
+        country,
         limit,
         searchType: 'keyword'
-      },
+      }),
+      signal: controller.signal
     });
     
     clearTimeout(timeoutId);
     
-    if (error) {
-      throw new EdgeFunctionError(error.message || 'Edge function search failed');
+    if (!response.ok) {
+      throw new EdgeFunctionError(`HTTP ${response.status}: ${response.statusText}`);
     }
+    
+    const data = await response.json();
     
     // Handle response data
     const normalize = (item: any): AppSearchResultDto => {
@@ -197,10 +206,79 @@ async function searchViaEdgeFunction(params: {
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      throw new NetworkError('Edge function request timed out');
+      throw new NetworkError('Direct HTTP request timed out');
     }
     
-    throw new EdgeFunctionError(`Edge function failed: ${error.message}`, error);
+    throw new EdgeFunctionError(`Direct HTTP failed: ${error.message}`, error);
+  }
+}
+
+// Enhanced search with edge function and fallback
+async function searchViaEdgeFunction(params: {
+  term: string;
+  country?: string;
+  limit?: number;
+}): Promise<AppSearchResultDto[]> {
+  const { term, country = 'us', limit = 5 } = params;
+  
+  // Try Supabase client method first
+  try {
+    console.log('[searchApps] Trying supabase.functions.invoke()');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
+    
+    const { data, error } = await supabase.functions.invoke('app-store-scraper', {
+      body: { 
+        op: 'search',
+        searchTerm: term, 
+        country, 
+        limit,
+        searchType: 'keyword'
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (error) {
+      console.warn('[searchApps] Supabase invoke error, trying direct HTTP:', error.message);
+      throw new EdgeFunctionError(error.message || 'Edge function search failed');
+    }
+    
+    // Handle response data
+    const normalize = (item: any): AppSearchResultDto => {
+      let appId: string | undefined = item.appId;
+      if (!appId && typeof item.url === 'string') {
+        const m = item.url.match(/id(\d+)/);
+        if (m) appId = m[1];
+      }
+      if (!appId && item.trackId) {
+        appId = String(item.trackId);
+      }
+
+      return {
+        name: item.name || item.trackName || 'Unknown App',
+        appId: appId || '',
+        developer: item.developer || item.artistName || 'Unknown Developer',
+        rating: typeof item.rating === 'number' ? item.rating : (item.averageUserRating || 0),
+        reviews: typeof item.reviews === 'number' ? item.reviews : (item.userRatingCount || 0),
+        icon: item.icon || item.artworkUrl512 || item.artworkUrl100 || '',
+        applicationCategory: item.applicationCategory || item.primaryGenreName || 'App',
+      };
+    };
+
+    if (data?.results && Array.isArray(data.results)) {
+      return data.results.slice(0, limit).map(normalize);
+    } else if (data && !data.results) {
+      return [normalize(data)];
+    }
+    
+    return [];
+    
+  } catch (error: any) {
+    console.warn('[searchApps] Supabase invoke failed, trying direct HTTP:', error.message);
+    
+    // Fallback to direct HTTP call
+    return await searchViaDirectHTTP(params);
   }
 }
 
@@ -210,32 +288,32 @@ export async function searchApps(params: {
   limit?: number;
 }): Promise<AppSearchResultDto[]> {
   const { term, country = 'us', limit = 5 } = params;
-  console.log('[searchApps] Enhanced search with fallback:', { term, country, limit });
+  console.log('[searchApps] Enhanced search with multi-fallback:', { term, country, limit });
   
   try {
-    // Primary: Try edge function with retries
+    // Primary: Try edge function (includes both Supabase client and direct HTTP)
     return await retryWithBackoff(() => searchViaEdgeFunction(params));
     
   } catch (edgeFunctionError: any) {
-    console.warn('[searchApps] Edge function failed after retries:', edgeFunctionError.message);
+    console.warn('[searchApps] All edge function methods failed after retries:', edgeFunctionError.message);
     
     try {
-      // Fallback: Direct iTunes API with retries
-      console.log('[searchApps] Attempting fallback to direct iTunes API');
+      // Final Fallback: Direct iTunes API with retries
+      console.log('[searchApps] Attempting final fallback to direct iTunes API');
       return await retryWithBackoff(() => searchViaDirectItunesAPI(params));
       
     } catch (fallbackError: any) {
-      console.error('[searchApps] Both edge function and fallback failed:', {
+      console.error('[searchApps] All methods failed:', {
         edgeFunctionError: edgeFunctionError.message,
         fallbackError: fallbackError.message
       });
       
-      // Throw a comprehensive error message
+      // Throw a comprehensive error message with troubleshooting hints
       const errorMessage = edgeFunctionError instanceof NetworkError
         ? 'Connection timeout - please check your internet connection and try again'
         : edgeFunctionError instanceof EdgeFunctionError
-        ? 'Service temporarily unavailable - please try again in a few moments'
-        : `Search failed: ${edgeFunctionError.message}. Fallback also failed: ${fallbackError.message}`;
+        ? `Service temporarily unavailable: ${edgeFunctionError.message}. Please try again in a few moments.`
+        : `All search methods failed. Edge function: ${edgeFunctionError.message}. Direct API: ${fallbackError.message}`;
       
       throw new Error(errorMessage);
     }
