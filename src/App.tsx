@@ -45,7 +45,6 @@ const Settings = lazy(() => import("./pages/settings"));
 const DemoCreativeReview = lazy(() => import("./pages/demo-creative-review"));
 const DemoKeywordInsights = lazy(() => import("./pages/demo-keyword-insights"));
 const ReviewManagement = lazy(() => import("./pages/growth-accelerators/reviews"));
-const ReviewManagementV2 = lazy(() => import("./pages/growth-accelerators/review-management-v2"));
 const KeywordIntelligencePage = lazy(() => import("./pages/growth-accelerators/keywords"));
 const CompetitorOverviewPage = lazy(() => import("./pages/growth-accelerators/competitor-overview"));
 import DemoGrowthAcceleratorsLayout from '@/layouts/DemoGrowthAcceleratorsLayout';
@@ -168,10 +167,6 @@ function App() {
                           <Route
                             path="/growth-accelerators/reviews"
                             element={<ProtectedRoute><DemoGrowthAcceleratorsLayout><ReviewManagement /></DemoGrowthAcceleratorsLayout></ProtectedRoute>}
-                          />
-                          <Route
-                            path="/growth-accelerators/review-management-v2"
-                            element={<ProtectedRoute><ReviewManagementV2 /></ProtectedRoute>}
                           />
                           <Route
                             path="/growth-accelerators/keywords"
