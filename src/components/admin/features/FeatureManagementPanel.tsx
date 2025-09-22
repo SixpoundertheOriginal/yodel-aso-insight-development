@@ -41,12 +41,46 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
   const { toast } = useToast();
   const { isSuperAdmin } = usePermissions();
 
+  // Load organizations list
+  const loadOrganizations = async () => {
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-organizations`, {
+        headers: {
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch organizations');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setOrganizations(data.data.organizations || []);
+        // Set default selection to first org if no organizationId prop provided
+        if (!organizationId && data.data.organizations?.length > 0) {
+          setSelectedOrgId(data.data.organizations[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading organizations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load organizations',
+        variant: 'destructive'
+      });
+    }
+  };
+
   // Load platform features
   const loadPlatformFeatures = async () => {
     try {
+      const session = await supabase.auth.getSession();
       const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-features`, {
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -109,10 +143,11 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
 
     try {
       setSaving(true);
+      const session = await supabase.auth.getSession();
       const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-features/organization`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -171,7 +206,7 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
 
   useEffect(() => {
     if (isSuperAdmin) {
-      loadPlatformFeatures();
+      loadOrganizations();
     }
   }, [isSuperAdmin]);
 

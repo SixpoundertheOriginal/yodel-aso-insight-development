@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { FeatureManagementPanel } from '@/components/admin/features/FeatureManagementPanel';
+import { UserFeatureOverrideManager } from '@/components/admin/features/UserFeatureOverrideManager';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Settings, Shield, Users, BarChart3 } from 'lucide-react';
 
@@ -63,19 +64,7 @@ export default function FeatureManagement() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Feature Overrides</CardTitle>
-              <CardDescription>
-                Set user-specific feature access overrides within organizations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                User override management coming soon...
-              </div>
-            </CardContent>
-          </Card>
+          <UserFeatureOverrideManager organizationId="placeholder" />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">

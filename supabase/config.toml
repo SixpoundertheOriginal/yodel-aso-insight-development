@@ -24,3 +24,6 @@ verify_jwt = true
 
 [functions.app-store-scraper]
 verify_jwt = false
+
+[functions.admin-features]
+verify_jwt = true

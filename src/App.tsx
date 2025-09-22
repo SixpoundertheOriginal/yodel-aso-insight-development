@@ -55,6 +55,7 @@ const AdminPlaceholder = lazy(() => import("./pages/admin/placeholder"));
 const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
 const FeatureManagement = lazy(() => import("./pages/admin/FeatureManagement"));
+const FeatureTestingLab = lazy(() => import("./pages/admin/FeatureTestingLab"));
 const OrganizationFeaturesPage = lazy(() => import("./pages/admin/organization-features"));
 const UIPermissionDemoPage = lazy(() => import("./pages/UIPermissionDemoPage"));
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
@@ -225,6 +226,10 @@ function App() {
                           <Route
                             path="/admin/features"
                             element={<ProtectedRoute><SuperAdminGuard><FeatureManagement /></SuperAdminGuard></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/testing-lab"
+                            element={<ProtectedRoute><SuperAdminGuard><FeatureTestingLab /></SuperAdminGuard></ProtectedRoute>}
                           />
                           <Route
                             path="/smoke-test"
