@@ -503,35 +503,60 @@ async function fetchReviewsViaEdgeFunction(params: {
   }
 }
 
-// Enhanced reviews fetching with retry and fallback
+// Main App Reviews Fetch Function - Direct iTunes RSS Implementation
 export async function fetchAppReviews(params: {
   appId: string;
   cc?: string;
   page?: number;
   pageSize?: number;
 }): Promise<ReviewsResponseDto> {
-  const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
-  console.log('[fetchAppReviews] Enhanced fetch with multi-fallback:', { appId, cc, page, pageSize });
+  const { appId, cc = 'us', page = 1 } = params;
+  console.log('[fetchAppReviews] Direct iTunes RSS approach:', { appId, cc, page });
   
+  if (!appId) {
+    return {
+      success: false,
+      error: 'App ID is required',
+      currentPage: page,
+      hasMore: false,
+      totalReviews: 0
+    };
+  }
+
+  // Direct iTunes RSS integration - no edge function dependency
   try {
-    // Primary: Try edge function (includes both Supabase client and direct HTTP)
-    return await retryWithBackoff(() => fetchReviewsViaEdgeFunction(params));
+    // Dynamic import to avoid circular dependencies
+    const { ITunesReviewsService } = await import('@/services/iTunesReviewsService');
     
-  } catch (edgeFunctionError: any) {
-    console.warn('[fetchAppReviews] All edge function methods failed after retries:', edgeFunctionError.message);
+    const result = await ITunesReviewsService.fetchReviews({
+      appId,
+      cc,
+      page
+    });
+
+    console.log('[fetchAppReviews] iTunes RSS result:', {
+      success: result.success,
+      reviewCount: result.reviews.length,
+      hasMore: result.hasMore,
+      error: result.error
+    });
+
+    // Transform to expected format for backward compatibility
+    return {
+      success: result.success,
+      data: result.reviews,
+      currentPage: result.currentPage,
+      hasMore: result.hasMore,
+      totalReviews: result.totalReviews,
+      error: result.error
+    };
     
-    // For reviews, we don't have a direct iTunes API fallback like we do for search
-    // iTunes RSS requires specific formatting and parsing
-    const errorMessage = edgeFunctionError instanceof NetworkError
-      ? 'Connection timeout while fetching reviews - please check your internet connection and try again'
-      : edgeFunctionError instanceof EdgeFunctionError
-      ? 'Reviews service temporarily unavailable - please try again in a few moments'
-      : `Failed to fetch reviews: ${edgeFunctionError.message}`;
+  } catch (error: any) {
+    console.error('[fetchAppReviews] Direct iTunes RSS failed:', error);
     
     return {
       success: false,
-      data: [],
-      error: errorMessage,
+      error: `Failed to fetch reviews: ${error.message}`,
       currentPage: page,
       hasMore: false,
       totalReviews: 0
