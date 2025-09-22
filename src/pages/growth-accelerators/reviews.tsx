@@ -15,7 +15,10 @@ import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/constants/features';
 import { getDemoPresetForSlug } from '@/config/demoPresets';
 import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext';
-import { searchApps as searchItunesApps, fetchAppReviews } from '@/utils/itunesReviews';
+import { fetchAppReviews } from '@/utils/itunesReviews';
+import { asoSearchService } from '@/services/aso-search.service';
+import { AmbiguousSearchError } from '@/types/search-errors';
+import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import { exportService } from '@/services/export.service';
 import { MainLayout } from '@/layouts';
 import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
@@ -83,6 +86,11 @@ const ReviewManagementPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<AppSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedApp, setSelectedApp] = useState<AppSearchResult | null>(null);
+  
+  // App selection modal state for ambiguous results
+  const [showAppSelection, setShowAppSelection] = useState(false);
+  const [appCandidates, setAppCandidates] = useState<any[]>([]);
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
 
   // Reviews state
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
@@ -110,7 +118,7 @@ const ReviewManagementPage: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // App search functionality
+  // Bulletproof app search functionality
   const handleAppSearch = async () => {
     if (!searchTerm.trim()) {
       toast.error('Please enter an app name to search');
@@ -119,17 +127,51 @@ const ReviewManagementPage: React.FC = () => {
 
     setSearchLoading(true);
     try {
-      const results = await searchItunesApps({
-        term: searchTerm,
-        country: selectedCountry,
-        limit: 5,
-      });
-      setSearchResults(results);
-      toast.success(`Found ${results.length} apps`);
-      console.log('[searchApps OK]', results.length);
+      // Use bulletproof ASO search service with organization context
+      const searchConfig = {
+        organizationId: organizationId || '__fallback__',
+        cacheEnabled: true,
+        onProgress: (stage: string, progress: number) => {
+          console.log(`🔍 Search progress: ${stage} (${progress}%)`);
+        }
+      };
+
+      const result = await asoSearchService.search(searchTerm, searchConfig);
+      
+      if (result.targetApp) {
+        // Direct match found - convert to AppSearchResult format
+        const convertedApp: AppSearchResult = {
+          name: result.targetApp.name,
+          appId: result.targetApp.appId,
+          developer: result.targetApp.developer || 'Unknown Developer',
+          rating: result.targetApp.rating || 0,
+          reviews: result.targetApp.reviews || 0,
+          icon: result.targetApp.icon || '',
+          applicationCategory: result.targetApp.applicationCategory || 'Unknown'
+        };
+        
+        setSearchResults([convertedApp]);
+        toast.success('App found successfully with bulletproof search');
+        console.log('✅ [BULLETPROOF-SEARCH] Direct match found:', convertedApp);
+      } else {
+        // No results found
+        setSearchResults([]);
+        toast.error('No apps found matching your search');
+        console.log('❌ [BULLETPROOF-SEARCH] No results found');
+      }
       
     } catch (error: any) {
-      console.error('App search failed:', error);
+      console.error('Bulletproof search failed:', error);
+      
+      if (error instanceof AmbiguousSearchError) {
+        // Handle ambiguous results with selection modal
+        console.log('🔄 [BULLETPROOF-SEARCH] Ambiguous results, showing selection modal');
+        setAppCandidates(error.candidates || []);
+        setPendingSearchTerm(searchTerm);
+        setShowAppSelection(true);
+        setSearchLoading(false);
+        return;
+      }
       
       // Enhanced error messaging based on error type
       let errorMessage = 'Search failed';
@@ -139,6 +181,8 @@ const ReviewManagementPage: React.FC = () => {
         errorMessage = 'Search service temporarily unavailable - please try again in a moment';
       } else if (error.message.includes('Connection timeout')) {
         errorMessage = 'Connection timeout - please check your internet connection';
+      } else if (error.message.includes('Circuit breaker')) {
+        errorMessage = 'Search service temporarily offline - please try again in a few moments';
       } else {
         errorMessage = `Search failed: ${error.message}`;
       }
@@ -148,6 +192,27 @@ const ReviewManagementPage: React.FC = () => {
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  // Handle app selection from modal
+  const handleAppSelectionFromModal = (selectedMetadata: any) => {
+    // Convert ScrapedMetadata to AppSearchResult format
+    const convertedApp: AppSearchResult = {
+      name: selectedMetadata.name,
+      appId: selectedMetadata.appId,
+      developer: selectedMetadata.developer || 'Unknown Developer',
+      rating: selectedMetadata.rating || 0,
+      reviews: selectedMetadata.reviews || 0,
+      icon: selectedMetadata.icon || '',
+      applicationCategory: selectedMetadata.applicationCategory || 'Unknown'
+    };
+    
+    setSearchResults([convertedApp]);
+    setShowAppSelection(false);
+    setAppCandidates([]);
+    setPendingSearchTerm('');
+    toast.success('App selected successfully');
+    console.log('✅ [APP-SELECTION] Selected from modal:', convertedApp);
   };
 
   // Reviews fetching
@@ -852,6 +917,21 @@ const ReviewManagementPage: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* App Selection Modal for ambiguous results */}
+      <AppSelectionModal
+        isOpen={showAppSelection}
+        onClose={() => {
+          setShowAppSelection(false);
+          setAppCandidates([]);
+          setPendingSearchTerm('');
+        }}
+        candidates={appCandidates}
+        onSelect={handleAppSelectionFromModal}
+        searchTerm={pendingSearchTerm}
+        mode="select"
+        searchCountry={selectedCountry}
+      />
     </div>
     </MainLayout>
   );
