@@ -105,14 +105,37 @@ export const organizationsApi = {
   delete: (id: string): Promise<void> => adminClient.delete<void>('admin-organizations', id),
 };
 
-// Users API
+// Users API - Consolidated to single admin-users endpoint
 export const usersApi = {
   list: (): Promise<User[]> => adminClient.invoke<User[]>('admin-users', { action: 'list' }),
   
-  invite: (data: any): Promise<User> => adminClient.invoke<User>('admin-users-invite', data),
+  // Consolidated invite to use main admin-users endpoint with standardized field names
+  invite: (data: any): Promise<User> => {
+    // Normalize field names for consistent API contract
+    const normalizedData = {
+      action: 'invite',
+      email: data.email,
+      organization_id: data.org_id || data.organization_id, // Support both field names during transition
+      roles: Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : ['VIEWER']),
+      first_name: data.first_name,
+      last_name: data.last_name
+    };
+    return adminClient.invoke<User>('admin-users', normalizedData);
+  },
     
-  // Updated to use canonical field names
-  create: (data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'create', ...data }),
+  // Updated to use canonical field names and consistent payload structure
+  create: (data: any): Promise<User> => {
+    const normalizedData = {
+      action: 'create',
+      email: data.email,
+      organization_id: data.organization_id,
+      roles: Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : ['VIEWER']),
+      first_name: data.first_name,
+      last_name: data.last_name,
+      password: data.password
+    };
+    return adminClient.invoke<User>('admin-users', normalizedData);
+  },
     
   update: (user_id: string, data: any): Promise<User> => adminClient.invoke<User>('admin-users', { action: 'update', user_id, payload: data }),
     

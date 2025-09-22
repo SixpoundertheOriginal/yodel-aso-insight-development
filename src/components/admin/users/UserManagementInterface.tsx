@@ -83,14 +83,16 @@ export const UserManagementInterface: React.FC = () => {
     last_name?: string;
   }) => {
     try {
+      // Use standardized field names and ensure role has a fallback
       const payload = {
         email: userData.email,
-        org_id: userData.organization_id,
-        role: Array.isArray(userData.roles) ? userData.roles[0] : userData.roles,
+        organization_id: userData.organization_id, // Standardized field name
+        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles || 'VIEWER'], // Always send as array
         first_name: userData.first_name,
         last_name: userData.last_name,
       };
       
+      console.log('Inviting user with payload:', payload);
       await usersApi.invite(payload);
 
       setShowInviteModal(false);
@@ -112,15 +114,17 @@ export const UserManagementInterface: React.FC = () => {
     password: string;
   }) => {
     try {
+      // Ensure consistent payload structure with proper role fallback
       const payload = {
         email: userData.email,
         first_name: userData.first_name,
         last_name: userData.last_name,
         organization_id: userData.organization_id,
-        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles],
+        roles: Array.isArray(userData.roles) ? userData.roles : [userData.roles || 'VIEWER'], // Ensure array with fallback
         password: userData.password
       };
       
+      console.log('Creating user with payload:', payload);
       await usersApi.create(payload);
 
       setShowCreateModal(false);
