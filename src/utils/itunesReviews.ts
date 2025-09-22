@@ -329,6 +329,89 @@ export interface ReviewsResponseDto<T = any> {
   totalReviews?: number;
 }
 
+/**
+ * Parse reviews response to handle different response structures
+ */
+function parseReviewsResponse(data: any, fallbackPage: number = 1): ReviewsResponseDto {
+  console.log('[parseReviewsResponse] Parsing response:', data);
+  
+  // Handle error responses
+  if (data?.success === false || data?.error) {
+    return {
+      success: false,
+      error: data.error || 'Unknown error from reviews API',
+      currentPage: fallbackPage,
+      hasMore: false,
+      totalReviews: 0
+    };
+  }
+  
+  // Case 1: Direct ReviewsResponse structure with success field
+  if (data?.success === true && data?.data && Array.isArray(data.data)) {
+    console.log('[parseReviewsResponse] Found direct success structure');
+    return {
+      success: true,
+      data: data.data,
+      currentPage: data.currentPage || fallbackPage,
+      hasMore: data.hasMore || false,
+      totalReviews: data.totalReviews || data.data.length
+    };
+  }
+  
+  // Case 2: Nested structure { data: { reviews: [...], page: 1, has_next_page: false } }
+  if (data?.data?.reviews && Array.isArray(data.data.reviews)) {
+    console.log('[parseReviewsResponse] Found nested structure with reviews array');
+    return {
+      success: true,
+      data: data.data.reviews,
+      currentPage: data.data.page || data.data.currentPage || fallbackPage,
+      hasMore: data.data.has_next_page || data.data.hasMore || false,
+      totalReviews: data.data.totalReviews || data.data.reviews.length
+    };
+  }
+  
+  // Case 3: Direct array of reviews
+  if (Array.isArray(data)) {
+    console.log('[parseReviewsResponse] Found direct array structure');
+    return {
+      success: true,
+      data: data,
+      currentPage: fallbackPage,
+      hasMore: false,
+      totalReviews: data.length
+    };
+  }
+  
+  // Case 4: Top-level data array { data: [...] }
+  if (data?.data && Array.isArray(data.data)) {
+    console.log('[parseReviewsResponse] Found top-level data array');
+    return {
+      success: true,
+      data: data.data,
+      currentPage: data.currentPage || fallbackPage,
+      hasMore: data.hasMore || false,
+      totalReviews: data.totalReviews || data.data.length
+    };
+  }
+  
+  // Case 5: Unknown structure - return error with detailed info
+  console.error('[parseReviewsResponse] Unknown response structure:', {
+    type: typeof data,
+    keys: data ? Object.keys(data) : 'null',
+    hasSuccess: 'success' in (data || {}),
+    hasData: 'data' in (data || {}),
+    dataType: data?.data ? typeof data.data : 'undefined'
+  });
+  
+  return {
+    success: false,
+    error: `Invalid response structure from reviews API. Expected reviews array but got: ${typeof data}`,
+    currentPage: fallbackPage,
+    hasMore: false,
+    totalReviews: 0
+  };
+}
+
 // Direct HTTP call to edge function for reviews
 async function fetchReviewsViaDirectHTTP(params: {
   appId: string;
@@ -367,19 +450,9 @@ async function fetchReviewsViaDirectHTTP(params: {
     }
     
     const data = await response.json();
-    const reviewsData = data?.data;
+    console.log('[fetchAppReviews] Raw direct HTTP response:', data);
     
-    if (!reviewsData) {
-      throw new EdgeFunctionError('No data received from reviews API');
-    }
-    
-    return {
-      success: true,
-      data: reviewsData.reviews || [],
-      currentPage: reviewsData.page || page,
-      hasMore: reviewsData.has_next_page || false,
-      totalReviews: reviewsData.reviews?.length || 0
-    };
+    return parseReviewsResponse(data, page);
     
   } catch (error: any) {
     clearTimeout(timeoutId);
@@ -418,18 +491,9 @@ async function fetchReviewsViaEdgeFunction(params: {
       throw new EdgeFunctionError(error.message || 'Edge function reviews failed');
     }
     
-    const reviewsData = data?.data;
-    if (!reviewsData) {
-      throw new EdgeFunctionError('No data received from reviews API');
-    }
+    console.log('[fetchAppReviews] Raw edge function response:', data);
     
-    return {
-      success: true,
-      data: reviewsData.reviews || [],
-      currentPage: reviewsData.page || page,
-      hasMore: reviewsData.has_next_page || false,
-      totalReviews: reviewsData.reviews?.length || 0
-    };
+    return parseReviewsResponse(data, page);
     
   } catch (error: any) {
     console.warn('[fetchAppReviews] Supabase invoke failed, trying direct HTTP:', error.message);
