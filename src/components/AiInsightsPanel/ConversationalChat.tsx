@@ -248,7 +248,7 @@ export const ConversationalChat = forwardRef<
     // Initialize with welcome message
     useEffect(() => {
       if (!activeConversation && metricsData) {
-        const welcomeContent = isDemoMode || metricsData?.meta?.isDemo 
+        const welcomeContent = isDemoMode || metricsData?.metadata?.isDemo 
           ? DemoAIChatService.generateDemoWelcomeMessage(filterContext)
           : generatePremiumWelcomeMessage(filterContext);
 

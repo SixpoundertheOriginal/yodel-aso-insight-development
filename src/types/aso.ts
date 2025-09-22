@@ -161,6 +161,7 @@ export interface MetricsData {
     executionTime: number;
     cacheHit: boolean;
     availableTrafficSources: string[];
+    isDemo?: boolean;
   };
 }
 

@@ -83,6 +83,7 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [sortKey, setSortKey] = useState<'keyword' | 'position' | 'volume' | 'confidence' | 'trend' | 'lastChecked'>('position');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
+  const [autoGenerateAfterPick, setAutoGenerateAfterPick] = useState(false);
 
   const volumeRank = (v: KeywordRow['volume']) => (v === 'High' ? 3 : v === 'Medium' ? 2 : 1);
   const trendRank = (t: KeywordRow['trend']) => (t === 'up' ? 3 : t === 'stable' ? 2 : 1);

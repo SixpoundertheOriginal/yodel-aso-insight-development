@@ -175,30 +175,8 @@ export const PreviewSplash: React.FC<PreviewSplashProps> = ({
       ctx.restore();
     };
 
-    const drawRibbons = (w: number, h: number) => {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const dots = isMobile() ? 28 : 48;
-      for (const r of ribbons) {
-        r.phase += r.speed;
-        for (let i = 0; i <= dots; i++) {
-          const t = i / dots;
-          const x = t * w;
-          const baseY = r.offsetY * h;
-          const y = baseY + Math.sin(t * Math.PI * 2 * r.freq + r.phase) * r.amp + parallax.y * 0.8;
-          const radius = 1 + Math.sin(t * Math.PI * 2) * 0.5 + 1.5;
-          const grad = ctx.createRadialGradient(x, y, 0, x, y, 10);
-          grad.addColorStop(0, `hsla(${r.hue}, 80%, 60%, 0.35)`);
-          grad.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(x, y, radius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-    };
-
+    // Removed drawRibbons function - not currently implemented
+    
     const drawSparks = (w: number, h: number) => {
       // Spawn occasional spark (warm white / orange)
       const mobile = isMobile();

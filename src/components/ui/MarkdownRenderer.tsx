@@ -11,8 +11,8 @@ type MarkdownRendererProps = {
 };
 
 // Fallback-safe boundary to avoid runtime errors from plugins/rendering
-class MarkdownErrorBoundary extends React.Component<{ fallback: React.ReactNode }, { hasError: boolean }>{
-  constructor(props: { fallback: React.ReactNode }) {
+class MarkdownErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }>{
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -92,10 +92,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   if (enableGfm) plugins.push(remarkGfm as any);
 
   // react-markdown@9 removed `className` on the component itself.
-  // To support external styling, wrap the root via components.root.
-  const rootWrapper: Components = className
+  // To support external styling, wrap the root via components.div.
+  const rootWrapper: Partial<Components> = className
     ? {
-        root: ({ children }) => <div className={className}>{children}</div>,
+        div: ({ children }) => <div className={className}>{children}</div>,
       }
     : {};
 

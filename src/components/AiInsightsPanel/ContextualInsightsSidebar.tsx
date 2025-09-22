@@ -159,7 +159,7 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
     trafficSources: [],
     selectedApps: []
   },
-  isDemoMode: isDemoOrg || metricsData?.meta?.isDemo
+  isDemoMode: isDemoOrg || metricsData?.metadata?.isDemo
 });
 
 
@@ -283,7 +283,7 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
                 onGenerateInsight={generateChatResponse}
                 isGenerating={isChatGenerating}
                 className="flex-1"
-                isDemoMode={isDemoOrg || metricsData?.meta?.isDemo}
+                isDemoMode={isDemoOrg || metricsData?.metadata?.isDemo}
               />
             </PremiumCardContent>
           </PremiumCard>

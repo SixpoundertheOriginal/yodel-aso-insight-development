@@ -42,7 +42,7 @@ export const useConversationalChat = ({
       }
     };
     // Handle demo mode with local AI responses
-    if (isDemoMode || metricsData?.meta?.isDemo) {
+    if (isDemoMode || metricsData?.metadata?.isDemo) {
       setIsGenerating(true);
       setError(null);
       

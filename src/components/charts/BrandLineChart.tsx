@@ -86,13 +86,13 @@ export const BrandLineChart: React.FC<BrandLineChartProps> = ({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={xTickFormatter}
+            tickFormatter={(value: any) => String(xTickFormatter(value))}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={yTickFormatter}
+            tickFormatter={(value: number) => String(yTickFormatter(value))}
             width={yAxisWidth}
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent indicator={tooltipIndicator} />} />
