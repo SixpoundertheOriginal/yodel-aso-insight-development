@@ -4,6 +4,11 @@ import { PlatformHealthChart } from './PlatformHealthChart';
 import { QuickActionsPanel } from './QuickActionsPanel';
 import { RecentActivityFeed } from './RecentActivityFeed';
 import { dashboardApi } from '@/lib/admin-api';
+import { UserBehaviorAnalytics } from './UserBehaviorAnalytics';
+import { OrganizationHealthDashboard } from './OrganizationHealthDashboard';
+import { PredictiveAnalyticsPanel } from './PredictiveAnalyticsPanel';
+import { AnomalyDetectionAlerts } from './AnomalyDetectionAlerts';
+import { RealTimeMonitor } from './RealTimeMonitor';
 
 interface AdminDashboardMetrics {
   platform_health: {
@@ -127,13 +132,24 @@ export const EnhancedAdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="action-panels grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="action-panels grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <QuickActionsPanel />
         <RecentActivityFeed />
         <div className="system-alerts bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold mb-4">System Alerts</h3>
           <div className="text-sm text-gray-600 dark:text-gray-300">No active alerts</div>
         </div>
+      </div>
+
+      {/* Enhanced Analytics Sections */}
+      <div className="advanced-analytics-grid space-y-8">
+        <UserBehaviorAnalytics />
+        <OrganizationHealthDashboard />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PredictiveAnalyticsPanel />
+          <AnomalyDetectionAlerts />
+        </div>
+        <RealTimeMonitor />
       </div>
     </div>
   );
