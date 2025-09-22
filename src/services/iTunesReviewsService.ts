@@ -50,25 +50,20 @@ interface ItunesRSSResponse {
 }
 
 /**
- * Build iTunes RSS URLs with fallback formats
- * Tests both working formats discovered in audit
+ * Build iTunes RSS URL using the ONLY working format
+ * Phase 1 Fix: Use verified iTunes RSS URL format that returns JSON
  */
-const buildItunesUrl = (config: ReviewsServiceConfig): string[] => {
-  const { appId, countryCode = 'us', page = 1, sortBy = 'mostRecent' } = config;
+const buildItunesUrl = (config: ReviewsServiceConfig): string => {
+  const { appId, countryCode = 'us' } = config;
   
-  console.log('[iTunes] Building URLs for:', { appId, countryCode, page, sortBy });
+  console.log('[iTunes] Building URL for:', { appId, countryCode });
   
-  // Return array of URLs to try in order of likelihood to work
-  return [
-    // Format 1: Working format from audit (camelCase, no page param)
-    `https://itunes.apple.com/${countryCode}/rss/customerreviews/id=${appId}/sortBy=${sortBy}/json`,
-    
-    // Format 2: Previous format with page parameter
-    `https://itunes.apple.com/${countryCode}/rss/customerreviews/page=${page}/id=${appId}/sortby=${sortBy.toLowerCase()}/json`,
-    
-    // Format 3: Simple format without sort
-    `https://itunes.apple.com/${countryCode}/rss/customerreviews/id=${appId}/json`
-  ];
+  // ✅ WORKING: Single verified URL format that returns JSON (not JavaScript)
+  // Key: lowercase 'sortby' and literal 'mostrecent' string
+  const url = `https://itunes.apple.com/${countryCode}/rss/customerreviews/id=${appId}/sortby=mostrecent/json`;
+  
+  console.log('[iTunes] Using verified working URL:', url);
+  return url;
 };
 
 /**
@@ -130,104 +125,83 @@ const transformItunesResponse = (itunesData: ItunesRSSResponse, appId: string, c
 };
 
 /**
- * Fetch reviews with URL fallback strategy
- * Tries multiple iTunes RSS URL formats until one succeeds
+ * Fetch reviews using verified working iTunes RSS URL
+ * Phase 1 Fix: Single URL approach with proper error handling
  */
 const fetchReviewsWithRetry = async (config: ReviewsServiceConfig): Promise<ReviewsResponse> => {
   const { appId, countryCode = 'us', page = 1 } = config;
-  const urls = buildItunesUrl(config);
+  const url = buildItunesUrl(config);
   const startTime = Date.now();
   
-  console.log('[iTunes] Starting review fetch:', { appId, countryCode, page, urlCount: urls.length });
+  console.log('[iTunes] Starting review fetch:', { appId, countryCode, page, url });
   
-  let lastError: Error | null = null;
-
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    console.log(`[iTunes] Trying URL ${i + 1}/${urls.length}:`, url);
+  let timeoutId: NodeJS.Timeout | undefined;
+  
+  try {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    let timeoutId: NodeJS.Timeout | undefined;
-    
-    try {
-      const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; ASO-Tool/1.0)'
-        },
-        signal: controller.signal
-      });
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; ASO-Tool/1.0)'
+      },
+      signal: controller.signal
+    });
 
-      clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`iTunes RSS returned ${response.status}: ${response.statusText}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType?.includes('json')) {
-        throw new Error(`Expected JSON response, got: ${contentType}`);
-      }
-
-      const data: ItunesRSSResponse = await response.json();
-      const reviews = transformItunesResponse(data, appId, countryCode);
-      
-      const duration = Date.now() - startTime;
-      console.log('[iTunes] Success:', {
-        url,
-        reviewCount: reviews.length,
-        duration: `${duration}ms`,
-        attempt: i + 1
-      });
-
-      return {
-        success: true,
-        reviews,
-        currentPage: page,
-        totalReviews: reviews.length,
-        hasMore: reviews.length >= 50, // iTunes RSS typically returns ~50 reviews per page
-      };
-
-    } catch (error) {
-      const err = error as Error;
-      console.warn(`[iTunes] URL ${i + 1} failed:`, {
-        url,
-        error: err.message,
-        type: err.name
-      });
-      lastError = err;
-      
-      // Clear timeout if it exists
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+    if (!response.ok) {
+      throw new Error(`iTunes RSS returned ${response.status}: ${response.statusText}`);
     }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('json')) {
+      throw new Error(`Expected JSON response, got: ${contentType}`);
+    }
+
+    const data: ItunesRSSResponse = await response.json();
+    const reviews = transformItunesResponse(data, appId, countryCode);
+    
+    const duration = Date.now() - startTime;
+    console.log('[iTunes] Success:', {
+      url,
+      reviewCount: reviews.length,
+      duration: `${duration}ms`
+    });
+
+    return {
+      success: true,
+      reviews,
+      currentPage: page,
+      totalReviews: reviews.length,
+      hasMore: reviews.length >= 50, // iTunes RSS typically returns ~50 reviews per page
+    };
+
+  } catch (error) {
+    const err = error as Error;
+    console.error('[iTunes] Request failed:', {
+      url,
+      error: err.message,
+      type: err.name,
+      duration: `${Date.now() - startTime}ms`
+    });
+    
+    // Clear timeout if it exists
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    return {
+      success: false,
+      reviews: [],
+      currentPage: page,
+      totalReviews: 0,
+      hasMore: false,
+      error: `Unable to load reviews: ${err.message}`
+    };
   }
-
-  // All URLs failed
-  const duration = Date.now() - startTime;
-  console.error('[iTunes] All URLs failed:', {
-    appId,
-    countryCode,
-    page,
-    attempts: urls.length,
-    duration: `${duration}ms`,
-    lastError: lastError?.message
-  });
-
-  return {
-    success: false,
-    reviews: [],
-    currentPage: page,
-    totalReviews: 0,
-    hasMore: false,
-    error: lastError ? 
-      `Unable to load reviews: ${lastError.message}` : 
-      'Unable to load reviews from iTunes RSS'
-  };
 };
 
 /**
