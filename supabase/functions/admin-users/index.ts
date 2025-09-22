@@ -403,36 +403,7 @@ serve(async (req) => {
         
         const newUserId = authData.user.id;
         console.log('[ADMIN-USERS] POST action=create - Auth user created successfully, ID:', newUserId);
-        
-        // Create profile
-        const profileData = {
-          id: newUserId,
-          email,
-          first_name,
-          last_name,
-          organization_id
-        };
-        console.log('[ADMIN-USERS] POST action=create - Creating profile:', profileData);
-        
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .insert(profileData)
-          .select()
-          .single();
-        
-        if (profileError) {
-          console.error('[ADMIN-USERS] POST action=create - Profile creation failed, cleaning up auth user:', {
-            error: profileError.message,
-            newUserId,
-            profileData,
-            body: JSON.stringify(body)
-          });
-          // Cleanup auth user if profile creation fails
-          await supabaseAdmin.auth.admin.deleteUser(newUserId);
-          return json({ error: 'profile_error', details: profileError.message }, 500);
-        }
-        
-        console.log('[ADMIN-USERS] POST action=create - Profile created successfully');
+        console.log('[ADMIN-USERS] POST action=create - Profile created automatically by database trigger');
         
         // Assign role to user
         const roleData = {
