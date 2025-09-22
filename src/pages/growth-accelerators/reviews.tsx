@@ -128,8 +128,9 @@ const ReviewManagementPage: React.FC = () => {
     setSearchLoading(true);
     try {
       // Use bulletproof ASO search service with organization context
+      // Super admin can search across all organizations
       const searchConfig = {
-        organizationId: organizationId || '__fallback__',
+        organizationId: isSuperAdmin ? null : (organizationId || '__fallback__'),
         cacheEnabled: true,
         onProgress: (stage: string, progress: number) => {
           console.log(`🔍 Search progress: ${stage} (${progress}%)`);
