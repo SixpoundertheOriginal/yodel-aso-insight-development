@@ -1,68 +1,13 @@
-import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { AdminLayout } from '@/components/admin/layout/AdminLayout';
-import { EnhancedAdminDashboard } from '@/components/admin/dashboard/EnhancedAdminDashboard';
-import { UserManagementInterface } from '@/components/admin/users/UserManagementInterface';
-import { PartnershipManagementCenter } from '@/components/admin/partnerships/PartnershipManagementCenter';
-import { BigQueryClientManagement } from '@/components/admin/data/BigQueryClientManagement';
-import { SecurityCompliancePanel } from '@/components/admin/security/SecurityCompliancePanel';
-import { UIPermissionManager } from '@/components/admin/ui/UIPermissionManager';
-import { AdminDiagnostics } from '@/components/admin/AdminDiagnostics';
-import { FeaturePermissionDemo } from '@/components/demo/FeaturePermissionDemo';
+import { Navigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 
-const AdminPanel: React.FC = () => {
-  const { isSuperAdmin, isLoading } = usePermissions();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const currentTab = searchParams.get('tab') || 'dashboard';
-
-  useEffect(() => {
-    if (!isLoading && !isSuperAdmin) {
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, isLoading, navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading admin panel...</div>
-      </div>
-    );
-  }
-
+export default function Admin() {
+  const { isSuperAdmin } = usePermissions();
+  
   if (!isSuperAdmin) {
-    return null;
+    return <Navigate to="/no-access" replace />;
   }
-
-  const renderTabContent = () => {
-    switch (currentTab) {
-      case 'dashboard':
-        return <EnhancedAdminDashboard />;
-      case 'users':
-        return <UserManagementInterface />;
-      case 'partnerships':
-        return <PartnershipManagementCenter />;
-      case 'bigquery':
-        return <BigQueryClientManagement />;
-      case 'security':
-        return <SecurityCompliancePanel />;
-      case 'ui-permissions':
-        return <UIPermissionManager />;
-      case 'feature-permissions-demo':
-        return <FeaturePermissionDemo />;
-      case 'diagnostics':
-        return import.meta.env.VITE_ADMIN_DIAGNOSTICS_ENABLED === 'true' ? <AdminDiagnostics /> : <EnhancedAdminDashboard />;
-      default:
-        return <EnhancedAdminDashboard />;
-    }
-  };
-
-  return (
-    <AdminLayout currentPage={currentTab}>
-      <div className="admin-panel-wrapper">{renderTabContent()}</div>
-    </AdminLayout>
-  );
-};
-
-export default AdminPanel;
+  
+  // Redirect to organizations as the default admin page
+  return <Navigate to="/admin/organizations" replace />;
+}
