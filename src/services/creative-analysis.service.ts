@@ -538,21 +538,25 @@ export class CreativeAnalysisService {
   static async createAnalysisSession(keyword: string, searchType: 'keyword' | 'appid', totalApps: number): Promise<string> {
     const { supabase } = await import('@/integrations/supabase/client');
     
-    // Get current user's organization
+    // Get current user's organization and role
     const { data: profile } = await supabase
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', (await supabase.auth.getUser()).data.user?.id)
       .single();
 
-    if (!profile?.organization_id) {
+    // Check if user is super admin
+    const isSuperAdmin = profile?.role === 'super_admin';
+
+    // Super admin can bypass organization requirement
+    if (!profile?.organization_id && !isSuperAdmin) {
       throw new Error('User organization not found');
     }
 
     const { data, error } = await supabase
       .from('creative_analysis_sessions')
       .insert({
-        organization_id: profile.organization_id,
+        organization_id: profile?.organization_id || null, // Allow null for super admin
         created_by: (await supabase.auth.getUser()).data.user?.id,
         keyword,
         search_type: searchType,
@@ -574,14 +578,18 @@ export class CreativeAnalysisService {
   private static async storeAnalysisResults(sessionId: string, analysisResult: CreativeAnalysisWithAI): Promise<void> {
     const { supabase } = await import('@/integrations/supabase/client');
     
-    // Get current user's organization
+    // Get current user's organization and role
     const { data: profile } = await supabase
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', (await supabase.auth.getUser()).data.user?.id)
       .single();
 
-    if (!profile?.organization_id) {
+    // Check if user is super admin
+    const isSuperAdmin = profile?.role === 'super_admin';
+
+    // Super admin can bypass organization requirement
+    if (!profile?.organization_id && !isSuperAdmin) {
       throw new Error('User organization not found');
     }
 
@@ -589,7 +597,7 @@ export class CreativeAnalysisService {
       // Store individual screenshot analyses
       if (analysisResult.individual && analysisResult.individual.length > 0) {
         const screenshotData = analysisResult.individual.map((analysis: ScreenshotAnalysis) => ({
-          organization_id: profile.organization_id,
+          organization_id: profile?.organization_id || null, // Allow null for super admin
           session_id: sessionId,
           app_id: analysis.appId,
           app_name: analysis.appName,
@@ -618,7 +626,7 @@ export class CreativeAnalysisService {
         const { error: patternError } = await supabase
           .from('pattern_analyses')
           .insert({
-            organization_id: profile.organization_id,
+            organization_id: profile?.organization_id || null, // Allow null for super admin
             session_id: sessionId,
             patterns_data: analysisResult.patterns,
             insights: analysisResult.patterns.insights || []

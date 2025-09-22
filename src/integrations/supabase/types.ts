@@ -2054,7 +2054,7 @@ export type Database = {
           created_at: string
           id: string
           insights: string[] | null
-          organization_id: string
+          organization_id: string | null
           patterns_data: Json
           session_id: string
         }
@@ -2062,7 +2062,7 @@ export type Database = {
           created_at?: string
           id?: string
           insights?: string[] | null
-          organization_id: string
+          organization_id?: string | null
           patterns_data?: Json
           session_id: string
         }
@@ -2070,7 +2070,7 @@ export type Database = {
           created_at?: string
           id?: string
           insights?: string[] | null
-          organization_id?: string
+          organization_id?: string | null
           patterns_data?: Json
           session_id?: string
         }
@@ -2322,7 +2322,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           id: string
-          organization_id: string
+          organization_id: string | null
           screenshot_url: string
           session_id: string
         }
@@ -2333,7 +2333,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           id?: string
-          organization_id: string
+          organization_id?: string | null
           screenshot_url: string
           session_id: string
         }
@@ -2344,7 +2344,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           id?: string
-          organization_id?: string
+          organization_id?: string | null
           screenshot_url?: string
           session_id?: string
         }
