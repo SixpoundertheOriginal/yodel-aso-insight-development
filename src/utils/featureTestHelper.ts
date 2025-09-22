@@ -1,4 +1,4 @@
-import { PLATFORM_FEATURES_CONFIG, featureEnabledForRole, type UserRole } from '@/constants/features';
+import { PLATFORM_FEATURES_ENHANCED as PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/constants/features';
 
 /**
  * Test helper to validate feature access functionality
@@ -15,21 +15,21 @@ export function validateFeatureAccess() {
   try {
     // Test 1: Audit features exist
     results.hasAuditFeatures = 
-      !!PLATFORM_FEATURES_CONFIG.ASO_AI_HUB?.enabled && 
-      !!PLATFORM_FEATURES_CONFIG.CHATGPT_VISIBILITY_AUDIT?.enabled;
+      !!PLATFORM_FEATURES.ASO_AI_HUB && 
+      !!PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT;
 
     // Test 2: Super admin has access
     results.superAdminAccess = 
-      featureEnabledForRole('ASO_AI_HUB', 'super_admin') &&
-      featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', 'super_admin');
+      featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, 'super_admin') &&
+      featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, 'super_admin');
 
     // Test 3: Viewer is denied
     results.viewerDenied = 
-      !featureEnabledForRole('ASO_AI_HUB', 'viewer') &&
-      !featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', 'viewer');
+      !featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, 'viewer') &&
+      !featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, 'viewer');
 
     // Test 4: Safety valve for super_admin on missing features
-    const safetyValve = featureEnabledForRole('NON_EXISTENT_FEATURE' as any, 'super_admin');
+    const safetyValve = featureEnabledForRole('NON_EXISTENT_FEATURE', 'super_admin');
 
     results.allTestsPassed = 
       results.hasAuditFeatures && 

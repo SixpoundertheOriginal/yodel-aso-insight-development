@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { featureAccessService } from '@/services/featureAccess';
-import { PLATFORM_FEATURES, FEATURE_LABELS } from '@/constants/features';
+import { PLATFORM_FEATURES_ENHANCED, FEATURE_LABELS } from '@/constants/features';
 import { Loader2, Save } from 'lucide-react';
 
 interface OrganizationFeatureManagerProps {
@@ -93,7 +93,7 @@ export const OrganizationFeatureManager: React.FC<OrganizationFeatureManagerProp
           <CardTitle>Feature Access Control</CardTitle>
           {organizationName && (
             <p className="text-sm text-muted-foreground mt-1">
-              Managing features for {organizationName}
+              Managing features for {organizationName}. Use the unified feature management interface at /admin/features for enhanced capabilities.
             </p>
           )}
         </div>
@@ -115,7 +115,7 @@ export const OrganizationFeatureManager: React.FC<OrganizationFeatureManagerProp
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4">
-          {Object.entries(PLATFORM_FEATURES).map(([key, featureKey]) => (
+          {Object.entries(PLATFORM_FEATURES_ENHANCED).map(([key, featureKey]) => (
             <div key={featureKey} className="flex items-center justify-between p-3 rounded-lg border">
               <div className="space-y-1">
                 <Label htmlFor={featureKey} className="text-sm font-medium">
@@ -140,6 +140,11 @@ export const OrganizationFeatureManager: React.FC<OrganizationFeatureManagerProp
             <p className="text-sm text-muted-foreground mb-3">
               You have unsaved changes. Make sure to save before navigating away.
             </p>
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                💡 <strong>Tip:</strong> Use the enhanced feature management interface at <code>/admin/features</code> for bulk operations, user overrides, and usage analytics.
+              </p>
+            </div>
           </div>
         )}
       </CardContent>

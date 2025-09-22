@@ -1,141 +1,245 @@
 /**
- * Application Feature Permission Keys
- * 
- * These constants define the available application features that can be controlled
- * through the organization-level permission system.
+ * UNIFIED FEATURE PERMISSION SYSTEM
+ * Single source of truth for all platform features
  */
 
 // Global AI Insights Kill-Switch
 const bool = (v: any) => String(v).toLowerCase() === 'true' || v === true;
 export const AI_INSIGHTS_ENABLED = bool(import.meta.env.VITE_AI_INSIGHTS_ENABLED) || false;
 
-// Define user roles and feature flags
 export type UserRole = 'super_admin' | 'org_admin' | 'aso_manager' | 'analyst' | 'viewer' | 'client';
-export type FeatureFlag = { enabled: boolean; roles?: UserRole[] };
 
-// Platform feature flags with role-based access control
-export const PLATFORM_FEATURES_CONFIG: Record<string, FeatureFlag> = {
-  PERFORMANCE_INTELLIGENCE: { enabled: true },
-  EXECUTIVE_DASHBOARD: { enabled: true },
-  ANALYTICS: { enabled: true },
-  CONVERSION_INTELLIGENCE: { enabled: true },
-  KEYWORD_INTELLIGENCE: { enabled: true },
-  METADATA_GENERATOR: { enabled: true },
-  CREATIVE_REVIEW: { enabled: true },
-  ASO_CHAT: { enabled: true },
-  COMPETITIVE_INTELLIGENCE: { enabled: true },
-  APP_DISCOVERY: { enabled: true },
-  ADMIN_PANEL: { enabled: true, roles: ['super_admin', 'org_admin'] },
-  // New AI audit features
-  ASO_AI_HUB: { enabled: true, roles: ['super_admin'] },
-  CHATGPT_VISIBILITY_AUDIT: { enabled: true, roles: ['super_admin'] },
-  // Growth Accelerators
-  REVIEWS_PUBLIC_RSS_ENABLED: { enabled: true }, // Enabled for testing
-};
-
-// Legacy platform features (for backward compatibility)
-export const PLATFORM_FEATURES = {
-  PERFORMANCE_INTELLIGENCE: 'performance_intelligence',
+/**
+ * UNIFIED PLATFORM FEATURES - 24 Features in 5 Categories
+ * This is the single source of truth for all feature definitions
+ */
+export const PLATFORM_FEATURES_ENHANCED = {
+  // Performance Intelligence (5 features)
   EXECUTIVE_DASHBOARD: 'executive_dashboard',
-  ANALYTICS: 'analytics',
+  ANALYTICS: 'analytics', 
   CONVERSION_INTELLIGENCE: 'conversion_intelligence',
-  KEYWORD_INTELLIGENCE: 'keyword_intelligence',
-  METADATA_GENERATOR: 'metadata_generator',
-  CREATIVE_REVIEW: 'creative_review',
-  ASO_CHAT: 'aso_chat',
-  COMPETITIVE_INTELLIGENCE: 'competitive_intelligence',
-  APP_DISCOVERY: 'app_discovery',
-  ADMIN_PANEL: 'admin_panel',
+  PERFORMANCE_INTELLIGENCE: 'performance_intelligence',
+  PREDICTIVE_FORECASTING: 'predictive_forecasting',
+
+  // AI Command Center (4 features)
   ASO_AI_HUB: 'aso_ai_hub',
   CHATGPT_VISIBILITY_AUDIT: 'chatgpt_visibility_audit',
-  REVIEWS_PUBLIC_RSS_ENABLED: 'reviews_public_rss_enabled'
+  AI_METADATA_GENERATOR: 'metadata_generator',
+  STRATEGIC_AUDIT_ENGINE: 'strategic_audit_engine',
+
+  // Growth Accelerators (10 features)
+  KEYWORD_INTELLIGENCE: 'keyword_intelligence',
+  COMPETITIVE_INTELLIGENCE: 'competitive_intelligence',
+  CREATIVE_REVIEW: 'creative_review',
+  APP_DISCOVERY: 'app_discovery',
+  ASO_CHAT: 'aso_chat',
+  MARKET_INTELLIGENCE: 'market_intelligence',
+  REVIEWS_PUBLIC_RSS_ENABLED: 'reviews_public_rss_enabled',
+  CREATIVE_ANALYSIS: 'creative_analysis',
+  KEYWORD_RANK_TRACKING: 'keyword_rank_tracking',
+  VISIBILITY_OPTIMIZER: 'visibility_optimizer',
+
+  // Control Center (3 features)
+  APP_INTELLIGENCE: 'app_intelligence',
+  PORTFOLIO_MANAGER: 'portfolio_manager',
+  SYSTEM_CONTROL: 'system_control',
+
+  // Account (2 features)
+  PROFILE_MANAGEMENT: 'profile_management',
+  PREFERENCES: 'preferences',
 } as const;
 
-export type PlatformFeature = typeof PLATFORM_FEATURES[keyof typeof PLATFORM_FEATURES];
+export type PlatformFeature = typeof PLATFORM_FEATURES_ENHANCED[keyof typeof PLATFORM_FEATURES_ENHANCED];
 
-// Legacy feature labels (for backward compatibility)
+/**
+ * FEATURE CATEGORIES - Organized UI display
+ */
+export const FEATURE_CATEGORIES = {
+  PERFORMANCE_INTELLIGENCE: {
+    name: 'Performance Intelligence',
+    description: 'Analytics, dashboards and performance metrics',
+    features: ['executive_dashboard', 'analytics', 'conversion_intelligence', 'performance_intelligence', 'predictive_forecasting']
+  },
+  AI_COMMAND_CENTER: {
+    name: 'AI Command Center',
+    description: 'AI-powered optimization and audit tools',
+    features: ['aso_ai_hub', 'chatgpt_visibility_audit', 'metadata_generator', 'strategic_audit_engine']
+  },
+  GROWTH_ACCELERATORS: {
+    name: 'Growth Accelerators',
+    description: 'User acquisition and growth optimization tools',
+    features: ['keyword_intelligence', 'competitive_intelligence', 'creative_review', 'app_discovery', 'aso_chat', 'market_intelligence', 'reviews_public_rss_enabled', 'creative_analysis', 'keyword_rank_tracking', 'visibility_optimizer']
+  },
+  CONTROL_CENTER: {
+    name: 'Control Center',
+    description: 'App management and portfolio control',
+    features: ['app_intelligence', 'portfolio_manager', 'system_control']
+  },
+  ACCOUNT: {
+    name: 'Account',
+    description: 'User profile and account settings',
+    features: ['profile_management', 'preferences']
+  }
+} as const;
+
+/**
+ * FEATURE LABELS - Human readable names
+ */
 export const FEATURE_LABELS: Record<string, string> = {
-  [PLATFORM_FEATURES.PERFORMANCE_INTELLIGENCE]: 'Performance Intelligence',
-  [PLATFORM_FEATURES.EXECUTIVE_DASHBOARD]: 'Executive Dashboard',
-  [PLATFORM_FEATURES.ANALYTICS]: 'Analytics',
-  [PLATFORM_FEATURES.CONVERSION_INTELLIGENCE]: 'Conversion Intelligence',
-  [PLATFORM_FEATURES.KEYWORD_INTELLIGENCE]: 'Keyword Intelligence',
-  [PLATFORM_FEATURES.METADATA_GENERATOR]: 'Metadata Generator',
-  [PLATFORM_FEATURES.CREATIVE_REVIEW]: 'Creative Review',
-  [PLATFORM_FEATURES.ASO_CHAT]: 'ASO Chat',
-  [PLATFORM_FEATURES.COMPETITIVE_INTELLIGENCE]: 'Competitive Intelligence',
-  [PLATFORM_FEATURES.APP_DISCOVERY]: 'App Discovery',
-  [PLATFORM_FEATURES.ADMIN_PANEL]: 'Admin Panel',
+  // Performance Intelligence
+  [PLATFORM_FEATURES_ENHANCED.EXECUTIVE_DASHBOARD]: 'Executive Dashboard',
+  [PLATFORM_FEATURES_ENHANCED.ANALYTICS]: 'Advanced Analytics',
+  [PLATFORM_FEATURES_ENHANCED.CONVERSION_INTELLIGENCE]: 'Conversion Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.PERFORMANCE_INTELLIGENCE]: 'Performance Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.PREDICTIVE_FORECASTING]: 'Predictive Forecasting',
+
+  // AI Command Center
+  [PLATFORM_FEATURES_ENHANCED.ASO_AI_HUB]: 'ASO AI Hub',
+  [PLATFORM_FEATURES_ENHANCED.CHATGPT_VISIBILITY_AUDIT]: 'ChatGPT Visibility Audit',
+  [PLATFORM_FEATURES_ENHANCED.AI_METADATA_GENERATOR]: 'AI Metadata Generator',
+  [PLATFORM_FEATURES_ENHANCED.STRATEGIC_AUDIT_ENGINE]: 'Strategic Audit Engine',
+
+  // Growth Accelerators
+  [PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE]: 'Keyword Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE]: 'Competitive Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.CREATIVE_REVIEW]: 'Creative Review',
+  [PLATFORM_FEATURES_ENHANCED.APP_DISCOVERY]: 'App Discovery',
+  [PLATFORM_FEATURES_ENHANCED.ASO_CHAT]: 'ASO Chat Assistant',
+  [PLATFORM_FEATURES_ENHANCED.MARKET_INTELLIGENCE]: 'Market Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.REVIEWS_PUBLIC_RSS_ENABLED]: 'Public Reviews RSS',
+  [PLATFORM_FEATURES_ENHANCED.CREATIVE_ANALYSIS]: 'Creative Analysis',
+  [PLATFORM_FEATURES_ENHANCED.KEYWORD_RANK_TRACKING]: 'Keyword Rank Tracking',
+  [PLATFORM_FEATURES_ENHANCED.VISIBILITY_OPTIMIZER]: 'Visibility Optimizer',
+
+  // Control Center
+  [PLATFORM_FEATURES_ENHANCED.APP_INTELLIGENCE]: 'App Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.PORTFOLIO_MANAGER]: 'Portfolio Manager',
+  [PLATFORM_FEATURES_ENHANCED.SYSTEM_CONTROL]: 'System Control',
+
+  // Account
+  [PLATFORM_FEATURES_ENHANCED.PROFILE_MANAGEMENT]: 'Profile Management',
+  [PLATFORM_FEATURES_ENHANCED.PREFERENCES]: 'Preferences',
 };
 
-// New application feature permission keys (for UI Permission Management)
-export const FEATURE_KEYS = {
-  ASO_AI_AUDIT: 'features.aso_ai_audit',
-  GROWTH_ACCELERATORS: 'features.growth_accelerators',
-  METADATA_GENERATOR: 'features.metadata_generator',
-  KEYWORD_INTELLIGENCE: 'features.keyword_intelligence',
-  CREATIVE_INTELLIGENCE: 'features.creative_intelligence',
-  COMPETITIVE_ANALYSIS: 'features.competitive_analysis',
-  ADVANCED_ANALYTICS: 'features.advanced_analytics',
-} as const;
-
-// Add new feature labels to existing labels object
-Object.assign(FEATURE_LABELS, {
-  [FEATURE_KEYS.ASO_AI_AUDIT]: 'ASO AI Audit',
-  [FEATURE_KEYS.GROWTH_ACCELERATORS]: 'Growth Accelerators',
-  [FEATURE_KEYS.METADATA_GENERATOR]: 'AI Metadata Generator',
-  [FEATURE_KEYS.KEYWORD_INTELLIGENCE]: 'Keyword Intelligence',
-  [FEATURE_KEYS.CREATIVE_INTELLIGENCE]: 'Creative Intelligence',
-  [FEATURE_KEYS.COMPETITIVE_ANALYSIS]: 'Competitive Analysis',
-  [FEATURE_KEYS.ADVANCED_ANALYTICS]: 'Advanced Analytics',
-});
-
-export const FEATURE_DESCRIPTIONS = {
-  [FEATURE_KEYS.ASO_AI_AUDIT]: 'AI-powered app store optimization analysis and recommendations',
-  [FEATURE_KEYS.GROWTH_ACCELERATORS]: 'User acquisition and retention optimization tools',
-  [FEATURE_KEYS.METADATA_GENERATOR]: 'AI-generated app store metadata and optimization suggestions',
-  [FEATURE_KEYS.KEYWORD_INTELLIGENCE]: 'Advanced keyword research, tracking and optimization tools',
-  [FEATURE_KEYS.CREATIVE_INTELLIGENCE]: 'Asset performance analysis and creative optimization insights',
-  [FEATURE_KEYS.COMPETITIVE_ANALYSIS]: 'Competitor tracking, benchmarking and market intelligence',
-  [FEATURE_KEYS.ADVANCED_ANALYTICS]: 'Deep dive analytics dashboards and custom reporting',
-} as const;
-
 /**
- * Role-based default permissions for application features
+ * FEATURE DESCRIPTIONS - Detailed explanations
  */
-export const ROLE_FEATURE_DEFAULTS = {
-  SUPER_ADMIN: Object.values(FEATURE_KEYS),
-  ORGANIZATION_ADMIN: Object.values(FEATURE_KEYS),
-  ASO_MANAGER: [
-    FEATURE_KEYS.ASO_AI_AUDIT,
-    FEATURE_KEYS.METADATA_GENERATOR,
-    FEATURE_KEYS.KEYWORD_INTELLIGENCE,
-    FEATURE_KEYS.COMPETITIVE_ANALYSIS,
-  ],
-  ANALYST: [
-    FEATURE_KEYS.ADVANCED_ANALYTICS,
-    FEATURE_KEYS.COMPETITIVE_ANALYSIS,
-  ],
-  VIEWER: [],
-  CLIENT: [],
-} as const;
+export const FEATURE_DESCRIPTIONS: Record<string, string> = {
+  // Performance Intelligence
+  [PLATFORM_FEATURES_ENHANCED.EXECUTIVE_DASHBOARD]: 'High-level KPI dashboard for executives and stakeholders',
+  [PLATFORM_FEATURES_ENHANCED.ANALYTICS]: 'Advanced analytics with custom reports and data visualization',
+  [PLATFORM_FEATURES_ENHANCED.CONVERSION_INTELLIGENCE]: 'Conversion optimization insights and benchmarking',
+  [PLATFORM_FEATURES_ENHANCED.PERFORMANCE_INTELLIGENCE]: 'App performance metrics and trend analysis',
+  [PLATFORM_FEATURES_ENHANCED.PREDICTIVE_FORECASTING]: 'ML-powered forecasting and predictive analytics',
 
-export type FeatureKey = typeof FEATURE_KEYS[keyof typeof FEATURE_KEYS];
-export type RoleKey = keyof typeof ROLE_FEATURE_DEFAULTS;
+  // AI Command Center
+  [PLATFORM_FEATURES_ENHANCED.ASO_AI_HUB]: 'Central hub for all AI-powered ASO tools and insights',
+  [PLATFORM_FEATURES_ENHANCED.CHATGPT_VISIBILITY_AUDIT]: 'Audit app visibility in ChatGPT and AI search results',
+  [PLATFORM_FEATURES_ENHANCED.AI_METADATA_GENERATOR]: 'AI-powered app metadata generation and optimization',
+  [PLATFORM_FEATURES_ENHANCED.STRATEGIC_AUDIT_ENGINE]: 'Comprehensive ASO strategy analysis and recommendations',
+
+  // Growth Accelerators
+  [PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE]: 'Advanced keyword research, tracking and optimization tools',
+  [PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE]: 'Competitor analysis, benchmarking and market intelligence',
+  [PLATFORM_FEATURES_ENHANCED.CREATIVE_REVIEW]: 'Creative asset performance analysis and optimization',
+  [PLATFORM_FEATURES_ENHANCED.APP_DISCOVERY]: 'App store discovery optimization and ranking insights',
+  [PLATFORM_FEATURES_ENHANCED.ASO_CHAT]: 'AI chat assistant for ASO strategy and optimization guidance',
+  [PLATFORM_FEATURES_ENHANCED.MARKET_INTELLIGENCE]: 'Market trends, category analysis and opportunity identification',
+  [PLATFORM_FEATURES_ENHANCED.REVIEWS_PUBLIC_RSS_ENABLED]: 'Public RSS feeds for app reviews monitoring',
+  [PLATFORM_FEATURES_ENHANCED.CREATIVE_ANALYSIS]: 'Creative asset A/B testing and performance insights',
+  [PLATFORM_FEATURES_ENHANCED.KEYWORD_RANK_TRACKING]: 'Real-time keyword ranking monitoring and alerts',
+  [PLATFORM_FEATURES_ENHANCED.VISIBILITY_OPTIMIZER]: 'App store visibility optimization and enhancement tools',
+
+  // Control Center
+  [PLATFORM_FEATURES_ENHANCED.APP_INTELLIGENCE]: 'Comprehensive app performance and intelligence dashboard',
+  [PLATFORM_FEATURES_ENHANCED.PORTFOLIO_MANAGER]: 'Multi-app portfolio management and optimization',
+  [PLATFORM_FEATURES_ENHANCED.SYSTEM_CONTROL]: 'System administration and configuration controls',
+
+  // Account
+  [PLATFORM_FEATURES_ENHANCED.PROFILE_MANAGEMENT]: 'User profile settings and account management',
+  [PLATFORM_FEATURES_ENHANCED.PREFERENCES]: 'Personal preferences and notification settings',
+};
 
 /**
- * Defensive helper to check feature access for a role
- * Prevents super_admin lockout due to missing flags
+ * ROLE-BASED FEATURE ACCESS - Default permissions by role
+ */
+export const ROLE_FEATURE_DEFAULTS: Record<UserRole, string[]> = {
+  super_admin: Object.values(PLATFORM_FEATURES_ENHANCED),
+  org_admin: [
+    // Performance Intelligence - Full access
+    ...FEATURE_CATEGORIES.PERFORMANCE_INTELLIGENCE.features,
+    // AI Command Center - Limited access (no strategic audit)
+    PLATFORM_FEATURES_ENHANCED.ASO_AI_HUB,
+    PLATFORM_FEATURES_ENHANCED.AI_METADATA_GENERATOR,
+    // Growth Accelerators - Full access except system controls
+    ...FEATURE_CATEGORIES.GROWTH_ACCELERATORS.features,
+    // Control Center - Limited access
+    PLATFORM_FEATURES_ENHANCED.APP_INTELLIGENCE,
+    PLATFORM_FEATURES_ENHANCED.PORTFOLIO_MANAGER,
+    // Account - Full access
+    ...FEATURE_CATEGORIES.ACCOUNT.features,
+  ],
+  aso_manager: [
+    // Performance Intelligence - Basic access
+    PLATFORM_FEATURES_ENHANCED.ANALYTICS,
+    PLATFORM_FEATURES_ENHANCED.PERFORMANCE_INTELLIGENCE,
+    // AI Command Center - Basic access
+    PLATFORM_FEATURES_ENHANCED.ASO_AI_HUB,
+    PLATFORM_FEATURES_ENHANCED.AI_METADATA_GENERATOR,
+    // Growth Accelerators - Core ASO tools
+    PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE,
+    PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE,
+    PLATFORM_FEATURES_ENHANCED.CREATIVE_REVIEW,
+    PLATFORM_FEATURES_ENHANCED.ASO_CHAT,
+    // Account
+    ...FEATURE_CATEGORIES.ACCOUNT.features,
+  ],
+  analyst: [
+    // Performance Intelligence - Analytics focused
+    PLATFORM_FEATURES_ENHANCED.ANALYTICS,
+    PLATFORM_FEATURES_ENHANCED.CONVERSION_INTELLIGENCE,
+    // Growth Accelerators - Data analysis tools
+    PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE,
+    PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE,
+    // Account
+    ...FEATURE_CATEGORIES.ACCOUNT.features,
+  ],
+  viewer: [
+    // Basic read-only access
+    PLATFORM_FEATURES_ENHANCED.ANALYTICS,
+    PLATFORM_FEATURES_ENHANCED.APP_INTELLIGENCE,
+    // Account
+    ...FEATURE_CATEGORIES.ACCOUNT.features,
+  ],
+  client: [
+    // Minimal client access
+    PLATFORM_FEATURES_ENHANCED.ANALYTICS,
+    // Account
+    ...FEATURE_CATEGORIES.ACCOUNT.features,
+  ],
+};
+
+/**
+ * Helper function to check if a feature is enabled for a role
  */
 export function featureEnabledForRole(
-  key: keyof typeof PLATFORM_FEATURES_CONFIG,
+  featureKey: string,
   role: UserRole
 ): boolean {
-  const feature = PLATFORM_FEATURES_CONFIG[key];
-  if (!feature) {
-    // Safety valve: never lock out super_admin due to a missing flag
-    return role === 'super_admin';
+  // Super admin bypass - always has access
+  if (role === 'super_admin') {
+    return true;
   }
-  const roleAllowed = feature.roles ? feature.roles.includes(role) : true;
-  return Boolean(feature.enabled && roleAllowed);
+  
+  const roleFeatures = ROLE_FEATURE_DEFAULTS[role] || [];
+  return roleFeatures.includes(featureKey);
 }
+
+/**
+ * LEGACY COMPATIBILITY - Keep for backward compatibility during migration
+ */
+export const PLATFORM_FEATURES = PLATFORM_FEATURES_ENHANCED;
+export const FEATURE_KEYS = PLATFORM_FEATURES_ENHANCED;
+
+export type FeatureKey = PlatformFeature;
+export type RoleKey = UserRole;

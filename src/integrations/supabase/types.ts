@@ -1736,6 +1736,42 @@ export type Database = {
           },
         ]
       }
+      org_feature_entitlements: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          feature_key: string
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_enabled: boolean
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          feature_key: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          feature_key?: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       organization_apps: {
         Row: {
           app_identifier: string

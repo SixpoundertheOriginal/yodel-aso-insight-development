@@ -37,7 +37,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUIPermissions } from "@/hooks/useUIPermissions";
 import { resolvePermForPath } from "@/utils/navigation/navPermissionMap";
-import { PLATFORM_FEATURES, PLATFORM_FEATURES_CONFIG, featureEnabledForRole, type UserRole } from "@/constants/features";
+import { PLATFORM_FEATURES_ENHANCED as PLATFORM_FEATURES, featureEnabledForRole, UserRole } from '@/constants/features';
 import '../utils/featureTestHelper'; // Auto-run feature validation in development
 import { SuperAdminBadge } from "@/components/SuperAdminBadge";
 import { useAuth } from "@/context/AuthContext";
@@ -97,7 +97,7 @@ const aiCopilotsItems: NavigationItem[] = [
     title: "Metadata Optimizer",
     url: "/metadata-copilot",
     icon: FileEdit,
-    featureKey: PLATFORM_FEATURES.METADATA_GENERATOR,
+    featureKey: PLATFORM_FEATURES.AI_METADATA_GENERATOR,
   },
   {
     title: "Opportunity Scanner",
@@ -267,10 +267,10 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     
     filteredAiToolsItems = filteredAiToolsItems.filter(item => {
       if (item.url === '/aso-ai-hub') {
-        return featureEnabledForRole('ASO_AI_HUB', currentUserRole);
+        return featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, currentUserRole);
       }
       if (item.url === '/chatgpt-visibility-audit') {
-        return featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', currentUserRole);
+        return featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, currentUserRole);
       }
       return true;
     });
@@ -281,10 +281,10 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     console.log('🔍 [SIDEBAR] Feature access debug:', {
       isSuperAdmin,
       currentUserRole: isSuperAdmin ? 'super_admin' : role,
-      asoAiHubAccess: featureEnabledForRole('ASO_AI_HUB', isSuperAdmin ? 'super_admin' : 'viewer'),
-      chatGptAuditAccess: featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', isSuperAdmin ? 'super_admin' : 'viewer'),
-      reviewManagementAccess: featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', isSuperAdmin ? 'super_admin' : 'viewer'),
-      platformFeatures: PLATFORM_FEATURES_CONFIG,
+      asoAiHubAccess: featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, isSuperAdmin ? 'super_admin' : 'viewer'),
+      chatGptAuditAccess: featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, isSuperAdmin ? 'super_admin' : 'viewer'),
+      reviewManagementAccess: featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, isSuperAdmin ? 'super_admin' : 'viewer'),
+      platformFeatures: PLATFORM_FEATURES,
       filteredAiToolsItemsCount: filteredAiToolsItems?.length || 0
     });
   }
@@ -301,11 +301,11 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !uiPermi
     filteredAiCopilotsItems = filteredAiCopilotsItems.filter(item => {
       if (item.url === '/growth-accelerators/reviews' || item.url === '/growth-accelerators/review-management-v2') {
         // In demo orgs, always show Reviews entries
-        return isDemoOrg || featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole);
+        return isDemoOrg || featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, currentUserRole);
       }
       if (item.url === '/growth-accelerators/competitor-overview' || item.url === '/growth-accelerators/keywords') {
         // Show competitor overview and keywords in demo or when feature is enabled
-        return isDemoOrg || featureEnabledForRole('KEYWORD_INTELLIGENCE', currentUserRole);
+        return isDemoOrg || featureEnabledForRole(PLATFORM_FEATURES.KEYWORD_INTELLIGENCE, currentUserRole);
       }
       return true;
     });
