@@ -329,6 +329,116 @@ export interface ReviewsResponseDto<T = any> {
   totalReviews?: number;
 }
 
+// Direct HTTP call to edge function for reviews
+async function fetchReviewsViaDirectHTTP(params: {
+  appId: string;
+  cc?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ReviewsResponseDto> {
+  const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
+  
+  console.log('[fetchAppReviews] Using direct HTTP to edge function for reviews');
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
+  
+  try {
+    const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/app-store-scraper`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYmNxb2NwamFoZXdxam1sZ3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MDcwOTgsImV4cCI6MjA2MjM4MzA5OH0.K00WoAEZNf93P-6r3dCwOZaYah51bYuBPwHtDdW82Ek`,
+      },
+      body: JSON.stringify({
+        op: 'reviews',
+        cc,
+        appId,
+        page,
+        pageSize
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new EdgeFunctionError(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const reviewsData = data?.data;
+    
+    if (!reviewsData) {
+      throw new EdgeFunctionError('No data received from reviews API');
+    }
+    
+    return {
+      success: true,
+      data: reviewsData.reviews || [],
+      currentPage: reviewsData.page || page,
+      hasMore: reviewsData.has_next_page || false,
+      totalReviews: reviewsData.reviews?.length || 0
+    };
+    
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new NetworkError('Direct HTTP reviews request timed out');
+    }
+    
+    throw new EdgeFunctionError(`Direct HTTP reviews failed: ${error.message}`, error);
+  }
+}
+
+// Enhanced reviews with edge function and direct HTTP fallback
+async function fetchReviewsViaEdgeFunction(params: {
+  appId: string;
+  cc?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ReviewsResponseDto> {
+  const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
+  
+  // Try Supabase client method first
+  try {
+    console.log('[fetchAppReviews] Trying supabase.functions.invoke() for reviews');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
+    
+    const { data, error } = await supabase.functions.invoke('app-store-scraper', {
+      body: { op: 'reviews', cc, appId, page, pageSize },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (error) {
+      console.warn('[fetchAppReviews] Supabase invoke error, trying direct HTTP:', error.message);
+      throw new EdgeFunctionError(error.message || 'Edge function reviews failed');
+    }
+    
+    const reviewsData = data?.data;
+    if (!reviewsData) {
+      throw new EdgeFunctionError('No data received from reviews API');
+    }
+    
+    return {
+      success: true,
+      data: reviewsData.reviews || [],
+      currentPage: reviewsData.page || page,
+      hasMore: reviewsData.has_next_page || false,
+      totalReviews: reviewsData.reviews?.length || 0
+    };
+    
+  } catch (error: any) {
+    console.warn('[fetchAppReviews] Supabase invoke failed, trying direct HTTP:', error.message);
+    
+    // Fallback to direct HTTP call
+    return await fetchReviewsViaDirectHTTP(params);
+  }
+}
+
 // Enhanced reviews fetching with retry and fallback
 export async function fetchAppReviews(params: {
   appId: string;
@@ -337,51 +447,14 @@ export async function fetchAppReviews(params: {
   pageSize?: number;
 }): Promise<ReviewsResponseDto> {
   const { appId, cc = 'us', page = 1, pageSize = 20 } = params;
-  console.log('[fetchAppReviews] Enhanced fetch with fallback:', { appId, cc, page, pageSize });
+  console.log('[fetchAppReviews] Enhanced fetch with multi-fallback:', { appId, cc, page, pageSize });
   
   try {
-    // Primary: Try edge function with retries
-    return await retryWithBackoff(async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-          body: { op: 'reviews', cc, appId, page, pageSize },
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (error) {
-          throw new EdgeFunctionError(error.message || 'Failed to fetch reviews');
-        }
-        
-        const reviewsData = data?.data;
-        if (!reviewsData) {
-          throw new EdgeFunctionError('No data received from reviews API');
-        }
-        
-        return {
-          success: true,
-          data: reviewsData.reviews || [],
-          currentPage: reviewsData.page || page,
-          hasMore: reviewsData.has_next_page || false,
-          totalReviews: reviewsData.reviews?.length || 0
-        };
-        
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        
-        if (error.name === 'AbortError') {
-          throw new NetworkError('Reviews fetch request timed out');
-        }
-        
-        throw error;
-      }
-    });
+    // Primary: Try edge function (includes both Supabase client and direct HTTP)
+    return await retryWithBackoff(() => fetchReviewsViaEdgeFunction(params));
     
   } catch (edgeFunctionError: any) {
-    console.warn('[fetchAppReviews] Edge function failed after retries:', edgeFunctionError.message);
+    console.warn('[fetchAppReviews] All edge function methods failed after retries:', edgeFunctionError.message);
     
     // For reviews, we don't have a direct iTunes API fallback like we do for search
     // iTunes RSS requires specific formatting and parsing
@@ -391,6 +464,13 @@ export async function fetchAppReviews(params: {
       ? 'Reviews service temporarily unavailable - please try again in a few moments'
       : `Failed to fetch reviews: ${edgeFunctionError.message}`;
     
-    throw new Error(errorMessage);
+    return {
+      success: false,
+      data: [],
+      error: errorMessage,
+      currentPage: page,
+      hasMore: false,
+      totalReviews: 0
+    };
   }
 }
