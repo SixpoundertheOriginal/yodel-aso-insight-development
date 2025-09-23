@@ -538,42 +538,84 @@ export class CreativeAnalysisService {
   static async createAnalysisSession(keyword: string, searchType: 'keyword' | 'appid', totalApps: number): Promise<string> {
     const { supabase } = await import('@/integrations/supabase/client');
     
+    // Add JWT debugging for production RLS issues
+    console.log('🔍 [CREATIVE-SESSION] Creating analysis session...');
+    console.log('🔍 [CREATIVE-SESSION] Environment:', process.env.NODE_ENV);
+    
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('🔍 [CREATIVE-SESSION] Auth user result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      userError: userError?.message
+    });
+    
+    if (!user) {
+      console.error('🔍 [CREATIVE-SESSION] No authenticated user found');
+      throw new Error('User not authenticated');
+    }
 
     // Check if user is super admin using RPC for accurate detection
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_id: user.id });
+    const { data: isSuperAdmin, error: adminError } = await supabase.rpc('is_super_admin', { user_id: user.id });
+    console.log('🔍 [CREATIVE-SESSION] Super admin check:', {
+      isSuperAdmin,
+      adminError: adminError?.message
+    });
     
     // Get user's organization
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
       .single();
+      
+    console.log('🔍 [CREATIVE-SESSION] Profile lookup:', {
+      hasProfile: !!profile,
+      organizationId: profile?.organization_id,
+      profileError: profileError?.message
+    });
 
     // Super admin can bypass organization requirement
     if (!profile?.organization_id && !isSuperAdmin) {
+      console.error('🔍 [CREATIVE-SESSION] No organization found for non-super-admin user');
       throw new Error('User organization not found');
     }
 
+    const sessionData = {
+      organization_id: isSuperAdmin ? null : profile?.organization_id, // Allow null for super admin
+      created_by: user.id,
+      keyword,
+      search_type: searchType,
+      total_apps: totalApps,
+      analysis_status: 'pending'
+    };
+    
+    console.log('🔍 [CREATIVE-SESSION] Attempting to insert session with data:', sessionData);
+
     const { data, error } = await supabase
       .from('creative_analysis_sessions')
-      .insert({
-        organization_id: isSuperAdmin ? null : profile?.organization_id, // Allow null for super admin
-        created_by: user.id,
-        keyword,
-        search_type: searchType,
-        total_apps: totalApps,
-        analysis_status: 'pending'
-      })
+      .insert(sessionData)
       .select('id')
       .single();
 
     if (error) {
-      console.error('Failed to create analysis session:', error);
-      throw new Error('Failed to create analysis session');
+      console.error('🔍 [CREATIVE-SESSION] Failed to create analysis session:', {
+        errorMessage: error.message,
+        errorCode: error.code,
+        errorDetails: error.details,
+        errorHint: error.hint,
+        sessionData
+      });
+      throw new Error(`Failed to create analysis session: ${error.message}`);
     }
+
+    console.log('🔍 [CREATIVE-SESSION] Session created successfully:', {
+      sessionId: data.id,
+      keyword,
+      searchType,
+      totalApps
+    });
 
     return data.id;
   }
