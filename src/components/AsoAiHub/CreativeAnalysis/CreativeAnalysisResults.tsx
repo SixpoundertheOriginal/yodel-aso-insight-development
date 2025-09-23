@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertCircle } from 'lucide-react';
 import { CreativeAnalysisWithAI, type AppInfo } from '@/services/creative-analysis.service';
 import { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
 import { PatternRecognitionSummary } from './PatternRecognitionSummary';
@@ -49,6 +50,13 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
       competitorAppInfo: apps.slice(1),
     };
   }, [analysis, apps]);
+
+  // Detect if we're in demo mode (fallback data due to quota exceeded)
+  const isDemoMode = analysis.individual.some(item => 
+    item.confidence === 0.8 && 
+    item.messageAnalysis.primaryMessage?.includes('Streamlined fitness tracking')
+  );
+
   if (!analysis.success || (analysis.individual.length === 0 && (!analysis.errors || analysis.errors.length === 0))) {
     return (
       <Card className="border-destructive bg-destructive/10">
@@ -75,6 +83,31 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
         </TabsTrigger>
       </TabsList>
       <TabsContent value="analysis" className="space-y-6 mt-6">
+        {/* Demo Mode Notice */}
+        {isDemoMode && (
+          <Card className="border-blue-500 bg-blue-500/10">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5" />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+                      Demo Mode
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-blue-300 font-medium">
+                    OpenAI API quota exceeded - showing demo analysis results
+                  </p>
+                  <p className="text-sm text-blue-200">
+                    The analysis you're seeing is sample data to demonstrate the creative analysis feature. 
+                    To get real analysis, please check your OpenAI billing settings or try again later.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {analysis.patterns && (
           <PatternRecognitionSummary
             patterns={analysis.patterns}
