@@ -389,18 +389,62 @@ const ReviewManagementPage: React.FC = () => {
 
   // Enhanced sentiment analysis with AI intelligence
   const enhancedReviews = useMemo(() => {
-    return reviews.map(r => {
-      const enhancedSentiment = analyzeEnhancedSentiment(r.text || '', r.rating);
-      return {
+    if (!reviews || !Array.isArray(reviews) || reviews.length === 0) {
+      return [];
+    }
+    
+    try {
+      return reviews.map(r => {
+        try {
+          const enhancedSentiment = analyzeEnhancedSentiment(r.text || '', r.rating);
+          return {
+            ...r,
+            sentiment: enhancedSentiment.overall,
+            enhancedSentiment,
+            extractedThemes: extractThemesFromText(r.text || ''),
+            mentionedFeatures: extractFeaturesFromText(r.text || ''),
+            identifiedIssues: extractIssuesFromText(r.text || ''),
+            businessImpact: calculateBusinessImpact(r.rating, r.text || '')
+          } as EnhancedReviewItem;
+        } catch (error) {
+          console.error('Error processing individual review:', error);
+          // Fallback to basic review with estimated sentiment
+          return {
+            ...r,
+            sentiment: estimateSentiment(r),
+            enhancedSentiment: {
+              overall: estimateSentiment(r),
+              confidence: 0.5,
+              emotions: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+              aspects: { ui_ux: null, performance: null, features: null, pricing: null, support: null },
+              intensity: 'mild' as const
+            },
+            extractedThemes: extractThemesFromText(r.text || ''),
+            mentionedFeatures: extractFeaturesFromText(r.text || ''),
+            identifiedIssues: extractIssuesFromText(r.text || ''),
+            businessImpact: calculateBusinessImpact(r.rating, r.text || '')
+          } as EnhancedReviewItem;
+        }
+      });
+    } catch (error) {
+      console.error('Error in enhanced reviews processing:', error);
+      // Ultimate fallback - return reviews with basic sentiment
+      return reviews.map(r => ({
         ...r,
-        sentiment: enhancedSentiment.overall,
-        enhancedSentiment,
-        extractedThemes: extractThemesFromText(r.text || ''),
-        mentionedFeatures: extractFeaturesFromText(r.text || ''),
-        identifiedIssues: extractIssuesFromText(r.text || ''),
-        businessImpact: calculateBusinessImpact(r.rating, r.text || '')
-      } as EnhancedReviewItem;
-    });
+        sentiment: estimateSentiment(r),
+        enhancedSentiment: {
+          overall: estimateSentiment(r),
+          confidence: 0.5,
+          emotions: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+          aspects: { ui_ux: null, performance: null, features: null, pricing: null, support: null },
+          intensity: 'mild' as const
+        },
+        extractedThemes: [],
+        mentionedFeatures: [],
+        identifiedIssues: [],
+        businessImpact: 'low' as const
+      })) as EnhancedReviewItem[];
+    }
   }, [reviews]);
 
   // Helper functions for review enhancement
@@ -427,56 +471,114 @@ const ReviewManagementPage: React.FC = () => {
 
   // Generate AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
-    if (enhancedReviews.length === 0) return { themes: [], featureMentions: [], issuePatterns: [] };
-    return extractReviewIntelligence(enhancedReviews);
+    if (!enhancedReviews || enhancedReviews.length === 0) {
+      return { 
+        themes: [], 
+        featureMentions: [], 
+        issuePatterns: [] 
+      };
+    }
+    
+    try {
+      return extractReviewIntelligence(enhancedReviews);
+    } catch (error) {
+      console.error('Error in review intelligence extraction:', error);
+      // Provide fallback intelligence based on basic analysis
+      return {
+        themes: [],
+        featureMentions: [],
+        issuePatterns: []
+      };
+    }
   }, [enhancedReviews]);
 
   // Generate actionable insights
   const actionableInsights = useMemo(() => {
-    if (enhancedReviews.length === 0) return { priorityIssues: [], improvements: [], alerts: [] };
-    return generateActionableInsights(enhancedReviews, reviewIntelligence);
+    if (!enhancedReviews || enhancedReviews.length === 0 || !reviewIntelligence) {
+      return { 
+        priorityIssues: [], 
+        improvements: [], 
+        alerts: [] 
+      };
+    }
+    
+    try {
+      return generateActionableInsights(enhancedReviews, reviewIntelligence);
+    } catch (error) {
+      console.error('Error in actionable insights generation:', error);
+      return { 
+        priorityIssues: [], 
+        improvements: [], 
+        alerts: [] 
+      };
+    }
   }, [enhancedReviews, reviewIntelligence]);
 
   // Calculate analytics
   const reviewAnalytics = useMemo((): ReviewAnalytics => {
-    const totalReviews = enhancedReviews.length;
-    const averageRating = totalReviews > 0 ? 
-      enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
-    
-    const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-    enhancedReviews.forEach(r => {
-      if (r.enhancedSentiment) sentimentCounts[r.enhancedSentiment.overall]++;
-    });
+    if (!enhancedReviews || enhancedReviews.length === 0) {
+      return {
+        totalReviews: 0,
+        averageRating: 0,
+        sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+        topThemes: [],
+        criticalIssues: 0,
+        trendingTopics: []
+      };
+    }
 
-    const emotionalTotals = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
-    enhancedReviews.forEach(r => {
-      if (r.enhancedSentiment?.emotions) {
-        Object.keys(emotionalTotals).forEach(emotion => {
-          emotionalTotals[emotion as keyof typeof emotionalTotals] += 
-            r.enhancedSentiment!.emotions[emotion as keyof typeof emotionalTotals];
-        });
-      }
-    });
+    try {
+      const totalReviews = enhancedReviews.length;
+      const averageRating = totalReviews > 0 ? 
+        enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+      
+      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+      enhancedReviews.forEach(r => {
+        if (r.enhancedSentiment) sentimentCounts[r.enhancedSentiment.overall]++;
+      });
 
-    return {
-      totalReviews,
-      averageRating,
-      sentimentDistribution: {
-        positive: totalReviews > 0 ? (sentimentCounts.positive / totalReviews) * 100 : 0,
-        neutral: totalReviews > 0 ? (sentimentCounts.neutral / totalReviews) * 100 : 0,
-        negative: totalReviews > 0 ? (sentimentCounts.negative / totalReviews) * 100 : 0,
-      },
-      emotionalProfile: totalReviews > 0 ? {
-        joy: emotionalTotals.joy / totalReviews,
-        frustration: emotionalTotals.frustration / totalReviews,
-        excitement: emotionalTotals.excitement / totalReviews,
-        disappointment: emotionalTotals.disappointment / totalReviews,
-        anger: emotionalTotals.anger / totalReviews,
-      } : { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
-      topThemes: reviewIntelligence.themes.slice(0, 5).map(t => t.theme),
-      criticalIssues: actionableInsights.priorityIssues.filter(i => i.urgency === 'immediate' || i.urgency === 'high').length,
-      trendingTopics: reviewIntelligence.featureMentions.slice(0, 3).map(f => f.feature)
-    };
+      const emotionalTotals = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
+      enhancedReviews.forEach(r => {
+        if (r.enhancedSentiment?.emotions) {
+          Object.keys(emotionalTotals).forEach(emotion => {
+            emotionalTotals[emotion as keyof typeof emotionalTotals] += 
+              r.enhancedSentiment!.emotions[emotion as keyof typeof emotionalTotals];
+          });
+        }
+      });
+
+      return {
+        totalReviews,
+        averageRating,
+        sentimentDistribution: {
+          positive: totalReviews > 0 ? (sentimentCounts.positive / totalReviews) * 100 : 0,
+          neutral: totalReviews > 0 ? (sentimentCounts.neutral / totalReviews) * 100 : 0,
+          negative: totalReviews > 0 ? (sentimentCounts.negative / totalReviews) * 100 : 0,
+        },
+        emotionalProfile: totalReviews > 0 ? {
+          joy: emotionalTotals.joy / totalReviews,
+          frustration: emotionalTotals.frustration / totalReviews,
+          excitement: emotionalTotals.excitement / totalReviews,
+          disappointment: emotionalTotals.disappointment / totalReviews,
+          anger: emotionalTotals.anger / totalReviews,
+        } : { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+        topThemes: reviewIntelligence?.themes?.slice(0, 5).map(t => t.theme) || [],
+        criticalIssues: actionableInsights?.priorityIssues?.filter(i => i.urgency === 'immediate' || i.urgency === 'high').length || 0,
+        trendingTopics: reviewIntelligence?.featureMentions?.slice(0, 3).map(f => f.feature) || []
+      };
+    } catch (error) {
+      console.error('Error in review analytics calculation:', error);
+      return {
+        totalReviews: enhancedReviews.length,
+        averageRating: enhancedReviews.length > 0 ? enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / enhancedReviews.length : 0,
+        sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+        topThemes: [],
+        criticalIssues: 0,
+        trendingTopics: []
+      };
+    }
   }, [enhancedReviews, reviewIntelligence, actionableInsights]);
 
   // AI Insight Filter State
@@ -734,13 +836,16 @@ const ReviewManagementPage: React.FC = () => {
                 </div>
               )}
               
-              <AIInsightsDashboard
-                reviews={enhancedReviews}
-                intelligence={reviewIntelligence}
-                insights={actionableInsights}
-                analytics={reviewAnalytics}
-                onInsightAction={handleInsightAction}
-              />
+              {/* AI Insights Dashboard - Only render when data is ready */}
+              {enhancedReviews && enhancedReviews.length > 0 && reviewIntelligence && actionableInsights && reviewAnalytics && (
+                <AIInsightsDashboard
+                  reviews={enhancedReviews}
+                  intelligence={reviewIntelligence}
+                  insights={actionableInsights}
+                  analytics={reviewAnalytics}
+                  onInsightAction={handleInsightAction}
+                />
+              )}
             </div>
           )}
 
