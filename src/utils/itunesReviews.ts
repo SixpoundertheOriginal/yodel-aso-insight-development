@@ -528,15 +528,15 @@ export async function fetchAppReviews(params: {
     // Dynamic import to avoid circular dependencies
     const { ITunesReviewsService } = await import('@/services/iTunesReviewsService');
     
-    const result = await ITunesReviewsService.fetchReviews({
+    const result = await fetchReviewsViaEdgeFunction({
       appId,
       cc,
       page
     });
 
-    console.log('[fetchAppReviews] iTunes RSS result:', {
+    console.log('[fetchAppReviews] Edge function result:', {
       success: result.success,
-      reviewCount: result.reviews.length,
+      reviewCount: result.data?.length || 0,
       hasMore: result.hasMore,
       error: result.error
     });
@@ -544,7 +544,7 @@ export async function fetchAppReviews(params: {
     // Transform to expected format for backward compatibility
     return {
       success: result.success,
-      data: result.reviews,
+      data: result.data,
       currentPage: result.currentPage,
       hasMore: result.hasMore,
       totalReviews: result.totalReviews,
