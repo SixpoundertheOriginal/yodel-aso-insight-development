@@ -394,10 +394,36 @@ const ReviewManagementPage: React.FC = () => {
       return {
         ...r,
         sentiment: enhancedSentiment.overall,
-        enhancedSentiment
+        enhancedSentiment,
+        extractedThemes: extractThemesFromText(r.text || ''),
+        mentionedFeatures: extractFeaturesFromText(r.text || ''),
+        identifiedIssues: extractIssuesFromText(r.text || ''),
+        businessImpact: calculateBusinessImpact(r.rating, r.text || '')
       } as EnhancedReviewItem;
     });
   }, [reviews]);
+
+  // Helper functions for review enhancement
+  const extractThemesFromText = (text: string): string[] => {
+    const themes = ['user interface', 'performance', 'crashes', 'loading time', 'navigation', 'features', 'updates', 'pricing'];
+    return themes.filter(theme => text.toLowerCase().includes(theme.toLowerCase()));
+  };
+
+  const extractFeaturesFromText = (text: string): string[] => {
+    const features = ['dark mode', 'notifications', 'search', 'filter', 'export', 'sync', 'backup', 'sharing'];
+    return features.filter(feature => text.toLowerCase().includes(feature));
+  };
+
+  const extractIssuesFromText = (text: string): string[] => {
+    const issues = ['app crashes', 'won\'t load', 'login problems', 'sync issues', 'slow performance', 'battery drain'];
+    return issues.filter(issue => text.toLowerCase().includes(issue));
+  };
+
+  const calculateBusinessImpact = (rating: number, text: string): 'high' | 'medium' | 'low' => {
+    if (rating <= 2 && (text.includes('crash') || text.includes('bug') || text.includes('broken'))) return 'high';
+    if (rating >= 4 && text.length > 100) return 'high';
+    return rating === 3 ? 'medium' : 'low';
+  };
 
   // Generate AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
@@ -453,11 +479,19 @@ const ReviewManagementPage: React.FC = () => {
     };
   }, [enhancedReviews, reviewIntelligence, actionableInsights]);
 
+  // AI Insight Filter State
+  const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
+    type: 'sentiment' | 'theme' | 'issue' | 'feature' | null;
+    value: string | null;
+  }>({ type: null, value: null });
+
   // Use enhanced reviews for processing
   const processedReviews = enhancedReviews;
 
   const filteredReviews = useMemo(() => {
     let list = processedReviews;
+    
+    // Apply standard filters
     if (ratingFilter !== 'all') {
       list = list.filter(r => r.rating === ratingFilter);
     }
@@ -471,6 +505,30 @@ const ReviewManagementPage: React.FC = () => {
         (r.text || '').toLowerCase().includes(q) ||
         (r.author || '').toLowerCase().includes(q)
       );
+    }
+
+    // AI Insight-based filtering (NEW)
+    if (selectedInsightFilter.type && selectedInsightFilter.value) {
+      const { type, value } = selectedInsightFilter;
+      
+      if (type === 'sentiment') {
+        list = list.filter(r => (r as any).sentiment === value);
+      } else if (type === 'theme') {
+        list = list.filter(r => 
+          r.extractedThemes?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'issue') {
+        list = list.filter(r => 
+          r.identifiedIssues?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'feature') {
+        list = list.filter(r => 
+          r.mentionedFeatures?.includes(value) ||
+          r.text?.toLowerCase().includes(value)
+        );
+      }
     }
     if (fromDate) {
       const from = new Date(fromDate).getTime();
@@ -504,7 +562,7 @@ const ReviewManagementPage: React.FC = () => {
         break;
     }
     return sorted;
-  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy]);
+  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
 
   // Chart data
   const ratingDistribution = useMemo(() => {
@@ -574,6 +632,67 @@ const ReviewManagementPage: React.FC = () => {
   // Bar mode: total reviews vs stacked sentiment counts
   const [trendBarMode, setTrendBarMode] = useState<'total' | 'stacked'>('total');
 
+  // AI Insight Action Handler (NEW)
+  const handleInsightAction = (action: string, data?: any) => {
+    console.log('🧠 AI Insight Action:', action, data);
+    
+    switch (action) {
+      case 'view_sentiment':
+        // Focus on sentiment analysis
+        setSentimentFilter('all');
+        setSelectedInsightFilter({ type: null, value: null });
+        break;
+        
+      case 'filter_negative':
+        setSentimentFilter('negative');
+        setSelectedInsightFilter({ type: 'sentiment', value: 'negative' });
+        break;
+        
+      case 'view_themes':
+        // Show theme-related reviews
+        if (data?.intelligence?.themes?.[0]?.theme) {
+          setSelectedInsightFilter({ type: 'theme', value: data.intelligence.themes[0].theme });
+          setTextQuery(data.intelligence.themes[0].theme);
+        }
+        break;
+        
+      case 'view_opportunities':
+        // Filter to positive reviews to see opportunities
+        setSentimentFilter('positive');
+        setSelectedInsightFilter({ type: 'sentiment', value: 'positive' });
+        break;
+        
+      case 'view_priority_issues':
+        // Filter to negative reviews showing issues
+        setSentimentFilter('negative');
+        setSelectedInsightFilter({ type: 'sentiment', value: 'negative' });
+        break;
+        
+      case 'view_theme_timeline':
+        // Show reviews mentioning specific theme
+        if (data?.intelligence?.themes?.[0]) {
+          setSelectedInsightFilter({ type: 'theme', value: data.intelligence.themes[0].theme });
+        }
+        break;
+        
+      default:
+        // Handle specific insight actions
+        if (action.startsWith('alert_')) {
+          setSentimentFilter('negative');
+          setSelectedInsightFilter({ type: 'sentiment', value: 'negative' });
+        }
+        break;
+    }
+    
+    // Scroll to reviews section to show filtered results
+    setTimeout(() => {
+      const reviewsSection = document.querySelector('[id*="reviews"]');
+      if (reviewsSection) {
+        reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(star => (
@@ -588,17 +707,39 @@ const ReviewManagementPage: React.FC = () => {
   return (
     <MainLayout>
         <div className="space-y-6">
-          {/* AI Intelligence Dashboard */}
+          {/* AI Intelligence Dashboard with Interactive Connections */}
           {selectedApp && reviews.length > 0 && (
             <div className="bg-gradient-to-r from-primary/5 to-secondary/5 p-6 rounded-lg border">
+              {selectedInsightFilter.type && (
+                <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">
+                        AI Filter Active: {selectedInsightFilter.type} = "{selectedInsightFilter.value}"
+                      </span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setSelectedInsightFilter({ type: null, value: null });
+                        setTextQuery('');
+                        setSentimentFilter('all');
+                      }}
+                    >
+                      Clear Filter
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <AIInsightsDashboard
                 reviews={enhancedReviews}
                 intelligence={reviewIntelligence}
                 insights={actionableInsights}
                 analytics={reviewAnalytics}
-                onInsightAction={(action, data) => {
-                  toast.info(`Action: ${action}`, { description: 'Feature coming soon' });
-                }}
+                onInsightAction={handleInsightAction}
               />
             </div>
           )}
@@ -941,8 +1082,20 @@ const ReviewManagementPage: React.FC = () => {
 
             {filteredReviews.length > 0 && (
               <div className="max-h-96 overflow-y-auto space-y-3 border rounded-md p-4">
+                {selectedInsightFilter.type && (
+                  <div className="mb-3 p-2 bg-muted/50 rounded text-sm text-muted-foreground border-l-4 border-primary">
+                    <strong>AI Filter:</strong> Showing reviews matching {selectedInsightFilter.type}: "{selectedInsightFilter.value}"
+                  </div>
+                )}
                 {filteredReviews.map((review: any, index) => (
-                  <div key={review.review_id || index} className="border-b pb-3 last:border-b-0">
+                  <div key={review.review_id || index} className={`border-b pb-3 last:border-b-0 ${
+                    selectedInsightFilter.type && (
+                      (selectedInsightFilter.type === 'theme' && review.extractedThemes?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'issue' && review.identifiedIssues?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'feature' && review.mentionedFeatures?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'sentiment' && review.sentiment === selectedInsightFilter.value)
+                    ) ? 'bg-primary/5 p-2 rounded border-l-4 border-primary' : ''
+                  }`}>
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h5 className="font-medium text-sm">{review.title || 'No title'}</h5>
@@ -957,6 +1110,44 @@ const ReviewManagementPage: React.FC = () => {
                             </span>
                           )}
                         </p>
+                        {/* AI Enhancement Tags */}
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {review.extractedThemes?.slice(0, 2).map((theme: string) => (
+                            <Badge 
+                              key={theme} 
+                              variant={selectedInsightFilter.type === 'theme' && selectedInsightFilter.value === theme ? 'default' : 'outline'} 
+                              className="text-xs cursor-pointer hover:bg-muted" 
+                              onClick={() => setSelectedInsightFilter({ type: 'theme', value: theme })}
+                            >
+                              🏷️ {theme}
+                            </Badge>
+                          ))}
+                          {review.mentionedFeatures?.slice(0, 1).map((feature: string) => (
+                            <Badge 
+                              key={feature} 
+                              variant={selectedInsightFilter.type === 'feature' && selectedInsightFilter.value === feature ? 'default' : 'secondary'} 
+                              className="text-xs cursor-pointer hover:bg-muted"
+                              onClick={() => setSelectedInsightFilter({ type: 'feature', value: feature })}
+                            >
+                              ⭐ {feature}
+                            </Badge>
+                          ))}
+                          {review.identifiedIssues?.slice(0, 1).map((issue: string) => (
+                            <Badge 
+                              key={issue} 
+                              variant="destructive" 
+                              className="text-xs cursor-pointer hover:opacity-80"
+                              onClick={() => setSelectedInsightFilter({ type: 'issue', value: issue })}
+                            >
+                              ⚠️ {issue}
+                            </Badge>
+                          ))}
+                          {review.businessImpact && review.businessImpact === 'high' && (
+                            <Badge variant="destructive" className="text-xs">
+                              🔥 High Impact
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <StarRating rating={review.rating} />
                     </div>
