@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -24,6 +24,20 @@ import { MainLayout } from '@/layouts';
 import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
 import { YodelToolbar, YodelToolbarGroup, YodelToolbarSpacer } from '@/components/ui/design-system';
 import { ConnectionStatus } from '@/components/ui/connection-status';
+
+// Enhanced AI Intelligence imports
+import { 
+  EnhancedReviewItem, 
+  ReviewIntelligence, 
+  ActionableInsights, 
+  ReviewAnalytics 
+} from '@/types/review-intelligence.types';
+import { 
+  analyzeEnhancedSentiment, 
+  extractReviewIntelligence, 
+  generateActionableInsights 
+} from '@/engines/review-intelligence.engine';
+import { AIInsightsDashboard } from '@/components/reviews/AIInsightsDashboard';
 
 interface AppSearchResult {
   name: string;
@@ -45,6 +59,9 @@ interface ReviewItem {
   updated_at?: string;
   country: string;
   app_id: string;
+  // Enhanced fields for AI analysis
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  enhancedSentiment?: any;
 }
 
 interface ReviewsResponse {
@@ -370,10 +387,74 @@ const ReviewManagementPage: React.FC = () => {
     return 'neutral';
   };
 
-  // Enrich reviews with derived fields + apply filters
-  const processedReviews = useMemo(() => {
-    return reviews.map(r => ({ ...r, sentiment: estimateSentiment(r) as 'positive' | 'neutral' | 'negative' }));
+  // Enhanced sentiment analysis with AI intelligence
+  const enhancedReviews = useMemo(() => {
+    return reviews.map(r => {
+      const enhancedSentiment = analyzeEnhancedSentiment(r.text || '', r.rating);
+      return {
+        ...r,
+        sentiment: enhancedSentiment.overall,
+        enhancedSentiment
+      } as EnhancedReviewItem;
+    });
   }, [reviews]);
+
+  // Generate AI intelligence from enhanced reviews
+  const reviewIntelligence = useMemo(() => {
+    if (enhancedReviews.length === 0) return { themes: [], featureMentions: [], issuePatterns: [] };
+    return extractReviewIntelligence(enhancedReviews);
+  }, [enhancedReviews]);
+
+  // Generate actionable insights
+  const actionableInsights = useMemo(() => {
+    if (enhancedReviews.length === 0) return { priorityIssues: [], improvements: [], alerts: [] };
+    return generateActionableInsights(enhancedReviews, reviewIntelligence);
+  }, [enhancedReviews, reviewIntelligence]);
+
+  // Calculate analytics
+  const reviewAnalytics = useMemo((): ReviewAnalytics => {
+    const totalReviews = enhancedReviews.length;
+    const averageRating = totalReviews > 0 ? 
+      enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+    
+    const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+    enhancedReviews.forEach(r => {
+      if (r.enhancedSentiment) sentimentCounts[r.enhancedSentiment.overall]++;
+    });
+
+    const emotionalTotals = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
+    enhancedReviews.forEach(r => {
+      if (r.enhancedSentiment?.emotions) {
+        Object.keys(emotionalTotals).forEach(emotion => {
+          emotionalTotals[emotion as keyof typeof emotionalTotals] += 
+            r.enhancedSentiment!.emotions[emotion as keyof typeof emotionalTotals];
+        });
+      }
+    });
+
+    return {
+      totalReviews,
+      averageRating,
+      sentimentDistribution: {
+        positive: totalReviews > 0 ? (sentimentCounts.positive / totalReviews) * 100 : 0,
+        neutral: totalReviews > 0 ? (sentimentCounts.neutral / totalReviews) * 100 : 0,
+        negative: totalReviews > 0 ? (sentimentCounts.negative / totalReviews) * 100 : 0,
+      },
+      emotionalProfile: totalReviews > 0 ? {
+        joy: emotionalTotals.joy / totalReviews,
+        frustration: emotionalTotals.frustration / totalReviews,
+        excitement: emotionalTotals.excitement / totalReviews,
+        disappointment: emotionalTotals.disappointment / totalReviews,
+        anger: emotionalTotals.anger / totalReviews,
+      } : { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+      topThemes: reviewIntelligence.themes.slice(0, 5).map(t => t.theme),
+      criticalIssues: actionableInsights.priorityIssues.filter(i => i.urgency === 'immediate' || i.urgency === 'high').length,
+      trendingTopics: reviewIntelligence.featureMentions.slice(0, 3).map(f => f.feature)
+    };
+  }, [enhancedReviews, reviewIntelligence, actionableInsights]);
+
+  // Use enhanced reviews for processing
+  const processedReviews = enhancedReviews;
 
   const filteredReviews = useMemo(() => {
     let list = processedReviews;
@@ -506,7 +587,23 @@ const ReviewManagementPage: React.FC = () => {
 
   return (
     <MainLayout>
-    <div className="space-y-6">
+        <div className="space-y-6">
+          {/* AI Intelligence Dashboard */}
+          {selectedApp && reviews.length > 0 && (
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 p-6 rounded-lg border">
+              <AIInsightsDashboard
+                reviews={enhancedReviews}
+                intelligence={reviewIntelligence}
+                insights={actionableInsights}
+                analytics={reviewAnalytics}
+                onInsightAction={(action, data) => {
+                  toast.info(`Action: ${action}`, { description: 'Feature coming soon' });
+                }}
+              />
+            </div>
+          )}
+
+          {/* Rest of existing dashboard */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Review Management</h1>
