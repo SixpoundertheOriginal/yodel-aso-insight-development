@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Rocket, Download, BarChart3, Eye, Filter, Trophy, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Search, Rocket, Download, BarChart3, Eye, Filter, Trophy, ArrowUp, ArrowDown, Minus, Users, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -26,6 +26,9 @@ import type { ScrapedMetadata } from '@/types/aso';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import SuggestKeywordsDialog from '@/components/keywords/SuggestKeywordsDialog';
 import { PremiumCard, PremiumCardHeader, PremiumCardContent, PremiumTypography } from '@/components/ui/premium';
+import { BulkKeywordDiscovery } from '@/components/KeywordIntelligence/BulkKeywordDiscovery';
+import { CompetitorIntelligencePanel } from '@/components/KeywordIntelligence/CompetitorIntelligencePanel';
+import { useEnhancedKeywordIntelligence } from '@/hooks/useEnhancedKeywordIntelligence';
 
 type AppSearchResult = {
   name: string;
@@ -84,6 +87,14 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
   const [autoGenerateAfterPick, setAutoGenerateAfterPick] = useState(false);
+  const [currentView, setCurrentView] = useState<'overview' | 'discovery' | 'competitors' | 'manual'>('overview');
+
+  // Enhanced Keyword Intelligence
+  const enhancedKI = useEnhancedKeywordIntelligence({
+    organizationId: effectiveOrgId!,
+    targetAppId: selectedApp?.appId,
+    enabled: !!effectiveOrgId && !!selectedApp?.appId
+  });
 
   const volumeRank = (v: KeywordRow['volume']) => (v === 'High' ? 3 : v === 'Medium' ? 2 : 1);
   const trendRank = (t: KeywordRow['trend']) => (t === 'up' ? 3 : t === 'stable' ? 2 : 1);

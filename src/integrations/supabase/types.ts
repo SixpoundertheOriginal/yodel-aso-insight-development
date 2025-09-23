@@ -332,6 +332,63 @@ export type Database = {
           },
         ]
       }
+      bulk_keyword_operations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_count: number | null
+          estimated_completion: string | null
+          id: string
+          keywords_count: number | null
+          operation_params: Json | null
+          operation_type: string
+          organization_id: string
+          processed_count: number | null
+          results_summary: Json | null
+          started_at: string | null
+          status: string
+          success_count: number | null
+          target_app_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          estimated_completion?: string | null
+          id?: string
+          keywords_count?: number | null
+          operation_params?: Json | null
+          operation_type: string
+          organization_id: string
+          processed_count?: number | null
+          results_summary?: Json | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          target_app_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          estimated_completion?: string | null
+          id?: string
+          keywords_count?: number | null
+          operation_params?: Json | null
+          operation_type?: string
+          organization_id?: string
+          processed_count?: number | null
+          results_summary?: Json | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          target_app_id?: string
+        }
+        Relationships: []
+      }
       chatgpt_audit_runs: {
         Row: {
           app_id: string
@@ -759,6 +816,60 @@ export type Database = {
           },
         ]
       }
+      competitor_app_rankings: {
+        Row: {
+          competition_strength: number | null
+          competitor_app_id: string
+          competitor_developer: string | null
+          competitor_name: string
+          competitor_rank: number | null
+          created_at: string
+          discovery_source: string | null
+          id: string
+          keyword: string
+          market_share_percent: number | null
+          organization_id: string
+          search_volume: number | null
+          snapshot_date: string
+          target_app_id: string
+          target_app_rank: number | null
+        }
+        Insert: {
+          competition_strength?: number | null
+          competitor_app_id: string
+          competitor_developer?: string | null
+          competitor_name: string
+          competitor_rank?: number | null
+          created_at?: string
+          discovery_source?: string | null
+          id?: string
+          keyword: string
+          market_share_percent?: number | null
+          organization_id: string
+          search_volume?: number | null
+          snapshot_date?: string
+          target_app_id: string
+          target_app_rank?: number | null
+        }
+        Update: {
+          competition_strength?: number | null
+          competitor_app_id?: string
+          competitor_developer?: string | null
+          competitor_name?: string
+          competitor_rank?: number | null
+          created_at?: string
+          discovery_source?: string | null
+          id?: string
+          keyword?: string
+          market_share_percent?: number | null
+          organization_id?: string
+          search_volume?: number | null
+          snapshot_date?: string
+          target_app_id?: string
+          target_app_rank?: number | null
+        }
+        Relationships: []
+      }
       competitor_apps: {
         Row: {
           ai_keyword_analysis: Json | null
@@ -1040,6 +1151,60 @@ export type Database = {
         }
         Relationships: []
       }
+      enhanced_keyword_rankings: {
+        Row: {
+          app_id: string
+          confidence_level: string | null
+          created_at: string
+          data_source: string | null
+          difficulty_score: number | null
+          id: string
+          keyword: string
+          organization_id: string
+          previous_rank: number | null
+          rank_change: number | null
+          rank_position: number | null
+          search_volume: number | null
+          snapshot_date: string
+          tracking_frequency: string | null
+          volume_change_percent: number | null
+        }
+        Insert: {
+          app_id: string
+          confidence_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          difficulty_score?: number | null
+          id?: string
+          keyword: string
+          organization_id: string
+          previous_rank?: number | null
+          rank_change?: number | null
+          rank_position?: number | null
+          search_volume?: number | null
+          snapshot_date?: string
+          tracking_frequency?: string | null
+          volume_change_percent?: number | null
+        }
+        Update: {
+          app_id?: string
+          confidence_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          difficulty_score?: number | null
+          id?: string
+          keyword?: string
+          organization_id?: string
+          previous_rank?: number | null
+          rank_change?: number | null
+          rank_position?: number | null
+          search_volume?: number | null
+          snapshot_date?: string
+          tracking_frequency?: string | null
+          volume_change_percent?: number | null
+        }
+        Relationships: []
+      }
       error_logs: {
         Row: {
           api_endpoint: string | null
@@ -1268,6 +1433,60 @@ export type Database = {
           organization_id?: string
           search_volume?: number | null
           top_apps_strength?: number | null
+        }
+        Relationships: []
+      }
+      keyword_discovery_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          discovered_keywords: number | null
+          discovery_params: Json
+          error_message: string | null
+          id: string
+          job_type: string
+          organization_id: string
+          processing_metadata: Json | null
+          progress: Json
+          started_at: string | null
+          status: string
+          target_app_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_keywords?: number | null
+          discovery_params?: Json
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          organization_id: string
+          processing_metadata?: Json | null
+          progress?: Json
+          started_at?: string | null
+          status?: string
+          target_app_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_keywords?: number | null
+          discovery_params?: Json
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          organization_id?: string
+          processing_metadata?: Json | null
+          progress?: Json
+          started_at?: string | null
+          status?: string
+          target_app_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1562,6 +1781,51 @@ export type Database = {
           organization_id?: string
           recorded_at?: string
           tags?: Json | null
+        }
+        Relationships: []
+      }
+      keyword_suggestion_pools: {
+        Row: {
+          created_at: string
+          discovery_date: string
+          discovery_method: string
+          id: string
+          keyword_metadata: Json | null
+          keywords: string[]
+          organization_id: string
+          pool_name: string
+          quality_score: number | null
+          target_app_id: string | null
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          discovery_date?: string
+          discovery_method: string
+          id?: string
+          keyword_metadata?: Json | null
+          keywords: string[]
+          organization_id: string
+          pool_name: string
+          quality_score?: number | null
+          target_app_id?: string | null
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          discovery_date?: string
+          discovery_method?: string
+          id?: string
+          keyword_metadata?: Json | null
+          keywords?: string[]
+          organization_id?: string
+          pool_name?: string
+          quality_score?: number | null
+          target_app_id?: string | null
+          updated_at?: string
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -2708,6 +2972,21 @@ export type Database = {
           app_identifier: string
         }[]
       }
+      get_competitor_keyword_overlap: {
+        Args: {
+          p_competitor_app_id: string
+          p_organization_id: string
+          p_target_app_id: string
+        }
+        Returns: {
+          competitor_rank: number
+          keyword: string
+          opportunity_score: number
+          rank_gap: number
+          search_volume: number
+          target_rank: number
+        }[]
+      }
       get_current_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -2777,6 +3056,16 @@ export type Database = {
           record_count: number
         }[]
       }
+      get_top_keywords_for_app: {
+        Args: { p_app_id: string; p_limit?: number; p_organization_id: string }
+        Returns: {
+          confidence_level: string
+          keyword: string
+          last_updated: string
+          rank_position: number
+          search_volume: number
+        }[]
+      }
       get_user_frontend_permissions: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -2801,6 +3090,15 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: boolean
+      }
+      start_keyword_discovery_job: {
+        Args: {
+          p_job_type?: string
+          p_organization_id: string
+          p_params?: Json
+          p_target_app_id: string
+        }
+        Returns: string
       }
       unlock_platform_admin_creation: {
         Args: Record<PropertyKey, never>
