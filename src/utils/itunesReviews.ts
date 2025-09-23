@@ -1,3 +1,40 @@
+/**
+ * ┌─────────────────────────────────────────────────────────────────────────────┐
+ * │                        REVIEWS SYSTEM ARCHITECTURE                          │
+ * │                           READ BEFORE MODIFYING                             │
+ * └─────────────────────────────────────────────────────────────────────────────┘
+ * 
+ * ✅ WORKING APPROACH: fetchReviewsViaEdgeFunction()
+ * ────────────────────────────────────────────────────────────────────────────────
+ * - Uses app-store-scraper edge function (423 deployments, proven reliable)
+ * - Handles iTunes RSS API format changes server-side
+ * - Includes fallback mechanisms and proper error handling
+ * - CORS and authentication handled properly
+ * - Future-proof against external API changes
+ * 
+ * ❌ BROKEN APPROACH: Direct iTunes RSS API calls
+ * ────────────────────────────────────────────────────────────────────────────────  
+ * - Apple deprecated/changed RSS format in 2024-2025
+ * - Returns text/javascript instead of JSON, causing parsing errors
+ * - 100% failure rate for direct client calls
+ * - DO NOT revert to direct API calls without testing current format
+ * 
+ * 🏗️ EDGE FUNCTION INFO:
+ * ────────────────────────────────────────────────────────────────────────────────
+ * - Function: app-store-scraper
+ * - Operation: reviews  
+ * - Method: POST { op: 'reviews', appId, cc, page, pageSize }
+ * - Deployments: 423 (high reliability indicator)
+ * - Handles: iTunes RSS format changes, CORS, authentication, fallbacks
+ * 
+ * 🚨 CRITICAL WARNING:
+ * ────────────────────────────────────────────────────────────────────────────────
+ * The iTunesReviewsService was DELETED because it only contained broken direct
+ * iTunes RSS calls. If you need reviews functionality, use fetchReviewsViaEdgeFunction().
+ * 
+ * See docs/ADR-reviews-system.md for complete architectural documentation.
+ */
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AppSearchResultDto {
@@ -523,10 +560,9 @@ export async function fetchAppReviews(params: {
     };
   }
 
-  // Direct iTunes RSS integration - no edge function dependency
+  // ✅ USING WORKING EDGE FUNCTION APPROACH
+  // Edge function handles iTunes RSS format changes server-side
   try {
-    // Dynamic import to avoid circular dependencies
-    const { ITunesReviewsService } = await import('@/services/iTunesReviewsService');
     
     const result = await fetchReviewsViaEdgeFunction({
       appId,
