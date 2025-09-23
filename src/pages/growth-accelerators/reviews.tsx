@@ -37,7 +37,7 @@ import {
   extractReviewIntelligence, 
   generateActionableInsights 
 } from '@/engines/review-intelligence.engine';
-import { AIInsightsDashboard } from '@/components/reviews/AIInsightsDashboard';
+
 
 interface AppSearchResult {
   name: string;
@@ -1169,83 +1169,6 @@ const ReviewManagementPage: React.FC = () => {
                 </div>
               )}
               
-              {/* AI Insights Dashboard - Only render when data is ready */}
-              {(() => {
-                // Debug logging for conditional render
-                const conditions = {
-                  enhancedReviews: !!enhancedReviews && enhancedReviews.length > 0,
-                  reviewIntelligence: !!reviewIntelligence,
-                  actionableInsights: !!actionableInsights,
-                  reviewAnalytics: !!reviewAnalytics
-                };
-                
-                console.log('🔍 AI Dashboard Render Conditions:', conditions);
-                console.log('🔍 Review count:', enhancedReviews?.length || 0);
-                console.log('🔍 Intelligence themes:', reviewIntelligence?.themes?.length || 0);
-                console.log('🔍 Actionable insights:', actionableInsights?.priorityIssues?.length || 0);
-                console.log('🔍 Analytics data:', reviewAnalytics?.totalReviews || 0);
-                
-                const shouldRender = Object.values(conditions).every(condition => condition);
-                console.log('🔍 Should render AI dashboard:', shouldRender);
-                
-                if (!shouldRender) {
-                  console.log('🔍 Missing conditions:', Object.entries(conditions).filter(([key, value]) => !value));
-                }
-                
-                return shouldRender;
-              })() && (
-                <AIInsightsDashboard
-                  reviews={enhancedReviews}
-                  intelligence={reviewIntelligence}
-                  insights={actionableInsights}
-                  analytics={reviewAnalytics}
-                  onInsightAction={handleInsightAction}
-                />
-              )}
-              
-              {/* Debug fallback for AI dashboard troubleshooting */}
-              {!(() => {
-                const conditions = {
-                  enhancedReviews: !!enhancedReviews && enhancedReviews.length > 0,
-                  reviewIntelligence: !!reviewIntelligence,
-                  actionableInsights: !!actionableInsights,
-                  reviewAnalytics: !!reviewAnalytics
-                };
-                return Object.values(conditions).every(condition => condition);
-              })() && enhancedReviews?.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                  <h3 className="text-yellow-800 font-medium mb-2">🔍 AI Dashboard Debug Status</h3>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Enhanced Reviews:</span>
-                      <span className={enhancedReviews?.length > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {enhancedReviews?.length || 0} reviews
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Review Intelligence:</span>
-                      <span className={reviewIntelligence ? 'text-green-600' : 'text-red-600'}>
-                        {reviewIntelligence ? `${reviewIntelligence.themes?.length || 0} themes` : 'Missing'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Actionable Insights:</span>
-                      <span className={actionableInsights ? 'text-green-600' : 'text-red-600'}>
-                        {actionableInsights ? `${actionableInsights.priorityIssues?.length || 0} issues` : 'Missing'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Review Analytics:</span>
-                      <span className={reviewAnalytics ? 'text-green-600' : 'text-red-600'}>
-                        {reviewAnalytics ? `${reviewAnalytics.totalReviews || 0} analyzed` : 'Missing'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-yellow-700 text-xs mt-2">
-                    This debug panel will disappear when all AI components are ready.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
