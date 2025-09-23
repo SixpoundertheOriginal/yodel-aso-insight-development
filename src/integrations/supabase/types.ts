@@ -2702,6 +2702,17 @@ export type Database = {
         Args: { org_name: string; org_slug: string }
         Returns: string
       }
+      debug_creative_session_auth: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          auth_uid: string
+          current_user_id: string
+          has_profile: boolean
+          is_super_admin: boolean
+          profile_org_id: string
+          user_org_id: string
+        }[]
+      }
       get_approved_apps: {
         Args: { p_organization_id: string }
         Returns: {
