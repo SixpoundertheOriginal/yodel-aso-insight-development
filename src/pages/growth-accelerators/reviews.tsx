@@ -389,21 +389,27 @@ const ReviewManagementPage: React.FC = () => {
 
   // Enhanced sentiment analysis with AI intelligence
   const enhancedReviews = useMemo(() => {
+    console.log('🔍 DATA DEBUG [ENHANCED]: Starting review processing. Raw reviews:', reviews?.length || 0);
+    
     if (!reviews || !Array.isArray(reviews) || reviews.length === 0) {
       return [];
     }
     
     try {
-      return reviews.map(r => {
+      const processed = reviews.map(r => {
         try {
           const enhancedSentiment = analyzeEnhancedSentiment(r.text || '', r.rating);
+          const extractedThemes = extractThemesFromText(r.text || '');
+          const mentionedFeatures = extractFeaturesFromText(r.text || '');
+          const identifiedIssues = extractIssuesFromText(r.text || '');
+          
           return {
             ...r,
             sentiment: enhancedSentiment.overall,
             enhancedSentiment,
-            extractedThemes: extractThemesFromText(r.text || ''),
-            mentionedFeatures: extractFeaturesFromText(r.text || ''),
-            identifiedIssues: extractIssuesFromText(r.text || ''),
+            extractedThemes,
+            mentionedFeatures,
+            identifiedIssues,
             businessImpact: calculateBusinessImpact(r.rating, r.text || '')
           } as EnhancedReviewItem;
         } catch (error) {
@@ -426,6 +432,13 @@ const ReviewManagementPage: React.FC = () => {
           } as EnhancedReviewItem;
         }
       });
+      
+      console.log('🔍 DATA DEBUG [ENHANCED]: Processed reviews with themes:', 
+        processed.filter(r => r.extractedThemes?.length > 0).length);
+      console.log('🔍 DATA DEBUG [ENHANCED]: Processed reviews with issues:', 
+        processed.filter(r => r.identifiedIssues?.length > 0).length);
+      
+      return processed;
     } catch (error) {
       console.error('Error in enhanced reviews processing:', error);
       // Ultimate fallback - return reviews with basic sentiment
@@ -447,30 +460,108 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [reviews]);
 
-  // Helper functions for review enhancement
+  // Enhanced helper functions for meaningful AI analysis
   const extractThemesFromText = (text: string): string[] => {
-    const themes = ['user interface', 'performance', 'crashes', 'loading time', 'navigation', 'features', 'updates', 'pricing'];
-    return themes.filter(theme => text.toLowerCase().includes(theme.toLowerCase()));
+    if (!text || typeof text !== 'string') return [];
+    
+    const lowerText = text.toLowerCase();
+    const detectedThemes: string[] = [];
+    
+    // Comprehensive theme patterns
+    const themePatterns = {
+      'checkout problems': ['checkout', 'payment', 'purchase', 'buy', 'cart', 'billing'],
+      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck', 'closes'],
+      'performance issues': ['slow', 'lag', 'loading', 'speed', 'response time', 'performance'],
+      'ui/ux design': ['design', 'interface', 'layout', 'ui', 'ux', 'look', 'appearance'],
+      'login problems': ['login', 'sign in', 'password', 'account', 'authentication'],
+      'feature requests': ['feature', 'add', 'would like', 'wish', 'need', 'missing'],
+      'customer support': ['support', 'help', 'service', 'response', 'customer care'],
+      'pricing concerns': ['price', 'cost', 'expensive', 'cheap', 'subscription', 'premium'],
+      'battery usage': ['battery', 'drain', 'power', 'energy'],
+      'notifications': ['notification', 'alert', 'remind', 'push']
+    };
+    
+    Object.entries(themePatterns).forEach(([theme, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedThemes.push(theme);
+      }
+    });
+    
+    return detectedThemes;
   };
 
   const extractFeaturesFromText = (text: string): string[] => {
-    const features = ['dark mode', 'notifications', 'search', 'filter', 'export', 'sync', 'backup', 'sharing'];
-    return features.filter(feature => text.toLowerCase().includes(feature));
+    if (!text || typeof text !== 'string') return [];
+    
+    const lowerText = text.toLowerCase();
+    const detectedFeatures: string[] = [];
+    
+    const featurePatterns = {
+      'dark mode': ['dark mode', 'night mode', 'dark theme'],
+      'notifications': ['notification', 'alert', 'remind'],
+      'search functionality': ['search', 'find', 'look for'],
+      'offline mode': ['offline', 'without internet', 'no connection'],
+      'sync': ['sync', 'synchronize', 'backup'],
+      'export data': ['export', 'download', 'save'],
+      'sharing': ['share', 'send', 'forward'],
+      'customization': ['customize', 'personalize', 'settings'],
+      'voice input': ['voice', 'speech', 'dictate'],
+      'widgets': ['widget', 'shortcut', 'quick access']
+    };
+    
+    Object.entries(featurePatterns).forEach(([feature, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedFeatures.push(feature);
+      }
+    });
+    
+    return detectedFeatures;
   };
 
   const extractIssuesFromText = (text: string): string[] => {
-    const issues = ['app crashes', 'won\'t load', 'login problems', 'sync issues', 'slow performance', 'battery drain'];
-    return issues.filter(issue => text.toLowerCase().includes(issue));
+    if (!text || typeof text !== 'string') return [];
+    
+    const lowerText = text.toLowerCase();
+    const detectedIssues: string[] = [];
+    
+    const issuePatterns = {
+      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck'],
+      'login failures': ['can\'t login', 'login failed', 'won\'t sign in'],
+      'loading problems': ['won\'t load', 'loading forever', 'stuck loading'],
+      'sync errors': ['sync failed', 'won\'t sync', 'sync problem'],
+      'payment issues': ['payment failed', 'can\'t purchase', 'billing error'],
+      'performance lag': ['slow', 'laggy', 'sluggish', 'unresponsive'],
+      'ui bugs': ['button doesn\'t work', 'interface broken', 'display issue'],
+      'data loss': ['lost data', 'deleted', 'missing information'],
+      'notification problems': ['notifications not working', 'no alerts'],
+      'battery drain': ['drains battery', 'battery usage', 'power hungry']
+    };
+    
+    Object.entries(issuePatterns).forEach(([issue, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedIssues.push(issue);
+      }
+    });
+    
+    return detectedIssues;
   };
 
   const calculateBusinessImpact = (rating: number, text: string): 'high' | 'medium' | 'low' => {
-    if (rating <= 2 && (text.includes('crash') || text.includes('bug') || text.includes('broken'))) return 'high';
+    if (!text) return rating <= 2 ? 'medium' : 'low';
+    
+    const criticalKeywords = ['crash', 'bug', 'broken', 'terrible', 'worst', 'awful'];
+    const hasCriticalIssue = criticalKeywords.some(keyword => text.toLowerCase().includes(keyword));
+    
+    if (rating <= 2 && hasCriticalIssue) return 'high';
     if (rating >= 4 && text.length > 100) return 'high';
-    return rating === 3 ? 'medium' : 'low';
+    if (rating === 3 || hasCriticalIssue) return 'medium';
+    return 'low';
   };
 
-  // Generate AI intelligence from enhanced reviews
+  // Generate comprehensive AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
+    console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', enhancedReviews?.length || 0);
+    
     if (!enhancedReviews || enhancedReviews.length === 0) {
       return { 
         themes: [], 
@@ -480,10 +571,101 @@ const ReviewManagementPage: React.FC = () => {
     }
     
     try {
-      return extractReviewIntelligence(enhancedReviews);
+      // Try engine first, fallback to manual extraction if needed
+      const engineResult = extractReviewIntelligence(enhancedReviews);
+      console.log('🔍 DATA DEBUG [ENGINE]: Engine result themes:', engineResult?.themes?.length || 0);
+      
+      if (engineResult?.themes?.length > 0) {
+        return engineResult;
+      }
+      
+      // Fallback: Manual intelligence extraction
+      console.log('🔍 DATA DEBUG [FALLBACK]: Using manual intelligence extraction');
+      
+      const themeMap = new Map<string, { count: number; sentiment: number[]; examples: string[]; trending: 'up' | 'down' | 'stable' }>();
+      const featureMap = new Map<string, { count: number; sentiment: number[]; impact: 'high' | 'medium' | 'low' }>();
+      const issueMap = new Map<string, { count: number; severity: 'critical' | 'major' | 'minor'; affectedVersions: string[]; firstSeen: Date }>();
+      
+      enhancedReviews.forEach(review => {
+        // Process themes
+        review.extractedThemes?.forEach(theme => {
+          if (!themeMap.has(theme)) {
+            themeMap.set(theme, { count: 0, sentiment: [], examples: [], trending: 'stable' });
+          }
+          const themeData = themeMap.get(theme)!;
+          themeData.count++;
+          themeData.sentiment.push(review.rating);
+          if (themeData.examples.length < 3 && review.text) {
+            themeData.examples.push(review.text.substring(0, 100) + '...');
+          }
+        });
+        
+        // Process features
+        review.mentionedFeatures?.forEach(feature => {
+          if (!featureMap.has(feature)) {
+            featureMap.set(feature, { count: 0, sentiment: [], impact: 'medium' });
+          }
+          const featureData = featureMap.get(feature)!;
+          featureData.count++;
+          featureData.sentiment.push(review.rating);
+          // Determine impact based on frequency and sentiment
+          featureData.impact = featureData.count >= 3 ? 'high' : featureData.count >= 2 ? 'medium' : 'low';
+        });
+        
+        // Process issues
+        review.identifiedIssues?.forEach(issue => {
+          if (!issueMap.has(issue)) {
+            issueMap.set(issue, { 
+              count: 0, 
+              severity: 'minor', 
+              affectedVersions: [], 
+              firstSeen: review.updated_at ? new Date(review.updated_at) : new Date() 
+            });
+          }
+          const issueData = issueMap.get(issue)!;
+          issueData.count++;
+          // Determine severity based on frequency and rating
+          issueData.severity = issueData.count >= 3 ? 'critical' : issueData.count >= 2 ? 'major' : 'minor';
+          if (review.version && !issueData.affectedVersions.includes(review.version)) {
+            issueData.affectedVersions.push(review.version);
+          }
+        });
+      });
+      
+      // Convert to expected format
+      const themes = Array.from(themeMap.entries()).map(([theme, data]) => ({
+        theme,
+        frequency: data.count,
+        sentiment: data.sentiment.reduce((a, b) => a + b, 0) / data.sentiment.length,
+        examples: data.examples,
+        trending: data.trending
+      })).sort((a, b) => b.frequency - a.frequency);
+      
+      const featureMentions = Array.from(featureMap.entries()).map(([feature, data]) => ({
+        feature,
+        mentions: data.count,
+        sentiment: data.sentiment.reduce((a, b) => a + b, 0) / data.sentiment.length,
+        impact: data.impact
+      })).sort((a, b) => b.mentions - a.mentions);
+      
+      const issuePatterns = Array.from(issueMap.entries()).map(([issue, data]) => ({
+        issue,
+        frequency: data.count,
+        severity: data.severity,
+        affectedVersions: data.affectedVersions,
+        firstSeen: data.firstSeen
+      })).sort((a, b) => b.frequency - a.frequency);
+      
+      const result = { themes, featureMentions, issuePatterns };
+      console.log('🔍 DATA DEBUG [RESULT]: Generated intelligence:', {
+        themesCount: themes.length,
+        featuresCount: featureMentions.length,
+        issuesCount: issuePatterns.length
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error in review intelligence extraction:', error);
-      // Provide fallback intelligence based on basic analysis
       return {
         themes: [],
         featureMentions: [],
@@ -492,9 +674,11 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [enhancedReviews]);
 
-  // Generate actionable insights
+  // Generate comprehensive actionable insights
   const actionableInsights = useMemo(() => {
-    if (!enhancedReviews || enhancedReviews.length === 0 || !reviewIntelligence) {
+    console.log('🔍 DATA DEBUG [INSIGHTS]: Generating insights for reviews:', enhancedReviews?.length || 0);
+    
+    if (!enhancedReviews || enhancedReviews.length === 0) {
       return { 
         priorityIssues: [], 
         improvements: [], 
@@ -503,7 +687,96 @@ const ReviewManagementPage: React.FC = () => {
     }
     
     try {
-      return generateActionableInsights(enhancedReviews, reviewIntelligence);
+      // Try engine first, fallback if needed
+      const engineResult = reviewIntelligence ? generateActionableInsights(enhancedReviews, reviewIntelligence) : null;
+      
+      if (engineResult?.priorityIssues?.length > 0 || engineResult?.improvements?.length > 0) {
+        return engineResult;
+      }
+      
+      // Fallback: Generate insights manually
+      const priorityIssues: any[] = [];
+      const improvements: any[] = [];
+      const alerts: any[] = [];
+      
+      // Analyze for critical issues
+      const negativeReviews = enhancedReviews.filter(r => r.rating <= 2);
+      const issueFrequency = new Map<string, number>();
+      
+      negativeReviews.forEach(review => {
+        review.identifiedIssues?.forEach(issue => {
+          issueFrequency.set(issue, (issueFrequency.get(issue) || 0) + 1);
+        });
+      });
+      
+      // Generate priority issues
+      issueFrequency.forEach((count, issue) => {
+        if (count >= 2) { // Issue mentioned multiple times
+          priorityIssues.push({
+            issue,
+            frequency: count,
+            urgency: count >= 3 ? 'high' : 'medium',
+            impact: count >= 3 ? 'high' : 'medium',
+            recommendation: `Address ${issue} - mentioned in ${count} negative reviews`
+          });
+        }
+      });
+      
+      // Generate improvements from positive reviews
+      const positiveReviews = enhancedReviews.filter(r => r.rating >= 4);
+      const featureRequests = new Map<string, number>();
+      
+      positiveReviews.forEach(review => {
+        const text = review.text?.toLowerCase() || '';
+        if (text.includes('would be great') || text.includes('wish') || text.includes('add')) {
+          review.mentionedFeatures?.forEach(feature => {
+            featureRequests.set(feature, (featureRequests.get(feature) || 0) + 1);
+          });
+        }
+      });
+      
+      featureRequests.forEach((count, feature) => {
+        improvements.push({
+          opportunity: `Enhance ${feature}`,
+          impact: 'medium',
+          effort: 'medium',
+          description: `${count} users mentioned wanting improvements to ${feature}`
+        });
+      });
+      
+      // Generate alerts for concerning trends
+      const negativePercentage = (negativeReviews.length / enhancedReviews.length) * 100;
+      if (negativePercentage > 20) {
+        alerts.push({
+          type: 'warning',
+          message: `${negativePercentage.toFixed(1)}% negative reviews exceed healthy threshold`,
+          urgency: 'high',
+          impact: 'high'
+        });
+      }
+      
+      const crashMentions = enhancedReviews.filter(r => 
+        r.text?.toLowerCase().includes('crash') || 
+        r.text?.toLowerCase().includes('freeze')
+      ).length;
+      
+      if (crashMentions > 2) {
+        alerts.push({
+          type: 'critical',
+          message: `${crashMentions} reviews mention app crashes - requires immediate attention`,
+          urgency: 'immediate',
+          impact: 'high'
+        });
+      }
+      
+      const result = { priorityIssues, improvements, alerts };
+      console.log('🔍 DATA DEBUG [INSIGHTS-RESULT]:', {
+        priorityIssuesCount: priorityIssues.length,
+        improvementsCount: improvements.length,
+        alertsCount: alerts.length
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error in actionable insights generation:', error);
       return { 
@@ -514,8 +787,10 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [enhancedReviews, reviewIntelligence]);
 
-  // Calculate analytics
+  // Enhanced analytics with comprehensive data population
   const reviewAnalytics = useMemo((): ReviewAnalytics => {
+    console.log('🔍 DATA DEBUG [ANALYTICS]: Processing analytics for reviews:', enhancedReviews?.length || 0);
+    
     if (!enhancedReviews || enhancedReviews.length === 0) {
       return {
         totalReviews: 0,
@@ -533,40 +808,98 @@ const ReviewManagementPage: React.FC = () => {
       const averageRating = totalReviews > 0 ? 
         enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
       
+      // Enhanced sentiment calculation
       const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
       enhancedReviews.forEach(r => {
-        if (r.enhancedSentiment) sentimentCounts[r.enhancedSentiment.overall]++;
-      });
-
-      const emotionalTotals = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
-      enhancedReviews.forEach(r => {
-        if (r.enhancedSentiment?.emotions) {
-          Object.keys(emotionalTotals).forEach(emotion => {
-            emotionalTotals[emotion as keyof typeof emotionalTotals] += 
-              r.enhancedSentiment!.emotions[emotion as keyof typeof emotionalTotals];
-          });
+        if (r.enhancedSentiment?.overall) {
+          sentimentCounts[r.enhancedSentiment.overall]++;
+        } else {
+          // Fallback based on rating
+          if (r.rating >= 4) sentimentCounts.positive++;
+          else if (r.rating <= 2) sentimentCounts.negative++;
+          else sentimentCounts.neutral++;
         }
       });
 
-      return {
+      // Enhanced emotional profile with real text analysis
+      const emotionalProfile = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
+      
+      enhancedReviews.forEach(r => {
+        if (r.enhancedSentiment?.emotions) {
+          // Use existing emotions if available
+          Object.keys(emotionalProfile).forEach(emotion => {
+            emotionalProfile[emotion as keyof typeof emotionalProfile] += 
+              r.enhancedSentiment!.emotions[emotion as keyof typeof emotionalProfile] || 0;
+          });
+        } else {
+          // Generate emotions from text and rating
+          const text = (r.text || '').toLowerCase();
+          
+          // Joy indicators
+          if (text.includes('love') || text.includes('amazing') || text.includes('excellent') || r.rating === 5) {
+            emotionalProfile.joy += 0.8;
+          }
+          
+          // Frustration indicators  
+          if (text.includes('frustrating') || text.includes('annoying') || text.includes('difficult')) {
+            emotionalProfile.frustration += 0.7;
+          }
+          
+          // Excitement indicators
+          if (text.includes('awesome') || text.includes('fantastic') || text.includes('incredible')) {
+            emotionalProfile.excitement += 0.6;
+          }
+          
+          // Disappointment indicators
+          if (text.includes('disappointed') || text.includes('expected better') || (r.rating <= 2 && text.length > 50)) {
+            emotionalProfile.disappointment += 0.5;
+          }
+          
+          // Anger indicators
+          if (text.includes('terrible') || text.includes('worst') || text.includes('hate') || r.rating === 1) {
+            emotionalProfile.anger += 0.4;
+          }
+        }
+      });
+
+      // Normalize emotional profile
+      const maxEmotion = Math.max(...Object.values(emotionalProfile));
+      if (maxEmotion > 0) {
+        Object.keys(emotionalProfile).forEach(emotion => {
+          emotionalProfile[emotion as keyof typeof emotionalProfile] = 
+            (emotionalProfile[emotion as keyof typeof emotionalProfile] / totalReviews) * 100;
+        });
+      }
+
+      const result = {
         totalReviews,
-        averageRating,
+        averageRating: Number(averageRating.toFixed(2)),
         sentimentDistribution: {
-          positive: totalReviews > 0 ? (sentimentCounts.positive / totalReviews) * 100 : 0,
-          neutral: totalReviews > 0 ? (sentimentCounts.neutral / totalReviews) * 100 : 0,
-          negative: totalReviews > 0 ? (sentimentCounts.negative / totalReviews) * 100 : 0,
+          positive: totalReviews > 0 ? Number(((sentimentCounts.positive / totalReviews) * 100).toFixed(1)) : 0,
+          neutral: totalReviews > 0 ? Number(((sentimentCounts.neutral / totalReviews) * 100).toFixed(1)) : 0,
+          negative: totalReviews > 0 ? Number(((sentimentCounts.negative / totalReviews) * 100).toFixed(1)) : 0,
         },
-        emotionalProfile: totalReviews > 0 ? {
-          joy: emotionalTotals.joy / totalReviews,
-          frustration: emotionalTotals.frustration / totalReviews,
-          excitement: emotionalTotals.excitement / totalReviews,
-          disappointment: emotionalTotals.disappointment / totalReviews,
-          anger: emotionalTotals.anger / totalReviews,
-        } : { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
+        emotionalProfile: {
+          joy: Number(emotionalProfile.joy.toFixed(1)),
+          frustration: Number(emotionalProfile.frustration.toFixed(1)),
+          excitement: Number(emotionalProfile.excitement.toFixed(1)),
+          disappointment: Number(emotionalProfile.disappointment.toFixed(1)),
+          anger: Number(emotionalProfile.anger.toFixed(1))
+        },
         topThemes: reviewIntelligence?.themes?.slice(0, 5).map(t => t.theme) || [],
-        criticalIssues: actionableInsights?.priorityIssues?.filter(i => i.urgency === 'immediate' || i.urgency === 'high').length || 0,
+        criticalIssues: reviewIntelligence?.issuePatterns?.filter(i => i.severity === 'critical' || i.severity === 'major').length || 0,
         trendingTopics: reviewIntelligence?.featureMentions?.slice(0, 3).map(f => f.feature) || []
       };
+      
+      console.log('🔍 DATA DEBUG [ANALYTICS-RESULT]:', {
+        totalReviews: result.totalReviews,
+        averageRating: result.averageRating,
+        sentimentDist: result.sentimentDistribution,
+        topThemes: result.topThemes.length,
+        criticalIssues: result.criticalIssues
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error in review analytics calculation:', error);
       return {
@@ -579,7 +912,7 @@ const ReviewManagementPage: React.FC = () => {
         trendingTopics: []
       };
     }
-  }, [enhancedReviews, reviewIntelligence, actionableInsights]);
+  }, [enhancedReviews, reviewIntelligence]);
 
   // AI Insight Filter State
   const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
