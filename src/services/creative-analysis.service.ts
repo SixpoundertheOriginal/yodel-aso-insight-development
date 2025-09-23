@@ -70,6 +70,7 @@ export interface CreativeAnalysisWithAI {
     commonLayoutTypes: Array<{ item: string; count: number; percentage: number }>;
     insights: string[];
   };
+  errors?: Array<{appName: string; error: string}>;
   error?: string;
 }
 
@@ -495,9 +496,21 @@ export class CreativeAnalysisService {
       const analysisResult = data.data || data;
       console.log('Extracted analysis result:', analysisResult);
 
-      if (analysisResult.error) {
-        throw new Error(`AI Analysis failed: ${analysisResult.error}`);
+      if (!analysisResult.success) {
+        throw new Error(`AI Analysis failed: ${analysisResult.error || 'Unknown error'}`);
       }
+
+      // Handle individual analysis errors
+      if (analysisResult.errors && analysisResult.errors.length > 0) {
+        console.warn('Some individual analyses failed:', analysisResult.errors);
+      }
+
+      const result: CreativeAnalysisWithAI = {
+        success: true,
+        individual: analysisResult.individual || [],
+        patterns: analysisResult.patterns || null,
+        errors: analysisResult.errors || []
+      };
 
       // Store results in database if sessionId provided
       if (sessionId && analysisResult.individual) {

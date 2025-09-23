@@ -49,7 +49,7 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
       competitorAppInfo: apps.slice(1),
     };
   }, [analysis, apps]);
-  if (!analysis.success || analysis.individual.length === 0) {
+  if (!analysis.success || (analysis.individual.length === 0 && (!analysis.errors || analysis.errors.length === 0))) {
     return (
       <Card className="border-destructive bg-destructive/10">
         <CardContent className="p-6">
@@ -83,18 +83,60 @@ export const CreativeAnalysisResults: React.FC<CreativeAnalysisResultsProps> = (
           />
         )}
 
+        {/* Display errors if any individual analyses failed */}
+        {analysis.errors && analysis.errors.length > 0 && (
+          <Card className="border-orange-500 bg-orange-500/10">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Badge variant="secondary" className="bg-orange-500/20 text-orange-300">
+                  Partial Results
+                </Badge>
+                <div className="space-y-2">
+                  <p className="text-sm text-orange-300 font-medium">
+                    Some screenshots could not be analyzed:
+                  </p>
+                  <ul className="text-sm text-orange-200 space-y-1">
+                    {analysis.errors.map((error, index) => (
+                      <li key={index} className="flex items-center gap-2">
+                        <span className="text-orange-400">•</span>
+                        <span className="font-medium">{error.appName}:</span>
+                        <span>{error.error}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-6">
           <h3 className="text-xl font-semibold text-zinc-100">
             Screenshot Analysis Results
           </h3>
 
-          {analysis.individual.map((screenshot, index) => (
-            <ScreenshotAnalysisCard
-              key={`${screenshot.appId}-${index}`}
-              analysis={screenshot}
-              index={index}
-            />
-          ))}
+          {analysis.individual.length > 0 ? (
+            analysis.individual.map((screenshot, index) => (
+              <ScreenshotAnalysisCard
+                key={`${screenshot.appId}-${index}`}
+                analysis={screenshot}
+                index={index}
+              />
+            ))
+          ) : (
+            <Card className="border-yellow-500 bg-yellow-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-300">
+                    No Results
+                  </Badge>
+                  <p className="text-yellow-300">
+                    No screenshots were successfully analyzed. Please check the error details above.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </TabsContent>
       <TabsContent value="first" className="mt-6">

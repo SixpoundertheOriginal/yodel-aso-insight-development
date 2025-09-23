@@ -165,8 +165,7 @@ Return ONLY valid JSON with this structure:
             ]
           }
         ],
-        max_tokens: 2000,
-        temperature: 0.1,
+        max_completion_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
@@ -241,16 +240,22 @@ Return ONLY valid JSON with this structure:
 const processBatchAnalysis = async (screenshots: ScreenshotInput[]): Promise<{
   individual: ScreenshotAnalysis[];
   patterns: ReturnType<typeof analyzePatterns>;
+  errors?: Array<{appName: string; error: string}>;
 }> => {
   // Process screenshots in batches to respect rate limits
   const batchSize = 3;
   const results: ScreenshotAnalysis[] = [];
+  const errors: Array<{appName: string; error: string}> = [];
   
   for (let i = 0; i < screenshots.length; i += batchSize) {
     const batch = screenshots.slice(i, i + batchSize);
     const batchPromises = batch.map(screenshot => 
       analyzeScreenshotWithVision(screenshot).catch(error => {
         console.error(`Failed to analyze ${screenshot.appName}:`, error);
+        errors.push({
+          appName: screenshot.appName,
+          error: error.message || 'Analysis failed'
+        });
         return null;
       })
     );
@@ -269,7 +274,8 @@ const processBatchAnalysis = async (screenshots: ScreenshotInput[]): Promise<{
   
   return {
     individual: results,
-    patterns
+    patterns,
+    ...(errors.length > 0 && { errors })
   };
 };
 
@@ -389,8 +395,7 @@ Provide analysis in this exact JSON format:
           ],
         },
       ],
-      max_tokens: 1000,
-      temperature: 0.1,
+      max_completion_tokens: 1000,
     }),
   });
 
@@ -432,10 +437,24 @@ serve(async (req) => {
     if (analysisType === 'batch' && screenshots.length > 1) {
       result = await processBatchAnalysis(screenshots);
     } else {
+      const errors: Array<{appName: string; error: string}> = [];
       const individual = await Promise.all(
-        screenshots.map((screenshot) => analyzeScreenshotWithVision(screenshot))
+        screenshots.map((screenshot) => 
+          analyzeScreenshotWithVision(screenshot).catch(error => {
+            console.error(`Failed to analyze ${screenshot.appName}:`, error);
+            errors.push({
+              appName: screenshot.appName,
+              error: error.message || 'Analysis failed'
+            });
+            return null;
+          })
+        )
       );
-      result = { individual, patterns: null };
+      result = { 
+        individual: individual.filter(result => result !== null), 
+        patterns: null,
+        ...(errors.length > 0 && { errors })
+      };
     }
 
     const responseBody: Record<string, unknown> = { success: true, ...result };
