@@ -37,6 +37,7 @@ import {
   extractReviewIntelligence, 
   generateActionableInsights 
 } from '@/engines/review-intelligence.engine';
+import { CollapsibleAnalyticsSection } from '@/components/reviews/CollapsibleAnalyticsSection';
 
 
 interface AppSearchResult {
@@ -1330,6 +1331,18 @@ const ReviewManagementPage: React.FC = () => {
                 <div className="text-[10px] text-muted-foreground mt-1">based on loaded pages</div>
               </div>
             </div>
+            
+            {/* AI Analytics Section - Collapsible */}
+            {reviews.length > 0 && (
+              <CollapsibleAnalyticsSection
+                reviews={enhancedReviews}
+                intelligence={reviewIntelligence}
+                insights={actionableInsights}
+                analytics={reviewAnalytics}
+                onInsightAction={handleInsightAction}
+              />
+            )}
+            
             {/* Filters Row */}
             <YodelToolbar>
               <div className="flex items-center gap-2">
