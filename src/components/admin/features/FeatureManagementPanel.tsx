@@ -2,25 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
-import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Settings, Users, BarChart3 } from 'lucide-react';
-
-interface PlatformFeature {
-  id: string;
-  feature_key: string;
-  feature_name: string;
-  description: string;
-  category: string;
-  is_active: boolean;
-  is_enabled?: boolean; // For organization view
-}
+import { Loader2, Settings, Users } from 'lucide-react';
+import { organizationsApi, featuresApi, type PlatformFeature } from '@/lib/admin-api';
 
 interface Organization {
   id: string;
@@ -44,25 +31,12 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
   // Load organizations list
   const loadOrganizations = async () => {
     try {
-      const session = await supabase.auth.getSession();
-      const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-organizations`, {
-        headers: {
-          'Authorization': `Bearer ${session.data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const orgs = await organizationsApi.list();
+      const safeOrgs = orgs || [];
+      setOrganizations(safeOrgs);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch organizations');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setOrganizations(data.data.organizations || []);
-        // Set default selection to first org if no organizationId prop provided
-        if (!organizationId && data.data.organizations?.length > 0) {
-          setSelectedOrgId(data.data.organizations[0].id);
-        }
+      if (!organizationId && safeOrgs.length > 0) {
+        setSelectedOrgId(safeOrgs[0].id);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
@@ -109,22 +83,8 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
 
     try {
       setLoading(true);
-      const session = await supabase.auth.getSession();
-      const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-features/organization/${orgId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch organization features');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setFeatures(data.data.features);
-      }
+      const { features: orgFeatures } = await featuresApi.listOrganization(orgId);
+      setFeatures(orgFeatures || []);
     } catch (error) {
       console.error('Error loading organization features:', error);
       toast({
@@ -143,36 +103,16 @@ export function FeatureManagementPanel({ organizationId }: FeatureManagementPane
 
     try {
       setSaving(true);
-      const session = await supabase.auth.getSession();
-      const response = await fetch(`https://bkbcqocpjahewqjmlgvf.supabase.co/functions/v1/admin-features/organization`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          organization_id: selectedOrgId,
-          feature_key: featureKey,
-          is_enabled: enabled
-        })
+      await featuresApi.toggleOrganization(selectedOrgId, featureKey, enabled);
+
+      setFeatures(prev => prev.map(f =>
+        f.feature_key === featureKey ? { ...f, is_enabled: enabled } : f
+      ));
+
+      toast({
+        title: 'Success',
+        description: `Feature ${enabled ? 'enabled' : 'disabled'} successfully`
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle feature');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        // Update local state
-        setFeatures(prev => prev.map(f => 
-          f.feature_key === featureKey ? { ...f, is_enabled: enabled } : f
-        ));
-
-        toast({
-          title: 'Success',
-          description: `Feature ${enabled ? 'enabled' : 'disabled'} successfully`
-        });
-      }
     } catch (error) {
       console.error('Error toggling feature:', error);
       toast({

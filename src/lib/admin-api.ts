@@ -94,6 +94,16 @@ type ActivityItem = {
   metadata?: Record<string, unknown>;
 };
 
+export type PlatformFeature = {
+  id: string;
+  feature_key: string;
+  feature_name: string;
+  description: string | null;
+  category: string | null;
+  is_active: boolean;
+  is_enabled?: boolean;
+};
+
 // Organizations API
 export const organizationsApi = {
   list: (): Promise<Organization[]> => adminClient.invoke<Organization[]>('admin-organizations', { action: 'list' }),
@@ -103,6 +113,26 @@ export const organizationsApi = {
   update: (id: string, data: any): Promise<Organization> => adminClient.put<Organization>('admin-organizations', id, data),
     
   delete: (id: string): Promise<void> => adminClient.delete<void>('admin-organizations', id),
+};
+
+// Feature management API
+export const featuresApi = {
+  listPlatform: (): Promise<{ features: PlatformFeature[] }> =>
+    adminClient.invoke<{ features: PlatformFeature[] }>('admin-features', { action: 'list_platform_features' }),
+
+  listOrganization: (organizationId: string): Promise<{ organization_id: string; features: PlatformFeature[] }> =>
+    adminClient.invoke<{ organization_id: string; features: PlatformFeature[] }>('admin-features', {
+      action: 'get_org_features',
+      organization_id: organizationId,
+    }),
+
+  toggleOrganization: (organizationId: string, featureKey: string, isEnabled: boolean): Promise<{ organization_id: string; feature_key: string; is_enabled: boolean }> =>
+    adminClient.invoke('admin-features', {
+      action: 'toggle_org_feature',
+      organization_id: organizationId,
+      feature_key: featureKey,
+      is_enabled: isEnabled,
+    }),
 };
 
 // Users API - Consolidated to single admin-users endpoint

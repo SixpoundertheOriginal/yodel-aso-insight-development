@@ -4,7 +4,32 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  'Access-Control-Allow-Methods': 'OPTIONS,GET,POST',
+};
+
+const jsonResponse = (status: number, payload: Record<string, unknown>) =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const success = (data: Record<string, unknown>, status = 200) =>
+  jsonResponse(status, { success: true, data });
+
+const failure = (status: number, code: string, message: string, details?: unknown) =>
+  jsonResponse(status, {
+    success: false,
+    error: { code, message, details },
+  });
+
+const normalizeOrgFeatures = (
+  features: any[] | null | undefined,
+  entitlements: Record<string, boolean>,
+) =>
+  (features || []).map((feature) => ({
+    ...feature,
+    is_enabled: entitlements[feature.feature_key] ?? false,
+  }));
 
 interface FeatureToggleRequest {
   organization_id: string;
@@ -22,52 +47,178 @@ interface UserFeatureOverrideRequest {
 }
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase environment variables');
+      return failure(500, 'CONFIG_ERROR', 'Missing Supabase configuration');
+    }
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Get user from request
+
+    // Extract authenticated user from request token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Missing authorization header' }
-      }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+      return failure(401, 'UNAUTHORIZED', 'Missing authorization header');
     }
 
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: 'Invalid token' }
-      }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+      return failure(401, 'UNAUTHORIZED', 'Invalid token');
     }
 
-    // Check if user is super admin
-    const { data: isSuperAdmin } = await supabaseAdmin.rpc('is_super_admin', { 
-      user_id: user.id 
+    // Determine if caller is a super admin
+    const { data: isSuperAdmin } = await supabaseAdmin.rpc('is_super_admin', {
+      user_id: user.id,
     });
 
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // GET /admin-features - List all platform features
+    let body: Record<string, unknown> = {};
+    if (req.method !== 'GET') {
+      try {
+        body = await req.json();
+      } catch (_err) {
+        body = {};
+      }
+    }
+
+    const action = typeof body.action === 'string' ? body.action : undefined;
+
+    // Action-based invocation (called via supabase.functions.invoke)
+    if (req.method === 'POST' && action === 'list_platform_features') {
+      const { data: features, error } = await supabaseAdmin
+        .from('platform_features')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('feature_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching platform features:', error);
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch platform features');
+      }
+
+      return success({ features });
+    }
+
+    if (req.method === 'POST' && action === 'get_org_features') {
+      const orgId = typeof body.organization_id === 'string' ? body.organization_id : undefined;
+
+      if (!orgId) {
+        return failure(400, 'INVALID_PARAMS', 'organization_id is required');
+      }
+
+      const [featuresResult, entitlementsResult] = await Promise.all([
+        supabaseAdmin
+          .from('platform_features')
+          .select('*')
+          .order('category', { ascending: true })
+          .order('feature_name', { ascending: true }),
+        supabaseAdmin
+          .from('org_feature_entitlements')
+          .select('feature_key, is_enabled')
+          .eq('organization_id', orgId),
+      ]);
+
+      if (featuresResult.error) {
+        console.error('Error fetching org features:', featuresResult.error);
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch organization features', featuresResult.error);
+      }
+
+      if (entitlementsResult.error) {
+        console.error('Error fetching org entitlements:', entitlementsResult.error);
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch organization features', entitlementsResult.error);
+      }
+
+      const entitlementsMap = Object.fromEntries(
+        (entitlementsResult.data || []).map((item) => [item.feature_key, item.is_enabled])
+      );
+
+      return success({
+        organization_id: orgId,
+        features: normalizeOrgFeatures(featuresResult.data, entitlementsMap),
+      });
+    }
+
+    if (req.method === 'POST' && action === 'toggle_org_feature') {
+      if (!isSuperAdmin) {
+        return failure(403, 'FORBIDDEN', 'Only super admins can toggle organization features');
+      }
+
+      const togglePayload = body as FeatureToggleRequest;
+      const { organization_id, feature_key, is_enabled } = togglePayload;
+
+      if (!organization_id || !feature_key || typeof is_enabled !== 'boolean') {
+        return failure(400, 'INVALID_PARAMS', 'Missing required parameters');
+      }
+
+      const { data: existingEntitlement, error: fetchError, status: fetchStatus } = await supabaseAdmin
+        .from('org_feature_entitlements')
+        .select('id, organization_id, feature_key')
+        .eq('organization_id', organization_id)
+        .eq('feature_key', feature_key)
+        .maybeSingle();
+
+      if (fetchError && fetchStatus !== 406) {
+        console.error('Error fetching entitlement before toggle:', fetchError);
+        return failure(500, 'FETCH_ERROR', 'Failed to read current entitlement', fetchError);
+      }
+
+      const now = new Date().toISOString();
+
+      if (existingEntitlement) {
+        const { error: updateError } = await supabaseAdmin
+          .from('org_feature_entitlements')
+          .update({
+            is_enabled,
+            granted_by: is_enabled ? user.id : null,
+            granted_at: is_enabled ? now : null,
+            updated_at: now,
+          })
+          .eq('id', existingEntitlement.id);
+
+        if (updateError) {
+          console.error('Error updating org feature entitlement:', updateError);
+          return failure(500, 'UPDATE_ERROR', 'Failed to update feature access', updateError);
+        }
+      } else {
+        const { error: insertError } = await supabaseAdmin
+          .from('org_feature_entitlements')
+          .insert({
+            organization_id,
+            feature_key,
+            is_enabled,
+            granted_by: user.id,
+            granted_at: now,
+          });
+
+        if (insertError) {
+          console.error('Error inserting org feature entitlement:', insertError);
+          return failure(500, 'UPDATE_ERROR', 'Failed to update feature access', insertError);
+        }
+      }
+
+      await supabaseAdmin.from('audit_logs').insert({
+        user_id: user.id,
+        organization_id,
+        action: 'feature_toggle',
+        resource_type: 'organization_feature',
+        details: { feature_key, is_enabled, changed_by: user.id },
+      });
+
+      return success({ organization_id, feature_key, is_enabled });
+    }
+
+    // REST endpoints (backwards compatibility for existing clients)
     if (req.method === 'GET' && path.endsWith('/admin-features')) {
       const { data: features, error } = await supabaseAdmin
         .from('platform_features')
@@ -77,31 +228,19 @@ Deno.serve(async (req: Request) => {
 
       if (error) {
         console.error('Error fetching platform features:', error);
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'FETCH_ERROR', message: 'Failed to fetch platform features' }
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch platform features');
       }
 
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: { features },
-        scope: { user_id: user.id, is_super_admin: isSuperAdmin, timestamp: new Date().toISOString() }
-      }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return success({
+        features,
+        scope: { user_id: user.id, is_super_admin: isSuperAdmin, timestamp: new Date().toISOString() },
       });
     }
 
-    // GET /admin-features/organization/{org_id} - Get organization feature entitlements
     if (req.method === 'GET' && path.includes('/organization/')) {
       const orgId = path.split('/organization/')[1];
-      
+
       if (!isSuperAdmin) {
-        // Check if user is org admin for this organization
         const { data: userProfile } = await supabaseAdmin
           .from('profiles')
           .select('organization_id')
@@ -109,135 +248,92 @@ Deno.serve(async (req: Request) => {
           .single();
 
         if (!userProfile || userProfile.organization_id !== orgId) {
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied to organization features' }
-          }), { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          });
+          return failure(403, 'FORBIDDEN', 'Access denied to organization features');
         }
       }
 
-      // Get all platform features with org entitlements
-      const { data: features, error: featuresError } = await supabaseAdmin
-        .from('platform_features')
-        .select(`
-          *,
-          org_feature_access!left(is_enabled)
-        `)
-        .eq('org_feature_access.organization_id', orgId)
-        .order('category')
-        .order('feature_name');
+      const [featuresResult, entitlementsResult] = await Promise.all([
+        supabaseAdmin
+          .from('platform_features')
+          .select('*')
+          .order('category', { ascending: true })
+          .order('feature_name', { ascending: true }),
+        supabaseAdmin
+          .from('org_feature_entitlements')
+          .select('feature_key, is_enabled')
+          .eq('organization_id', orgId),
+      ]);
 
-      if (featuresError) {
-        console.error('Error fetching org features:', featuresError);
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'FETCH_ERROR', message: 'Failed to fetch organization features' }
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+      if (featuresResult.error) {
+        console.error('Error fetching org features:', featuresResult.error);
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch organization features', featuresResult.error);
       }
 
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: { 
-          organization_id: orgId,
-          features: features?.map(feature => ({
-            ...feature,
-            is_enabled: feature.org_feature_access?.[0]?.is_enabled || false
-          })) || []
-        },
-        scope: { user_id: user.id, organization_id: orgId, timestamp: new Date().toISOString() }
-      }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      if (entitlementsResult.error) {
+        console.error('Error fetching org entitlements:', entitlementsResult.error);
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch organization features', entitlementsResult.error);
+      }
+
+      const entitlementsMap = Object.fromEntries(
+        (entitlementsResult.data || []).map((item) => [item.feature_key, item.is_enabled])
+      );
+
+      return success({
+        organization_id: orgId,
+        features: normalizeOrgFeatures(featuresResult.data, entitlementsMap),
+        scope: { user_id: user.id, organization_id: orgId, timestamp: new Date().toISOString() },
       });
     }
 
-    // POST /admin-features/organization - Toggle organization feature
     if (req.method === 'POST' && path.includes('/organization')) {
       if (!isSuperAdmin) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'FORBIDDEN', message: 'Only super admins can toggle organization features' }
-        }), { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(403, 'FORBIDDEN', 'Only super admins can toggle organization features');
       }
 
-      const body: FeatureToggleRequest = await req.json();
-      const { organization_id, feature_key, is_enabled } = body;
+      const { organization_id, feature_key, is_enabled } = body as FeatureToggleRequest;
 
       if (!organization_id || !feature_key || typeof is_enabled !== 'boolean') {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'INVALID_PARAMS', message: 'Missing required parameters' }
-        }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(400, 'INVALID_PARAMS', 'Missing required parameters');
       }
 
-      // Upsert organization feature access
       const { error: upsertError } = await supabaseAdmin
-        .from('org_feature_access')
+        .from('org_feature_entitlements')
         .upsert({
           organization_id,
           feature_key,
           is_enabled,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
 
       if (upsertError) {
         console.error('Error updating org feature access:', upsertError);
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'UPDATE_ERROR', message: 'Failed to update feature access' }
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(500, 'UPDATE_ERROR', 'Failed to update feature access');
       }
 
-      // Log the change
       await supabaseAdmin.from('audit_logs').insert({
         user_id: user.id,
         organization_id,
         action: 'feature_toggle',
         resource_type: 'organization_feature',
-        details: { feature_key, is_enabled, changed_by: user.id }
+        details: { feature_key, is_enabled, changed_by: user.id },
       });
 
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: { organization_id, feature_key, is_enabled },
-        scope: { user_id: user.id, organization_id, timestamp: new Date().toISOString() }
-      }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return success({
+        organization_id,
+        feature_key,
+        is_enabled,
+        scope: { user_id: user.id, organization_id, timestamp: new Date().toISOString() },
       });
     }
 
-    // POST /admin-features/user-override - Set user feature override
     if (req.method === 'POST' && path.includes('/user-override')) {
-      const body: UserFeatureOverrideRequest = await req.json();
-      const { user_id, organization_id, feature_key, is_enabled, reason, expires_at } = body;
+      const { user_id, organization_id, feature_key, is_enabled, reason, expires_at } =
+        body as UserFeatureOverrideRequest;
 
       if (!user_id || !organization_id || !feature_key || typeof is_enabled !== 'boolean') {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'INVALID_PARAMS', message: 'Missing required parameters' }
-        }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(400, 'INVALID_PARAMS', 'Missing required parameters');
       }
 
-      // Check permissions - super admin or org admin for this org
       if (!isSuperAdmin) {
         const { data: userProfile } = await supabaseAdmin
           .from('profiles')
@@ -246,17 +342,10 @@ Deno.serve(async (req: Request) => {
           .single();
 
         if (!userProfile || userProfile.organization_id !== organization_id) {
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied to set user overrides' }
-          }), { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          });
+          return failure(403, 'FORBIDDEN', 'Access denied to set user overrides');
         }
       }
 
-      // Upsert user feature override
       const { error: upsertError } = await supabaseAdmin
         .from('user_feature_overrides')
         .upsert({
@@ -267,44 +356,36 @@ Deno.serve(async (req: Request) => {
           granted_by: user.id,
           reason,
           expires_at,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
 
       if (upsertError) {
         console.error('Error updating user feature override:', upsertError);
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'UPDATE_ERROR', message: 'Failed to update user feature override' }
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(500, 'UPDATE_ERROR', 'Failed to update user feature override');
       }
 
-      // Log the change
       await supabaseAdmin.from('audit_logs').insert({
         user_id: user.id,
         organization_id,
         action: 'user_feature_override',
         resource_type: 'user_feature',
-        details: { target_user_id: user_id, feature_key, is_enabled, reason, changed_by: user.id }
+        details: { target_user_id: user_id, feature_key, is_enabled, reason, changed_by: user.id },
       });
 
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: { user_id, organization_id, feature_key, is_enabled },
-        scope: { user_id: user.id, organization_id, timestamp: new Date().toISOString() }
-      }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return success({
+        user_id,
+        organization_id,
+        feature_key,
+        is_enabled,
+        reason,
+        expires_at,
+        scope: { user_id: user.id, organization_id, timestamp: new Date().toISOString() },
       });
     }
 
-    // GET /admin-features/user/{user_id} - Get user feature overrides  
     if (req.method === 'GET' && path.includes('/user/')) {
       const targetUserId = path.split('/user/')[1];
-      
-      // Get user's org to check permissions
+
       const { data: targetUserProfile } = await supabaseAdmin
         .from('profiles')
         .select('organization_id')
@@ -312,16 +393,9 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (!targetUserProfile) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'User not found' }
-        }), { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(404, 'NOT_FOUND', 'User not found');
       }
 
-      // Check permissions
       if (!isSuperAdmin) {
         const { data: userProfile } = await supabaseAdmin
           .from('profiles')
@@ -330,17 +404,10 @@ Deno.serve(async (req: Request) => {
           .single();
 
         if (!userProfile || userProfile.organization_id !== targetUserProfile.organization_id) {
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied to user feature overrides' }
-          }), { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          });
+          return failure(403, 'FORBIDDEN', 'Access denied to user feature overrides');
         }
       }
 
-      // Get user feature overrides
       const { data: overrides, error } = await supabaseAdmin
         .from('user_feature_overrides')
         .select('*, platform_features(feature_name, category)')
@@ -349,45 +416,21 @@ Deno.serve(async (req: Request) => {
 
       if (error) {
         console.error('Error fetching user overrides:', error);
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: { code: 'FETCH_ERROR', message: 'Failed to fetch user overrides' }
-        }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
+        return failure(500, 'FETCH_ERROR', 'Failed to fetch user overrides');
       }
 
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: { 
-          user_id: targetUserId,
-          organization_id: targetUserProfile.organization_id,
-          overrides: overrides || []
-        },
-        scope: { user_id: user.id, timestamp: new Date().toISOString() }
-      }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return success({
+        user_id: targetUserId,
+        organization_id: targetUserProfile.organization_id,
+        overrides: overrides || [],
+        scope: { user_id: user.id, timestamp: new Date().toISOString() },
       });
     }
 
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: { code: 'NOT_FOUND', message: 'Endpoint not found' }
-    }), { 
-      status: 404, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
-
+    return failure(404, 'NOT_FOUND', 'Endpoint not found');
   } catch (error) {
     console.error('Unexpected error in admin-features:', error);
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-    }), { 
-      status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return failure(500, 'INTERNAL_ERROR', message);
   }
 });

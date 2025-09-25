@@ -77,13 +77,43 @@ export async function invokeAdminFunction<T = any>(
     });
 
     // Invoke Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: finalPayload
+    const { data, error, status } = await supabase.functions.invoke(functionName, {
+      body: finalPayload,
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      }
     });
 
     // Check for function invocation error
     if (error) {
-      console.error(`🔧 [AdminClient] Function ${functionName} invocation error:`, error);
+      const context = (error as any)?.context;
+      let bodyPreview: string | undefined;
+
+      if (context && typeof context.text === 'function') {
+        try {
+          const raw = await context.text();
+          bodyPreview = raw;
+
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.error?.details) {
+              console.error(`🔧 [AdminClient] ${functionName} error details:`, parsed.error.details);
+            }
+          } catch (_jsonError) {
+            // Ignore JSON parse errors, keep raw body
+          }
+        } catch (readError) {
+          console.warn(`🔧 [AdminClient] Failed to read error body for ${functionName}:`, readError);
+        }
+      }
+
+      console.error(`🔧 [AdminClient] Function ${functionName} invocation error:`, {
+        name: error.name,
+        message: error.message,
+        status: context?.status,
+        body: bodyPreview,
+        payloadKeys: Object.keys(finalPayload)
+      });
       throw new AdminApiError(
         error.message || `Function ${functionName} failed`,
         500,
@@ -96,6 +126,11 @@ export async function invokeAdminFunction<T = any>(
     if (data && typeof data === 'object') {
       // Check if it's an error response
       if (!data.success && data.error) {
+        console.error(`🔧 [AdminClient] Function ${functionName} returned error`, {
+          statusCode: data.status ?? status ?? 'unknown',
+          error: data.error,
+          payloadKeys: Object.keys(finalPayload),
+        });
         throw new AdminApiError(
           data.error,
           data.status || 400,

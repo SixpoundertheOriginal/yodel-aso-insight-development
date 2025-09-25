@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts';
 import { AsoAiHubProvider } from '@/context/AsoAiHubContext';
 import { WorkflowProvider } from '@/context/WorkflowContext';
@@ -11,12 +10,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
-import { Brain, Target } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import { featureEnabledForRole, type UserRole } from '@/constants/features';
 import { NotAuthorized } from '@/components/NotAuthorized';
 
 const AsoAiHubPage: React.FC = () => {
-  const navigate = useNavigate();
   const dataContext = useDataAccess();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
     dataContext.organizationId
