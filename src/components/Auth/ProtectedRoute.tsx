@@ -67,7 +67,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Show NoAccess screen for users without org/roles (unless super admin)
-  if (shouldShowNoAccess || routeAllowed === false) {
+  // Super admins bypass this check even without organization
+  if (!isSuperAdmin && (shouldShowNoAccess || routeAllowed === false)) {
     return (
       <Suspense fallback={<AuthLoadingSpinner />}>
         <NoAccess />

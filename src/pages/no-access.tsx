@@ -18,11 +18,14 @@ const NoAccess = () => {
   useEffect(() => {
     if (user) {
       // Determine reason for access denial
+      // Super admins should never be denied for organization reasons
       let reason: 'no-organization' | 'no-roles' | 'other' = 'other';
-      if (!organizationId) {
-        reason = 'no-organization';
-      } else if (!roles?.length) {
-        reason = 'no-roles';
+      if (!isSuperAdmin) {
+        if (!organizationId) {
+          reason = 'no-organization';
+        } else if (!roles?.length) {
+          reason = 'no-roles';
+        }
       }
 
       // Log using centralized analytics service

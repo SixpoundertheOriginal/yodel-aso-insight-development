@@ -3,6 +3,7 @@ import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { useServerAuth } from '@/context/ServerAuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { authorizePath } from '@/services/authz';
 import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 
@@ -26,6 +27,7 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
   const currentPath = location.pathname + location.search;
   const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
   const { loading: serverAuthLoading } = useServerAuth();
+  const { isSuperAdmin } = usePermissions();
   const [routeAllowed, setRouteAllowed] = React.useState<boolean | null>(null);
 
   // Public routes that don't need auth
@@ -81,7 +83,8 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
   }
 
   // Show NoAccess for authenticated users without proper access
-  if (shouldShowNoAccess || routeAllowed === false) {
+  // Super admins bypass this check even without organization
+  if (!isSuperAdmin && (shouldShowNoAccess || routeAllowed === false)) {
     return (
       <Suspense fallback={<AuthLoadingSpinner />}>
         <NoAccess />
