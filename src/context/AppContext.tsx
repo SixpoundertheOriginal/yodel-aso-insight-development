@@ -43,13 +43,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Platform super admin can view apps for selected organization
       if (isSuperAdmin) {
         if (!selectedOrganizationId) return [];
-        const { data: apps, error } = await supabase
-          .from('apps')
+        const { data: orgApps, error } = await (supabase as any)
+          .from('org_app_access')
           .select('*')
           .eq('organization_id', selectedOrganizationId)
+          .is('detached_at', null)
           .order('created_at', { ascending: false });
         if (error) throw error;
-        return apps || [];
+        
+        // Transform org_app_access to App format
+        return (orgApps || []).map((orgApp: any) => ({
+          id: orgApp.app_id,
+          app_name: orgApp.app_id,
+          platform: 'ios',
+          is_active: true,
+          created_at: orgApp.created_at,
+          updated_at: orgApp.created_at
+        }));
       }
 
       const { data: profile } = await supabase
@@ -60,14 +70,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!profile?.organization_id) return [];
 
-      const { data: apps, error } = await supabase
-        .from('apps')
+      const { data: orgApps, error } = await (supabase as any)
+        .from('org_app_access')
         .select('*')
         .eq('organization_id', profile.organization_id)
+        .is('detached_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return apps || [];
+      
+      // Transform org_app_access to App format
+      return (orgApps || []).map((orgApp: any) => ({
+        id: orgApp.app_id,
+        app_name: orgApp.app_id,
+        platform: 'ios',
+        is_active: true,
+        created_at: orgApp.created_at,
+        updated_at: orgApp.created_at
+      }));
     },
     enabled: !!user && (!isSuperAdmin || !!selectedOrganizationId),
     refetchOnWindowFocus: false,

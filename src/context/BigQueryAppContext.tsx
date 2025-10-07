@@ -59,12 +59,11 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
         }
 
         // Get approved BigQuery apps for organization
-        const { data: approvedApps, error } = await supabase
-          .from('organization_apps')
-          .select('app_identifier')
+        const { data: approvedApps, error } = await (supabase as any)
+          .from('org_app_access')
+          .select('app_id')
           .eq('organization_id', organizationId)
-          .eq('data_source', 'bigquery')
-          .eq('approval_status', 'approved');
+          .is('detached_at', null);
 
         if (error) {
           console.error('[BigQueryAppContext] Error loading approved BigQuery apps:', error);
@@ -74,7 +73,7 @@ const BigQueryAppProviderComponent: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        const appIdentifiers = approvedApps?.map((app: any) => app.app_identifier) || [];
+        const appIdentifiers = approvedApps?.map((app: any) => app.app_id) || [];
         
         debugLog.verbose('[BigQueryAppContext] Loaded approved apps:', {
           organizationId,

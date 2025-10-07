@@ -63,20 +63,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // Log the change
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id: organization_id,
-          user_id: user.id,
-          action: 'USER_UPDATED',
-          resource_type: 'user',
-          resource_id: id as string,
+      // Log the change (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id: organization_id,
+            user_id: user.id,
+            action: 'USER_UPDATED',
+            resource_type: 'user',
+            resource_id: id as string,
             details: {
               changes: { roles, organization_id, first_name, last_name },
               updated_by: user.email
             }
           });
+      } catch (auditError) {
+        console.warn('Failed to log user update to audit_logs:', auditError);
+      }
 
       res.status(200).json({
         ...updatedProfile,
@@ -95,20 +99,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { error: authDeleteError } = await supabase.auth.admin.deleteUser(id as string);
       if (authDeleteError) throw authDeleteError;
 
-      // Log the deletion
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id: userToDelete?.organization_id,
-          user_id: user.id,
-          action: 'USER_DELETED',
-          resource_type: 'user',
-          resource_id: id as string,
-          details: {
-            deleted_user_email: userToDelete?.email,
-            deleted_by: user.email
-          }
-        });
+      // Log the deletion (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id: userToDelete?.organization_id,
+            user_id: user.id,
+            action: 'USER_DELETED',
+            resource_type: 'user',
+            resource_id: id as string,
+            details: {
+              deleted_user_email: userToDelete?.email,
+              deleted_by: user.email
+            }
+          });
+      } catch (auditError) {
+        console.warn('Failed to log user deletion to audit_logs:', auditError);
+      }
 
       res.status(200).json({ message: 'User deleted successfully' });
 

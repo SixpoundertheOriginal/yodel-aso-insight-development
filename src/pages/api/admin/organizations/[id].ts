@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Get detailed counts for this organization
       const [userCount, appCount, activeUserCount] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('organization_id', id),
-        supabase.from('organization_apps').select('*', { count: 'exact', head: true }).eq('organization_id', id),
+        supabase.from('org_app_access').select('*', { count: 'exact', head: true }).eq('organization_id', id).is('detached_at', null),
         supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
@@ -94,20 +94,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (error) throw error;
 
-      // Log the update
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id: id as string,
-          user_id: user.id,
-          action: 'ORGANIZATION_UPDATED',
-          resource_type: 'organization',
-          resource_id: id as string,
-          details: {
-            changes: { name, slug, domain, subscription_tier, settings },
-            updated_by: user.email
-          }
-        });
+      // Log the update (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id: id as string,
+            user_id: user.id,
+            action: 'ORGANIZATION_UPDATED',
+            resource_type: 'organization',
+            resource_id: id as string,
+            details: {
+              changes: { name, slug, domain, subscription_tier, settings },
+              updated_by: user.email
+            }
+          });
+      } catch (auditError) {
+        console.warn('Failed to log organization update to audit_logs:', auditError);
+      }
 
       res.status(200).json(updatedOrg);
 
@@ -150,22 +154,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (deleteError) throw deleteError;
 
-      // Log the deletion
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id: id as string,
-          user_id: user.id,
-          action: 'ORGANIZATION_DELETED',
-          resource_type: 'organization',
-          resource_id: id as string,
-          details: {
-            deleted_organization_name: orgToDelete?.name,
-            deleted_organization_slug: orgToDelete?.slug,
-            deleted_by: user.email,
-            soft_delete: true
-          }
-        });
+      // Log the deletion (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id: id as string,
+            user_id: user.id,
+            action: 'ORGANIZATION_DELETED',
+            resource_type: 'organization',
+            resource_id: id as string,
+            details: {
+              deleted_organization_name: orgToDelete?.name,
+              deleted_organization_slug: orgToDelete?.slug,
+              deleted_by: user.email,
+              soft_delete: true
+            }
+          });
+      } catch (auditError) {
+        console.warn('Failed to log organization deletion to audit_logs:', auditError);
+      }
 
       res.status(200).json({ 
         message: 'Organization deleted successfully',

@@ -51,20 +51,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to send password reset email' });
     }
 
-    // Log the password reset request
-    await supabase
-      .from('audit_logs')
-      .insert({
-        organization_id: targetUser.organization_id,
-        user_id: user.id,
-        action: 'PASSWORD_RESET_REQUESTED',
-        resource_type: 'user',
-        resource_id: id as string,
-        details: {
-          target_user_email: targetUser.email,
-          requested_by: user.email
-        }
-      });
+    // Log the password reset request (optional)
+    try {
+      await supabase
+        .from('audit_logs')
+        .insert({
+          organization_id: targetUser.organization_id,
+          user_id: user.id,
+          action: 'PASSWORD_RESET_REQUESTED',
+          resource_type: 'user',
+          resource_id: id as string,
+          details: {
+            target_user_email: targetUser.email,
+            requested_by: user.email
+          }
+        });
+    } catch (auditError) {
+      console.warn('Failed to log password reset to audit_logs:', auditError);
+    }
 
     res.status(200).json({ 
       message: 'Password reset email sent successfully',

@@ -150,21 +150,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'Failed to assign user role' });
       }
 
-      // Log the invitation
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id,
-          user_id: user.id,
-          action: 'USER_INVITED',
-          resource_type: 'user',
-          resource_id: profile.id,
+      // Log the invitation (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id,
+            user_id: user.id,
+            action: 'USER_INVITED',
+            resource_type: 'user',
+            resource_id: profile.id,
             details: {
               invited_email: email,
               assigned_roles: roles,
               invited_by: user.email
             }
           });
+      } catch (auditError) {
+        console.warn('Failed to log user invitation to audit_logs:', auditError);
+      }
 
       res.status(201).json({
         user: {

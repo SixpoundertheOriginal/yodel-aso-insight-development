@@ -62,10 +62,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .gte('last_login', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
           const { count: appCount } = await supabase
-            .from('organization_apps')
+            .from('org_app_access')
             .select('*', { count: 'exact', head: true })
             .eq('organization_id', org.id)
-            .eq('approval_status', 'approved');
+            .is('detached_at', null);
 
           return {
             ...org,
@@ -119,21 +119,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (orgError) throw orgError;
 
-      // Log the creation
-      await supabase
-        .from('audit_logs')
-        .insert({
-          organization_id: newOrg.id,
-          user_id: user.id,
-          action: 'ORGANIZATION_CREATED',
-          resource_type: 'organization',
-          resource_id: newOrg.id,
-          details: {
-            organization_name: name,
-            subscription_tier,
-            created_by: user.email
-          }
-        });
+      // Log the creation (optional)
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            organization_id: newOrg.id,
+            user_id: user.id,
+            action: 'ORGANIZATION_CREATED',
+            resource_type: 'organization',
+            resource_id: newOrg.id,
+            details: {
+              organization_name: name,
+              subscription_tier,
+              created_by: user.email
+            }
+          });
+      } catch (auditError) {
+        console.warn('Failed to log organization creation to audit_logs:', auditError);
+      }
 
       res.status(201).json({
         organization: newOrg,

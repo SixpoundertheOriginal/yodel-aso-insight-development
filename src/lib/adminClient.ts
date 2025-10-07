@@ -77,7 +77,7 @@ export async function invokeAdminFunction<T = any>(
     });
 
     // Invoke Supabase Edge Function
-    const { data, error, status } = await supabase.functions.invoke(functionName, {
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: finalPayload,
       headers: {
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -127,7 +127,7 @@ export async function invokeAdminFunction<T = any>(
       // Check if it's an error response
       if (!data.success && data.error) {
         console.error(`🔧 [AdminClient] Function ${functionName} returned error`, {
-          statusCode: data.status ?? status ?? 'unknown',
+          statusCode: data.status ?? 'unknown',
           error: data.error,
           payloadKeys: Object.keys(finalPayload),
         });

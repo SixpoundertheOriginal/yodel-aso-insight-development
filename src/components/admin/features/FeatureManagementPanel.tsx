@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Loader2, Settings, Users } from 'lucide-react';
 import { organizationsApi, featuresApi, type PlatformFeature } from '@/lib/admin-api';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Organization {
   id: string;
