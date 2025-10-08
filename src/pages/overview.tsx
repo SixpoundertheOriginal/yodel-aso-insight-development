@@ -43,6 +43,7 @@ import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
@@ -67,8 +68,20 @@ const OverviewContent: React.FC = () => {
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const { selectedMarket, setSelectedMarket } = useMarketData();
+  const { 
+    selectedOrganizationId: superAdminSelectedOrg, 
+    setSelectedOrganizationId: setSuperAdminOrg 
+  } = useSuperAdmin();
   
-  const [organizationId, setOrganizationId] = useState('');
+  const [profileOrganizationId, setProfileOrganizationId] = useState('');
+
+  // Compute effective organization ID
+  const effectiveOrganizationId = useMemo(() => {
+    if (isSuperAdmin) {
+      return superAdminSelectedOrg || null;
+    }
+    return profileOrganizationId;
+  }, [isSuperAdmin, superAdminSelectedOrg, profileOrganizationId]);
   
   // Remove duplicate useBigQueryData call - isDemo now comes from context
   // const { isDemo } = useBigQueryData(...) - REMOVED
@@ -86,18 +99,18 @@ const OverviewContent: React.FC = () => {
         .select('organization_id')
         .eq('id', user.id)
         .single();
-      setOrganizationId(profile?.organization_id || '');
+      setProfileOrganizationId(profile?.organization_id || '');
     };
     fetchOrganizationId();
   }, [user]);
 
   useEffect(() => {
-    if (!organizationId) return;
-    const saved = localStorage.getItem(`ai-sidebar-state-${organizationId}`);
+    if (!effectiveOrganizationId) return;
+    const saved = localStorage.getItem(`ai-sidebar-state-${effectiveOrganizationId}`);
     if (saved) {
       setSidebarState(saved as SidebarState);
     }
-  }, [organizationId]);
+  }, [effectiveOrganizationId]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -108,8 +121,8 @@ const OverviewContent: React.FC = () => {
 
   const handleSidebarStateChange = (state: SidebarState) => {
     setSidebarState(state);
-    if (organizationId) {
-      localStorage.setItem(`ai-sidebar-state-${organizationId}`, state);
+    if (effectiveOrganizationId) {
+      localStorage.setItem(`ai-sidebar-state-${effectiveOrganizationId}`, state);
     }
   };
 
@@ -219,10 +232,11 @@ const OverviewContent: React.FC = () => {
             {AI_INSIGHTS_ENABLED && (
               <ContextualInsightsSidebar
                 metricsData={data}
-                organizationId={organizationId}
+                organizationId={effectiveOrganizationId}
                 state={sidebarState}
                 onStateChange={handleSidebarStateChange}
                 isSuperAdmin={isSuperAdmin}
+                onOrganizationChange={setSuperAdminOrg}
               />
             )}
           </div>
@@ -515,10 +529,11 @@ const OverviewContent: React.FC = () => {
           {AI_INSIGHTS_ENABLED && (
             <ContextualInsightsSidebar
               metricsData={data}
-              organizationId={organizationId}
+              organizationId={effectiveOrganizationId}
               state={sidebarState}
               onStateChange={handleSidebarStateChange}
               isSuperAdmin={isSuperAdmin}
+              onOrganizationChange={setSuperAdminOrg}
             />
           )}
         </div>

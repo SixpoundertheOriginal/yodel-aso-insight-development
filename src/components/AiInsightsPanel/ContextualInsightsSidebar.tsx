@@ -29,6 +29,7 @@ interface ContextualInsightsSidebarProps {
   state?: SidebarState;
   onStateChange?: (state: SidebarState) => void;
   isSuperAdmin?: boolean;
+  onOrganizationChange?: (orgId: string | null) => void;
 }
 
 export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps> = ({
@@ -36,7 +37,8 @@ export const ContextualInsightsSidebar: React.FC<ContextualInsightsSidebarProps>
   organizationId,
   state = 'normal',
   onStateChange,
-  isSuperAdmin = false
+  isSuperAdmin = false,
+  onOrganizationChange
 }) => {
   const { filters } = useAsoData();
   const { isDemoOrg } = useDemoOrgDetection();
@@ -299,7 +301,7 @@ const { generateChatResponse, isGenerating: isChatGenerating } = useConversation
       <div className="h-screen bg-background/50 border-l border-border flex flex-col items-center justify-center p-6">
         <SuperAdminOrganizationSelector 
           className="w-full max-w-md" 
-          onOrgChange={() => {}} // Placeholder - will be handled by parent context
+          onOrgChange={onOrganizationChange || (() => {})}
         />
       </div>
     );
