@@ -22,7 +22,7 @@ import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import { MetricSelector } from '@/components/charts/MetricSelector';
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
-import { AI_INSIGHTS_ENABLED } from '@/constants/features';
+import { isAIInsightsEnabled } from '@/constants/features';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { KPISelector } from '../components/KPISelector';
@@ -479,7 +479,7 @@ const DashboardContent: React.FC = () => {
 
         {/* Sidebar - Pass collapse state */}
         <div className="fixed right-0 top-0 h-full z-10">
-          {AI_INSIGHTS_ENABLED && (
+          {isAIInsightsEnabled(isSuperAdmin) && (
             isDashboardDataReady ? (
               <ContextualInsightsSidebar
                 metricsData={data}

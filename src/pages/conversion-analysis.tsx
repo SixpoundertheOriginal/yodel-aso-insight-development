@@ -11,7 +11,7 @@ import TrafficSourceCVRCard from "../components/TrafficSourceCVRCard";
 import { processTrafficSourceCVR, CVRType } from "../utils/processTrafficSourceCVR";
 import { MainLayout } from '@/layouts';
 import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
-import { AI_INSIGHTS_ENABLED } from '@/constants/features';
+import { isAIInsightsEnabled } from '@/constants/features';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -194,7 +194,7 @@ const ConversionAnalysisContent: React.FC = () => {
                 : 'fixed right-0 top-0 h-full z-10'
             }
           >
-            {AI_INSIGHTS_ENABLED && (
+            {isAIInsightsEnabled(isSuperAdmin) && (
               <ContextualInsightsSidebar
                 metricsData={data}
                 organizationId={organizationId}
@@ -477,7 +477,7 @@ const ConversionAnalysisContent: React.FC = () => {
               : 'fixed right-0 top-0 h-full z-10'
           }
         >
-          {AI_INSIGHTS_ENABLED && (
+          {isAIInsightsEnabled(isSuperAdmin) && (
             <ContextualInsightsSidebar
               metricsData={data}
               organizationId={organizationId}

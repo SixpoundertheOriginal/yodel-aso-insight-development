@@ -3,9 +3,21 @@
  * Single source of truth for all platform features
  */
 
-// Global AI Insights Kill-Switch
+// Global AI Insights Kill-Switch with Super Admin Bypass
 const bool = (v: any) => String(v).toLowerCase() === 'true' || v === true;
-export const AI_INSIGHTS_ENABLED = bool(import.meta.env.VITE_AI_INSIGHTS_ENABLED) || false;
+const AI_INSIGHTS_ENV_ENABLED = bool(import.meta.env.VITE_AI_INSIGHTS_ENABLED) || false;
+
+/**
+ * Check if AI Insights feature is enabled
+ * @param isSuperAdmin - Whether the current user is a super admin
+ * @returns true if AI Insights is enabled via environment variable OR user is super admin
+ */
+export const isAIInsightsEnabled = (isSuperAdmin: boolean = false): boolean => {
+  return AI_INSIGHTS_ENV_ENABLED || isSuperAdmin;
+};
+
+// Legacy export for backward compatibility (deprecated - use isAIInsightsEnabled instead)
+export const AI_INSIGHTS_ENABLED = AI_INSIGHTS_ENV_ENABLED;
 
 export type UserRole = 'super_admin' | 'org_admin' | 'aso_manager' | 'analyst' | 'viewer' | 'client';
 

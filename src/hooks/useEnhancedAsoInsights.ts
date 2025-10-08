@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AI_INSIGHTS_ENABLED } from '@/constants/features';
+import { isAIInsightsEnabled } from '@/constants/features';
 import type { MetricsData, FilterContext, EnhancedAsoInsight } from '@/types/aso';
 export type { EnhancedAsoInsight } from '@/types/aso';
 
@@ -16,8 +16,8 @@ export const useEnhancedAsoInsights = (
   const [isGenerating, setIsGenerating] = useState(false);
   const { isSuperAdmin = false, enabled = false } = options;
   
-  // Global kill-switch: hard no-op when AI insights disabled
-  const isEnabled = !!enabled && AI_INSIGHTS_ENABLED;
+  // Global kill-switch: hard no-op when AI insights disabled (unless super admin)
+  const isEnabled = !!enabled && isAIInsightsEnabled(isSuperAdmin);
 
   // Handle missing organization context gracefully
   const hasValidOrganization = !!(organizationId && organizationId.trim());
@@ -112,7 +112,7 @@ export const useEnhancedAsoInsights = (
       return insights;
     } catch (error) {
       console.debug('Error generating insights:', error);
-      if (AI_INSIGHTS_ENABLED) {
+      if (isAIInsightsEnabled(isSuperAdmin)) {
         toast({
           title: "Insight Generation Failed",
           description: "Unable to generate insights. Please try again.",
