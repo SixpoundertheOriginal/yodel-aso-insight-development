@@ -428,7 +428,7 @@ const OverviewContent: React.FC = () => {
                   {/* AI Insights Section - After KPIs, before Time Series */}
                   <DashboardAiInsights
                     metricsData={data}
-                    organizationId={organizationId}
+                    organizationId={effectiveOrganizationId}
                     isDemoMode={isDemo}
                     isSuperAdmin={isSuperAdmin}
                     filterContext={{
