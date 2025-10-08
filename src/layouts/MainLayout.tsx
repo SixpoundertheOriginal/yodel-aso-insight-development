@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import TopBar from "../components/TopBar";
 import { GradientBackground, Container } from "@/components/ui/premium";
 import { OrganizationBranding } from "@/components/OrganizationBranding";
+import { SuperAdminDebugPanel } from "@/components/Debug/SuperAdminDebugPanel";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </main>
           <OrganizationBranding position="footer" />
         </SidebarInset>
+        {/* Debug panel - only in dev or for super admins */}
+        <SuperAdminDebugPanel />
       </GradientBackground>
     </SidebarProvider>
   );
