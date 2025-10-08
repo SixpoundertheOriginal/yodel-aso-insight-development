@@ -67,11 +67,11 @@ const OverviewContent: React.FC = () => {
   console.log('🔍 DEMO AUDIT [TYPES]: Context type keys:', Object.keys(contextValue));
   const { user } = useAuth();
   const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
-  const { selectedMarket, setSelectedMarket } = useMarketData();
   const { 
     selectedOrganizationId: superAdminSelectedOrg, 
     setSelectedOrganizationId: setSuperAdminOrg 
   } = useSuperAdmin();
+  const { selectedMarket, setSelectedMarket } = useMarketData();
   
   const [profileOrganizationId, setProfileOrganizationId] = useState('');
 
