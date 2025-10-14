@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      apps: {
+        Row: {
+          app_description: string | null
+          app_icon_url: string | null
+          app_name: string
+          app_rating: number | null
+          app_reviews: number | null
+          app_store_category: string | null
+          app_store_id: string | null
+          app_subtitle: string | null
+          bundle_id: string | null
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          developer_name: string | null
+          id: string
+          intelligence_metadata: Json | null
+          is_active: boolean | null
+          organization_id: string
+          platform: string
+          updated_at: string | null
+        }
+        Insert: {
+          app_description?: string | null
+          app_icon_url?: string | null
+          app_name: string
+          app_rating?: number | null
+          app_reviews?: number | null
+          app_store_category?: string | null
+          app_store_id?: string | null
+          app_subtitle?: string | null
+          bundle_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          developer_name?: string | null
+          id?: string
+          intelligence_metadata?: Json | null
+          is_active?: boolean | null
+          organization_id: string
+          platform: string
+          updated_at?: string | null
+        }
+        Update: {
+          app_description?: string | null
+          app_icon_url?: string | null
+          app_name?: string
+          app_rating?: number | null
+          app_reviews?: number | null
+          app_store_category?: string | null
+          app_store_id?: string | null
+          app_subtitle?: string | null
+          bundle_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          developer_name?: string | null
+          id?: string
+          intelligence_metadata?: Json | null
+          is_active?: boolean | null
+          organization_id?: string
+          platform?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "apps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aso_metrics: {
         Row: {
           app_id: string
@@ -52,6 +133,13 @@ export type Database = {
           traffic_source?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "aso_metrics_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
           {
             foreignKeyName: "aso_metrics_organization_id_fkey"
             columns: ["organization_id"]
@@ -100,6 +188,13 @@ export type Database = {
             foreignKeyName: "audit_logs_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -143,6 +238,13 @@ export type Database = {
           total_queries?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "chatgpt_audit_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
           {
             foreignKeyName: "chatgpt_audit_runs_organization_id_fkey"
             columns: ["organization_id"]
@@ -208,6 +310,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chatgpt_audit_runs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatgpt_position_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "chatgpt_position_history_organization_id_fkey"
@@ -341,6 +450,13 @@ export type Database = {
             foreignKeyName: "chatgpt_query_results_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chatgpt_query_results_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -400,6 +516,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chatgpt_audit_runs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatgpt_ranking_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "chatgpt_ranking_snapshots_organization_id_fkey"
@@ -468,6 +591,13 @@ export type Database = {
             foreignKeyName: "chatgpt_visibility_scores_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chatgpt_visibility_scores_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -508,6 +638,13 @@ export type Database = {
           snapshot_date?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "keyword_ranking_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
           {
             foreignKeyName: "keyword_ranking_snapshots_organization_id_fkey"
             columns: ["organization_id"]
@@ -586,6 +723,13 @@ export type Database = {
             foreignKeyName: "metadata_versions_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "metadata_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -617,6 +761,13 @@ export type Database = {
           organization_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "org_app_access_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
           {
             foreignKeyName: "org_app_access_organization_id_fkey"
             columns: ["organization_id"]
@@ -692,6 +843,13 @@ export type Database = {
             foreignKeyName: "profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -753,6 +911,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
           {
             foreignKeyName: "user_roles_organization_id_fkey"
             columns: ["organization_id"]
@@ -832,16 +997,46 @@ export type Database = {
             foreignKeyName: "chatgpt_visibility_scores_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chatgpt_visibility_scores_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
       }
+      organization_app_usage: {
+        Row: {
+          active_apps: number | null
+          app_limit: number | null
+          app_limit_enforced: boolean | null
+          current_app_count: number | null
+          inactive_apps: number | null
+          organization_id: string | null
+          organization_name: string | null
+          remaining_apps: number | null
+          subscription_tier: string | null
+          usage_percentage: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_add_app: {
+        Args: { check_organization_id?: string }
+        Returns: boolean
+      }
       get_current_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_pending_app_discoveries: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       is_super_admin: {
         Args: { check_user_id?: string }
