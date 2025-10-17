@@ -83,9 +83,34 @@ An enterprise-grade App Store Optimization platform built to extract, validate, 
    ```
 
 2. **Environment Configuration**
+   
+   This project supports multiple Supabase environments:
+   - **Development**: `bkbcqocpjahewqjmlgvf` (personal dev)
+   - **Staging**: `tykkyqspugowivuymqdf` (Yodel staging)
+   - **Production**: `izagplcpcdruqkwnpwpd` (Yodel prod)
+
+   Create environment files:
    ```bash
-   cp .env.example .env.local
-   # Configure your Supabase and BigQuery credentials
+   # .env.development
+   VITE_SUPABASE_PROJECT_ID="bkbcqocpjahewqjmlgvf"
+   VITE_SUPABASE_URL="https://bkbcqocpjahewqjmlgvf.supabase.co"
+   VITE_SUPABASE_PUBLISHABLE_KEY="your-dev-key"
+   VITE_ENV="development"
+
+   # .env.production
+   VITE_SUPABASE_PROJECT_ID="izagplcpcdruqkwnpwpd"
+   VITE_SUPABASE_URL="https://izagplcpcdruqkwnpwpd.supabase.co"
+   VITE_SUPABASE_PUBLISHABLE_KEY="your-prod-key"
+   VITE_ENV="production"
+   ```
+
+   **Switch environments:**
+   ```bash
+   # Use your switch script
+   node scripts/switch-env.js [development|staging|production]
+   
+   # Or manually copy
+   cp .env.development .env
    ```
 
 3. **Database Setup**
@@ -99,6 +124,18 @@ An enterprise-grade App Store Optimization platform built to extract, validate, 
    npm run dev
    ```
 
+   **⚠️ Important**: After switching environments, restart the dev server and clear browser cache to ensure the correct Supabase project is used.
+
+### Environment Switching
+
+The Supabase client (`src/integrations/supabase/client.ts`) has been manually configured to use environment variables instead of hardcoded values. This allows seamless switching between Supabase projects.
+
+**If Lovable regenerates this file**, you'll need to reapply the environment variable configuration:
+```typescript
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "fallback-url";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "fallback-key";
+```
+
 ### Deployment
 
 The application can be deployed using the built-in Lovable deployment system or manually:
@@ -111,9 +148,17 @@ npm run build
 ## 🔧 Configuration
 
 ### Environment Variables
-- `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` - Supabase anon key
-- `VITE_BIGQUERY_PROJECT_ID` - BigQuery project ID (optional)
+
+**Required:**
+- `VITE_SUPABASE_URL` - Supabase project URL (e.g., `https://yourproject.supabase.co`)
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase publishable (anon) key
+- `VITE_SUPABASE_PROJECT_ID` - Supabase project ID
+- `VITE_ENV` - Environment name (`development`, `staging`, `production`)
+
+**Optional:**
+- `VITE_BIGQUERY_PROJECT_ID` - BigQuery project ID for advanced analytics
+
+**Note:** The Supabase client is configured to use these environment variables dynamically, allowing you to switch between different Supabase projects without code changes.
 
 ### Feature Flags
 The platform uses a comprehensive feature flag system defined in `src/constants/features.ts`:
