@@ -283,16 +283,17 @@ export const BulkAuditProcessor: React.FC<BulkAuditProcessorProps> = ({
     console.log('[BULK-PROCESSOR] Query params:', { auditRunId: auditRun.id, organizationId });
 
     // Get pending queries with direct supabase approach
-    const { data: queries, error } = await supabase
-      .from('chatgpt_queries')
+    const { data: queriesRaw, error } = await supabase
+      .from('chatgpt_queries' as any)
       .select('*')
       .eq('audit_run_id', auditRun.id)
       .eq('organization_id', organizationId)
       .eq('status', 'pending')
-      .order('priority', { ascending: false })
-      .order('created_at', { ascending: true });
+      .order('priority', { ascending: false });
 
-    console.log('[BULK-PROCESSOR] Query fetch result:', { 
+    const queries = (queriesRaw || []) as any[];
+
+    console.log('[BULK-PROCESSOR] Query fetch result:', {
       queriesCount: queries?.length || 0, 
       error: error?.message || 'none',
       sampleQuery: queries?.[0] || 'none'

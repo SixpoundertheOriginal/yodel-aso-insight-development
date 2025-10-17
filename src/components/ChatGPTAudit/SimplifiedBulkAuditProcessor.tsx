@@ -231,14 +231,16 @@ export const SimplifiedBulkAuditProcessor: React.FC<SimplifiedBulkAuditProcessor
 
       // Step 2: Get pending queries
       addLog('Fetching pending queries...');
-      const { data: queries, error } = await supabase
-        .from('chatgpt_queries')
+      const { data: queriesRaw, error } = await supabase
+        .from('chatgpt_queries' as any)
         .select('*')
         .eq('audit_run_id', auditRun.id)
         .eq('organization_id', organizationId)
         .eq('status', 'pending')
         .order('priority', { ascending: false })
-        .order('created_at', { ascending: true });
+        .limit(50);
+
+      const queries = (queriesRaw || []) as any[];
 
       if (error) throw error;
       if (!queries || queries.length === 0) {

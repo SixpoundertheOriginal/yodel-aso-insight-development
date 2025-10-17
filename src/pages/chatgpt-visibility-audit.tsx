@@ -229,7 +229,7 @@ function ChatGPTVisibilityAudit() {
           status: run.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
           audit_type: run.audit_type || 'app',
           total_queries: run.total_queries || 0,
-          completed_queries: run.completed_queries || 0
+          completed_queries: 0 // Field doesn't exist in DB schema
         }));
         setAuditRuns(typedRuns);
         
@@ -343,7 +343,7 @@ function ChatGPTVisibilityAudit() {
         status: data.status as 'pending' | 'running' | 'completed' | 'error' | 'paused',
         audit_type: data.audit_type || auditData.mode,
         total_queries: data.total_queries || 0,
-        completed_queries: data.completed_queries || 0
+        completed_queries: 0 // Field doesn't exist in DB schema
       };
 
       // Immediately add to local state for instant UI update

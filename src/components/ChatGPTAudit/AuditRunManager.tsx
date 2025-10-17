@@ -99,7 +99,7 @@ export const AuditRunManager: React.FC<AuditRunManagerProps> = ({
     try {
       // Delete related queries first
       const { error: queriesError } = await supabase
-        .from('chatgpt_queries')
+        .from('chatgpt_queries' as any)
         .delete()
         .eq('audit_run_id', runId)
         .eq('organization_id', organizationId);
@@ -148,7 +148,7 @@ export const AuditRunManager: React.FC<AuditRunManagerProps> = ({
       await Promise.all([
         // Delete queries
         supabase
-          .from('chatgpt_queries')
+          .from('chatgpt_queries' as any)
           .delete()
           .in('audit_run_id', runIds)
           .eq('organization_id', organizationId),
