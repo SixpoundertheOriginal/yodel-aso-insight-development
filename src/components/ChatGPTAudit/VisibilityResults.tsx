@@ -32,7 +32,7 @@ interface QueryResult {
   id: string;
   query_text: string;
   query_category: string;
-  response_text: string;
+  chatgpt_response: string; // Match DB column name
   app_mentioned: boolean;
   mention_position?: number;
   mention_context: string;
@@ -48,14 +48,33 @@ interface QueryResult {
 }
 
 interface VisibilityScore {
+  id: string;
+  audit_run_id: string;
+  entity_name: string;
+  organization_id: string;
   overall_score: number;
   mention_rate: number;
+  mention_count: number;
   avg_position: number;
-  positive_mentions: number;
-  neutral_mentions: number;
-  negative_mentions: number;
-  top_competitors: string[];
-  category_scores: Record<string, number>;
+  average_position: number;
+  visibility_score: number;
+  sentiment_score: number;
+  calculated_at: string;
+  created_at: string;
+}
+
+interface RankingSnapshot {
+  id: string;
+  audit_run_id: string;
+  entity_name: string;
+  organization_id: string;
+  snapshot_date: string;
+  ranking_position: number;
+  mention_count: number;
+  avg_position: number;
+  visibility_score: number;
+  sentiment_score: number;
+  created_at: string;
 }
 
 export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
@@ -302,7 +321,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
                       <h5 className="text-sm font-medium text-zinc-300">ChatGPT Response:</h5>
                       <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-md">
                         <p className="text-sm text-zinc-200 leading-relaxed">
-                          {result.response_text}
+                          {result.chatgpt_response}
                         </p>
                       </div>
                     </div>
@@ -396,7 +415,7 @@ export const VisibilityResults: React.FC<VisibilityResultsProps> = ({
             auditRunId={auditRunId}
             entityName={hasEntityTracking ? topicData.entityToTrack : 'Target Entity'}
             queryResults={queryResults}
-            rankingSnapshots={rankingSnapshots || []}
+            rankingSnapshots={(rankingSnapshots || []) as any}
           />
         </TabsContent>
       </Tabs>

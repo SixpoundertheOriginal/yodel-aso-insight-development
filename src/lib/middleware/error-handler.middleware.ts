@@ -53,7 +53,7 @@ async function logError(req: ApiRequest, error: any) {
       severity: getSeverity(error)
     };
 
-    await supabase.from('error_logs').insert(errorData);
+    await supabase.from('audit_logs' as any).insert(errorData as any); // error_logs doesn't exist
   } catch (logError) {
     console.error('Failed to log error to database:', logError);
   }

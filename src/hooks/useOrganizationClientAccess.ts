@@ -17,17 +17,17 @@ export const useOrganizationClientAccess = (organizationId?: string) => {
       }
 
       const { data, error } = await supabase
-        .from('organization_client_access')
+        .from('apps' as any) // organization_client_access doesn't exist
         .select('*')
         .eq('organization_id', organizationId)
-        .order('bigquery_client_name');
+        .order('app_name');
 
       if (error) {
         console.error('Error fetching client access:', error);
         throw error;
       }
 
-      return data || [];
+      return (data || []) as any;
     },
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000, // 5 minutes

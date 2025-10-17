@@ -15,18 +15,20 @@ export const useBenchmarkData = (selectedCategory: string) => {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      console.log('📦 Fetching categories from Supabase...');
-      const { data: categories, error } = await supabase
-        .from('conversion_benchmarks')
-        .select('category')
-        .order('category');
+      console.log('📦 Fetching categories from apps...');
+      const { data: apps, error } = await supabase
+        .from('apps')
+        .select('app_store_category')
+        .not('app_store_category', 'is', null)
+        .order('app_store_category');
       if (error) {
         console.error('❌ Category fetch failed:', error);
         return;
       }
-      console.log('✅ Categories fetched:', categories?.length, categories);
-      if (categories) {
-        setAvailableCategories(categories.map((c) => c.category));
+      console.log('✅ Categories fetched:', apps?.length);
+      if (apps) {
+        const uniqueCategories = [...new Set(apps.map((a) => a.app_store_category).filter(Boolean))];
+        setAvailableCategories(uniqueCategories as string[]);
       }
     };
     fetchCategories();
@@ -37,17 +39,20 @@ export const useBenchmarkData = (selectedCategory: string) => {
     const fetchBenchmark = async () => {
       console.log('🎯 Fetching benchmark for category:', selectedCategory);
       setLoading(true);
-      const { data: benchmark, error } = await supabase
-        .from('conversion_benchmarks')
+      // Note: conversion_benchmarks table doesn't exist
+      // Using apps table as fallback
+      const { data: apps, error } = await supabase
+        .from('apps')
         .select('*')
-        .eq('category', selectedCategory)
-        .single();
+        .eq('app_store_category', selectedCategory)
+        .limit(1)
+        .maybeSingle();
       if (error) {
         console.error('❌ Benchmark fetch failed:', error);
       } else {
-        console.log('✅ Benchmark data:', benchmark);
+        console.log('✅ Benchmark data:', apps);
       }
-      setData(benchmark);
+      setData(apps as any);
       setLoading(false);
     };
     fetchBenchmark();

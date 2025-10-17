@@ -263,13 +263,14 @@ Format your response as JSON:
       const { error } = await supabase
         .from('metadata_versions')
         .insert({
-          app_store_id: initialData.appId,
+          app_id: initialData.appId,
           organization_id: organizationId,
-          created_by: user?.id || null,
           title: initialData.title || '',
           subtitle: initialData.subtitle || '',
           keywords: initialData.description || '', // Store in keywords field for now
-          notes: `Long Description Generator - ${generatedDescription.length} chars, ${settings.length} length, ${settings.positioning} positioning`
+          promotional_text: `Long Description Generator - ${generatedDescription.length} chars, ${settings.length} length, ${settings.positioning} positioning`,
+          platform: 'ios',
+          version_number: 1
         });
 
       if (error) throw error;

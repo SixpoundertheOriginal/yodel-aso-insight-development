@@ -69,7 +69,7 @@ export const useAppManagement = () => {
       if (!orgUsage?.organization_id) return false;
 
       const { data, error } = await supabase.rpc('can_add_app', {
-        org_id: orgUsage.organization_id
+        check_organization_id: orgUsage.organization_id
       });
 
       if (error) throw error;

@@ -25,13 +25,13 @@ export const useUserProfile = () => {
         .from('profiles')
         .select(`
           *,
-          organizations(name, subscription_tier, slug, settings),
+          organizations(name, subscription_tier, slug),
           user_roles(role, organization_id)
         `)
         .eq('id', user.id)
         .single();
 
-      return profile as UserProfile;
+      return profile as unknown as UserProfile;
     },
   });
 

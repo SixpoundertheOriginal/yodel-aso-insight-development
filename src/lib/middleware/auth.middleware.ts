@@ -31,7 +31,7 @@ export const withAuth: MiddlewareFunction = async (req, res, next) => {
     // Check super admin status
     const { data: isSuperAdminData, error: superAdminError } = await supabase.rpc(
       'is_super_admin',
-      { user_id: user.id }
+      { check_user_id: user.id }
     );
 
     const isSuperAdmin = Boolean(isSuperAdminData) && !superAdminError;

@@ -45,7 +45,7 @@ export const useEnhancedKeywordIntelligence = ({
       console.log('🔍 [ENHANCED-KI] Fetching enhanced keywords for:', targetAppId);
 
       try {
-        const { data, error } = await supabase.rpc('get_top_keywords_for_app', {
+        const { data, error } = await supabase.rpc('get_top_keywords_for_app' as any, {
           p_organization_id: organizationId,
           p_app_id: targetAppId,
           p_limit: 100
@@ -56,12 +56,12 @@ export const useEnhancedKeywordIntelligence = ({
           return generateFallbackKeywords();
         }
 
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
           console.log('📊 [ENHANCED-KI] No data found, using fallback');
           return generateFallbackKeywords();
         }
 
-        const mappedKeywords: EnhancedKeywordData[] = data.map((item: any) => ({
+        const mappedKeywords: EnhancedKeywordData[] = (data as any[]).map((item: any) => ({
           keyword: item.keyword,
           rank: item.rank_position,
           searchVolume: item.search_volume,

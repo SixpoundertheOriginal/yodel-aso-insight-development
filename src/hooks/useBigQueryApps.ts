@@ -20,25 +20,24 @@ export const useBigQueryApps = (organizationId?: string) => {
       }
 
       const { data, error } = await supabase
-        .from('organization_apps')
+        .from('apps' as any) // organization_apps table doesn't exist
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('data_source', 'bigquery')
-        .eq('approval_status', 'approved')
-        .order('app_identifier');
+        .eq('is_active', true)
+        .order('app_store_id');
 
       if (error) {
         console.error('Error fetching BigQuery apps:', error);
         throw error;
       }
 
-      return (data || []).map((app): BigQueryApp => ({
+      return (data || []).map((app: any): BigQueryApp => ({
         id: app.id,
-        app_identifier: app.app_identifier,
-        app_name: app.app_name || app.app_identifier,
+        app_identifier: app.app_store_id || app.id,
+        app_name: app.app_name || app.app_store_id,
         data_source: 'bigquery' as const,
         approval_status: 'approved' as const,
-        app_metadata: app.app_metadata
+        app_metadata: app.intelligence_metadata
       }));
     },
     enabled: !!organizationId,

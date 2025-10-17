@@ -47,14 +47,13 @@ export const MetadataWorkspace: React.FC<MetadataWorkspaceProps> = React.memo(({
       const { error } = await supabase
         .from('metadata_versions')
         .insert({
-          app_store_id: initialData.appId,
+          app_id: initialData.appId,
           organization_id: organizationId,
-          created_by: user?.id || null,
           title: metadata.title,
           subtitle: metadata.subtitle,
           keywords: metadata.keywords,
-          score: score as any,
-          notes: `Created via ${mode === 'manual-editor' ? 'Manual Editor' : 'AI Generation'}`
+          platform: 'ios',
+          version_number: 1
         });
 
       if (error) {

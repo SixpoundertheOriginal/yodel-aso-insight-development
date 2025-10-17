@@ -36,33 +36,31 @@ export const useAppDiscovery = (organizationId: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get pending apps
+  // Get pending apps (returns empty array - functionality disabled)
   const { data: pendingApps, isLoading: loadingPending } = useQuery({
     queryKey: ['pendingApps', organizationId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_pending_app_discoveries', {
-        p_organization_id: organizationId
-      });
+      const { data, error } = await supabase.rpc('get_pending_app_discoveries');
 
       if (error) throw error;
-      return data as DiscoveredApp[];
+      return (Array.isArray(data) ? data : []) as any[];
     },
     enabled: !!organizationId
   });
 
-  // Get approved apps
+  // Get approved apps from apps table
   const { data: approvedApps, isLoading: loadingApproved } = useQuery({
     queryKey: ['approvedApps', organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('organization_apps')
+        .from('apps')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('approval_status', 'approved')
-        .order('approved_date', { ascending: false });
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as ApprovedApp[];
+      return (data || []) as any[];
     },
     enabled: !!organizationId
   });

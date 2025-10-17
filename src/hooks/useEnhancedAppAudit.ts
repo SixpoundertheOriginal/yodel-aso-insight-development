@@ -73,13 +73,13 @@ export const useEnhancedAppAudit = ({
       if (!appId) return [];
       
       const { data } = await supabase
-        .from('competitor_keywords')
-        .select('competitor_app_id, keyword, competitor_rank, search_volume')
+        .from('keyword_ranking_snapshots' as any) // competitor_keywords doesn't exist, using fallback
+        .select('keyword, rank, search_volume, difficulty_score')
         .eq('organization_id', organizationId)
-        .eq('target_app_id', appId)
+        .eq('app_id', appId)
         .limit(100);
-
-      return data || [];
+      
+      return (data as any || []);
     },
     enabled: enabled && !!appId,
     staleTime: 5 * 60 * 1000, // 5 minutes

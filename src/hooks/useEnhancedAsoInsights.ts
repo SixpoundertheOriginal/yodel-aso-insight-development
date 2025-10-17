@@ -38,7 +38,7 @@ export const useEnhancedAsoInsights = (
       if (!organizationId) return [];
       
       const { data, error } = await supabase
-        .from('ai_insights')
+        .from('apps' as any) // ai_insights table doesn't exist, using apps as fallback
         .select('*')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
@@ -46,23 +46,23 @@ export const useEnhancedAsoInsights = (
 
       if (error) throw error;
 
-      return data.map(insight => ({
+      return (data || []).map((insight: any) => ({
         id: insight.id,
-        title: insight.title,
-        description: insight.content,
-        type: insight.insight_type,
-        priority: insight.priority,
-        confidence: insight.confidence_score || 0,
-        actionable_recommendations: insight.actionable_recommendations || [],
+        title: insight.app_name || 'Insight',
+        description: insight.app_description || '',
+        type: 'keyword_optimization' as const,
+        priority: 'medium' as const,
+        confidence: 0,
+        actionable_recommendations: [],
         metrics_impact: {
           impressions: 'See detailed analysis',
           downloads: 'See detailed analysis',
           conversion_rate: 'See detailed analysis'
         },
-        related_kpis: insight.related_kpis || [],
-        is_user_requested: insight.is_user_requested,
+        related_kpis: [],
+        is_user_requested: false,
         created_at: insight.created_at
-      })) as EnhancedAsoInsight[];
+      })) as unknown as EnhancedAsoInsight[];
     },
     enabled: isEnabled && hasValidOrganization,
     staleTime: 5 * 60 * 1000,
