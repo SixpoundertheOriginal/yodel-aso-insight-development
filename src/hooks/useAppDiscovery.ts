@@ -74,11 +74,15 @@ export const useAppDiscovery = (organizationId: string) => {
         .from('apps')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as any[];
+      return (data || []).map((app: any) => ({
+        ...app,
+        app_identifier: app.app_identifier ?? app.bundle_id ?? app.app_name,
+        app_metadata: app.intelligence_metadata ?? null,
+        approved_date: app.approved_at ?? app.created_at ?? null
+      }));
     },
     enabled: !!organizationId
   });
