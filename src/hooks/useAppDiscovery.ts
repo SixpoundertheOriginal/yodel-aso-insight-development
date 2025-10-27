@@ -40,9 +40,27 @@ export const useAppDiscovery = (organizationId: string) => {
   const { data: pendingApps, isLoading: loadingPending } = useQuery({
     queryKey: ['pendingApps', organizationId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_pending_app_discoveries');
+      if (!organizationId) {
+        console.error('❌ [APP_DISCOVERY] No organization ID provided for pending apps query');
+        return [];
+      }
+
+      console.log('🔍 [APP_DISCOVERY] Fetching pending apps:', {
+        organizationId,
+        timestamp: new Date().toISOString()
+      });
+
+      const { data, error } = await supabase.rpc('get_pending_app_discoveries', {
+        p_organization_id: organizationId
+      });
 
       if (error) throw error;
+
+      console.log('✅ [APP_DISCOVERY] Pending apps fetched:', {
+        count: Array.isArray(data) ? data.length : 0,
+        organizationId
+      });
+
       return (Array.isArray(data) ? data : []) as any[];
     },
     enabled: !!organizationId

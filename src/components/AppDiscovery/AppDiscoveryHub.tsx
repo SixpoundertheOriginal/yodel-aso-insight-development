@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,48 @@ import { PendingAppsTable } from './PendingAppsTable';
 import { ApprovedAppsTable } from './ApprovedAppsTable';
 import { Search, RefreshCw, Database, CheckCircle, Clock, X } from 'lucide-react';
 
+type AdminOrgSelectorProps = {
+  onSelectOrg: (orgId: string) => void;
+};
+
+const AdminOrgSelector: React.FC<AdminOrgSelectorProps> = ({ onSelectOrg }) => {
+  const [orgs] = useState([
+    { id: 'dbdb0cc5-9cfa-4bf1-bb97-7ccf2d1f783f', name: 'YodelMobile' },
+    { id: '7cccba3f-0a8f-446f-9dba-86e9cb68c92b', name: 'Yodel Mobile (Internal)' }
+  ]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Select Organization</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {orgs.map((org) => (
+            <Button
+              key={org.id}
+              onClick={() => onSelectOrg(org.id)}
+              variant="outline"
+              className="w-full"
+            >
+              {org.name}
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export const AppDiscoveryHub: React.FC = () => {
-  const { organizationId, canApproveApps, isLoading: permissionsLoading } = usePermissions();
+  const {
+    organizationId,
+    canApproveApps,
+    isSuperAdmin,
+    isLoading: permissionsLoading
+  } = usePermissions();
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(organizationId ?? null);
+  const effectiveOrgId = selectedOrgId || organizationId;
   const {
     pendingApps,
     approvedApps,
@@ -20,14 +60,18 @@ export const AppDiscoveryHub: React.FC = () => {
     rejectApp,
     isDiscovering,
     isUpdating
-  } = useAppDiscovery(organizationId || '');
+  } = useAppDiscovery(effectiveOrgId || '');
 
-  if (permissionsLoading || !organizationId) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    );
+  if (permissionsLoading) {
+    return <div>Loading permissions...</div>;
+  }
+
+  if (isSuperAdmin && !effectiveOrgId) {
+    return <AdminOrgSelector onSelectOrg={setSelectedOrgId} />;
+  }
+
+  if (!effectiveOrgId) {
+    return <div>No organization assigned</div>;
   }
 
   if (!canApproveApps) {

@@ -155,7 +155,7 @@ export type Database = {
           created_at: string | null
           details: Json | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           organization_id: string | null
           resource_id: string | null
           resource_type: string | null
@@ -166,7 +166,7 @@ export type Database = {
           created_at?: string | null
           details?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           organization_id?: string | null
           resource_id?: string | null
           resource_type?: string | null
@@ -177,7 +177,7 @@ export type Database = {
           created_at?: string | null
           details?: Json | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           organization_id?: string | null
           resource_id?: string | null
           resource_type?: string | null
@@ -1030,18 +1030,9 @@ export type Database = {
         Args: { check_organization_id?: string }
         Returns: boolean
       }
-      get_current_user_organization_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_pending_app_discoveries: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      is_super_admin: {
-        Args: { check_user_id?: string }
-        Returns: boolean
-      }
+      get_current_user_organization_id: { Args: never; Returns: string }
+      get_pending_app_discoveries: { Args: never; Returns: Json }
+      is_super_admin: { Args: { check_user_id?: string }; Returns: boolean }
     }
     Enums: {
       app_role:
