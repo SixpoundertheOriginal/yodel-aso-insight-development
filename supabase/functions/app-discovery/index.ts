@@ -91,15 +91,13 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
+      supabaseServiceRoleKey
+    );
+
+    console.log('[App Discovery][DEBUG] Supabase client initialized with service role key:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
 
     let body: AppDiscoveryRequest;
     try {
@@ -236,6 +234,24 @@ serve(async (req) => {
         );
       }
 
+      const { data: mappingRows, error: mappingError } = await supabaseClient
+        .from('client_org_map')
+        .select('client, organization_id');
+
+      if (mappingError) {
+        console.error('❌ [App Discovery] Failed to load client_org_map:', mappingError);
+        return new Response(
+          JSON.stringify({ requestId, error: 'CLIENT_ORG_MAP_LOAD_FAILED' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const clientOrgMap = Object.fromEntries(
+        (mappingRows ?? []).map((row: { client: string; organization_id: string }) => [row.client, row.organization_id])
+      ) as Record<string, string>;
+
+      console.log('[App Discovery][DEBUG] Loaded client_org_map entries:', Object.keys(clientOrgMap).length);
+
       // Discovery query to find all unique clients in BigQuery
       const discoveryQuery = `
         SELECT
@@ -290,6 +306,7 @@ serve(async (req) => {
       }
 
       const queryResult = await bigQueryResponse.json();
+      console.log("[App Discovery][DEBUG] BigQuery rows:", queryResult.rows?.length || 0);
       const discoveredApps = [];
 
       if (queryResult.rows) {
@@ -306,34 +323,74 @@ serve(async (req) => {
           // Clean the app name for better readability
           const cleanedAppName = cleanAppName(appData.app_identifier);
 
-          // Insert or update in organization_apps table with forced updates
+          const resolvedOrganizationId = clientOrgMap[appData.app_identifier];
+
+          if (!resolvedOrganizationId) {
+            console.warn(`[App Discovery][${requestId}] Skipping ${appData.app_identifier}: no client_org_map entry`);
+            continue;
+          }
+
+          console.log("[App Discovery][DEBUG] Prepared upsert payload:", {
+            organization_id: resolvedOrganizationId,
+            app_identifier: appData.app_identifier,
+            app_name: cleanedAppName
+          });
+
+          const { data: existingApp, error: fetchExistingError } = await supabaseClient
+            .from('apps')
+            .select('id, created_at, approved_at')
+            .eq('organization_id', resolvedOrganizationId)
+            .eq('bundle_id', appData.app_identifier)
+            .eq('platform', 'ios')
+            .maybeSingle();
+
+          if (fetchExistingError && fetchExistingError.code !== 'PGRST116') {
+            console.error("[App Discovery][DEBUG] Existing app fetch failed:", fetchExistingError);
+            continue;
+          }
+
+          const nowIso = new Date().toISOString();
+          const preservedCreatedAt = existingApp?.created_at ?? nowIso;
+          const preservedApprovedAt = existingApp?.approved_at ?? nowIso;
+
+          // Persist discovery metadata. Stored under intelligence_metadata, mapped to app_metadata on the frontend.
           const { error: upsertError } = await supabaseClient
-            .from('organization_apps')
+            .from('apps')
             .upsert({
-              organization_id: body.organizationId,
-              app_identifier: appData.app_identifier,
+              organization_id: resolvedOrganizationId,
               app_name: cleanedAppName,
-              data_source: 'bigquery',
-              approval_status: 'pending',
-              app_metadata: {
+              platform: 'ios',
+              bundle_id: appData.app_identifier,
+              is_active: true,
+              intelligence_metadata: {
                 record_count: appData.record_count,
                 first_seen: appData.first_seen,
                 last_seen: appData.last_seen,
                 days_with_data: appData.days_with_data,
-                cleaned_name: cleanedAppName
-              }
+                discovered_via: 'bigquery'
+              },
+              created_at: preservedCreatedAt,
+              approved_at: preservedApprovedAt
             }, {
-              onConflict: 'organization_id,app_identifier,data_source',
+              onConflict: 'organization_id,bundle_id,platform',
               ignoreDuplicates: false
             });
 
           if (!upsertError) {
+            console.log(`✅ [App Discovery][DEBUG] Upsert succeeded for ${appData.app_identifier}`, {
+              created_at: preservedCreatedAt,
+              approved_at: preservedApprovedAt,
+              organization_id: resolvedOrganizationId
+            });
             discoveredApps.push({
               ...appData,
-              cleaned_name: cleanedAppName
+              cleaned_name: cleanedAppName,
+              approved_at: preservedApprovedAt,
+              organization_id: resolvedOrganizationId
             });
           } else {
-            console.error(`❌ [App Discovery] Failed to upsert ${appData.app_identifier}:`, upsertError);
+            console.error(`❌ [App Discovery][DEBUG] Upsert failed for ${appData.app_identifier}:`, upsertError);
+            console.error("❌ [App Discovery][DEBUG] Upsert error details:", upsertError);
           }
         }
       }

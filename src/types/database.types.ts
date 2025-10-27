@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           app_description: string | null
           app_icon_url: string | null
+          approved_at: string | null
           app_name: string
           app_rating: number | null
           app_reviews: number | null
@@ -39,6 +40,7 @@ export type Database = {
         Insert: {
           app_description?: string | null
           app_icon_url?: string | null
+          approved_at?: string | null
           app_name: string
           app_rating?: number | null
           app_reviews?: number | null
@@ -60,6 +62,7 @@ export type Database = {
         Update: {
           app_description?: string | null
           app_icon_url?: string | null
+          approved_at?: string | null
           app_name?: string
           app_rating?: number | null
           app_reviews?: number | null
@@ -88,6 +91,36 @@ export type Database = {
           },
           {
             foreignKeyName: "apps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      },
+      client_org_map: {
+        Row: {
+          client: string
+          organization_id: string
+        }
+        Insert: {
+          client: string
+          organization_id: string
+        }
+        Update: {
+          client?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_org_map_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "client_org_map_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
