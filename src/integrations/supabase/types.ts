@@ -861,6 +861,7 @@ export type Database = {
           error: string | null
           expires_at: string
           id: string
+          organization_id: string | null
           scraped_at: string
           status: string
           url: string
@@ -870,6 +871,7 @@ export type Database = {
           error?: string | null
           expires_at: string
           id?: string
+          organization_id?: string | null
           scraped_at?: string
           status: string
           url: string
@@ -879,11 +881,27 @@ export type Database = {
           error?: string | null
           expires_at?: string
           id?: string
+          organization_id?: string | null
           scraped_at?: string
           status?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "scrape_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "scrape_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1031,7 +1049,10 @@ export type Database = {
         Returns: boolean
       }
       get_current_user_organization_id: { Args: never; Returns: string }
-      get_pending_app_discoveries: { Args: never; Returns: Json }
+      get_pending_app_discoveries: {
+        Args: { p_organization_id?: string }
+        Returns: Json
+      }
       is_super_admin: { Args: { check_user_id?: string }; Returns: boolean }
     }
     Enums: {
