@@ -24,14 +24,25 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
   className = ""
 }) => {
   const { data: bigQueryApps, isLoading, error } = useBigQueryApps(organizationId);
+  
+  console.log('🔍 [DEBUG] BigQueryAppSelector state:', {
+    organizationId,
+    bigQueryAppsCount: bigQueryApps?.length || 0,
+    selectedAppsCount: selectedApps.length,
+    selectedApps: selectedApps,
+    isLoading,
+    error: !!error
+  });
 
   const handleSelectionChange = (value: string) => {
     if (value === 'all') {
       // Select all available apps
       const allAppIds = bigQueryApps?.map(app => app.app_identifier) || [];
+      console.log('🔍 [DEBUG] App selector - selecting ALL apps:', allAppIds);
       onSelectionChange(allAppIds);
     } else {
       // Single app selection for now - can be extended to multi-select later
+      console.log('🔍 [DEBUG] App selector - selecting single app:', value);
       onSelectionChange([value]);
     }
   };

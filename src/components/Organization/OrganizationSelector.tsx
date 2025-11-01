@@ -29,6 +29,8 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
   onOrganizationChange,
   isSuperAdmin
 }) => {
+  console.log('🔍 [DEBUG] OrganizationSelector render:', { selectedOrganizationId, isSuperAdmin });
+  
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +85,10 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
         <div className="space-y-3">
           <Select
             value={selectedOrganizationId || "platform-wide"}
-            onValueChange={(value) => onOrganizationChange(value === "platform-wide" ? null : value)}
+            onValueChange={(value) => {
+              console.log('🔍 [DEBUG] OrganizationSelector value change:', { value, willSetTo: value === "platform-wide" ? null : value });
+              onOrganizationChange(value === "platform-wide" ? null : value);
+            }}
             disabled={loading}
           >
             <SelectTrigger className="w-full bg-background border-border/50">

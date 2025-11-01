@@ -12,6 +12,9 @@ See:
 - `GET /functions/v1/demo-creative-review-summary`
 - `GET /functions/v1/demo-keyword-insights-summary`
 
+### App Discovery endpoints
+- `POST /functions/v1/app-discovery` - BigQuery app discovery and organization mapping
+
 Read‑only; org_id derived server‑side from JWT; JSON‑only.
 Details and authorize rules → `docs/demo_sections.md` (§Endpoints, §Authorize Rules)
 

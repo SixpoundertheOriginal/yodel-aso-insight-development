@@ -1,1 +1,4 @@
 project_id = "bkbcqocpjahewqjmlgvf"
+
+[functions.app-discovery]
+verify_jwt = false

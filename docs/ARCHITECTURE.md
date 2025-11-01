@@ -55,6 +55,7 @@ BigQuery Integration
 - **organizations**: Tenant configuration and settings
 - **user_roles**: RBAC assignments with organization scoping
 - **apps**: Mobile application metadata and tracking
+- **org_app_access**: Organization-to-app mapping for BigQuery integration
 - **aso_metrics**: Time-series performance data
 - **keyword_rankings**: Search positioning and competitive data
 - **ai_insights**: Generated recommendations and analysis
@@ -72,6 +73,7 @@ CREATE POLICY tenant_isolation ON table_name
 
 ### Edge Functions
 - **app-store-scraper**: App search and review extraction
+- **app-discovery**: BigQuery app discovery and organization mapping
 - **bigquery-aso-data**: Analytics data retrieval and processing
 - **competitive-intelligence**: Competitor analysis and benchmarking
 - **creative-vision-analyzer**: Screenshot and creative optimization

@@ -230,6 +230,12 @@ const DashboardContent: React.FC = () => {
         {/* ✅ ENHANCED: Platform Super Admin Organization Selector */}
         {isSuperAdmin && (
           <div className="mb-6">
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-4">
+              <p className="text-yellow-400 text-sm">
+                <strong>Super Admin:</strong> Select an organization below to see app-specific analytics. 
+                Current: {selectedOrganizationId || 'None selected'}
+              </p>
+            </div>
             <OrganizationSelector
               selectedOrganizationId={selectedOrganizationId}
               onOrganizationChange={setSelectedOrganizationId}

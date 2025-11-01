@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useSuperAdmin } from './SuperAdminContext';
+import { useBigQueryAppSelection } from './BigQueryAppContext';
 
 interface App {
   id: string;
@@ -32,7 +33,14 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
+  const { setSelectedApps } = useBigQueryAppSelection();
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
+  
+  console.log('🔍 [DEBUG] AppContext render:', { 
+    isSuperAdmin, 
+    selectedOrganizationId, 
+    userId: user?.id 
+  });
 
   // Get user's organization apps with enhanced query
   const { data: apps = [], isLoading, error } = useQuery({
@@ -108,10 +116,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [apps, selectedApp]);
 
+  const handleSetSelectedApp = (app: App | null) => {
+    console.log('🔍 [DEBUG] AppContext - app selection change:', { 
+      from: selectedApp?.app_name, 
+      to: app?.app_name,
+      appId: app?.id 
+    });
+    setSelectedApp(app);
+    
+    // ✅ SYNC: Update BigQuery app selection to trigger data refetch
+    if (app?.id) {
+      console.log('🔍 [DEBUG] AppContext - syncing to BigQuery context:', app.id);
+      setSelectedApps([app.id]);
+    }
+  };
+
   const value = {
     apps,
     selectedApp,
-    setSelectedApp,
+    setSelectedApp: handleSetSelectedApp,
     isLoading,
     error: error as Error | null
   };

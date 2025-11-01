@@ -53,7 +53,7 @@ serve(async (req) => {
     console.log("[AUTHORIZE] Input:", { path, method, uid });
 
     // Super admin shortcut
-    const { data: isSa, error: saError } = await supabase.rpc('is_super_admin', { user_id: uid });
+    const { data: isSa, error: saError } = await supabase.rpc('is_super_admin');
     if (saError) {
       console.log("[AUTHORIZE] Super admin RPC error:", saError.message || saError);
       // Fallback to false on RPC error

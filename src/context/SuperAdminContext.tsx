@@ -39,9 +39,14 @@ export const SuperAdminProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const isPlatformWideMode = isSuperAdmin && selectedOrganizationId === null;
 
+  const handleSetSelectedOrganizationId = (orgId: string | null) => {
+    console.log('🔍 [DEBUG] SuperAdmin context - setting organization:', { from: selectedOrganizationId, to: orgId });
+    setSelectedOrganizationId(orgId);
+  };
+
   const contextValue: SuperAdminContextType = {
     selectedOrganizationId,
-    setSelectedOrganizationId,
+    setSelectedOrganizationId: handleSetSelectedOrganizationId,
     isSuperAdmin,
     isPlatformWideMode,
     isLoading: permissionsLoading

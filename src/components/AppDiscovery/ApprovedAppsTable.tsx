@@ -9,9 +9,10 @@ import { PermissionWrapper } from '@/components/PermissionWrapper';
 interface ApprovedApp {
   id: string;
   app_identifier: string;
+  bundle_id?: string | null;
   app_name: string;
   approval_status: string;
-  approved_date: string;
+  approved_date: string | null;
   approved_by: string | null;
   app_metadata: any;
 }
@@ -21,6 +22,13 @@ interface ApprovedAppsTableProps {
 }
 
 export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) => {
+  const safeFormatDate = (value: string | null | undefined, pattern: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return format(parsed, pattern);
+  };
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -40,7 +48,9 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                     <Database className="h-6 w-6 text-zinc-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">{app.app_identifier}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {app.app_identifier ?? app.bundle_id ?? app.app_name}
+                    </h3>
                     <p className="text-sm text-zinc-400">Active in Dashboard</p>
                   </div>
                   <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
@@ -72,20 +82,20 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                       </div>
                     )}
 
-                    {app.app_metadata.first_seen && (
+                    {safeFormatDate(app.app_metadata?.first_seen, 'MMM dd, yyyy') && (
                       <div className="text-sm">
                         <span className="text-zinc-400">First seen:</span>
                         <span className="text-foreground font-medium ml-2">
-                          {format(new Date(app.app_metadata.first_seen), 'MMM dd, yyyy')}
+                          {safeFormatDate(app.app_metadata?.first_seen, 'MMM dd, yyyy')}
                         </span>
                       </div>
                     )}
 
-                    {app.app_metadata.last_seen && (
+                    {safeFormatDate(app.app_metadata?.last_seen, 'MMM dd, yyyy') && (
                       <div className="text-sm">
                         <span className="text-zinc-400">Last seen:</span>
                         <span className="text-foreground font-medium ml-2">
-                          {format(new Date(app.app_metadata.last_seen), 'MMM dd, yyyy')}
+                          {safeFormatDate(app.app_metadata?.last_seen, 'MMM dd, yyyy')}
                         </span>
                       </div>
                     )}
@@ -95,7 +105,9 @@ export const ApprovedAppsTable: React.FC<ApprovedAppsTableProps> = ({ apps }) =>
                 {/* Approval Info */}
                 <div className="text-xs text-zinc-500 flex items-center gap-4">
                   <span>
-                    Approved on {format(new Date(app.approved_date), 'MMM dd, yyyy HH:mm')}
+                    {safeFormatDate(app.approved_date, 'MMM dd, yyyy HH:mm')
+                      ? `Approved on ${safeFormatDate(app.approved_date, 'MMM dd, yyyy HH:mm')}`
+                      : 'Approval timestamp unavailable'}
                   </span>
                   {app.approved_by && (
                     <span className="flex items-center gap-1">

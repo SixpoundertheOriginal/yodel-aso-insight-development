@@ -177,22 +177,43 @@ serve(async (req) => {
     );
   }
 
-  const { data: roleData, error: roleError } = await supabaseClient
-    .from("user_roles")
-    .select("role, organization_id")
-    .eq("user_id", user.id)
-    .single();
+  // Check for super admin first using RPC
+  const { data: isSuperAdmin, error: superAdminError } = await supabaseClient
+    .rpc('is_super_admin');
+  
+  log(requestId, "[AUTH] Super admin check result", { 
+    isSuperAdmin, 
+    superAdminError: superAdminError?.message,
+    userId: user.id,
+    userEmail: user.email
+  });
+  
+  let userRole: string;
+  let userOrgId: string | null;
 
-  if (roleError || !roleData) {
-    log(requestId, "[AUTH] Failed to fetch user role", roleError);
-    return new Response(
-      JSON.stringify({ error: "Failed to fetch user permissions" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  if (isSuperAdmin) {
+    log(requestId, "[AUTH] User is super admin - proceeding with admin flow");
+    userRole = "SUPER_ADMIN";
+    userOrgId = null;
+  } else {
+    // For non-super admins, get role from user_roles table
+    const { data: roleData, error: roleError } = await supabaseClient
+      .from("user_roles")
+      .select("role, organization_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleError || !roleData) {
+      log(requestId, "[AUTH] Failed to fetch user role", roleError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch user permissions" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    userRole = roleData.role;
+    userOrgId = roleData.organization_id;
   }
-
-  const userRole = roleData.role;
-  const userOrgId = roleData.organization_id;
 
   let resolvedOrgId: string;
   let scopeSource: string;

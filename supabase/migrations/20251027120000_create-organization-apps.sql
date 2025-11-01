@@ -1,6 +1,33 @@
 -- Migration: Create organization_apps table for discovery workflow
 -- Date: 2025-10-27
 -- Description: Adds pending app discoveries table to support discovery → approval → confirmed workflow
+-- 🔧 Local Development Stub
+-- This block ensures `public.organizations` exists locally so foreign key creation succeeds.
+-- In production, this table already exists and this block is safely skipped.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_tables
+    WHERE schemaname = 'public' AND tablename = 'organizations'
+  ) THEN
+    CREATE TABLE IF NOT EXISTS public.organizations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT
+    );
+    RAISE NOTICE 'Created local stub for public.organizations';
+  END IF;
+
+  BEGIN
+    INSERT INTO public.organizations (id, name)
+    VALUES ('dbdb0cc5-9cfa-4bf1-bb97-7ccf2d1f783f', 'YodelMobile')
+    ON CONFLICT (id) DO NOTHING;
+  EXCEPTION
+    WHEN others THEN
+      RAISE NOTICE 'Skipped seed insert for public.organizations: %', SQLERRM;
+  END;
+END $$;
 
 -- Table definition ---------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.organization_apps (
@@ -34,6 +61,24 @@ CREATE INDEX IF NOT EXISTS idx_organization_apps_created_at
 
 CREATE INDEX IF NOT EXISTS idx_organization_apps_org_status
   ON public.organization_apps (organization_id, status);
+-- 🔧 Local Development Stub: user_roles
+-- Creates a minimal stub for public.user_roles if missing, so RLS policies can compile locally.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_tables
+    WHERE schemaname = 'public' AND tablename = 'user_roles'
+  ) THEN
+    CREATE TABLE IF NOT EXISTS public.user_roles (
+      user_id UUID,
+      organization_id UUID,
+      role TEXT
+    );
+    RAISE NOTICE 'Created local stub for public.user_roles';
+  END IF;
+END $$;
 
 -- Row Level Security -------------------------------------------------------
 ALTER TABLE public.organization_apps ENABLE ROW LEVEL SECURITY;

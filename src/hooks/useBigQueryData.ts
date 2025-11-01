@@ -240,6 +240,13 @@ export const useBigQueryData = (
           trafficSources: [] as string[]
         };
 
+        console.log('🔍 [DEBUG] BigQuery request body:', {
+          organizationId: requestBody.organizationId,
+          selectedApps: requestBody.selectedApps,
+          selectedAppsCount: requestBody.selectedApps?.length || 0,
+          dateRange: requestBody.dateRange
+        });
+
         debugLog.verbose('Making request to edge function', { requestBody });
 
         if (abortSignal?.aborted) {

@@ -99,6 +99,19 @@ serve(async (req) => {
 
     console.log('[App Discovery][DEBUG] Supabase client initialized with service role key:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
 
+    const authHeader = req.headers.get('Authorization') || '';
+    const internalKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!internalKey || authHeader !== `Bearer ${internalKey}`) {
+      console.error('[Auth] Invalid or missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     let body: AppDiscoveryRequest;
     try {
       body = await req.json();
@@ -234,45 +247,50 @@ serve(async (req) => {
         );
       }
 
-      const { data: mappingRows, error: mappingError } = await supabaseClient
-        .from('client_org_map')
-        .select('client, organization_id');
+      const { data: accessRows, error: accessError } = await supabaseClient
+        .from('org_app_access')
+        .select('app_id, organization_id, attached_at, detached_at')
+        .eq('organization_id', body.organizationId)
+        .is('detached_at', null);
 
-      if (mappingError) {
-        console.error('❌ [App Discovery] Failed to load client_org_map:', mappingError);
-        return new Response(
-          JSON.stringify({ requestId, error: 'CLIENT_ORG_MAP_LOAD_FAILED' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (accessError) {
+        console.error(`[App Discovery][${requestId}] Failed to load org_app_access:`, accessError);
       }
 
-      const clientOrgMap = Object.fromEntries(
-        (mappingRows ?? []).map((row: { client: string; organization_id: string }) => [row.client, row.organization_id])
-      ) as Record<string, string>;
+      const appAccessMap = new Map<string, string>(
+        (accessRows ?? []).map((row: { app_id: string; organization_id: string }) => [row.app_id, row.organization_id])
+      );
 
-      console.log('[App Discovery][DEBUG] Loaded client_org_map entries:', Object.keys(clientOrgMap).length);
+      console.log('[App Discovery][DEBUG] Loaded org_app_access entries:', appAccessMap.size);
+      console.log('[LOOKUP DEBUG]', {
+        org_id: body.organizationId,
+        lookup_size: appAccessMap.size,
+        sample_keys: Array.from(appAccessMap.keys()).slice(0, 5),
+      });
 
-      // Discovery query to find all unique clients in BigQuery
+      // Discovery query to find all unique apps in BigQuery
+      // client = organization, app_id = individual app
       const discoveryQuery = `
         SELECT
-          client as app_identifier,
+          app_id as app_identifier,
+          client as organization_name,
           COUNT(*) as record_count,
           MIN(date) as first_seen,
           MAX(date) as last_seen,
           COUNT(DISTINCT date) as days_with_data
-        FROM \`${projectId}.client_reports.aso_all_apple\`
-        WHERE client IS NOT NULL AND client != ''
-        GROUP BY client
+        FROM \`aso-reporting-1.client_reports.aso_all_apple\`
+        WHERE app_id IS NOT NULL AND app_id != ''
+        GROUP BY app_id, client
       ` +
-      // Lowered threshold from 100 to 50 rows to include smaller apps in discovery
-      // Rationale: Apps with 50+ rows contain meaningful data worth managing
-      // AppOne: 65 rows, AppTwo: 73 rows - both have sufficient data for analysis
-      `HAVING COUNT(*) > 50
+      // Temporarily lowered threshold to 1 for debugging
+      // This will include any client with at least 1 record
+      `HAVING COUNT(*) > 1
         ORDER BY record_count DESC
         LIMIT 50
       `;
 
       console.log('🔍 [App Discovery] Executing BigQuery discovery query');
+      console.log('Query:', discoveryQuery);
 
       let bigQueryResponse: Response;
       try {
@@ -302,31 +320,52 @@ serve(async (req) => {
 
       if (!bigQueryResponse.ok) {
         const errorText = await bigQueryResponse.text();
+        console.error('BigQuery error response:', errorText);
         throw new Error(`BigQuery discovery failed: ${bigQueryResponse.status} - ${errorText}`);
       }
 
       const queryResult = await bigQueryResponse.json();
-      console.log("[App Discovery][DEBUG] BigQuery rows:", queryResult.rows?.length || 0);
+      const rows = queryResult.rows ?? [];
+      console.log("[App Discovery][DEBUG] BigQuery rows:", rows.length);
+      console.log('[DEBUG][BQ SAMPLE] rows length:', rows?.length);
+      if (rows?.length) {
+        const first = rows[0];
+        console.log('[DEBUG][BQ SAMPLE] first row keys:', Object.keys(first));
+        console.log('[DEBUG][BQ SAMPLE] app_id field:', first.app_id ?? first.appid ?? null);
+        console.log('[DEBUG][BQ SAMPLE] bundle_id field:', first.bundle_id ?? null);
+        console.log('[DEBUG][BQ SAMPLE] raw row (stringified):', JSON.stringify(first, null, 2).slice(0, 500));
+      }
       const discoveredApps = [];
 
-      if (queryResult.rows) {
-        for (const row of queryResult.rows) {
+      if (rows.length) {
+        for (const row of rows) {
           const fields = row.f;
           const appData = {
             app_identifier: fields[0]?.v,
-            record_count: parseInt(fields[1]?.v || '0'),
-            first_seen: fields[2]?.v,
-            last_seen: fields[3]?.v,
-            days_with_data: parseInt(fields[4]?.v || '0')
+            organization_name: fields[1]?.v,
+            record_count: parseInt(fields[2]?.v || '0'),
+            first_seen: fields[3]?.v,
+            last_seen: fields[4]?.v,
+            days_with_data: parseInt(fields[5]?.v || '0')
           };
 
           // Clean the app name for better readability
           const cleanedAppName = cleanAppName(appData.app_identifier);
 
-          const resolvedOrganizationId = clientOrgMap[appData.app_identifier];
+          console.log('[JOIN DEBUG]', {
+            bq_app_id: appData.app_identifier,
+            bq_app_id_type: typeof appData.app_identifier,
+            bq_organization: appData.organization_name,
+            supabase_has_app_id: appAccessMap.has(String(appData.app_identifier)),
+          });
 
+          if (!appData.app_identifier || !appAccessMap.has(appData.app_identifier)) {
+            console.warn(`[App Discovery][${requestId}] Skipping ${appData.app_identifier}: no org_app_access entry`);
+            continue;
+          }
+
+          const resolvedOrganizationId = appAccessMap.get(appData.app_identifier);
           if (!resolvedOrganizationId) {
-            console.warn(`[App Discovery][${requestId}] Skipping ${appData.app_identifier}: no client_org_map entry`);
             continue;
           }
 
@@ -338,7 +377,7 @@ serve(async (req) => {
 
           const { data: existingApp, error: fetchExistingError } = await supabaseClient
             .from('apps')
-            .select('id, created_at, approved_at')
+            .select('id, created_at')
             .eq('organization_id', resolvedOrganizationId)
             .eq('bundle_id', appData.app_identifier)
             .eq('platform', 'ios')
@@ -351,7 +390,6 @@ serve(async (req) => {
 
           const nowIso = new Date().toISOString();
           const preservedCreatedAt = existingApp?.created_at ?? nowIso;
-          const preservedApprovedAt = existingApp?.approved_at ?? nowIso;
 
           // Persist discovery metadata. Stored under intelligence_metadata, mapped to app_metadata on the frontend.
           const { error: upsertError } = await supabaseClient
@@ -369,8 +407,7 @@ serve(async (req) => {
                 days_with_data: appData.days_with_data,
                 discovered_via: 'bigquery'
               },
-              created_at: preservedCreatedAt,
-              approved_at: preservedApprovedAt
+              created_at: preservedCreatedAt
             }, {
               onConflict: 'organization_id,bundle_id,platform',
               ignoreDuplicates: false
@@ -379,13 +416,11 @@ serve(async (req) => {
           if (!upsertError) {
             console.log(`✅ [App Discovery][DEBUG] Upsert succeeded for ${appData.app_identifier}`, {
               created_at: preservedCreatedAt,
-              approved_at: preservedApprovedAt,
               organization_id: resolvedOrganizationId
             });
             discoveredApps.push({
               ...appData,
               cleaned_name: cleanedAppName,
-              approved_at: preservedApprovedAt,
               organization_id: resolvedOrganizationId
             });
           } else {
