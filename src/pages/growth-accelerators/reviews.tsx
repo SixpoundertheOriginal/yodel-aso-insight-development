@@ -84,7 +84,7 @@ const ReviewManagementPage: React.FC = () => {
     (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
   
   const { isDemoOrg, organization } = useDemoOrgDetection();
-  const canAccessReviews = featureEnabledForRole('REVIEWS_PUBLIC_RSS_ENABLED', currentUserRole) || isDemoOrg;
+  const canAccessReviews = featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, currentUserRole) || isDemoOrg;
 
   // Debug logging for troubleshooting
   console.log('ReviewManagement - Debug Info:', {
