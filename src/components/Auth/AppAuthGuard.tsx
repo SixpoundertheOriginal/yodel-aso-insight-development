@@ -27,7 +27,7 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
   const currentPath = location.pathname + location.search;
   const { isAuthenticated, isLoading, shouldShowNoAccess } = useAccessControl(currentPath);
   const { loading: serverAuthLoading } = useServerAuth();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isLoading: permissionsLoading } = usePermissions();
   const [routeAllowed, setRouteAllowed] = React.useState<boolean | null>(null);
 
   // Public routes that don't need auth
@@ -48,6 +48,12 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
 
   // Kick off server-side authorization for protected routes
   React.useEffect(() => {
+    // Don't call authorize until user and permissions are fully loaded
+    // This prevents race condition where Edge Function queries before permissions are ready
+    if (!user || permissionsLoading || loading) {
+      return; // Wait for auth and permissions to load
+    }
+
     let cancelled = false;
     const run = async () => {
       // Only check for non-public routes
@@ -63,7 +69,7 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
     };
     void run();
     return () => { cancelled = true; };
-  }, [location.pathname]);
+  }, [location.pathname, isPublicRoute, user, permissionsLoading, loading]);
 
   // Show loading during initial auth + server auth
   if (loading || isLoading || serverAuthLoading || routeAllowed === null) {

@@ -34,6 +34,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const [routeAllowed, setRouteAllowed] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
+    // Don't call authorize until user and permissions are fully loaded
+    // This prevents race condition where Edge Function queries before permissions are ready
+    if (!user || permissionsLoading || loading) {
+      return; // Wait for auth and permissions to load
+    }
+
     let cancelled = false;
     const run = async () => {
       const result = await authorizePath(location.pathname, 'GET');
@@ -42,7 +48,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     };
     void run();
     return () => { cancelled = true; };
-  }, [location.pathname]);
+  }, [location.pathname, user, permissionsLoading, loading]);
 
   // ✅ MOVED: All other hooks must be called before any returns
   // Simplified: No UI permissions check needed

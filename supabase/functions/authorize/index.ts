@@ -1,18 +1,17 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { 
+  resolveAuthContext, 
+  hasFeatureAccess, 
+  corsHeaders,
+  createErrorResponse,
+  createSuccessResponse
+} from '../_shared/auth-utils.ts';
 
-type Input = { path?: string; method?: string };
-
-// Strict CORS for all responses (success or error)
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+type Input = { path?: string; method?: string; org_id?: string };
 
 serve(async (req) => {
-  console.log("[AUTHORIZE] --- FUNCTION VERSION 2025-09-11-DEBUG ---");
+  console.log("[AUTHORIZE] --- UPDATED NEW FEATURE MODEL VERSION 2025-11-04 ---");
   try {
     const url = new URL(req.url);
     const authHeader = req.headers.get("Authorization") || "";
@@ -20,8 +19,6 @@ serve(async (req) => {
       method: req.method,
       pathname: url.pathname,
       hasAuth: !!authHeader,
-      authPreview: authHeader ? authHeader.slice(0, 20) + "..." : null,
-      headers: Object.fromEntries(req.headers.entries()),
     });
 
     if (req.method === "OPTIONS") {
@@ -30,7 +27,7 @@ serve(async (req) => {
     }
     if (req.method !== "POST") {
       console.log("[AUTHORIZE] Method not allowed:", req.method);
-      return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405, headers: corsHeaders });
+      return createErrorResponse("method_not_allowed", 405);
     }
 
     const supabase = createClient(
@@ -39,78 +36,104 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: user, error: ue } = await supabase.auth.getUser();
-    console.log("[AUTHORIZE] getUser:", { hasUser: !!user?.user, ue });
-    if (ue || !user?.user) {
-      console.log("[AUTHORIZE] Unauthorized: missing/invalid JWT");
-      return new Response(JSON.stringify({ allow: false, reason: "unauthorized" }), { status: 401, headers: corsHeaders });
-    }
-    const uid = user.user.id;
-
     const body = (await req.json().catch(() => ({}))) as Input;
     const path = (body.path || '').toLowerCase();
     const method = (body.method || 'GET').toUpperCase();
-    console.log("[AUTHORIZE] Input:", { path, method, uid });
+    const requestedOrgId = body.org_id;
+    
+    console.log("[AUTHORIZE] Input:", { path, method, requestedOrgId });
 
-    // Super admin shortcut
-    const { data: isSa, error: saError } = await supabase.rpc('is_super_admin');
-    if (saError) {
-      console.log("[AUTHORIZE] Super admin RPC error:", saError.message || saError);
-      // Fallback to false on RPC error
-    }
-    console.log("[AUTHORIZE] Super admin:", { isSa, saError });
-    if (isSa) {
-      return new Response(JSON.stringify({ allow: true, reason: "super_admin" }), { status: 200, headers: corsHeaders });
-    }
-
-    // Resolve active organization from profile
-    const { data: profile, error: pe } = await supabase
-      .from('profiles').select('organization_id').eq('id', uid).single();
-    console.log("[AUTHORIZE] Profile org:", { profile, pe });
-    if (pe) {
-      console.log("[AUTHORIZE] Profile query error:", pe.message || pe);
-      return new Response(JSON.stringify({ allow: false, reason: 'profile_query_error' }), { status: 500, headers: corsHeaders });
-    }
-    const orgId = profile?.organization_id || null;
-    if (!orgId) {
-      console.log("[AUTHORIZE] Deny: no organization");
-      return new Response(JSON.stringify({ allow: false, reason: 'no_organization' }), { status: 403, headers: corsHeaders });
+    // Resolve complete authentication context using unified system
+    console.log("[AUTHORIZE] Calling resolveAuthContext with requestedOrgId:", requestedOrgId);
+    const authContext = await resolveAuthContext(supabase, requestedOrgId);
+    console.log("[AUTHORIZE] AuthContext result:", authContext ? 'found' : 'null');
+    
+    if (!authContext) {
+      console.log("[AUTHORIZE] Unauthorized: no auth context");
+      return createErrorResponse("unauthorized", 401);
     }
 
-    // Verify membership and role
-    const { data: roles, error: re } = await supabase
-      .from('user_roles').select('role').eq('user_id', uid).eq('organization_id', orgId);
-    console.log("[AUTHORIZE] Roles:", { roles, re });
-    if (re) {
-      console.log("[AUTHORIZE] Roles query error:", re.message || re);
-      return new Response(JSON.stringify({ allow: false, reason: 'roles_query_error' }), { status: 500, headers: corsHeaders });
-    }
-    if (!roles || roles.length === 0) {
-      console.log("[AUTHORIZE] Deny: no role in org");
-      return new Response(JSON.stringify({ allow: false, reason: 'no_role' }), { status: 403, headers: corsHeaders });
-    }
-    const role = (roles[0].role || '').toLowerCase();
+    console.log("[AUTHORIZE] Auth context resolved:", {
+      userId: authContext.user.id,
+      orgId: authContext.permissions.org_id,
+      role: authContext.permissions.effective_role,
+      isSuperAdmin: authContext.permissions.is_super_admin,
+      isOrgAdmin: authContext.permissions.is_org_admin,
+      hasOrgAccess: authContext.hasOrgAccess
+    });
 
-    // Organization demo flag + features
-    const { data: orgRow, error: oe } = await supabase
-      .from('organizations').select('id, slug, settings').eq('id', orgId).single();
-    if (oe) {
-      console.log("[AUTHORIZE] Organizations query error:", oe.message || oe);
-      return new Response(JSON.stringify({ allow: false, reason: 'org_query_error' }), { status: 500, headers: corsHeaders });
+    // Super admin bypass
+    if (authContext.permissions.is_super_admin) {
+      console.log("[AUTHORIZE] Super admin access granted");
+      return createSuccessResponse({ allow: true, reason: "super_admin" });
     }
-    const isDemo = Boolean(orgRow?.settings?.demo_mode) || (orgRow?.slug || '').toLowerCase() === 'next';
-    console.log("[AUTHORIZE] Org:", { orgId, slug: orgRow?.slug, isDemo, oe });
 
-    // Organization features table (keyed feature flags)
-    const { data: featRows, error: fe } = await supabase
-      .from('organization_features').select('feature_key, is_enabled').eq('organization_id', orgId);
-    if (fe) {
-      console.log("[AUTHORIZE] Features query error:", fe.message || fe);
-      // Features query error is non-critical, continue with empty features
+    // Organization access check - require either org membership or super admin
+    if (!authContext.hasOrgAccess) {
+      console.log("[AUTHORIZE] Deny: no organization access");
+      return createErrorResponse("no_organization_access", 403);
     }
-    const features: Record<string, boolean> = {};
-    (featRows || []).forEach(r => features[r.feature_key] = !!r.is_enabled);
-    console.log("[AUTHORIZE] Features:", { count: (featRows || []).length, features, fe });
+
+    const orgId = authContext.permissions.org_id;
+    const role = authContext.permissions.normalized_role;
+    const isDemo = authContext.isDemo;
+    const features = authContext.features;
+
+    console.log("[AUTHORIZE] Organization context:", { 
+      orgId, 
+      role, 
+      isDemo, 
+      featureCount: Object.keys(features).length 
+    });
+
+    // Step 1: Platform Admin Routes (reserved for super admin only)
+    const platformAdminPolicies: Array<{ match: (p: string) => boolean; label: string }> = [
+      { match: (p) => ['/admin/platform', '/admin/organizations', '/admin/billing'].some(x => p.startsWith(x)), label: 'Platform Admin' },
+    ];
+    
+    for (const pol of platformAdminPolicies) {
+      if (pol.match(path)) {
+        console.log("[AUTHORIZE] PLATFORM ADMIN policy:", { path, isSuperAdmin: authContext.permissions.is_super_admin, role });
+        if (authContext.permissions.is_super_admin) {
+          return createSuccessResponse({ allow: true, reason: 'platform_admin_access' });
+        }
+        return createErrorResponse('platform_admin_required', 403);
+      }
+    }
+
+    // Step 2: Base App Access Check (core application entry)
+    const coreAppPolicies: Array<{ match: (p: string) => boolean; label: string }> = [
+      { match: (p) => ['/', '/dashboard', '/dashboard/'].some(x => p === x || p.startsWith(x)), label: 'Core App' },
+    ];
+    
+    for (const pol of coreAppPolicies) {
+      if (pol.match(path)) {
+        const hasBaseAccess = hasFeatureAccess(authContext, 'app_core_access');
+        console.log("[AUTHORIZE] CORE APP policy:", { path, hasBaseAccess, role });
+        if (hasBaseAccess) {
+          return createSuccessResponse({ allow: true, reason: 'core_app_access' });
+        }
+        return createErrorResponse('core_app_access_disabled', 403);
+      }
+    }
+
+    // Step 3: Feature-Specific Routes (require specific features)
+    const featureSpecificPolicies: Array<{ match: (p: string) => boolean; feature: string; label: string }> = [
+      { match: (p) => ['/analytics', '/analytics/'].some(x => p.startsWith(x)), feature: 'analytics_access', label: 'Analytics' },
+      { match: (p) => ['/conversion-analysis', '/conversion', '/cvr'].some(x => p.startsWith(x)), feature: 'analytics_access', label: 'Conversion Analysis' },
+      { match: (p) => ['/admin', '/admin/'].some(x => p.startsWith(x) && !p.startsWith('/admin/platform') && !p.startsWith('/admin/organizations')), feature: 'org_admin_access', label: 'Organization Admin' },
+    ];
+    
+    for (const pol of featureSpecificPolicies) {
+      if (pol.match(path)) {
+        const hasFeature = hasFeatureAccess(authContext, pol.feature);
+        console.log("[AUTHORIZE] FEATURE policy:", { path, feature: pol.feature, hasFeature, role });
+        if (hasFeature) {
+          return createSuccessResponse({ allow: true, reason: 'feature_enabled' });
+        }
+        return createErrorResponse('feature_disabled', 403);
+      }
+    }
 
     // Central policy: Demo sections
     const demoPolicies: Array<{ match: (p: string) => boolean; feature: string; label: string }> = [
@@ -118,26 +141,24 @@ serve(async (req) => {
       { match: (p) => ['/demo/creative-review'].some(x => p.startsWith(x)), feature: 'creative_review_demo', label: 'Creative Review' },
       { match: (p) => ['/demo/keyword-insights'].some(x => p.startsWith(x)), feature: 'keyword_insights_demo', label: 'Keyword Insights' },
     ];
+    
     for (const pol of demoPolicies) {
       if (pol.match(path)) {
-        const hasDemoFeature = features[pol.feature] === true;
+        const hasDemoFeature = hasFeatureAccess(authContext, pol.feature);
         const allow = isDemo && hasDemoFeature;
         console.log("[AUTHORIZE] DEMO policy:", { path, feature: pol.feature, isDemo, hasDemoFeature, allow });
         if (allow) {
-          return new Response(JSON.stringify({ allow: true, reason: 'demo_feature_enabled' }), { status: 200, headers: corsHeaders });
+          return createSuccessResponse({ allow: true, reason: 'demo_feature_enabled' });
         }
-        return new Response(JSON.stringify({ allow: false, reason: 'feature_not_enabled_or_not_demo' }), { status: 403, headers: corsHeaders });
+        return createErrorResponse('feature_not_enabled_or_not_demo', 403);
       }
     }
 
     // Default allow other paths (existing app guards may still apply)
     console.log("[AUTHORIZE] Default allow", { path, method });
-    return new Response(JSON.stringify({ allow: true, reason: 'default_allow' }), { status: 200, headers: corsHeaders });
+    return createSuccessResponse({ allow: true, reason: 'default_allow' });
   } catch (e) {
     console.error("[FUNCTION AUTHORIZE] INTERNAL ERROR:", (e as any)?.stack || e);
-    return new Response(
-      JSON.stringify({ error: 'internal_error', message: (e as any)?.message || String(e) }),
-      { status: 500, headers: corsHeaders }
-    );
+    return createErrorResponse('internal_error', 500, (e as any)?.message || String(e));
   }
 });

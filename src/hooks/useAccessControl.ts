@@ -15,12 +15,22 @@ export interface AccessControlState {
  */
 export const useAccessControl = (currentPath?: string): AccessControlState => {
   const { user, loading: authLoading } = useAuth();
-  const { 
-    organizationId, 
-    roles = [], 
-    isSuperAdmin, 
-    isLoading: permissionsLoading 
+  const {
+    organizationId,
+    roles = [],
+    isSuperAdmin,
+    isLoading: permissionsLoading
   } = usePermissions();
+
+  // [DIAGNOSTIC] Log what we received from usePermissions
+  console.log('🔍 [useAccessControl] Received from usePermissions:', {
+    organizationId,
+    orgIdType: typeof organizationId,
+    orgIdValue: organizationId,
+    roles,
+    isSuperAdmin,
+    permissionsLoading
+  });
 
   const isLoading = authLoading || (user && permissionsLoading);
   const isAuthenticated = !!user;
@@ -35,10 +45,22 @@ export const useAccessControl = (currentPath?: string): AccessControlState => {
   ) : false;
 
   // Don't apply access control during loading or auth flows
-  if (isLoading || !isAuthenticated || isInAuthFlow) {
+  // CRITICAL FIX: If organizationId is null, treat as still loading (don't deny access yet)
+  // This prevents false access denial during React state propagation delays
+  const treatAsLoading = isLoading || permissionsLoading || (isAuthenticated && organizationId === null && !isSuperAdmin);
+
+  if (treatAsLoading || !isAuthenticated || isInAuthFlow) {
+    console.log('🔍 [useAccessControl] Treating as loading:', {
+      isLoading,
+      permissionsLoading,
+      isAuthenticated,
+      isInAuthFlow,
+      organizationIdIsNull: organizationId === null,
+      treatAsLoading: treatAsLoading
+    });
     return {
       isAuthenticated,
-      isLoading,
+      isLoading: treatAsLoading,
       hasAccess: true, // Assume access during loading/auth
       accessDenialReason: isInAuthFlow ? 'in-auth-flow' : null,
       shouldShowNoAccess: false
