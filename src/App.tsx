@@ -28,6 +28,7 @@ import InsightsPage from "./pages/insights";
 
 // === LAZY IMPORTS (Secondary Routes) ===
 const TrafficPerformanceMatrix = lazy(() => import("./pages/TrafficPerformanceMatrix"));
+const ReportingDashboardV2 = lazy(() => import("./pages/ReportingDashboardV2"));
 
 const AsoAiHub = lazy(() => import("./pages/aso-ai-hub"));
 const ChatGPTVisibilityAudit = lazy(() => import("./pages/chatgpt-visibility-audit"));
@@ -97,6 +98,10 @@ function App() {
                           <Route
                             path="/dashboard"
                             element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/dashboard-v2"
+                            element={<ProtectedRoute><ReportingDashboardV2 /></ProtectedRoute>}
                           />
                           <Route
                             path="/dashboard/executive"

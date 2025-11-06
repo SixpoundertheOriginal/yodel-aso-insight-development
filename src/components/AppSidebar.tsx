@@ -50,16 +50,10 @@ import { ROUTES } from '@/constants/routes';
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
   {
-    title: "Executive Dashboard",
-    url: "/dashboard/executive",
+    title: "Performance Dashboard",
+    url: "/dashboard-v2",
     icon: Home,
-    featureKey: PLATFORM_FEATURES.EXECUTIVE_DASHBOARD,
-  },
-  {
-    title: "Analytics",
-    url: "/dashboard/analytics",
-    icon: BarChart3,
-    featureKey: PLATFORM_FEATURES.ANALYTICS,
+    // No featureKey - always visible for users with route access
   },
   {
     title: "Conversion Rate",

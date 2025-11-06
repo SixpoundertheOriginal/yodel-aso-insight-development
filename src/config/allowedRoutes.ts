@@ -1,4 +1,5 @@
 export const DEMO_REPORTING_ROUTES = [
+  '/dashboard-v2',
   '/dashboard/executive',
   '/dashboard/analytics',
   '/dashboard/conversion-rate',
