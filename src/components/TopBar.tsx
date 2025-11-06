@@ -2,15 +2,12 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import DatePicker from "./DatePicker";
-import ResetButton from "./ResetButton";
 import { UserMenu } from "./UserMenu";
 import { AppSelector } from "./AppSelector";
 import { BigQueryAppSelector } from "./BigQueryAppSelector";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { PermissionWrapper } from "@/components/PermissionWrapper";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
 import GlobalDemoIndicator from "./GlobalDemoIndicator";
@@ -48,8 +45,6 @@ const TopBar: React.FC = React.memo(() => {
     }
   };
 
-  const showDateControls = ['/dashboard-v2', '/dashboard', '/overview', '/conversion-analysis'].includes(location.pathname);
-
   // Analytics pages use BigQuery data
   const analyticsPages = ['/dashboard-v2', '/dashboard', '/overview', '/conversion-analysis', '/insights'];
   const isAnalyticsPage = analyticsPages.includes(location.pathname);
@@ -83,21 +78,6 @@ const TopBar: React.FC = React.memo(() => {
               {getPageTitle()}
             </Heading3>
             <GlobalDemoIndicator />
-            {isAnalyticsPage && (
-              <PermissionWrapper permission="ui.debug.show_data_source" fallback={
-                <div className="hidden sm:flex items-center gap-2 ml-4">
-                  <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
-                    Real-time Analytics
-                  </div>
-                </div>
-              }>
-                <div className="hidden sm:flex items-center gap-2 ml-4">
-                  <div className="rounded-md bg-card px-2 py-1 text-xs text-muted-foreground">
-                    Data Source: BigQuery
-                  </div>
-                </div>
-              </PermissionWrapper>
-            )}
           </div>
         </div>
 
@@ -120,14 +100,6 @@ const TopBar: React.FC = React.memo(() => {
             </div>
           )}
           
-          {showDateControls && (
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:block">
-                <DatePicker />
-              </div>
-              <ResetButton />
-            </div>
-          )}
           <div className="flex items-center gap-2">
             {isSuperAdmin && (
               <div className="theme-toggle-container">
@@ -150,7 +122,6 @@ const TopBar: React.FC = React.memo(() => {
             />
           )}
           {showManualAppSelector && <AppSelector />}
-          {showDateControls && <DatePicker />}
         </div>
       </div>
     </div>

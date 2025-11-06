@@ -118,9 +118,10 @@ export const SuperAdminDebugPanel = () => {
     setIsRunning(false);
   };
 
-  // Only show for super admins in development OR for igor@yodelmobile.com
-  const shouldShow = import.meta.env.DEV || user?.email === 'igor@yodelmobile.com';
-  
+  // Only show for actual SUPER_ADMIN users (not ORG_ADMIN)
+  // This is a debug panel - only show to users who actually have SUPER_ADMIN role
+  const shouldShow = permissions.isSuperAdmin && !permissions.isLoading;
+
   if (!shouldShow) return null;
 
   return (
