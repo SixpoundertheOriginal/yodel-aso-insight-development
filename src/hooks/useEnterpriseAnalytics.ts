@@ -170,23 +170,53 @@ export function useEnterpriseAnalytics({
         throw new Error(response.error || 'Analytics service returned an error');
       }
 
-      // [VALIDATION] Response structure
-      if (!response.data || !Array.isArray(response.data)) {
-        console.error('❌ [ENTERPRISE-ANALYTICS] Invalid response structure:', response);
-        throw new Error('Invalid response structure from analytics service');
+      // [VALIDATION] Response structure - handle both direct and wrapped formats
+      // Edge function returns: {data: [], scope: {}, meta: {}}
+      // But Supabase may wrap it: {success: true, data: {data: [], scope: {}, meta: {}}}
+
+      let actualData = response.data;
+      let actualMeta = response.meta;
+      let actualScope = response.scope;
+
+      // Check if this is a wrapped response (data.data exists and is an array)
+      if (!Array.isArray(actualData) && actualData && typeof actualData === 'object') {
+        console.log('🔍 [ENTERPRISE-ANALYTICS] Detected wrapped response format, unwrapping...');
+        console.log('  Wrapped structure:', response);
+
+        // Unwrap: response.data = {data: [], scope: {}, meta: {}}
+        if (Array.isArray(actualData.data)) {
+          console.log('✅ [ENTERPRISE-ANALYTICS] Successfully unwrapped response');
+          const wrappedData = actualData; // Save reference to wrapped object
+          actualData = wrappedData.data;   // Extract array
+          actualMeta = wrappedData.meta || response.meta;   // Extract meta from wrapped object
+          actualScope = wrappedData.scope || response.scope; // Extract scope from wrapped object
+        } else {
+          console.error('❌ [ENTERPRISE-ANALYTICS] Cannot unwrap - data.data is not an array:', actualData);
+          throw new Error('Invalid response structure from analytics service - cannot find data array');
+        }
+      }
+
+      if (!actualData) {
+        console.error('❌ [ENTERPRISE-ANALYTICS] No data field in response:', response);
+        throw new Error('No data in response from analytics service');
+      }
+
+      if (!Array.isArray(actualData)) {
+        console.error('❌ [ENTERPRISE-ANALYTICS] Data is not an array after unwrapping:', typeof actualData);
+        throw new Error('Invalid response structure from analytics service - expected data array');
       }
 
       console.log('✅ [ENTERPRISE-ANALYTICS] Data received successfully');
-      console.log('  Raw Rows:', response.data.length);
-      console.log('  Data Source:', response.meta?.data_source);
-      console.log('  App Count:', response.meta?.app_count);
-      console.log('  Query Duration:', response.meta?.query_duration_ms, 'ms');
-      console.log('  Available Traffic Sources:', response.meta?.available_traffic_sources?.length || 0);
+      console.log('  Raw Rows:', actualData.length);
+      console.log('  Data Source:', actualMeta?.data_source);
+      console.log('  App Count:', actualMeta?.app_count);
+      console.log('  Query Duration:', actualMeta?.query_duration_ms, 'ms');
+      console.log('  Available Traffic Sources:', actualMeta?.available_traffic_sources?.length || 0);
       console.log('  Server-Side Filtering:', appIds.length > 0 ? 'Apps only' : 'None (date range only)');
 
       // [RETURN] Return processed data with traffic source metadata
       return {
-        rawData: response.data,
+        rawData: actualData,
         processedData: response.processed || {
           summary: {
             impressions: { value: 0, delta: 0 },
@@ -205,8 +235,8 @@ export function useEnterpriseAnalytics({
             granularity: 'daily'
           }
         },
-        meta: response.meta,
-        availableTrafficSources: response.meta?.available_traffic_sources || []
+        meta: actualMeta,
+        availableTrafficSources: actualMeta?.available_traffic_sources || []
       };
     },
 
