@@ -36,6 +36,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useUnifiedFeatureAccess } from "@/hooks/useUnifiedFeatureAccess";
+import { useOrgAccessLevel } from "@/hooks/useOrgAccessLevel";
 import { resolvePermForPath } from "@/utils/navigation/navPermissionMap";
 import { PLATFORM_FEATURES_ENHANCED as PLATFORM_FEATURES, featureEnabledForRole, UserRole } from '@/constants/features';
 import '../utils/featureTestHelper'; // Auto-run feature validation in development
@@ -157,6 +158,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { isDemoOrg, organization: org, loading: orgLoading } = useDemoOrgDetection();
   const { hasFeature, loading: featuresLoading } = useFeatureAccess();
+  const orgAccessLevel = useOrgAccessLevel();
   // Simplified: No UI permissions check needed
   const { whoami } = useServerAuth();
 
@@ -195,7 +197,7 @@ export function AppSidebar() {
 const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoading;
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
-  const routes = getAllowedRoutes({ isDemoOrg, role });
+  const routes = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 

@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
 type UserProfile = Tables<'profiles'> & {
-  organizations: (Pick<Tables<'organizations'>, 'name' | 'subscription_tier' | 'slug'> & {
+  organizations: (Pick<Tables<'organizations'>, 'name' | 'subscription_tier' | 'slug' | 'access_level'> & {
     settings: { demo_mode?: boolean } | null;
   }) | null;
   user_roles: Pick<Tables<'user_roles'>, 'role' | 'organization_id'>[];
@@ -25,7 +25,7 @@ export const useUserProfile = () => {
         .from('profiles')
         .select(`
           *,
-          organizations(name, subscription_tier, slug),
+          organizations!profiles_organization_id_fkey(name, subscription_tier, slug, settings, access_level),
           user_roles(role, organization_id)
         `)
         .eq('id', user.id)
