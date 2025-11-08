@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { Brain } from 'lucide-react';
-import { featureEnabledForRole, type UserRole } from '@/constants/features';
+import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
 import { NotAuthorized } from '@/components/NotAuthorized';
 
 const AsoAiHubPage: React.FC = () => {
@@ -22,7 +22,7 @@ const AsoAiHubPage: React.FC = () => {
 
   // Route-level access control
   const currentUserRole: UserRole = dataContext.canAccessAllOrgs ? 'super_admin' : 'viewer';
-  const hasAccess = featureEnabledForRole('ASO_AI_HUB', currentUserRole);
+  const hasAccess = featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, currentUserRole);
   
   if (!hasAccess) {
     return (

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
-import { featureEnabledForRole, type UserRole } from '@/constants/features';
+import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
 import { NotAuthorized } from '@/components/NotAuthorized';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
@@ -65,7 +65,7 @@ function ChatGPTVisibilityAudit() {
   
   // Route-level access control
   const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 'viewer';
-  const hasAccess = featureEnabledForRole('CHATGPT_VISIBILITY_AUDIT', currentUserRole);
+  const hasAccess = featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, currentUserRole);
   
   if (!hasAccess) {
     return (
