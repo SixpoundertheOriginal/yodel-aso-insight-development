@@ -28,7 +28,9 @@ import SuggestKeywordsDialog from '@/components/keywords/SuggestKeywordsDialog';
 import { PremiumCard, PremiumCardHeader, PremiumCardContent, PremiumTypography } from '@/components/ui/premium';
 import { BulkKeywordDiscovery } from '@/components/KeywordIntelligence/BulkKeywordDiscovery';
 import { CompetitorIntelligencePanel } from '@/components/KeywordIntelligence/CompetitorIntelligencePanel';
+import { QuickDiscoveryPanel } from '@/components/KeywordIntelligence/QuickDiscoveryPanel';
 import { useEnhancedKeywordIntelligence } from '@/hooks/useEnhancedKeywordIntelligence';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type AppSearchResult = {
   name: string;
@@ -87,7 +89,12 @@ const KeywordsIntelligencePage: React.FC = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
   const [autoGenerateAfterPick, setAutoGenerateAfterPick] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'discovery' | 'competitors' | 'manual'>('overview');
+  type ViewState = 'overview' | 'quick-discovery' | 'bulk-discovery' | 'manual' | 'competitors' | 'results';
+  const [currentView, setCurrentView] = useState<ViewState>('overview');
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveryProgress, setDiscoveryProgress] = useState(0);
+  const [discoveredCount, setDiscoveredCount] = useState(0);
+  const [targetCount, setTargetCount] = useState(10);
 
   // Enhanced Keyword Intelligence
   const enhancedKI = useEnhancedKeywordIntelligence({
@@ -167,6 +174,7 @@ const KeywordsIntelligencePage: React.FC = () => {
     setSelectedApp(app);
     setKeywords([]);
     setRows([]);
+    setCurrentView('quick-discovery'); // Start with quick discovery view
   };
 
   const handleAppPicked = (apps: any[] | ScrapedMetadata | undefined) => {
@@ -196,6 +204,7 @@ const KeywordsIntelligencePage: React.FC = () => {
     };
     selectApp(normalized);
     setAppPickerOpen(false);
+    setCurrentView('quick-discovery'); // Start with quick discovery view
     if (autoGenerateAfterPick) {
       // give the UI a tick to settle
       setTimeout(() => { void discoverTopTen(); }, 100);
@@ -274,6 +283,7 @@ const KeywordsIntelligencePage: React.FC = () => {
       // Merge analyzed keywords into tracked list
       setKeywords(prev => Array.from(new Set([...(prev || []), ...kwList])).slice(0, 50));
       setKeywordInput('');
+      setCurrentView('results'); // Switch to results view
       toast.success('Analysis completed');
     } finally {
       setAnalyzing(false);
@@ -332,33 +342,92 @@ const KeywordsIntelligencePage: React.FC = () => {
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
-  const discoverTopTen = async () => {
-    if (!selectedApp) { toast.error('Select an app first'); return; }
+  const discoverTopN = async (threshold: 10 | 30 | 50) => {
+    if (!selectedApp) {
+      toast.error('Select an app first');
+      return;
+    }
+
+    setDiscovering(true);
+    setTargetCount(threshold);
+    setDiscoveredCount(0);
+    setDiscoveryProgress(0);
+
     const nameSeeds = (selectedApp.name || '').split(/\s+/).filter(Boolean).slice(0, 3);
     const devSeeds = (selectedApp.developer || '').split(/\s+/).filter(Boolean).slice(0, 2);
-    const seeds = Array.from(new Set([...nameSeeds, ...devSeeds])).filter(s => s.length >= 2).slice(0, 5);
-    if (seeds.length === 0) { toast.error('No seeds available for discovery'); return; }
+    const seeds = Array.from(new Set([...nameSeeds, ...devSeeds]))
+      .filter(s => s.length >= 2)
+      .slice(0, 5);
+
+    if (seeds.length === 0) {
+      toast.error('No seeds available for discovery');
+      setDiscovering(false);
+      return;
+    }
+
     try {
+      toast.info(`Discovering Top ${threshold} keywords...`);
+
       const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-        body: { op: 'serp-topn', cc: selectedCountry, appId: selectedApp.appId, seeds, maxCandidates: 150, maxPages: 8, rankThreshold: 10 }
+        body: {
+          op: 'serp-topn',
+          cc: selectedCountry,
+          appId: selectedApp.appId,
+          seeds,
+          maxCandidates: 150 * (threshold / 10), // Scale candidates based on threshold
+          maxPages: 8 + Math.floor(threshold / 10), // More pages for higher thresholds
+          rankThreshold: threshold // KEY: configurable threshold
+        }
       });
+
       if (error) throw error;
-      const res: Array<{ keyword: string; rank: number }> = Array.isArray(data?.results) ? data.results : [];
-      if (res.length === 0) { toast.info('No Top-10 keywords discovered'); return; }
-      const newRows: KeywordRow[] = res.map(h => ({ keyword: h.keyword, position: h.rank, volume: 'Low', confidence: 'actual', trend: 'stable', lastChecked: new Date() }));
+
+      const results: Array<{ keyword: string; rank: number }> = Array.isArray(data?.results)
+        ? data.results
+        : [];
+
+      if (results.length === 0) {
+        toast.info(`No Top-${threshold} keywords discovered`);
+        setDiscovering(false);
+        return;
+      }
+
+      // Animate discovery
+      setDiscoveryProgress(100);
+      setDiscoveredCount(results.length);
+
+      // Map to rows
+      const newRows: KeywordRow[] = results.map(h => ({
+        keyword: h.keyword,
+        position: h.rank,
+        volume: 'Low',
+        confidence: 'actual',
+        trend: 'stable',
+        lastChecked: new Date()
+      }));
+
       setRows(prev => {
         const map = new Map<string, KeywordRow>();
         prev.forEach(r => map.set(r.keyword, r));
         newRows.forEach(r => map.set(r.keyword, r));
-        return Array.from(map.values()).sort((a,b) => (a.position ?? 999) - (b.position ?? 999));
+        return Array.from(map.values()).sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
       });
-      setKeywords(prev => Array.from(new Set([...(prev || []), ...res.map(x=>x.keyword)])).slice(0, 300));
-      setTopTenOnly(true);
-      toast.success(`Discovered ${res.length} Top-10 keywords`);
+
+      setKeywords(prev => Array.from(new Set([...(prev || []), ...results.map(x => x.keyword)])));
+      setCurrentView('results'); // Switch to results tab
+      setTopTenOnly(threshold === 10);
+
+      toast.success(`✨ Discovered ${results.length} Top-${threshold} keywords`);
+
     } catch (e: any) {
       toast.error(e?.message || 'Discovery failed');
+    } finally {
+      setDiscovering(false);
     }
   };
+
+  // Legacy support - redirect old Top-10 calls to new function
+  const discoverTopTen = () => discoverTopN(10);
 
   // Populate demo keywords on demand
   const populateDemoKeywords = () => {
@@ -431,8 +500,8 @@ const KeywordsIntelligencePage: React.FC = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* App Search (hidden in demo mode when preset applied) */}
-        {!(isDemoOrg && selectedApp) && (
+        {/* App Search (hidden when app is selected) */}
+        {!selectedApp && (
           <YodelCard variant="glass" padding="md">
             <YodelCardHeader>
               <div className="flex items-center justify-between">
@@ -550,113 +619,299 @@ const KeywordsIntelligencePage: React.FC = () => {
                 </div>
               </div>
             </PremiumCardHeader>
-            <PremiumCardContent className="space-y-4 p-5">
-              <YodelToolbar>
-                <Input
-                  placeholder="Enter keywords (comma or newline separated) and press Enter or Analyze"
-                  value={keywordInput}
-                  onChange={e=>setKeywordInput(e.target.value)}
-                  onKeyDown={async (e) => {
-                    if (e.key === 'Enter') {
-                      const list = parseKeywords(keywordInput);
-                      if (list.length) {
-                        await runAnalysis(list);
-                      }
-                    }
+
+            {/* Tabbed Navigation */}
+            <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as ViewState)} className="w-full">
+              <div className="border-b border-zinc-800/50 px-5 pt-4">
+                <TabsList className="grid w-full grid-cols-5 bg-zinc-900/50 h-auto p-1">
+                  <TabsTrigger value="quick-discovery" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Trophy className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Quick Discovery</span>
+                    <span className="sm:hidden">Quick</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="bulk-discovery" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Rocket className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Bulk (10/30/50)</span>
+                    <span className="sm:hidden">Bulk</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="manual" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Zap className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Manual Entry</span>
+                    <span className="sm:hidden">Manual</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="competitors" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Competitors</span>
+                    <span className="sm:hidden">Competitors</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="results" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Results ({rows.length})</span>
+                    <span className="sm:hidden">Results</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* Quick Discovery Tab */}
+              <TabsContent value="quick-discovery" className="p-5 space-y-4">
+                <QuickDiscoveryPanel
+                  onDiscover={discoverTopN}
+                  discovering={discovering}
+                  discoveryProgress={discoveryProgress}
+                  discoveredCount={discoveredCount}
+                  targetCount={targetCount}
+                />
+              </TabsContent>
+
+              {/* Bulk Discovery Tab */}
+              <TabsContent value="bulk-discovery" className="p-5 space-y-4">
+                <BulkKeywordDiscovery
+                  organizationId={effectiveOrgId!}
+                  targetAppId={selectedApp?.appId}
+                  onKeywordsDiscovered={(keywords) => {
+                    // Map discovered keywords to rows
+                    const newRows: KeywordRow[] = Array.isArray(keywords) ? keywords.map((kw: any) => ({
+                      keyword: kw.keyword || (typeof kw === 'string' ? kw : ''),
+                      position: kw.position || kw.rank || null,
+                      volume: kw.volume || 'Low',
+                      confidence: 'actual' as const,
+                      trend: 'stable' as const,
+                      lastChecked: new Date()
+                    })) : [];
+
+                    setRows(newRows);
+                    setKeywords(newRows.map(r => r.keyword));
+                    setCurrentView('results');
+                    toast.success(`Loaded ${newRows.length} keywords`);
                   }}
                 />
-                <YodelToolbarSpacer />
-                <Button variant={topTenOnly ? 'default' : 'outline'} onClick={() => setTopTenOnly(v => !v)} title="Show only Top-10 keywords"><Filter className="w-4 h-4 mr-2" /> {topTenOnly ? 'Top-10: ON' : 'Top-10: OFF'}</Button>
-                <Button variant="outline" onClick={discoverTopTen} title="Discover keywords where this app ranks Top 10"><Trophy className="w-4 h-4 mr-2" /> Discover Top‑10</Button>
-                {isDemoOrg && (
-                  <Button variant="outline" onClick={populateDemoKeywords} title="Load demo Top Install Keywords">
-                    Top Install Keywords
-                  </Button>
+              </TabsContent>
+
+              {/* Competitors Tab */}
+              <TabsContent value="competitors" className="p-5 space-y-4">
+                {effectiveOrgId && selectedApp?.appId ? (
+                  <CompetitorIntelligencePanel
+                    organizationId={effectiveOrgId}
+                    targetAppId={selectedApp.appId}
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground py-12">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Select an app to view competitor intelligence</p>
+                  </div>
                 )}
-                <Button onClick={analyze} disabled={analyzing}><Rocket className="w-4 h-4 mr-2" /> {analyzing? 'Analyzing...' : 'Analyze'}</Button>
-                <Button variant="outline" onClick={exportCsv} disabled={rows.length===0}><Download className="w-4 h-4 mr-2" /> Export</Button>
-              </YodelToolbar>
+              </TabsContent>
+
+              {/* Manual Entry Tab */}
+              <TabsContent value="manual" className="p-5 space-y-4">
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <Input
+                      placeholder="Enter keywords (comma or newline separated, max 50) and press Enter or Analyze"
+                      value={keywordInput}
+                      onChange={e => setKeywordInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          const list = parseKeywords(keywordInput);
+                          if (list.length) {
+                            await runAnalysis(list);
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button onClick={analyze} disabled={analyzing} size="lg">
+                      <Rocket className="w-4 h-4 mr-2" />
+                      {analyzing ? 'Analyzing...' : 'Analyze'}
+                    </Button>
+                  </div>
+
+                  {isDemoOrg && (
+                    <Button variant="outline" onClick={populateDemoKeywords} title="Load demo Top Install Keywords">
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Top Install Keywords
+                    </Button>
+                  )}
+                </div>
 
               {/* Current keywords */}
               {keywords.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {keywords.map(k => (
-                    <Badge key={k} variant="secondary" className="text-xs cursor-pointer" onClick={()=>removeKeyword(k)} title="Remove">{k} ✕</Badge>
-                  ))}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Tracked Keywords ({keywords.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {keywords.map(k => (
+                      <Badge key={k} variant="secondary" className="text-xs cursor-pointer" onClick={() => removeKeyword(k)} title="Click to remove">
+                        {k} ✕
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <MetricStat label="Keywords" value={summary.total.toLocaleString()} />
-                <MetricStat label="Avg Position" value={summary.avg} />
-                <MetricStat label="Top‑10 %" value={`${summary.top10Pct}%`} />
-              </div>
+              {/* Quick Stats */}
+              {rows.length > 0 && (
+                <div className="bg-zinc-900/40 rounded-lg p-4 border border-zinc-800/50">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{summary.total}</div>
+                      <div className="text-xs text-muted-foreground">Keywords</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{summary.avg || '—'}</div>
+                      <div className="text-xs text-muted-foreground">Avg Position</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{summary.top10Pct}%</div>
+                      <div className="text-xs text-muted-foreground">Top 10</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentView('results')}>
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      View Full Analysis
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-              {/* Chart */}
-              <div className="border rounded-md p-3 bg-zinc-900/40">
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Rank distribution</h4>
-                <ChartContainer config={{ count: { label: 'Keywords', color: 'hsl(var(--primary))' } }}>
-                  <BarChart data={rankDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="bucket" />
-                    <YAxis allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count">
-                      {rankDistribution.map((entry, index) => {
-                        const COLORS = ['#22c55e', '#60a5fa', '#0ea5e9', '#f59e0b', '#ef4444', '#a3a3a3'];
-                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-              </div>
-
-              {/* Table */}
-              <div className="border rounded-md overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-zinc-900/60 backdrop-blur text-zinc-300">
-                    <tr>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('keyword')}>
-                        <span className="inline-flex items-center gap-1">Keyword {sortKey==='keyword' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('position')}>
-                        <span className="inline-flex items-center gap-1">Position {sortKey==='position' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('volume')}>
-                        <span className="inline-flex items-center gap-1">Volume {sortKey==='volume' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('confidence')}>
-                        <span className="inline-flex items-center gap-1">Confidence {sortKey==='confidence' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('trend')}>
-                        <span className="inline-flex items-center gap-1">Trend {sortKey==='trend' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                      <th className="text-left p-2 cursor-pointer select-none" onClick={()=>headerClick('lastChecked')}>
-                        <span className="inline-flex items-center gap-1">Last Checked {sortKey==='lastChecked' && (sortDir==='asc' ? <ArrowUp className="w-3 h-3"/> : <ArrowDown className="w-3 h-3"/> )}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedRows.map(r => (
-                      <tr key={r.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
-                        <td className="p-2">{r.keyword}</td>
-                        <td className="p-2"><PositionPill value={r.position} /></td>
-                        <td className="p-2"><VolumePill v={r.volume} /></td>
-                        <td className="p-2 capitalize">
-                          <span className={`px-2 py-0.5 text-xs rounded border ${r.confidence === 'actual' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>{r.confidence}</span>
-                        </td>
-                        <td className="p-2"><TrendCell t={r.trend} /></td>
-                        <td className="p-2">{r.lastChecked ? new Date(r.lastChecked).toLocaleString() : '—'}</td>
+              {/* Simple Table - Recent Keywords */}
+              {rows.length > 0 && (
+                <div className="border rounded-md overflow-x-auto">
+                  <div className="p-3 bg-zinc-900/60 border-b border-zinc-800">
+                    <h4 className="text-sm font-medium">Recently Analyzed Keywords</h4>
+                  </div>
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-zinc-900/40 text-zinc-300">
+                      <tr>
+                        <th className="text-left p-2">Keyword</th>
+                        <th className="text-left p-2">Position</th>
+                        <th className="text-left p-2">Volume</th>
+                        <th className="text-left p-2">Confidence</th>
                       </tr>
-                    ))}
-                    {rows.length === 0 && (
-                      <tr><td className="p-6" colSpan={6}><EmptyState title="No results yet" description="Enter keywords and press Analyze, or try Discover Top‑10." /></td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </PremiumCardContent>
+                    </thead>
+                    <tbody>
+                      {displayedRows.slice(0, 10).map(r => (
+                        <tr key={r.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                          <td className="p-2">{r.keyword}</td>
+                          <td className="p-2"><PositionPill value={r.position} /></td>
+                          <td className="p-2"><VolumePill v={r.volume} /></td>
+                          <td className="p-2 capitalize">
+                            <span className={`px-2 py-0.5 text-xs rounded border ${r.confidence === 'actual' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
+                              {r.confidence}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {rows.length > 10 && (
+                    <div className="p-3 bg-zinc-900/60 border-t border-zinc-800 text-center">
+                      <Button variant="link" size="sm" onClick={() => setCurrentView('results')}>
+                        View all {rows.length} keywords →
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {rows.length === 0 && (
+                <div className="text-center py-12">
+                  <EmptyState
+                    title="No keywords analyzed yet"
+                    description="Enter keywords above and click Analyze to get started"
+                  />
+                </div>
+              )}
+              </TabsContent>
+
+              {/* Results Tab */}
+              <TabsContent value="results" className="p-5 space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <MetricStat label="Keywords" value={summary.total.toLocaleString()} />
+                  <MetricStat label="Avg Position" value={summary.avg} />
+                  <MetricStat label="Top‑10 %" value={`${summary.top10Pct}%`} />
+                </div>
+
+                {/* Filters */}
+                <div className="flex items-center gap-2">
+                  <Button variant={topTenOnly ? 'default' : 'outline'} onClick={() => setTopTenOnly(v => !v)} size="sm">
+                    <Filter className="w-4 h-4 mr-2" />
+                    {topTenOnly ? 'Top-10: ON' : 'Top-10: OFF'}
+                  </Button>
+                  <Button variant="outline" onClick={exportCsv} disabled={rows.length === 0} size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
+
+                {/* Chart */}
+                <div className="border rounded-md p-3 bg-zinc-900/40">
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" /> Rank distribution
+                  </h4>
+                  <ChartContainer config={{ count: { label: 'Keywords', color: 'hsl(var(--primary))' } }}>
+                    <BarChart data={rankDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="bucket" />
+                      <YAxis allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="count">
+                        {rankDistribution.map((entry, index) => {
+                          const COLORS = ['#22c55e', '#60a5fa', '#0ea5e9', '#f59e0b', '#ef4444', '#a3a3a3'];
+                          return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+
+                {/* Table */}
+                <div className="border rounded-md overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="sticky top-0 bg-zinc-900/60 backdrop-blur text-zinc-300">
+                      <tr>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('keyword')}>
+                          <span className="inline-flex items-center gap-1">Keyword {sortKey === 'keyword' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('position')}>
+                          <span className="inline-flex items-center gap-1">Position {sortKey === 'position' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('volume')}>
+                          <span className="inline-flex items-center gap-1">Volume {sortKey === 'volume' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('confidence')}>
+                          <span className="inline-flex items-center gap-1">Confidence {sortKey === 'confidence' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('trend')}>
+                          <span className="inline-flex items-center gap-1">Trend {sortKey === 'trend' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                        <th className="text-left p-2 cursor-pointer select-none" onClick={() => headerClick('lastChecked')}>
+                          <span className="inline-flex items-center gap-1">Last Checked {sortKey === 'lastChecked' && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedRows.map(r => (
+                        <tr key={r.keyword} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                          <td className="p-2">{r.keyword}</td>
+                          <td className="p-2"><PositionPill value={r.position} /></td>
+                          <td className="p-2"><VolumePill v={r.volume} /></td>
+                          <td className="p-2 capitalize">
+                            <span className={`px-2 py-0.5 text-xs rounded border ${r.confidence === 'actual' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>{r.confidence}</span>
+                          </td>
+                          <td className="p-2"><TrendCell t={r.trend} /></td>
+                          <td className="p-2">{r.lastChecked ? new Date(r.lastChecked).toLocaleString() : '—'}</td>
+                        </tr>
+                      ))}
+                      {rows.length === 0 && (
+                        <tr><td className="p-6" colSpan={6}><EmptyState title="No results yet" description="Use Quick Discovery, Bulk Discovery, or Manual Entry to analyze keywords." /></td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            </Tabs>
           </PremiumCard>
         )}
       </div>
