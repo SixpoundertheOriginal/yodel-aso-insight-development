@@ -51,6 +51,12 @@ import { ROUTES } from '@/constants/routes';
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
   {
+    title: "KPIs Overview",
+    url: "/dashboard",
+    icon: BarChart3,
+    // No featureKey - always visible for users with route access
+  },
+  {
     title: "Performance Dashboard",
     url: "/dashboard-v2",
     icon: Home,
