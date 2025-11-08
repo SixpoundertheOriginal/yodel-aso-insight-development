@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { usePermissions } from '@/hooks/usePermissions';
+import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -43,17 +44,6 @@ export default function Dashboard() {
   // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
   const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
 
-  console.log('━'.repeat(60));
-  console.log('📊 [KPIs OVERVIEW] Rendering');
-  console.log('━'.repeat(60));
-  console.log('   Organization:', organizationName);
-  console.log('   Organization ID:', organizationId);
-  console.log('   User:', email);
-  console.log('   Date Range:', dateRange);
-  console.log('   Selected Apps:', selectedAppIds.length ? selectedAppIds : 'All');
-  console.log('   Selected Traffic Sources:', selectedTrafficSources.length ? selectedTrafficSources : 'All');
-  console.log('━'.repeat(60));
-
   // ✅ DIRECT BIGQUERY PIPELINE: Using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
     organizationId: organizationId || '',
@@ -62,13 +52,14 @@ export default function Dashboard() {
     appIds: selectedAppIds
   });
 
-  console.log('📊 [KPIs OVERVIEW] Hook Result:', {
-    isLoading,
-    hasError: !!error,
-    hasData: !!data,
-    rawRows: data?.meta?.raw_rows,
-    dataSource: data?.meta?.data_source
-  });
+  // Log only when data changes
+  useEffect(() => {
+    if (data) {
+      logger.dashboard(
+        `KPIs Overview: ${data.meta?.raw_rows || 0} rows, source=${data.meta?.data_source}, org=${truncateOrgId(organizationId)}`
+      );
+    }
+  }, [data, organizationId]);
 
   // ✅ FORMAT DATE RANGE FOR DISPLAY
   const formatDateRange = (start: string, end: string) => {

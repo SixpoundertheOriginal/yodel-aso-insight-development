@@ -3,6 +3,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { featureAccessService } from '@/services/featureAccess';
 import { PlatformFeature } from '@/constants/features';
 import { withEnterpriseDefaults, hasFeatureSafe, ENTERPRISE_CORE_FEATURES } from '@/utils/enterpriseSafeGuards';
+import { logger } from '@/utils/logger';
 
 export const useFeatureAccess = () => {
   const { profile } = useUserProfile();
@@ -20,7 +21,10 @@ export const useFeatureAccess = () => {
       if (!organizationId) {
         // Enterprise fallback: If user has no org, provide basic enterprise features
         // This prevents complete navigation breakdown in enterprise environments
-        console.warn('[ENTERPRISE-FALLBACK] User has no organization_id, providing enterprise fallback features');
+        logger.once(
+          'feature-access-no-org',
+          '[FeatureAccess] No organization ID, using enterprise fallback features'
+        );
         setRawFeatures(Object.keys(ENTERPRISE_CORE_FEATURES));
         setLoading(false);
         return;
@@ -32,7 +36,7 @@ export const useFeatureAccess = () => {
         const safeFeatures = orgFeatures?.length > 0 ? orgFeatures : Object.keys(ENTERPRISE_CORE_FEATURES);
         setRawFeatures(safeFeatures);
       } catch (error) {
-        console.error('[ENTERPRISE-FALLBACK] Failed to fetch organization features:', error);
+        logger.error('FeatureAccess', 'Failed to fetch organization features, using fallback', error);
         // Enterprise-safe fallback: Comprehensive feature set for graceful degradation
         // NOTE: platform_admin_access removed to prevent non-super-admins appearing as super admins
         const enterpriseFallbackFeatures = [
@@ -75,7 +79,7 @@ export const useFeatureAccess = () => {
       const safeFeatures = orgFeatures?.length > 0 ? orgFeatures : Object.keys(ENTERPRISE_CORE_FEATURES);
       setRawFeatures(safeFeatures);
     } catch (error) {
-      console.error('[ENTERPRISE-FALLBACK] Failed to refresh features:', error);
+      logger.error('FeatureAccess', 'Failed to refresh features, using fallback', error);
       // Enterprise-safe fallback on refresh failure
       // NOTE: platform_admin_access removed to prevent non-super-admins appearing as super admins
       const enterpriseFallbackFeatures = [

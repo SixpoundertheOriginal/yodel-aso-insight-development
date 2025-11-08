@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useCallback } from 'react';
 import { withSafePermissions, safeArray, type SafePermissions } from '@/utils/enterpriseSafeGuards';
+import { logger, truncateOrgId } from '@/utils/logger';
 
 export const usePermissions = () => {
   // Gate fetching on auth state to avoid early null results
@@ -12,9 +13,9 @@ export const usePermissions = () => {
   // Force cache refresh in development when user ID changes (not email to avoid loops)
   useEffect(() => {
     if (import.meta.env.DEV && user?.id) {
-      console.log('🔄 [DEV] Invalidating permissions cache for user:', user.email);
-      queryClient.invalidateQueries({ 
-        queryKey: ['userPermissions', user.id] 
+      logger.permissions('Cache invalidated for user ID change');
+      queryClient.invalidateQueries({
+        queryKey: ['userPermissions', user.id]
       });
     }
   }, [user?.id, queryClient]);
@@ -22,27 +23,7 @@ export const usePermissions = () => {
   // Permissions cache configuration
   const queryKey = ['userPermissions', user?.id || 'anonymous'];
   const staleTimeMs = import.meta.env.DEV ? 1000 * 30 : 1000 * 60 * 2;
-  
-  if (import.meta.env.DEV) {
-    console.log('🔄 [DEV] Permissions Cache Config:', {
-      queryKey,
-      staleTimeMs,
-      userId: user?.id,
-      userEmail: user?.email
-    });
-  }
-
   const queryEnabled = !!user && !authLoading;
-
-  if (import.meta.env.DEV) {
-    console.log('🔍 [DEV] Query State:', {
-      enabled: queryEnabled,
-      hasUser: !!user,
-      authLoading,
-      userId: user?.id,
-      queryKey
-    });
-  }
 
   const { data: permissions, isLoading, error: queryError, refetch } = useQuery({
     queryKey,
@@ -60,13 +41,9 @@ export const usePermissions = () => {
     refetchOnWindowFocus: false, // Don't refetch on window focus
 
     queryFn: async () => {
-      console.log('🚀 [QUERY EXECUTING] Fetching permissions for:', user?.email);
-
       if (!user) return null;
 
-      if (import.meta.env.DEV) {
-        console.log('🔐 [DEV] Fetching permissions for user:', user.email);
-      }
+      logger.permissions('Fetching permissions', { email: user.email });
 
       try {
         // Use the unified view for consistent role resolution (avoids broken joins)
@@ -79,18 +56,17 @@ export const usePermissions = () => {
         allPermissions = unifiedQuery.data;
         error = unifiedQuery.error;
 
-        console.log('📊 [QUERY RESULT] Unified view query:', {
-          error: error?.message || null,
-          rowsReturned: allPermissions?.length || 0,
-          firstRow: allPermissions?.[0] || null
+        logger.permissions('Unified view query completed', {
+          success: !error,
+          rows: allPermissions?.length || 0
         });
 
         // 🔧 FALLBACK: If unified view fails or returns no data, try direct user_roles query
         if (error || !allPermissions?.length) {
-          console.warn('⚠️ Unified view query issue, trying direct user_roles fallback:', {
-            error: error?.message,
-            rowsReturned: allPermissions?.length || 0
-          });
+          logger.once(
+            'permissions-fallback',
+            '⚠️ [usePermissions] Unified view unavailable, using direct user_roles fallback'
+          );
 
           const { data: directRoles, error: directError } = await supabase
             .from('user_roles')
@@ -107,13 +83,13 @@ export const usePermissions = () => {
             .eq('user_id', user.id);
 
           if (directError) {
-            console.error('❌ Direct user_roles query also failed:', directError);
+            logger.error('usePermissions', 'Direct user_roles query failed', directError);
             if (error) throw error; // Throw original error
             throw directError;
           }
 
           if (directRoles && directRoles.length > 0) {
-            console.log('✅ Direct user_roles query successful, transforming data...');
+            logger.permissions('Direct user_roles query successful');
 
             // Transform direct query results to match unified view format
             allPermissions = directRoles.map(role => ({
@@ -139,7 +115,10 @@ export const usePermissions = () => {
         }
 
         if (!allPermissions?.length) {
-          console.warn('[ENTERPRISE-FALLBACK] No permissions found for user:', user.email);
+          logger.once(
+            'no-permissions-' + user.id,
+            `[usePermissions] No permissions found for user, using defaults`
+          );
           // Return enterprise-safe defaults for users without permissions
           return withSafePermissions({
             userId: user.id,
@@ -212,42 +191,17 @@ export const usePermissions = () => {
         // Apply enterprise-safe wrapper to ensure all fields are properly defined
         const result = withSafePermissions(rawResult);
 
-        // 🔍 [TIMING-AUDIT] usePermissions initialization completed
-        const timestamp = new Date().toISOString();
-        console.log(`[TIMING-AUDIT] ${timestamp} - usePermissions RESOLVED:`, {
-          organizationId: result.organizationId,
-          effectiveRole: result.effectiveRole,
-          isOrgScopedRole: result.isOrgScopedRole,
-          isSuperAdmin: result.isSuperAdmin,
-          userEmail: user.email,
-          initializationTime: timestamp
-        });
-
-        // 🔍 [AUDIT] Organization slug hydration
-        const organization = result.availableOrgs.find(org => org.id === result.organizationId);
-        console.log("[AUDIT] Organization slug loaded:", organization?.slug || 'not found');
-        console.log("[AUDIT] Expected organizationSlug:", "yodelmobile");
-
-        // Log successful fetch in development
-        if (import.meta.env.DEV) {
-          console.log('✅ [DEV] Unified permissions loaded:', {
-            userId: user.id,
-            email: user.email,
-            organizationId: result.organizationId,
-            effectiveRole: result.effectiveRole,
-            isOrgScopedRole: result.isOrgScopedRole,
-            isSuperAdmin: result.isSuperAdmin,
-            availableOrgsCount: result.availableOrgs.length,
-            allPermissionsCount: allPermissions.length,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // Log successful load (one-time per session)
+        logger.once(
+          'permissions-loaded-' + user.id,
+          `[usePermissions] Loaded org=${truncateOrgId(result.organizationId)}, role=${result.effectiveRole}, superAdmin=${result.isSuperAdmin}`
+        );
 
         return result;
         
       } catch (error) {
-        console.error('[ENTERPRISE-FALLBACK] Permissions query failed with fallback:', error);
-        
+        logger.error('usePermissions', 'Permissions query failed, using fallback', error);
+
         // Enterprise-safe fallback to prevent UI crashes
         return withSafePermissions({
           userId: user.id,
@@ -272,9 +226,9 @@ export const usePermissions = () => {
   // Add manual refresh capability
   const refreshPermissions = useCallback(() => {
     if (user?.id) {
-      console.log('🔄 Manually refreshing permissions for:', user.email);
-      queryClient.invalidateQueries({ 
-        queryKey: ['userPermissions', user.id] 
+      logger.permissions('Manually refreshing permissions');
+      queryClient.invalidateQueries({
+        queryKey: ['userPermissions', user.id]
       });
     }
   }, [user?.id, queryClient]); // REMOVED user?.email to prevent invalidation loops
@@ -284,21 +238,6 @@ export const usePermissions = () => {
   const safePermissions = (authLoading || !user)
     ? null  // Return null during loading, not fallback defaults
     : withSafePermissions(permissions);
-
-  // [DIAGNOSTIC] Before return, add detailed logging
-  const returnValue = {
-    userId: safePermissions?.userId || user?.id,
-    email: user?.email,
-    organizationId: safePermissions?.organizationId,
-    orgIdType: typeof safePermissions?.organizationId,
-    orgIdExists: !!safePermissions?.organizationId,
-    effectiveRole: safePermissions?.effectiveRole,
-    isLoading: authLoading || isLoading,
-    isLoadingAuth: authLoading,
-    hasUser: !!user
-  };
-  console.log('🔍 [usePermissions] RETURNING organizationId:', returnValue.organizationId);
-  console.log('🔍 [usePermissions] FULL RETURN:', returnValue);
 
   // If still loading auth, return loading state without fallback
   if (authLoading || !user) {

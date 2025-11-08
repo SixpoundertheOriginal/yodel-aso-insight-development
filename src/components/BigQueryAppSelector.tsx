@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Database, ChevronDown } from 'lucide-react';
 import {
   Select,
@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useBigQueryApps } from '@/hooks/useBigQueryApps';
+import { logger, truncateOrgId } from '@/utils/logger';
 
 interface BigQueryAppSelectorProps {
   organizationId?: string;
@@ -24,25 +25,23 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
   className = ""
 }) => {
   const { data: bigQueryApps, isLoading, error } = useBigQueryApps(organizationId);
-  
-  console.log('🔍 [DEBUG] BigQueryAppSelector state:', {
-    organizationId,
-    bigQueryAppsCount: bigQueryApps?.length || 0,
-    selectedAppsCount: selectedApps.length,
-    selectedApps: selectedApps,
-    isLoading,
-    error: !!error
-  });
+
+  // Log only when state changes
+  useEffect(() => {
+    logger.legacy(
+      `App selector: org=${truncateOrgId(organizationId)}, apps=${bigQueryApps?.length || 0}, selected=${selectedApps.length}, loading=${isLoading}`
+    );
+  }, [organizationId, bigQueryApps?.length, selectedApps.length, isLoading]);
 
   const handleSelectionChange = (value: string) => {
     if (value === 'all') {
       // Select all available apps
       const allAppIds = bigQueryApps?.map(app => app.app_identifier) || [];
-      console.log('🔍 [DEBUG] App selector - selecting ALL apps:', allAppIds);
+      logger.legacy(`App selector: Selecting ALL apps (${allAppIds.length})`);
       onSelectionChange(allAppIds);
     } else {
       // Single app selection for now - can be extended to multi-select later
-      console.log('🔍 [DEBUG] App selector - selecting single app:', value);
+      logger.legacy(`App selector: Selecting single app: ${value}`);
       onSelectionChange([value]);
     }
   };
@@ -68,7 +67,7 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
   };
 
   if (error) {
-    console.error('BigQuery apps error:', error);
+    logger.error('BigQueryAppSelector', 'Failed to load apps', error);
     return (
       <div className={`flex items-center gap-2 text-sm text-red-400 ${className}`}>
         <Database className="h-4 w-4" />

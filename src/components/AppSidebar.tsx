@@ -47,6 +47,7 @@ import { getAllowedRoutes, type Role } from "@/config/allowedRoutes";
 import { filterNavigationByRoutes, type NavigationItem } from "@/utils/navigation";
 import { useServerAuth } from '@/context/ServerAuthContext';
 import { ROUTES } from '@/constants/routes';
+import { logger, truncateOrgId } from '@/utils/logger';
 
 // Performance Intelligence - Pure data visualization from BigQuery
 const analyticsItems: NavigationItem[] = [
@@ -162,15 +163,6 @@ export function AppSidebar() {
   // Simplified: No UI permissions check needed
   const { whoami } = useServerAuth();
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 DEMO DETECTION VALIDATION', {
-      org,
-      isDemoOrg,
-      demo_mode: org?.settings?.demo_mode,
-      slug: org?.slug,
-    });
-  }
-
   // Define navigation items first, before filtering
   const controlCenterItems: NavigationItem[] = [
     {
@@ -260,20 +252,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
       return true;
     });
   }
-  
-  // Debug logging for troubleshooting sidebar visibility
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 [SIDEBAR] Feature access debug:', {
-      isSuperAdmin,
-      currentUserRole: isSuperAdmin ? 'super_admin' : role,
-      asoAiHubAccess: featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, isSuperAdmin ? 'super_admin' : 'viewer'),
-      chatGptAuditAccess: featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, isSuperAdmin ? 'super_admin' : 'viewer'),
-      reviewManagementAccess: featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, isSuperAdmin ? 'super_admin' : 'viewer'),
-      platformFeatures: PLATFORM_FEATURES,
-      filteredAiToolsItemsCount: filteredAiToolsItems?.length || 0
-    });
-  }
-  
+
   let filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
   
   // Apply feature-based access control for Growth Accelerators
@@ -298,50 +277,11 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
   
   const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 
-  // Debug logging for troubleshooting (temporary)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 AppSidebar Permission Debug:', {
-      // User context
-      userId: user?.id,
-      organizationSlug: org?.slug,
-      organizationName: org?.name,
-
-      // Permission states
-      isSuperAdmin,
-      isOrganizationAdmin,
-      role,
-      isDemoOrg,
-
-      // Hook loading states
-      permissionsLoading,
-      featuresLoading,
-      orgLoading,
-      allPermissionsLoaded,
-      
-      // Route calculation
-      allowedRoutes: routes,
-      
-      // Navigation visibility
-      analyticsItemsVisible: filteredAnalyticsItems.length,
-      aiToolsItemsVisible: filteredAiToolsItems.length,
-      aiCopilotsItemsVisible: filteredAiCopilotsItems.length,
-      controlCenterItemsVisible: filteredControlCenterItems.length,
-      
-      // Debug Reviews feature specifically
-      reviewsItemInBase: filteredAiCopilotsItemsBase?.some(item => item.url === '/growth-accelerators/reviews') || false,
-      reviewsItemInFinal: filteredAiCopilotsItems?.some(item => item.url === '/growth-accelerators/reviews') || false,
-      
-      // Expected for Next org
-      expectedForNextOrg: isDemoOrg ? filteredAnalyticsItems.map(item => ({
-        title: item.title,
-        url: item.url,
-        allowed: routes.includes(item.url)
-      })) : 'N/A - Not demo org',
-      
-      // Timing
-      timestamp: new Date().toISOString()
-    });
-  }
+  // Log sidebar state once when permissions are loaded
+  logger.once(
+    'sidebar-loaded-' + user?.id,
+    `[Sidebar] Loaded: org=${truncateOrgId(organizationId)}, role=${role}, routes=${routes.length}, items=Analytics:${filteredAnalyticsItems.length} AI:${filteredAiToolsItems.length + filteredAiCopilotsItems.length} Control:${filteredControlCenterItems.length}`
+  );
 
   const showDevelopmentNotification = (item: NavigationItem) => {
     toast.info(

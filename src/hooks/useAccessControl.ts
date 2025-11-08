@@ -1,5 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useEffect, useRef } from 'react';
+import { logger, truncateOrgId } from '@/utils/logger';
 
 export interface AccessControlState {
   isAuthenticated: boolean;
@@ -22,15 +24,20 @@ export const useAccessControl = (currentPath?: string): AccessControlState => {
     isLoading: permissionsLoading
   } = usePermissions();
 
-  // [DIAGNOSTIC] Log what we received from usePermissions
-  console.log('🔍 [useAccessControl] Received from usePermissions:', {
-    organizationId,
-    orgIdType: typeof organizationId,
-    orgIdValue: organizationId,
-    roles,
-    isSuperAdmin,
-    permissionsLoading
-  });
+  // Track previous values for change detection
+  const prevOrgId = useRef(organizationId);
+  const prevRoles = useRef(roles);
+
+  // Log only when organizationId or roles change
+  useEffect(() => {
+    if (prevOrgId.current !== organizationId || prevRoles.current !== roles) {
+      logger.permissions(
+        `Access control updated: org=${truncateOrgId(organizationId)}, roles=${roles.length}, superAdmin=${isSuperAdmin}`
+      );
+      prevOrgId.current = organizationId;
+      prevRoles.current = roles;
+    }
+  }, [organizationId, roles, isSuperAdmin]);
 
   const isLoading = authLoading || (user && permissionsLoading);
   const isAuthenticated = !!user;
@@ -50,14 +57,6 @@ export const useAccessControl = (currentPath?: string): AccessControlState => {
   const treatAsLoading = isLoading || permissionsLoading || (isAuthenticated && organizationId === null && !isSuperAdmin);
 
   if (treatAsLoading || !isAuthenticated || isInAuthFlow) {
-    console.log('🔍 [useAccessControl] Treating as loading:', {
-      isLoading,
-      permissionsLoading,
-      isAuthenticated,
-      isInAuthFlow,
-      organizationIdIsNull: organizationId === null,
-      treatAsLoading: treatAsLoading
-    });
     return {
       isAuthenticated,
       isLoading: treatAsLoading,

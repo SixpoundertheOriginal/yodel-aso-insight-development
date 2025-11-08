@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { usePermissions } from '@/hooks/usePermissions';
+import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -52,17 +53,6 @@ export default function ReportingDashboardV2() {
   // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
   const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
 
-  console.log('━'.repeat(60));
-  console.log('📊 [DASHBOARD-V2] Rendering');
-  console.log('━'.repeat(60));
-  console.log('   Organization:', organizationName);
-  console.log('   Organization ID:', organizationId);
-  console.log('   User:', email);
-  console.log('   Date Range:', dateRange);
-  console.log('   Selected Apps:', selectedAppIds.length ? selectedAppIds : 'All');
-  console.log('   Selected Traffic Sources:', selectedTrafficSources.length ? selectedTrafficSources : 'All');
-  console.log('━'.repeat(60));
-
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
     organizationId: organizationId || '',
@@ -71,13 +61,14 @@ export default function ReportingDashboardV2() {
     appIds: selectedAppIds // Filter by selected apps
   });
 
-  console.log('📊 [DASHBOARD-V2] Hook Result:', {
-    isLoading,
-    hasError: !!error,
-    hasData: !!data,
-    rawRows: data?.meta?.raw_rows,
-    dataSource: data?.meta?.data_source
-  });
+  // Log only when data changes
+  useEffect(() => {
+    if (data) {
+      logger.dashboard(
+        `Data loaded: ${data.meta?.raw_rows || 0} rows, source=${data.meta?.data_source}, date=${dateRange.start} to ${dateRange.end}, apps=${selectedAppIds.length || 'All'}, traffic=${selectedTrafficSources.length || 'All'}`
+      );
+    }
+  }, [data, dateRange.start, dateRange.end, selectedAppIds.length, selectedTrafficSources.length]);
 
   // ✅ FORMAT DATE RANGE FOR DISPLAY
   const formatDateRange = (start: string, end: string) => {
@@ -94,7 +85,7 @@ export default function ReportingDashboardV2() {
   const availableApps = useMemo(() => {
     // Priority 1: Use all_accessible_app_ids (always contains full list)
     if (data?.meta?.all_accessible_app_ids) {
-      console.log('📱 [DASHBOARD-V2] Using all_accessible_app_ids:', data.meta.all_accessible_app_ids.length);
+      logger.dashboard(`Available apps: ${data.meta.all_accessible_app_ids.length} (from all_accessible_app_ids)`);
       return data.meta.all_accessible_app_ids.map(appId => ({
         app_id: appId,
         app_name: appId // Can be enhanced with actual app names from lookup
@@ -103,7 +94,7 @@ export default function ReportingDashboardV2() {
 
     // Priority 2: Fallback to app_ids for backward compatibility
     if (data?.meta?.app_ids) {
-      console.log('📱 [DASHBOARD-V2] Fallback to app_ids:', data.meta.app_ids.length);
+      logger.dashboard(`Available apps: ${data.meta.app_ids.length} (from app_ids fallback)`);
       return data.meta.app_ids.map(appId => ({
         app_id: appId,
         app_name: appId // Can be enhanced with actual app names from lookup
@@ -113,7 +104,7 @@ export default function ReportingDashboardV2() {
     // Priority 3: Extract unique app IDs from raw data
     if (data?.rawData) {
       const uniqueAppIds = Array.from(new Set(data.rawData.map(row => row.app_id)));
-      console.log('📱 [DASHBOARD-V2] Extracted from raw data:', uniqueAppIds.length);
+      logger.dashboard(`Available apps: ${uniqueAppIds.length} (from raw data)`);
       return uniqueAppIds.map(appId => ({
         app_id: appId,
         app_name: appId // Can be enhanced with actual app names from lookup
@@ -147,16 +138,7 @@ export default function ReportingDashboardV2() {
       };
     }
 
-    console.log('🎯 [ASO-METRICS] Calculating from raw data:', data.rawData.length, 'rows');
-
-    // 🔍 DEBUG: Check if traffic_source exists in data
-    console.log('🔍 [DEBUG] First row sample:', data.rawData[0]);
-    console.log('🔍 [DEBUG] Unique traffic_sources:',
-      Array.from(new Set(data.rawData.map((r: any) => r.traffic_source)))
-    );
-    console.log('🔍 [DEBUG] Has traffic_source?',
-      data.rawData.some((r: any) => r.traffic_source !== null && r.traffic_source !== undefined)
-    );
+    logger.dashboard(`Calculating ASO metrics from ${data.rawData.length} rows`);
 
     // Filter for Search traffic
     const searchData = data.rawData.filter((row: any) =>
@@ -188,19 +170,9 @@ export default function ReportingDashboardV2() {
     const searchMetrics = calculateMetrics(searchData);
     const browseMetrics = calculateMetrics(browseData);
 
-    console.log('🎯 [ASO-METRICS] Search:', {
-      rows: searchData.length,
-      impressions: searchMetrics.impressions,
-      downloads: searchMetrics.downloads,
-      cvr: searchMetrics.cvr.toFixed(2) + '%'
-    });
-
-    console.log('🎯 [ASO-METRICS] Browse:', {
-      rows: browseData.length,
-      impressions: browseMetrics.impressions,
-      downloads: browseMetrics.downloads,
-      cvr: browseMetrics.cvr.toFixed(2) + '%'
-    });
+    logger.dashboard(
+      `ASO metrics - Search: ${searchData.length} rows, ${searchMetrics.impressions} imp, CVR ${searchMetrics.cvr.toFixed(2)}% | Browse: ${browseData.length} rows, ${browseMetrics.impressions} imp, CVR ${browseMetrics.cvr.toFixed(2)}%`
+    );
 
     return {
       search: searchMetrics,
