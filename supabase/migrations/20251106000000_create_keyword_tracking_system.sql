@@ -2,6 +2,9 @@
 -- Description: Creates tables for keyword tracking, rankings, search volumes, competitors, and refresh queue
 -- Date: 2025-11-06
 
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- ============================================================================
 -- TABLE: keywords
 -- Primary table for tracking keywords across apps and platforms
