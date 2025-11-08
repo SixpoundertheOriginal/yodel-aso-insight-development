@@ -16,6 +16,7 @@ import { SuperAdminProvider } from "./context/SuperAdminContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
+import { SessionSecurityProvider } from "@/components/auth/SessionSecurityProvider";
 import Overview from "./pages/overview";
 import Index from "./pages/Index";
 
@@ -56,6 +57,7 @@ const AdminOrganizations = lazy(() => import("./pages/admin/organizations"));
 const AdminUsers = lazy(() => import("./pages/admin/users"));
 const FeatureManagement = lazy(() => import("./pages/admin/FeatureManagement"));
 const FeatureTestingLab = lazy(() => import("./pages/admin/FeatureTestingLab"));
+const SecurityMonitoring = lazy(() => import("./pages/SecurityMonitoring"));
 
 
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
@@ -79,14 +81,15 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <SuperAdminProvider>
-              <BigQueryAppProvider>
-                <AsoDataProvider>
-                <AppProvider>
-                  <ServerAuthProvider>
-                  <AsoAiHubProvider>
-                    <WorkflowProvider>
-                      <Suspense fallback={<BrandedLoadingSpinner />}>
+            <SessionSecurityProvider>
+              <SuperAdminProvider>
+                <BigQueryAppProvider>
+                  <AsoDataProvider>
+                  <AppProvider>
+                    <ServerAuthProvider>
+                    <AsoAiHubProvider>
+                      <WorkflowProvider>
+                        <Suspense fallback={<BrandedLoadingSpinner />}>
                         <Routes>
                           <Route path="/auth/sign-in" element={<SignIn />} />
                           <Route path="/auth/sign-up" element={<SignUp />} />
@@ -228,6 +231,10 @@ function App() {
                             element={<ProtectedRoute><SuperAdminGuard><FeatureTestingLab /></SuperAdminGuard></ProtectedRoute>}
                           />
                           <Route
+                            path="/admin/security"
+                            element={<ProtectedRoute><SecurityMonitoring /></ProtectedRoute>}
+                          />
+                          <Route
                             path="/smoke-test"
                             element={<ProtectedRoute><SmokeTest /></ProtectedRoute>}
                           />
@@ -243,7 +250,8 @@ function App() {
                 </AppProvider>
               </AsoDataProvider>
             </BigQueryAppProvider>
-            </SuperAdminProvider>
+              </SuperAdminProvider>
+            </SessionSecurityProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

@@ -5,8 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { MFASetup } from '@/components/auth/MFASetup';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const SettingsPage: React.FC = () => {
+  const { permissions } = usePermissions();
+  const isAdmin = permissions?.isSuperAdmin || permissions?.isOrgAdmin;
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -18,6 +23,20 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <div className="grid gap-6">
+          {/* Security Settings - Only for Admin Users */}
+          {isAdmin && (
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader>
+                <CardTitle className="text-foreground">Security</CardTitle>
+                <CardDescription className="text-zinc-400">
+                  Multi-factor authentication and security settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MFASetup />
+              </CardContent>
+            </Card>
+          )}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
               <CardTitle className="text-foreground">Notifications</CardTitle>

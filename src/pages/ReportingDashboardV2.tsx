@@ -17,6 +17,7 @@ import { format, subDays, parseISO } from 'date-fns';
 import { KpiTrendChart } from '@/components/analytics/KpiTrendChart';
 import { TrafficSourceComparisonChart } from '@/components/analytics/TrafficSourceComparisonChart';
 import { ConversionFunnelChart } from '@/components/analytics/ConversionFunnelChart';
+import { MFAGracePeriodBanner } from '@/components/auth/MFAGracePeriodBanner';
 
 /**
  * PRODUCTION-READY DASHBOARD V2
@@ -91,22 +92,36 @@ export default function ReportingDashboardV2() {
 
   // ✅ EXTRACT AVAILABLE APPS: Get unique app IDs from response
   const availableApps = useMemo(() => {
-    if (!data?.meta?.app_ids) {
-      // Fallback: Extract unique app IDs from raw data
-      if (!data?.rawData) return [];
+    // Priority 1: Use all_accessible_app_ids (always contains full list)
+    if (data?.meta?.all_accessible_app_ids) {
+      console.log('📱 [DASHBOARD-V2] Using all_accessible_app_ids:', data.meta.all_accessible_app_ids.length);
+      return data.meta.all_accessible_app_ids.map(appId => ({
+        app_id: appId,
+        app_name: appId // Can be enhanced with actual app names from lookup
+      }));
+    }
+
+    // Priority 2: Fallback to app_ids for backward compatibility
+    if (data?.meta?.app_ids) {
+      console.log('📱 [DASHBOARD-V2] Fallback to app_ids:', data.meta.app_ids.length);
+      return data.meta.app_ids.map(appId => ({
+        app_id: appId,
+        app_name: appId // Can be enhanced with actual app names from lookup
+      }));
+    }
+
+    // Priority 3: Extract unique app IDs from raw data
+    if (data?.rawData) {
       const uniqueAppIds = Array.from(new Set(data.rawData.map(row => row.app_id)));
+      console.log('📱 [DASHBOARD-V2] Extracted from raw data:', uniqueAppIds.length);
       return uniqueAppIds.map(appId => ({
         app_id: appId,
         app_name: appId // Can be enhanced with actual app names from lookup
       }));
     }
 
-    // Use app_ids from meta if available
-    return data.meta.app_ids.map(appId => ({
-      app_id: appId,
-      app_name: appId // Can be enhanced with actual app names from lookup
-    }));
-  }, [data?.meta?.app_ids, data?.rawData]);
+    return [];
+  }, [data?.meta?.all_accessible_app_ids, data?.meta?.app_ids, data?.rawData]);
 
   // ✅ EXTRACT AVAILABLE TRAFFIC SOURCES: Get from response metadata
   const availableTrafficSources = useMemo(() => {
@@ -133,6 +148,15 @@ export default function ReportingDashboardV2() {
     }
 
     console.log('🎯 [ASO-METRICS] Calculating from raw data:', data.rawData.length, 'rows');
+
+    // 🔍 DEBUG: Check if traffic_source exists in data
+    console.log('🔍 [DEBUG] First row sample:', data.rawData[0]);
+    console.log('🔍 [DEBUG] Unique traffic_sources:',
+      Array.from(new Set(data.rawData.map((r: any) => r.traffic_source)))
+    );
+    console.log('🔍 [DEBUG] Has traffic_source?',
+      data.rawData.some((r: any) => r.traffic_source !== null && r.traffic_source !== undefined)
+    );
 
     // Filter for Search traffic
     const searchData = data.rawData.filter((row: any) =>
@@ -305,6 +329,9 @@ export default function ReportingDashboardV2() {
             {organizationName} • {formatDateRange(dateRange.start, dateRange.end)}
           </p>
         </div>
+
+        {/* MFA Grace Period Banner */}
+        <MFAGracePeriodBanner />
 
         {/* ✅ COMPACT FILTER BAR: All filters in one horizontal row */}
         <Card className="p-4">

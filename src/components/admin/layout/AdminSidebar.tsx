@@ -49,7 +49,7 @@ const navigationConfig: Record<string, NavigationItem['status']> = {
   pipeline: 'coming_soon',
   quality: 'coming_soon',
   audit: 'coming_soon',
-  security: 'coming_soon',
+  security: 'ready', // ✅ Security monitoring dashboard is ready
   compliance: 'coming_soon',
   'access-review': 'coming_soon',
   'ui-permissions': 'ready',
