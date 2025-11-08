@@ -14,6 +14,9 @@
  * - VITE_DEBUG_DASHBOARD=true - Enable dashboard logging
  * - VITE_DEBUG_FEATURE_ACCESS=true - Enable feature access logging
  * - VITE_DEBUG_LEGACY=true - Enable legacy system logging
+ * - VITE_DEBUG_BIGQUERY=true - Enable BigQuery data fetching logs
+ * - VITE_DEBUG_FALLBACK=true - Enable fallback system logs
+ * - VITE_DEBUG_CONTEXT=true - Enable React Context logs
  */
 
 // Feature flags from environment
@@ -23,6 +26,9 @@ const DEBUG_FLAGS = {
   DASHBOARD: import.meta.env.VITE_DEBUG_DASHBOARD === 'true',
   FEATURE_ACCESS: import.meta.env.VITE_DEBUG_FEATURE_ACCESS === 'true',
   LEGACY: import.meta.env.VITE_DEBUG_LEGACY === 'true',
+  BIGQUERY: import.meta.env.VITE_DEBUG_BIGQUERY === 'true',
+  FALLBACK: import.meta.env.VITE_DEBUG_FALLBACK === 'true',
+  CONTEXT: import.meta.env.VITE_DEBUG_CONTEXT === 'true',
 };
 
 /**
@@ -82,6 +88,36 @@ export const logger = {
   legacy: (message: string, data?: any) => {
     if (DEBUG_FLAGS.LEGACY) {
       console.log(`[Legacy] ${message}`, data !== undefined ? data : '');
+    }
+  },
+
+  /**
+   * Log BigQuery data fetching messages
+   * Only logs when VITE_DEBUG_BIGQUERY=true
+   */
+  bigquery: (message: string, data?: any) => {
+    if (DEBUG_FLAGS.BIGQUERY) {
+      console.log(`[BigQueryData] ${message}`, data !== undefined ? data : '');
+    }
+  },
+
+  /**
+   * Log fallback system messages
+   * Only logs when VITE_DEBUG_FALLBACK=true
+   */
+  fallback: (message: string, data?: any) => {
+    if (DEBUG_FLAGS.FALLBACK) {
+      console.log(`[AsoFallback] ${message}`, data !== undefined ? data : '');
+    }
+  },
+
+  /**
+   * Log React Context messages
+   * Only logs when VITE_DEBUG_CONTEXT=true
+   */
+  context: (message: string, data?: any) => {
+    if (DEBUG_FLAGS.CONTEXT) {
+      console.log(`[Context] ${message}`, data !== undefined ? data : '');
     }
   },
 

@@ -14,6 +14,7 @@ import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { debugLog } from '@/lib/utils/debug';
 import { filterByTrafficSources } from '@/utils/filterByTrafficSources';
 import { randBetween } from '@/lib/utils/demoRng';
+import { logger } from '@/utils/logger';
 
 // Development-only logging helper
 const devLog = (message: string, data?: any) => {
@@ -240,12 +241,7 @@ export const useBigQueryData = (
           trafficSources: [] as string[]
         };
 
-        console.log('🔍 [DEBUG] BigQuery request body:', {
-          organizationId: requestBody.organizationId,
-          selectedApps: requestBody.selectedApps,
-          selectedAppsCount: requestBody.selectedApps?.length || 0,
-          dateRange: requestBody.dateRange
-        });
+        logger.bigquery(`Fetching data: org=${requestBody.organizationId?.slice(0,8)}..., apps=${requestBody.selectedApps?.length || 'all'}, dateRange=${requestBody.dateRange.start} to ${requestBody.dateRange.end}`);
 
         debugLog.verbose('Making request to edge function', { requestBody });
 
@@ -268,11 +264,7 @@ export const useBigQueryData = (
 
         const bigQueryResponse = response as BigQueryResponse;
 
-        console.log('🔍 DEMO AUDIT [HOOK-1]: Raw response received');
-        console.log('🔍 DEMO AUDIT [HOOK-1]: Response success:', bigQueryResponse.success);
-        console.log('🔍 DEMO AUDIT [HOOK-1]: Raw meta object:', bigQueryResponse.meta);
-        console.log('🔍 DEMO AUDIT [HOOK-1]: Demo flag variations:');
-        console.log('  - meta.isDemo:', bigQueryResponse.meta?.isDemo);
+        logger.bigquery(`Response received: success=${bigQueryResponse.success}, isDemo=${bigQueryResponse.meta?.isDemo || false}`);
 
         if (!bigQueryResponse.success) {
           debugLog.error('Service error', bigQueryResponse.error);
@@ -385,10 +377,6 @@ export const useBigQueryData = (
     error: error?.message
   });
 
-  console.log('🔍 DEMO AUDIT [HOOK-2]: Hook return preparation');
-  console.log('🔍 DEMO AUDIT [HOOK-2]: Meta state:', !!meta);
-  console.log('🔍 DEMO AUDIT [HOOK-2]: Demo flag extraction:', meta?.isDemo || false);
-
   const hookResult = {
     data,
     loading,
@@ -398,9 +386,7 @@ export const useBigQueryData = (
     isDemo: meta?.isDemo || false // Extract demo flag
   };
 
-  console.log('🔍 DEMO AUDIT [HOOK-3]: Hook returning:');
-  console.log('🔍 DEMO AUDIT [HOOK-3]: Return object keys:', Object.keys(hookResult));
-  console.log('🔍 DEMO AUDIT [HOOK-3]: Return isDemo value:', hookResult.isDemo);
+  logger.bigquery(`Hook returning: rows=${data?.length || 0}, loading=${loading}, isDemo=${hookResult.isDemo}`);
 
   return hookResult;
 };

@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { debugLog } from '@/lib/utils/debug';
 import { useDemoOrgDetection } from './useDemoOrgDetection';
+import { logger } from '@/utils/logger';
 
 export type DataSource = 'bigquery' | 'mock' | 'auto';
 export type CurrentDataSource = 'bigquery' | 'mock';
@@ -84,10 +85,7 @@ export const useAsoDataWithFallback = (
     shouldUseBigQuery
   );
 
-  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery result received');
-  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery result keys:', Object.keys(bigQueryResult));
-  console.log('🔍 DEMO AUDIT [FALLBACK-1]: BigQuery isDemo:', bigQueryResult.isDemo);
-  console.log('🔍 DEMO AUDIT [FALLBACK-1]: Data source status:', dataSourceStatus);
+  logger.fallback(`BigQuery result: isDemo=${bigQueryResult.isDemo || false}, status=${dataSourceStatus}, loading=${bigQueryResult.loading}`);
 
   // Always prepare mock data as fallback using selected apps for consistency
   const mockResult = useMockAsoData(

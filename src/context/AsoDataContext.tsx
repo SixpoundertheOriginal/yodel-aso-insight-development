@@ -11,6 +11,7 @@ import React, {
 import { useAsoDataWithFallback, DataSource } from '../hooks/useAsoDataWithFallback';
 import { AsoData, DateRange } from '../hooks/useMockAsoData';
 import { useBigQueryAppSelection } from './BigQueryAppContext';
+import { logger } from '@/utils/logger';
 
 export interface AsoDataFilters {
   organizationId: string;
@@ -87,10 +88,6 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     defaultDataSource
   );
 
-  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Context input received');
-  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Input isDemo:', isDemo);
-  console.log('🔍 DEMO AUDIT [CONTEXT-1]: Input isDemoOrg:', isDemoOrg);
-
   const updateFilters = useCallback((newFilters: AsoDataFilters | ((prev: AsoDataFilters) => AsoDataFilters)) => {
     setFilters(newFilters);
   }, []);
@@ -111,11 +108,6 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
       isDemoOrg // NEW: Pass through demo organization flag
     };
 
-    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context value created');
-    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context keys:', Object.keys(value));
-    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context isDemo:', value.isDemo);
-    console.log('🔍 DEMO AUDIT [CONTEXT-2]: Context isDemoOrg:', value.isDemoOrg);
-
     return value;
   }, [
     data,
@@ -129,6 +121,11 @@ export const AsoDataProvider: React.FC<AsoDataProviderProps> = ({
     isDemo, // NEW: Include in dependencies
     isDemoOrg
   ]);
+
+  // Log context finalization
+  useEffect(() => {
+    logger.context(`Context finalized: isDemo=${isDemo}, isDemoOrg=${isDemoOrg}, loading=${loading}`);
+  }, [isDemo, isDemoOrg, loading]);
 
   return (
     <AsoDataContext.Provider value={contextValue}>

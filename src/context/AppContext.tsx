@@ -1,10 +1,11 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useSuperAdmin } from './SuperAdminContext';
 import { useBigQueryAppSelection } from './BigQueryAppContext';
+import { logger } from '@/utils/logger';
 
 interface App {
   id: string;
@@ -35,12 +36,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
   const { setSelectedApps } = useBigQueryAppSelection();
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
-  
-  console.log('🔍 [DEBUG] AppContext render:', { 
-    isSuperAdmin, 
-    selectedOrganizationId, 
-    userId: user?.id 
-  });
+
+  // Track previous values for change detection
+  const prevUserId = useRef(user?.id);
+  const prevOrgId = useRef(selectedOrganizationId);
+
+  // Log only when user or org changes
+  useEffect(() => {
+    if (prevUserId.current !== user?.id || prevOrgId.current !== selectedOrganizationId) {
+      logger.context(`AppContext updated: userId=${user?.id?.slice(0,8)}..., isSuperAdmin=${isSuperAdmin}, orgId=${selectedOrganizationId?.slice(0,8) || 'null'}`);
+      prevUserId.current = user?.id;
+      prevOrgId.current = selectedOrganizationId;
+    }
+  }, [user?.id, isSuperAdmin, selectedOrganizationId]);
 
   // Get user's organization apps with enhanced query
   const { data: apps = [], isLoading, error } = useQuery({
@@ -117,16 +125,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [apps, selectedApp]);
 
   const handleSetSelectedApp = (app: App | null) => {
-    console.log('🔍 [DEBUG] AppContext - app selection change:', { 
-      from: selectedApp?.app_name, 
-      to: app?.app_name,
-      appId: app?.id 
-    });
+    logger.context(`App selection changed: ${selectedApp?.app_name || 'none'} → ${app?.app_name || 'none'}`);
     setSelectedApp(app);
-    
+
     // ✅ SYNC: Update BigQuery app selection to trigger data refetch
     if (app?.id) {
-      console.log('🔍 [DEBUG] AppContext - syncing to BigQuery context:', app.id);
+      logger.context(`Syncing to BigQuery context: ${app.id.slice(0,8)}...`);
       setSelectedApps([app.id]);
     }
   };
