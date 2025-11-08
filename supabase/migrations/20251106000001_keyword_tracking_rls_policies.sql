@@ -21,9 +21,9 @@ RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1
-    FROM user_organizations uo
-    WHERE uo.organization_id = org_id
-      AND uo.user_id = auth.uid()
+    FROM user_roles ur
+    WHERE ur.organization_id = org_id
+      AND ur.user_id = auth.uid()
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -234,55 +234,44 @@ CREATE POLICY "Service role can delete refresh queue"
 -- Superadmins can access all data
 -- ============================================================================
 
--- Function to check if user is superadmin
-CREATE OR REPLACE FUNCTION is_superadmin()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1
-    FROM user_roles ur
-    WHERE ur.user_id = auth.uid()
-      AND ur.role = 'superadmin'
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION is_superadmin() TO authenticated;
+-- Note: Using existing is_super_admin() function from the system
+-- No need to create a new function - it already exists in migrations:
+-- 20251201090000_rls_apps_and_superadmin.sql
 
 -- Superadmin policies for keywords
 CREATE POLICY "Superadmins can view all keywords"
   ON keywords
   FOR SELECT
   TO authenticated
-  USING (is_superadmin());
+  USING (is_super_admin());
 
 CREATE POLICY "Superadmins can manage all keywords"
   ON keywords
   FOR ALL
   TO authenticated
-  USING (is_superadmin())
-  WITH CHECK (is_superadmin());
+  USING (is_super_admin())
+  WITH CHECK (is_super_admin());
 
 -- Superadmin policies for keyword_rankings
 CREATE POLICY "Superadmins can view all rankings"
   ON keyword_rankings
   FOR SELECT
   TO authenticated
-  USING (is_superadmin());
+  USING (is_super_admin());
 
 -- Superadmin policies for competitor_keywords
 CREATE POLICY "Superadmins can view all competitors"
   ON competitor_keywords
   FOR SELECT
   TO authenticated
-  USING (is_superadmin());
+  USING (is_super_admin());
 
 -- Superadmin policies for keyword_refresh_queue
 CREATE POLICY "Superadmins can view all queue entries"
   ON keyword_refresh_queue
   FOR SELECT
   TO authenticated
-  USING (is_superadmin());
+  USING (is_super_admin());
 
 -- ============================================================================
 -- COMMENTS
@@ -298,10 +287,7 @@ COMMENT ON POLICY "Authenticated users can view search volumes" ON keyword_searc
   'Search volume data is shared across all users (not organization-specific)';
 
 COMMENT ON FUNCTION user_belongs_to_organization(UUID) IS
-  'Helper function to check if current user belongs to specified organization';
-
-COMMENT ON FUNCTION is_superadmin() IS
-  'Helper function to check if current user has superadmin role';
+  'Helper function to check if current user belongs to specified organization via user_roles table';
 
 -- ============================================================================
 -- GRANT PERMISSIONS
