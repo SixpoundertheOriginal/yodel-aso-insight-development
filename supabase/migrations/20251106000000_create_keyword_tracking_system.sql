@@ -2,16 +2,13 @@
 -- Description: Creates tables for keyword tracking, rankings, search volumes, competitors, and refresh queue
 -- Date: 2025-11-06
 
--- Enable UUID extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ============================================================================
 -- TABLE: keywords
 -- Primary table for tracking keywords across apps and platforms
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS keywords (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   app_id UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
 
@@ -53,7 +50,7 @@ COMMENT ON COLUMN keywords.discovery_method IS 'How this keyword was discovered'
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS keyword_rankings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   keyword_id UUID NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
 
   -- Ranking data
@@ -98,7 +95,7 @@ COMMENT ON COLUMN keyword_rankings.trend IS 'Trend direction compared to previou
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS keyword_search_volumes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   keyword TEXT NOT NULL,
   platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
   region TEXT NOT NULL,
@@ -131,7 +128,7 @@ COMMENT ON COLUMN keyword_search_volumes.competition_level IS 'Competition level
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS competitor_keywords (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   keyword_id UUID NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
 
   -- Competitor app details
@@ -161,7 +158,7 @@ COMMENT ON COLUMN competitor_keywords.competitor_position IS 'Ranking position o
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS keyword_refresh_queue (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   keyword_id UUID NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
 
   -- Job metadata
