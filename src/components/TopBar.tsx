@@ -7,7 +7,7 @@ import { AppSelector } from "./AppSelector";
 import { BigQueryAppSelector } from "./BigQueryAppSelector";
 import { Heading3 } from "./ui/design-system";
 import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
 import GlobalDemoIndicator from "./GlobalDemoIndicator";
@@ -15,7 +15,7 @@ import GlobalDemoIndicator from "./GlobalDemoIndicator";
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
   const { selectedApps, setSelectedApps } = useBigQueryAppSelection();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { permissions, isLoading: permissionsLoading } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
   
   const getPageTitle = () => {
@@ -83,10 +83,10 @@ const TopBar: React.FC = React.memo(() => {
 
         <div className="flex items-center gap-4">
           {/* BigQuery App Selector for Analytics pages */}
-          {isAnalyticsPage && !profileLoading && (
+          {isAnalyticsPage && !permissionsLoading && (
             <div className="hidden md:block">
               <BigQueryAppSelector
-                organizationId={profile?.organization_id}
+                organizationId={permissions?.org_id}
                 selectedApps={selectedApps}
                 onSelectionChange={setSelectedApps}
               />
@@ -114,9 +114,9 @@ const TopBar: React.FC = React.memo(() => {
       {/* Mobile controls - show below header on mobile when needed */}
       <div className="border-t border-border bg-background px-4 py-3 md:hidden">
         <div className="flex items-center justify-between">
-          {isAnalyticsPage && !profileLoading && (
+          {isAnalyticsPage && !permissionsLoading && (
             <BigQueryAppSelector
-              organizationId={profile?.organization_id}
+              organizationId={permissions?.org_id}
               selectedApps={selectedApps}
               onSelectionChange={setSelectedApps}
             />
