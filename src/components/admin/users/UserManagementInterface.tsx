@@ -5,6 +5,7 @@ import { UserCreationModal } from './UserCreationModal';
 import { UserEditModal } from './UserEditModal';
 import { Users, UserPlus, Edit3, Trash2, RotateCcw } from 'lucide-react';
 import { usersApi, AdminApiError } from '@/lib/admin-api';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface User {
   // Canonical fields
@@ -46,6 +47,7 @@ interface User {
 }
 
 export const UserManagementInterface: React.FC = () => {
+  const { isSuperAdmin, isOrganizationAdmin } = usePermissions();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,8 @@ export const UserManagementInterface: React.FC = () => {
       setLoading(true);
       const users = await usersApi.list();
       setUsers(users || []);
-      console.log(`Loaded ${users?.length || 0} users across all organizations`);
+      const scope = isSuperAdmin ? 'across all organizations' : 'in your organization';
+      console.log(`Loaded ${users?.length || 0} users ${scope}`);
       setError(null);
     } catch (err: unknown) {
       const error = err as AdminApiError;
@@ -320,7 +323,9 @@ export const UserManagementInterface: React.FC = () => {
             User Management
           </h1>
           <p className="mt-2 text-sm text-gray-400">
-            Manage platform users across all organizations
+            {isSuperAdmin
+              ? 'Manage platform users across all organizations'
+              : 'Manage users in your organization'}
           </p>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-3">

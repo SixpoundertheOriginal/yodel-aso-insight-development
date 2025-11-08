@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Github, Twitter } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { MFAVerification } from '@/components/auth/MFAVerification';
+import { supabase } from '@/integrations/supabase/client';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -23,6 +25,7 @@ export function SignInForm() {
   const { signIn, signInWithOAuth, resetPassword } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showMFAVerification, setShowMFAVerification] = React.useState(false);
   const navigate = useNavigate();
 
   const form = useForm<SignInFormValues>({
@@ -37,6 +40,22 @@ export function SignInForm() {
     setIsLoading(true);
     try {
       await signIn({ email: data.email, password: data.password });
+
+      // Check if user has MFA enabled
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+
+        if (factors && factors.totp && factors.totp.length > 0) {
+          // User has MFA enabled, show verification dialog
+          setShowMFAVerification(true);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // No MFA required, proceed to dashboard
       navigate('/dashboard');
     } catch (error) {
       // Error is handled in the auth context
@@ -44,6 +63,17 @@ export function SignInForm() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleMFASuccess() {
+    setShowMFAVerification(false);
+    navigate('/dashboard');
+  }
+
+  function handleMFACancel() {
+    setShowMFAVerification(false);
+    // Sign out the user since they cancelled MFA
+    supabase.auth.signOut();
   }
 
   async function handleOAuthSignIn(provider: 'google' | 'github' | 'twitter') {
@@ -71,6 +101,7 @@ export function SignInForm() {
   }
 
   return (
+    <>
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl">Sign In</CardTitle>
@@ -209,5 +240,14 @@ export function SignInForm() {
         </p>
       </CardFooter>
     </Card>
+
+      {/* MFA Verification Dialog */}
+      {showMFAVerification && (
+        <MFAVerification
+          onSuccess={handleMFASuccess}
+          onCancel={handleMFACancel}
+        />
+      )}
+    </>
   );
 }

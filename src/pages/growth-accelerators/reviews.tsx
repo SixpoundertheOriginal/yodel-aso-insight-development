@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useEnhancedAsoInsights } from '@/hooks/useEnhancedAsoInsights';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
@@ -24,6 +24,8 @@ import { MainLayout } from '@/layouts';
 import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
 import { YodelToolbar, YodelToolbarGroup, YodelToolbarSpacer } from '@/components/ui/design-system';
 import { ConnectionStatus } from '@/components/ui/connection-status';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 // Enhanced AI Intelligence imports
 import { 
@@ -38,6 +40,12 @@ import {
   generateActionableInsights 
 } from '@/engines/review-intelligence.engine';
 import { CollapsibleAnalyticsSection } from '@/components/reviews/CollapsibleAnalyticsSection';
+import { MonitoredAppsGrid } from '@/components/reviews/MonitoredAppsGrid';
+import { AddToMonitoringButton } from '@/components/reviews/AddToMonitoringButton';
+import { useMonitoredApps, useUpdateLastChecked } from '@/hooks/useMonitoredApps';
+import { useCachedReviews } from '@/hooks/useCachedReviews';
+import { CompetitorComparisonView } from '@/components/reviews/CompetitorComparisonView';
+import { CompetitorManagementPanel } from '@/components/reviews/CompetitorManagementPanel';
 
 
 interface AppSearchResult {
@@ -75,16 +83,14 @@ interface ReviewsResponse {
 }
 
 const ReviewManagementPage: React.FC = () => {
-  const navigate = useNavigate();
-
   // Feature flag check using platform config
   const { isSuperAdmin, isOrganizationAdmin, roles = [], organizationId } = usePermissions();
   const role = roles[0] || 'viewer';
-  const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' :
-    (isOrganizationAdmin ? 'org_admin' :
+  const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 
+    (isOrganizationAdmin ? 'org_admin' : 
     (role?.toLowerCase().includes('aso') ? 'aso_manager' :
     (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
-
+  
   const { isDemoOrg, organization } = useDemoOrgDetection();
   const canAccessReviews = featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, currentUserRole) || isDemoOrg;
 
@@ -133,6 +139,14 @@ const ReviewManagementPage: React.FC = () => {
   const canShowDevPanel = isSuperAdmin && (!organizationId || String(organizationId).trim() === '');
   const showDevBadge = isSuperAdmin && !isDemoOrg;
 
+  // Monitored apps hooks
+  const { data: monitoredApps } = useMonitoredApps(organizationId);
+  const updateLastChecked = useUpdateLastChecked();
+
+  const isAppMonitored = monitoredApps?.some(
+    app => app.app_store_id === selectedApp?.appId && app.primary_country === selectedCountry
+  );
+
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
     return <Navigate to="/dashboard" replace />;
@@ -152,6 +166,7 @@ const ReviewManagementPage: React.FC = () => {
       const searchConfig = {
         organizationId: isSuperAdmin ? null : (organizationId || '__fallback__'),
         cacheEnabled: true,
+        country: selectedCountry,
         onProgress: (stage: string, progress: number) => {
           console.log(`🔍 Search progress: ${stage} (${progress}%)`);
         }
@@ -264,13 +279,22 @@ const ReviewManagementPage: React.FC = () => {
 
   // Demo preset auto-select removed: require manual app selection in demo mode
 
-  // App selection handler - Navigate to dedicated review details page
+  // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
-    // Store app metadata in localStorage for the details page
-    localStorage.setItem(`app-metadata-${app.appId}`, JSON.stringify(app));
-
-    // Navigate to the dedicated review details page
-    navigate(`/growth-accelerators/reviews/${app.appId}`);
+    setSelectedApp(app);
+    setReviews([]);
+    setCurrentPage(1);
+    setHasMoreReviews(false);
+    // Default to last 30 days on app change
+    const today = new Date();
+    const end = formatDateInputLocal(today);
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 29);
+    const start = formatDateInputLocal(startDate);
+    setFromDate(start);
+    setToDate(end);
+    setQuickRange('30d');
+    fetchReviews(app.appId, 1);
   };
 
   // Load more reviews
@@ -381,6 +405,104 @@ const ReviewManagementPage: React.FC = () => {
     return 'neutral';
   };
 
+  // Enhanced helper functions for meaningful AI analysis
+  const extractThemesFromText = (text: string): string[] => {
+    if (!text || typeof text !== 'string') return [];
+
+    const lowerText = text.toLowerCase();
+    const detectedThemes: string[] = [];
+
+    // Comprehensive theme patterns
+    const themePatterns = {
+      'checkout problems': ['checkout', 'payment', 'purchase', 'buy', 'cart', 'billing'],
+      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck', 'closes'],
+      'performance issues': ['slow', 'lag', 'loading', 'speed', 'response time', 'performance'],
+      'ui/ux design': ['design', 'interface', 'layout', 'ui', 'ux', 'look', 'appearance'],
+      'login problems': ['login', 'sign in', 'password', 'account', 'authentication'],
+      'feature requests': ['feature', 'add', 'would like', 'wish', 'need', 'missing'],
+      'customer support': ['support', 'help', 'service', 'response', 'customer care'],
+      'pricing concerns': ['price', 'cost', 'expensive', 'cheap', 'subscription', 'premium'],
+      'battery usage': ['battery', 'drain', 'power', 'energy'],
+      'notifications': ['notification', 'alert', 'remind', 'push']
+    };
+
+    Object.entries(themePatterns).forEach(([theme, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedThemes.push(theme);
+      }
+    });
+
+    return detectedThemes;
+  };
+
+  const extractFeaturesFromText = (text: string): string[] => {
+    if (!text || typeof text !== 'string') return [];
+
+    const lowerText = text.toLowerCase();
+    const detectedFeatures: string[] = [];
+
+    const featurePatterns = {
+      'dark mode': ['dark mode', 'night mode', 'dark theme'],
+      'notifications': ['notification', 'alert', 'remind'],
+      'search functionality': ['search', 'find', 'look for'],
+      'offline mode': ['offline', 'without internet', 'no connection'],
+      'sync': ['sync', 'synchronize', 'backup'],
+      'export data': ['export', 'download', 'save'],
+      'sharing': ['share', 'send', 'forward'],
+      'customization': ['customize', 'personalize', 'settings'],
+      'voice input': ['voice', 'speech', 'dictate'],
+      'widgets': ['widget', 'shortcut', 'quick access']
+    };
+
+    Object.entries(featurePatterns).forEach(([feature, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedFeatures.push(feature);
+      }
+    });
+
+    return detectedFeatures;
+  };
+
+  const extractIssuesFromText = (text: string): string[] => {
+    if (!text || typeof text !== 'string') return [];
+
+    const lowerText = text.toLowerCase();
+    const detectedIssues: string[] = [];
+
+    const issuePatterns = {
+      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck'],
+      'login failures': ['can\'t login', 'login failed', 'won\'t sign in'],
+      'loading problems': ['won\'t load', 'loading forever', 'stuck loading'],
+      'sync errors': ['sync failed', 'won\'t sync', 'sync problem'],
+      'payment issues': ['payment failed', 'can\'t purchase', 'billing error'],
+      'performance lag': ['slow', 'laggy', 'sluggish', 'unresponsive'],
+      'ui bugs': ['button doesn\'t work', 'interface broken', 'display issue'],
+      'data loss': ['lost data', 'deleted', 'missing information'],
+      'notification problems': ['notifications not working', 'no alerts'],
+      'battery drain': ['drains battery', 'battery usage', 'power hungry']
+    };
+
+    Object.entries(issuePatterns).forEach(([issue, keywords]) => {
+      if (keywords.some(keyword => lowerText.includes(keyword))) {
+        detectedIssues.push(issue);
+      }
+    });
+
+    return detectedIssues;
+  };
+
+  const calculateBusinessImpact = (rating: number, text: string): 'high' | 'medium' | 'low' => {
+    if (!text) return rating <= 2 ? 'medium' : 'low';
+
+    const criticalKeywords = ['crash', 'bug', 'broken', 'terrible', 'worst', 'awful'];
+    const hasCriticalIssue = criticalKeywords.some(keyword => text.toLowerCase().includes(keyword));
+
+    if (rating <= 2 && hasCriticalIssue) return 'high';
+    if (rating >= 4 && text.length > 100) return 'high';
+    if (rating === 3 || hasCriticalIssue) return 'medium';
+    return 'low';
+  };
+
   // Enhanced sentiment analysis with AI intelligence
   const enhancedReviews = useMemo(() => {
     console.log('🔍 DATA DEBUG [ENHANCED]: Starting review processing. Raw reviews:', reviews?.length || 0);
@@ -453,104 +575,6 @@ const ReviewManagementPage: React.FC = () => {
       })) as EnhancedReviewItem[];
     }
   }, [reviews]);
-
-  // Enhanced helper functions for meaningful AI analysis
-  const extractThemesFromText = (text: string): string[] => {
-    if (!text || typeof text !== 'string') return [];
-    
-    const lowerText = text.toLowerCase();
-    const detectedThemes: string[] = [];
-    
-    // Comprehensive theme patterns
-    const themePatterns = {
-      'checkout problems': ['checkout', 'payment', 'purchase', 'buy', 'cart', 'billing'],
-      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck', 'closes'],
-      'performance issues': ['slow', 'lag', 'loading', 'speed', 'response time', 'performance'],
-      'ui/ux design': ['design', 'interface', 'layout', 'ui', 'ux', 'look', 'appearance'],
-      'login problems': ['login', 'sign in', 'password', 'account', 'authentication'],
-      'feature requests': ['feature', 'add', 'would like', 'wish', 'need', 'missing'],
-      'customer support': ['support', 'help', 'service', 'response', 'customer care'],
-      'pricing concerns': ['price', 'cost', 'expensive', 'cheap', 'subscription', 'premium'],
-      'battery usage': ['battery', 'drain', 'power', 'energy'],
-      'notifications': ['notification', 'alert', 'remind', 'push']
-    };
-    
-    Object.entries(themePatterns).forEach(([theme, keywords]) => {
-      if (keywords.some(keyword => lowerText.includes(keyword))) {
-        detectedThemes.push(theme);
-      }
-    });
-    
-    return detectedThemes;
-  };
-
-  const extractFeaturesFromText = (text: string): string[] => {
-    if (!text || typeof text !== 'string') return [];
-    
-    const lowerText = text.toLowerCase();
-    const detectedFeatures: string[] = [];
-    
-    const featurePatterns = {
-      'dark mode': ['dark mode', 'night mode', 'dark theme'],
-      'notifications': ['notification', 'alert', 'remind'],
-      'search functionality': ['search', 'find', 'look for'],
-      'offline mode': ['offline', 'without internet', 'no connection'],
-      'sync': ['sync', 'synchronize', 'backup'],
-      'export data': ['export', 'download', 'save'],
-      'sharing': ['share', 'send', 'forward'],
-      'customization': ['customize', 'personalize', 'settings'],
-      'voice input': ['voice', 'speech', 'dictate'],
-      'widgets': ['widget', 'shortcut', 'quick access']
-    };
-    
-    Object.entries(featurePatterns).forEach(([feature, keywords]) => {
-      if (keywords.some(keyword => lowerText.includes(keyword))) {
-        detectedFeatures.push(feature);
-      }
-    });
-    
-    return detectedFeatures;
-  };
-
-  const extractIssuesFromText = (text: string): string[] => {
-    if (!text || typeof text !== 'string') return [];
-    
-    const lowerText = text.toLowerCase();
-    const detectedIssues: string[] = [];
-    
-    const issuePatterns = {
-      'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck'],
-      'login failures': ['can\'t login', 'login failed', 'won\'t sign in'],
-      'loading problems': ['won\'t load', 'loading forever', 'stuck loading'],
-      'sync errors': ['sync failed', 'won\'t sync', 'sync problem'],
-      'payment issues': ['payment failed', 'can\'t purchase', 'billing error'],
-      'performance lag': ['slow', 'laggy', 'sluggish', 'unresponsive'],
-      'ui bugs': ['button doesn\'t work', 'interface broken', 'display issue'],
-      'data loss': ['lost data', 'deleted', 'missing information'],
-      'notification problems': ['notifications not working', 'no alerts'],
-      'battery drain': ['drains battery', 'battery usage', 'power hungry']
-    };
-    
-    Object.entries(issuePatterns).forEach(([issue, keywords]) => {
-      if (keywords.some(keyword => lowerText.includes(keyword))) {
-        detectedIssues.push(issue);
-      }
-    });
-    
-    return detectedIssues;
-  };
-
-  const calculateBusinessImpact = (rating: number, text: string): 'high' | 'medium' | 'low' => {
-    if (!text) return rating <= 2 ? 'medium' : 'low';
-    
-    const criticalKeywords = ['crash', 'bug', 'broken', 'terrible', 'worst', 'awful'];
-    const hasCriticalIssue = criticalKeywords.some(keyword => text.toLowerCase().includes(keyword));
-    
-    if (rating <= 2 && hasCriticalIssue) return 'high';
-    if (rating >= 4 && text.length > 100) return 'high';
-    if (rating === 3 || hasCriticalIssue) return 'medium';
-    return 'low';
-  };
 
   // Generate comprehensive AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
@@ -914,6 +938,9 @@ const ReviewManagementPage: React.FC = () => {
     value: string | null;
   }>({ type: null, value: null });
 
+  // Competitor comparison mode state
+  const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
+
   // Use enhanced reviews for processing
   const processedReviews = enhancedReviews;
 
@@ -1133,6 +1160,18 @@ const ReviewManagementPage: React.FC = () => {
     </div>
   );
 
+  // Show competitor comparison view if enabled
+  if (showCompetitorComparison && organizationId) {
+    return (
+      <MainLayout>
+        <CompetitorComparisonView
+          organizationId={organizationId}
+          onExit={() => setShowCompetitorComparison(false)}
+        />
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
         <div className="space-y-6">
@@ -1173,6 +1212,15 @@ const ReviewManagementPage: React.FC = () => {
           <p className="text-muted-foreground">Search apps and fetch public customer reviews from iTunes RSS</p>
         </div>
         <div className="flex items-center gap-2">
+          {organizationId && monitoredApps && monitoredApps.length >= 2 && (
+            <Button
+              onClick={() => setShowCompetitorComparison(true)}
+              className="gap-2 bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
+            >
+              <Target className="h-4 w-4" />
+              Compare Competitors
+            </Button>
+          )}
           <ConnectionStatus showDetails />
           {showDevBadge && (
             <Badge variant="outline" className="text-xs">DEV MODE</Badge>
@@ -1180,21 +1228,128 @@ const ReviewManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Card A: App Search */}
-      <YodelCard variant="glass" padding="md" className="shadow-sm">
-        <YodelCardHeader>
+      {/* Monitored Apps Grid - Shows saved apps for quick access */}
+      {monitoredApps && monitoredApps.length > 0 && !selectedApp && organizationId && (
+        <MonitoredAppsGrid
+          organizationId={organizationId}
+          onSelectApp={(app) => {
+            console.log('[MonitoredApp] Clicked:', {
+              appName: app.app_name,
+              appId: app.app_store_id,
+              country: app.primary_country
+            });
+
+            // Load app into reviews page
+            setSelectedApp({
+              name: app.app_name,
+              appId: app.app_store_id,
+              developer: app.developer_name || 'Unknown',
+              rating: app.snapshot_rating || 0,
+              reviews: app.snapshot_review_count || 0,
+              icon: app.app_icon_url || '',
+              applicationCategory: app.category || 'Unknown'
+            });
+
+            // ✅ CRITICAL FIX v2: Pass country directly to avoid stale state
+            // Problem: setSelectedCountry is async, fetchReviews would use old state
+            // Solution: Store the country value and pass it explicitly
+            const targetCountry = app.primary_country;
+            setSelectedCountry(targetCountry);
+
+            // Clear old state
+            setReviews([]);
+            setCurrentPage(1);
+            setHasMoreReviews(false);
+
+            // Fetch reviews with explicit country parameter
+            console.log('[MonitoredApp] Triggering review fetch:', {
+              appId: app.app_store_id,
+              country: targetCountry,
+              page: 1
+            });
+
+            // IMPORTANT: We need to call fetchReviews with the country
+            // But fetchReviews uses selectedCountry from state (closure)
+            // So we need to fetch directly here with explicit params
+            (async () => {
+              setReviewsLoading(true);
+              try {
+                console.log('[MonitoredApp] Fetching from iTunes:', {
+                  appId: app.app_store_id,
+                  cc: targetCountry,
+                  page: 1
+                });
+
+                const result = await fetchAppReviews({
+                  appId: app.app_store_id,
+                  cc: targetCountry,
+                  page: 1
+                });
+
+                const newReviews = result.data || [];
+                console.log('[MonitoredApp] Reviews fetched:', {
+                  count: newReviews.length,
+                  hasMore: result.hasMore,
+                  currentPage: result.currentPage
+                });
+
+                setReviews(newReviews);
+                setCurrentPage(result.currentPage);
+                setHasMoreReviews(result.hasMore);
+
+                if (newReviews.length > 0) {
+                  toast.success(`Loaded ${newReviews.length} reviews for ${app.app_name}`);
+                } else {
+                  toast.info(`No reviews found for ${app.app_name} in ${targetCountry.toUpperCase()}`);
+                }
+
+              } catch (error: any) {
+                console.error('[MonitoredApp] Fetch failed:', error);
+                toast.error(`Failed to fetch reviews: ${error.message}`);
+              } finally {
+                setReviewsLoading(false);
+              }
+            })();
+
+            // Update last checked timestamp
+            updateLastChecked.mutate(app.id);
+          }}
+        />
+      )}
+
+      {/* Card A: App Search (hidden after app selected) */}
+      {!selectedApp && (
+      <Card className={cn(
+        "relative overflow-hidden transition-all duration-300",
+        "hover:scale-[1.005] hover:shadow-2xl",
+        "bg-card/50 backdrop-blur-xl border-border/50"
+      )}>
+        {/* Gradient Background Accent */}
+        <div className="absolute top-0 right-0 w-48 h-48 opacity-10 blur-3xl bg-gradient-to-br from-blue-500 to-purple-600" />
+
+        <div className="relative p-6 space-y-6">
+          {/* Header with gradient icon */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Search className="w-5 h-5" />
-            App Search
-            </h2>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+                <Search className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold uppercase tracking-wide">
+                  App Search
+                </h2>
+                <p className="text-xs text-muted-foreground/80">
+                  Search and select an app to analyze reviews
+                </p>
+              </div>
+            </div>
             {showDevBadge && (
               <Badge variant="outline" className="text-xs">DEV MODE</Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">Search and select an app to fetch reviews from iTunes</p>
-        </YodelCardHeader>
-        <YodelCardContent className="space-y-4">
+
+          {/* Content */}
+          <div className="space-y-4">
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
@@ -1263,11 +1418,550 @@ const ReviewManagementPage: React.FC = () => {
               ))}
             </div>
           )}
-        </YodelCardContent>
-      </YodelCard>
+          </div>
+        </div>
+      </Card>
+      )}
 
-      {/* Reviews are now displayed on a dedicated page */}
-      {/* When user selects an app, they are navigated to /growth-accelerators/reviews/:appId */}
+      {/* Card B: Reviews Fetching & Export */}
+      {selectedApp && (
+        <YodelCard variant="elevated" padding="md" className="shadow-md">
+          <YodelCardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedApp.icon && (
+                  <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
+                )}
+                <div className="flex flex-col">
+                  <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    <span>Reviews for {selectedApp.name}</span>
+                    <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <StarRating rating={Math.round(selectedApp?.rating || 0)} />
+                    <span className="text-xs text-muted-foreground">
+                      {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {organizationId && (
+                  <AddToMonitoringButton
+                    organizationId={organizationId}
+                    appStoreId={selectedApp.appId}
+                    appName={selectedApp.name}
+                    appIconUrl={selectedApp.icon}
+                    developerName={selectedApp.developer}
+                    category={selectedApp.applicationCategory}
+                    country={selectedCountry}
+                    rating={selectedApp.rating}
+                    reviewCount={selectedApp.reviews}
+                    isMonitored={isAppMonitored}
+                  />
+                )}
+                <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
+                  Search Another
+                </Button>
+              </div>
+            </div>
+          </YodelCardHeader>
+          <YodelCardContent className="space-y-4">
+            {/* Summary Metrics - Premium Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+              {/* Total Reviews */}
+              <Card className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                "hover:scale-[1.02] hover:shadow-xl",
+                "bg-card/50 backdrop-blur-xl border-border/50"
+              )}>
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-blue-500 to-cyan-600" />
+                <div className="relative p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Total Reviews
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {summary.total.toLocaleString()}
+                  </div>
+                </div>
+              </Card>
+
+              {/* App Store Rating */}
+              <Card className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                "hover:scale-[1.02] hover:shadow-xl",
+                "bg-card/50 backdrop-blur-xl border-border/50"
+              )}>
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-yellow-500 to-orange-600" />
+                <div className="relative p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Star className="h-3.5 w-3.5 text-yellow-500" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      App Store
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {(selectedApp?.rating ?? 0).toFixed(2)}
+                    <span className="text-base text-muted-foreground font-normal"> / 5</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
+                  </div>
+                </div>
+              </Card>
+
+              {/* Average Rating */}
+              <Card className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                "hover:scale-[1.02] hover:shadow-xl",
+                "bg-card/50 backdrop-blur-xl border-border/50"
+              )}>
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-purple-500 to-pink-600" />
+                <div className="relative p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-purple-500" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Avg Rating
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {summary.avg.toFixed(2)}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Positive Percentage */}
+              <Card className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                "hover:scale-[1.02] hover:shadow-xl",
+                "bg-card/50 backdrop-blur-xl border-border/50"
+              )}>
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-green-500 to-emerald-600" />
+                <div className="relative p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Smile className="h-3.5 w-3.5 text-green-500" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Positive
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {summary.posPct}%
+                  </div>
+                </div>
+              </Card>
+
+              {/* Period Total */}
+              <Card className={cn(
+                "relative overflow-hidden transition-all duration-300",
+                "hover:scale-[1.02] hover:shadow-xl",
+                "bg-card/50 backdrop-blur-xl border-border/50"
+              )}>
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-cyan-500 to-blue-600" />
+                <div className="relative p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5 text-cyan-500" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      This Period
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {periodTotal.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    based on loaded pages
+                  </div>
+                </div>
+              </Card>
+            </div>
+            
+            {/* AI Analytics Section - Collapsible */}
+            {reviews.length > 0 && (
+              <CollapsibleAnalyticsSection
+                reviews={enhancedReviews}
+                intelligence={reviewIntelligence}
+                insights={actionableInsights}
+                analytics={reviewAnalytics}
+                onInsightAction={handleInsightAction}
+              />
+            )}
+
+            {/* Competitor Management Panel - NEW */}
+            {selectedApp && organizationId && isAppMonitored && (
+              <CompetitorManagementPanel
+                targetAppId={monitoredApps?.find(
+                  app => app.app_store_id === selectedApp.appId && app.primary_country === selectedCountry
+                )?.id || ''}
+                targetAppName={selectedApp.name}
+                organizationId={organizationId}
+                country={selectedCountry}
+                onCompare={(competitorIds) => {
+                  // Quick compare button clicked - trigger comparison view
+                  // TODO: Pre-populate comparison with these specific competitors
+                  setShowCompetitorComparison(true);
+                }}
+              />
+            )}
+
+            {/* Filters Row */}
+            <YodelToolbar>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Filters</span>
+              </div>
+              {/* Rating chips */}
+              <div className="flex items-center gap-1">
+                {(['all', 5, 4, 3, 2, 1] as const).map(val => (
+                  <Button
+                    key={String(val)}
+                    size="sm"
+                    variant={ratingFilter === val ? 'default' : 'outline'}
+                    onClick={() => setRatingFilter(val as any)}
+                    className="text-xs"
+                  >
+                    {val === 'all' ? 'All' : `${val}★`}
+                  </Button>
+                ))}
+              </div>
+              {/* Sentiment chips */}
+              <div className="flex items-center gap-1 ml-2">
+                {[{k:'all', icon:Meh, label:'All'}, {k:'positive', icon:Smile, label:'Positive'}, {k:'neutral', icon:Meh, label:'Neutral'}, {k:'negative', icon:Frown, label:'Negative'}].map(({k, icon:Icon, label}) => (
+                  <Button
+                    key={k}
+                    size="sm"
+                    variant={sentimentFilter === (k as any) ? 'default' : 'outline'}
+                    onClick={() => setSentimentFilter(k as any)}
+                    className="text-xs"
+                  >
+                    <Icon className="w-3 h-3 mr-1" /> {label}
+                  </Button>
+                ))}
+              </div>
+              <YodelToolbarSpacer />
+              {/* Text search */}
+              <div className="min-w-[220px]">
+                <Input placeholder="Search title, text, author" value={textQuery} onChange={e => setTextQuery(e.target.value)} />
+              </div>
+              {/* Date range */}
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                <Select value={quickRange} onValueChange={(v: any) => applyQuickRange(v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                    <SelectItem value="90d">Last 90 days</SelectItem>
+                    <SelectItem value="1y">Last year</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
+              </div>
+              {/* Sort */}
+              <div className="flex items-center gap-2">
+                <SortAsc className="w-4 h-4 text-muted-foreground" />
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                    <SelectItem value="rating_high">Rating: High to Low</SelectItem>
+                    <SelectItem value="rating_low">Rating: Low to High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </YodelToolbar>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className={cn(
+              "relative overflow-hidden transition-all duration-300",
+              "hover:shadow-lg",
+              "bg-card/50 backdrop-blur-xl border-border/50"
+            )}>
+              <div className="absolute top-0 left-0 w-24 h-24 opacity-10 blur-2xl bg-gradient-to-br from-yellow-500 to-orange-600" />
+              <div className="relative p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-yellow-500" />
+                    <h4 className="text-sm font-medium uppercase tracking-wide">
+                      Rating Distribution
+                    </h4>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {reviews.length} reviews
+                  </Badge>
+                </div>
+              <ChartContainer config={{ count: { label: 'Reviews', color: 'hsl(var(--primary))' } }}>
+                <BarChart data={ratingDistribution} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="rating" />
+                  <YAxis allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="count">
+                    {ratingDistribution.map((entry: any) => {
+                      const label = entry.rating as string; // like "1★"
+                      const n = parseInt(label);
+                      // Color mapping per star: 1 red -> 5 emerald
+                      const color = n === 5 ? '#22c55e' : n === 4 ? '#60a5fa' : n === 3 ? '#f59e0b' : n === 2 ? '#f97316' : '#ef4444';
+                      return <Cell key={`cell-${label}`} fill={color} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+              </div>
+            </Card>
+            <Card className={cn(
+              "relative overflow-hidden transition-all duration-300",
+              "hover:shadow-lg",
+              "bg-card/50 backdrop-blur-xl border-border/50"
+            )}>
+              <div className="absolute top-0 left-0 w-24 h-24 opacity-10 blur-2xl bg-gradient-to-br from-purple-500 to-pink-600" />
+              <div className="relative p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-purple-500" />
+                    <h4 className="text-sm font-medium uppercase tracking-wide">
+                      Sentiment Breakdown
+                    </h4>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    AI Analyzed
+                  </Badge>
+                </div>
+              <ChartContainer config={{ positive: { label: 'Positive', color: '#22c55e' }, neutral: { label: 'Neutral', color: '#a3a3a3' }, negative: { label: 'Negative', color: '#ef4444' }}}>
+                <PieChart>
+                  <Pie data={sentimentBreakdown} dataKey="count" nameKey="label" outerRadius={70} label>
+                    <Cell key="pos" fill="var(--color-positive)" />
+                    <Cell key="neu" fill="var(--color-neutral)" />
+                    <Cell key="neg" fill="var(--color-negative)" />
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+              </div>
+            </Card>
+            </div>
+
+            {/* Trend Over Time */}
+            <Card className={cn(
+              "relative overflow-hidden transition-all duration-300",
+              "hover:shadow-lg",
+              "bg-card/50 backdrop-blur-xl border-border/50"
+            )}>
+              <div className="absolute top-0 left-0 w-32 h-32 opacity-10 blur-3xl bg-gradient-to-br from-blue-500 to-cyan-600" />
+              <div className="relative p-5 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <h4 className="text-sm font-medium uppercase tracking-wide">
+                    Trend Over Time
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Line metric</span>
+                  <Select value={trendMetric} onValueChange={(v: any) => setTrendMetric(v)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="avg">Avg Rating</SelectItem>
+                      <SelectItem value="positive">Positive %</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground ml-2">Bar mode</span>
+                  <Select value={trendBarMode} onValueChange={(v: any) => setTrendBarMode(v)}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Total reviews</SelectItem>
+                      <SelectItem value="stacked">Stacked sentiment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <ChartContainer config={{ count: { label: '# Reviews', color: '#93c5fd' }, positive: { label: 'Positive', color: '#22c55e' }, neutral: { label: 'Neutral', color: '#a3a3a3' }, negative: { label: 'Negative', color: '#ef4444' }, avgRating: { label: 'Avg Rating', color: '#0ea5e9' }, percentPositive: { label: 'Positive %', color: '#0ea5e9' }}}>
+                <ComposedChart data={trendOverTime} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis yAxisId="left" allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" domain={trendMetric === 'avg' ? [0, 5] : [0, 100]} tickFormatter={(v: number) => trendMetric === 'avg' ? v.toFixed(1) : `${v}%`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  {trendBarMode === 'total' ? (
+                    <Bar yAxisId="left" dataKey="count" name="# Reviews" fill="var(--color-count)" />
+                  ) : (
+                    <>
+                      <Bar yAxisId="left" dataKey="positive" name="Positive" stackId="s" fill="var(--color-positive)" />
+                      <Bar yAxisId="left" dataKey="neutral" name="Neutral" stackId="s" fill="var(--color-neutral)" />
+                      <Bar yAxisId="left" dataKey="negative" name="Negative" stackId="s" fill="var(--color-negative)" />
+                    </>
+                  )}
+                  <Line yAxisId="right" type="monotone" dataKey={trendMetric === 'avg' ? 'avgRating' : 'percentPositive'} name={trendMetric === 'avg' ? 'Avg Rating' : 'Positive %'} stroke="var(--color-avgRating)" dot={false} />
+                </ComposedChart>
+              </ChartContainer>
+              </div>
+            </Card>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} • {reviews.length} reviews loaded
+                </p>
+                {hasMoreReviews && (
+                  <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={reviewsLoading}>
+                    {reviewsLoading ? 'Loading...' : 'Load More'}
+                  </Button>
+                )}
+              </div>
+              <Button onClick={handleExportCSV} disabled={reviews.length === 0}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+
+            {filteredReviews.length > 0 && (
+              <div className="max-h-96 overflow-y-auto space-y-3 p-4">
+                {selectedInsightFilter.type && (
+                  <Card className="p-3 bg-primary/10 border-l-4 border-primary">
+                    <div className="text-sm">
+                      <strong className="text-primary">AI Filter Active:</strong>
+                      <span className="text-muted-foreground ml-1">
+                        Showing reviews matching {selectedInsightFilter.type}: "{selectedInsightFilter.value}"
+                      </span>
+                    </div>
+                  </Card>
+                )}
+                {filteredReviews.map((review: any, index) => (
+                  <Card key={review.review_id || index} className={cn(
+                    "relative overflow-hidden transition-all duration-200",
+                    "hover:shadow-lg hover:border-primary/30",
+                    "bg-card/30 backdrop-blur-sm border-border/30",
+                    // Sentiment-based left border
+                    review.sentiment === 'positive' && "border-l-4 border-l-green-500/80",
+                    review.sentiment === 'negative' && "border-l-4 border-l-red-500/80",
+                    review.sentiment === 'neutral' && "border-l-4 border-l-zinc-500/80",
+                    // Highlight matching filter
+                    selectedInsightFilter.type && (
+                      (selectedInsightFilter.type === 'theme' && review.extractedThemes?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'issue' && review.identifiedIssues?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'feature' && review.mentionedFeatures?.includes(selectedInsightFilter.value)) ||
+                      (selectedInsightFilter.type === 'sentiment' && review.sentiment === selectedInsightFilter.value)
+                    ) && 'ring-2 ring-primary/50 bg-primary/5'
+                  )}>
+                    <div className="p-4 space-y-3">
+                      {/* Header with rating stars */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h5 className="font-semibold text-base mb-1">{review.title || 'No title'}</h5>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-medium">{review.author || 'Anonymous'}</span>
+                            <span>•</span>
+                            <span>{formatDate(review.updated_at)}</span>
+                            <span>•</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                              v{review.version || '—'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1.5">
+                          <StarRating rating={review.rating} />
+                          {review.sentiment && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                review.sentiment === 'positive' && "border-green-500/50 text-green-500 bg-green-500/10",
+                                review.sentiment === 'negative' && "border-red-500/50 text-red-500 bg-red-500/10",
+                                review.sentiment === 'neutral' && "border-zinc-500/50 text-zinc-500 bg-zinc-500/10"
+                              )}
+                            >
+                              {review.sentiment === 'positive' && <Smile className="w-3 h-3 mr-1" />}
+                              {review.sentiment === 'negative' && <Frown className="w-3 h-3 mr-1" />}
+                              {review.sentiment === 'neutral' && <Meh className="w-3 h-3 mr-1" />}
+                              {review.sentiment}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Review text */}
+                      <p className="text-sm leading-relaxed text-muted-foreground">{review.text}</p>
+
+                      {/* AI Enhancement Tags */}
+                      {(review.extractedThemes?.length > 0 || review.mentionedFeatures?.length > 0 || review.identifiedIssues?.length > 0) && (
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                          {review.extractedThemes?.slice(0, 3).map((theme: string) => (
+                            <Badge
+                              key={theme}
+                              variant="secondary"
+                              className="text-xs bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                              onClick={() => setSelectedInsightFilter({ type: 'theme', value: theme })}
+                            >
+                              {theme}
+                            </Badge>
+                          ))}
+                          {review.mentionedFeatures?.slice(0, 2).map((feature: string) => (
+                            <Badge
+                              key={feature}
+                              variant="secondary"
+                              className="text-xs bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 cursor-pointer"
+                              onClick={() => setSelectedInsightFilter({ type: 'feature', value: feature })}
+                            >
+                              ⭐ {feature}
+                            </Badge>
+                          ))}
+                          {review.identifiedIssues?.slice(0, 2).map((issue: string) => (
+                            <Badge
+                              key={issue}
+                              variant="destructive"
+                              className="text-xs cursor-pointer hover:opacity-80"
+                              onClick={() => setSelectedInsightFilter({ type: 'issue', value: issue })}
+                            >
+                              ⚠️ {issue}
+                            </Badge>
+                          ))}
+                          {review.businessImpact && review.businessImpact === 'high' && (
+                            <Badge variant="destructive" className="text-xs">
+                              🔥 High Impact
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {filteredReviews.length === 0 && !reviewsLoading && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>{reviews.length === 0 ? 'Select an app to fetch reviews' : 'No reviews match current filters'}</p>
+              </div>
+            )}
+
+            {reviewsLoading && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-muted-foreground">Loading reviews...</p>
+              </div>
+            )}
+          </YodelCardContent>
+        </YodelCard>
+      )}
 
       {/* Dev Self-Test Panel - visible only for super admin without organization */}
       {canShowDevPanel && showDevTest && (

@@ -87,12 +87,8 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
   }
 
   if (!bigQueryApps || bigQueryApps.length === 0) {
-    return (
-      <div className={`flex items-center gap-2 text-sm text-zinc-400 ${className}`}>
-        <Database className="h-4 w-4" />
-        <span>No BigQuery apps</span>
-      </div>
-    );
+    // Don't show anything if no apps - hide the component entirely
+    return null;
   }
 
   return (

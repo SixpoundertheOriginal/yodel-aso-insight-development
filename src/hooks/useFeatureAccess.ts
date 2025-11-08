@@ -34,6 +34,7 @@ export const useFeatureAccess = () => {
       } catch (error) {
         console.error('[ENTERPRISE-FALLBACK] Failed to fetch organization features:', error);
         // Enterprise-safe fallback: Comprehensive feature set for graceful degradation
+        // NOTE: platform_admin_access removed to prevent non-super-admins appearing as super admins
         const enterpriseFallbackFeatures = [
           ...Object.keys(ENTERPRISE_CORE_FEATURES),
           'conversion_intelligence',
@@ -43,8 +44,7 @@ export const useFeatureAccess = () => {
           'aso_chat',
           'competitive_intelligence',
           'app_discovery',
-          'admin_panel',
-          'platform_admin_access'
+          'admin_panel'
         ];
         setRawFeatures(enterpriseFallbackFeatures);
       } finally {
@@ -77,6 +77,7 @@ export const useFeatureAccess = () => {
     } catch (error) {
       console.error('[ENTERPRISE-FALLBACK] Failed to refresh features:', error);
       // Enterprise-safe fallback on refresh failure
+      // NOTE: platform_admin_access removed to prevent non-super-admins appearing as super admins
       const enterpriseFallbackFeatures = [
         ...Object.keys(ENTERPRISE_CORE_FEATURES),
         'conversion_intelligence',
@@ -86,8 +87,7 @@ export const useFeatureAccess = () => {
         'aso_chat',
         'competitive_intelligence',
         'app_discovery',
-        'admin_panel',
-        'platform_admin_access'
+        'admin_panel'
       ];
       setRawFeatures(enterpriseFallbackFeatures);
     } finally {

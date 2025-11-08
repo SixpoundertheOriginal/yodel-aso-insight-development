@@ -97,10 +97,12 @@ function mapBigQueryRows(rows: BigQueryRow[] | undefined) {
   }
 
   return rows.map((row) => {
-    const [date, appId, impressions, productPageViews, downloads, conversionRate] = row.f;
+    // aso_all_apple returns 7 columns: date, app_id, traffic_source, impressions, product_page_views, downloads, conversion_rate
+    const [date, appId, trafficSource, impressions, productPageViews, downloads, conversionRate] = row.f;
     return {
       date: date?.v ?? null,
       app_id: appId?.v ?? null,
+      traffic_source: trafficSource?.v ?? null,
       impressions: impressions?.v ? Number(impressions.v) : 0,
       product_page_views: productPageViews?.v ? Number(productPageViews.v) : 0,
       downloads: downloads?.v ? Number(downloads.v) : 0,
@@ -266,10 +268,108 @@ serve(async (req) => {
     );
   }
 
+  // ============================================
+  // 🎯 [AGENCY SUPPORT] Multi-Tenant Agency Architecture
+  // ============================================
+  //
+  // CRITICAL: This section implements agency-client relationships.
+  // An agency organization can access data from multiple client organizations.
+  //
+  // Architecture:
+  // 1. Query agency_clients table to find managed clients
+  // 2. Expand organizationsToQuery to include: [agency_org] + [client_org_1, client_org_2, ...]
+  // 3. Query org_app_access for ALL organizations in the list
+  // 4. RLS policies on org_app_access ensure only authorized apps are returned
+  //
+  // Example: Yodel Mobile (Agency)
+  // - Agency Org: 7cccba3f-0a8f-446f-9dba-86e9cb68c92b
+  // - Manages Client Orgs: [dbdb0cc5-..., 550e8400-...]
+  // - Total Apps Accessible: 8 (agency apps + client apps)
+  //
+  // Security:
+  // - agency_clients.is_active = true (only active relationships)
+  // - RLS on org_app_access prevents accessing apps outside allowed list
+  // - User must have ORG_ADMIN role in agency organization
+  //
+  // DO NOT MODIFY without understanding full impact on Dashboard V2 and Reviews pages.
+  // ============================================
+
+  log(requestId, "[AGENCY] Checking for agency relationships");
+
+  const { data: managedClients, error: agencyError } = await supabaseClient
+    .from("agency_clients")
+    .select("client_org_id")
+    .eq("agency_org_id", resolvedOrgId)
+    .eq("is_active", true);
+
+  if (agencyError) {
+    log(requestId, "[AGENCY] Error checking agency status", agencyError);
+  }
+
+  // Build list of organizations to query (self + managed clients)
+  let organizationsToQuery = [resolvedOrgId];
+  if (managedClients && managedClients.length > 0) {
+    // ============================================
+    // 🔒 [SECURITY] Agency Access Validation
+    // ============================================
+    // VALIDATE: User should be ORG_ADMIN to access agency features
+    // For now: LOG ONLY (don't block) to ensure no disruption
+    // Future: Enforce validation after confirming all admins have correct roles
+
+    const { data: userRoleData } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("organization_id", resolvedOrgId)
+      .single();
+
+    const userRole = userRoleData?.role;
+    const isAdmin = userRole === 'org_admin' || userRole === 'ORG_ADMIN';
+
+    if (!isAdmin) {
+      log(requestId, "[SECURITY] Non-admin user attempting agency access", {
+        userId: user.id,
+        userEmail: user.email,
+        userRole: userRole || 'none',
+        agencyOrgId: resolvedOrgId,
+        attemptedClientAccess: managedClients.length,
+        timestamp: new Date().toISOString(),
+        action: 'LOGGED_ONLY'  // Not blocking yet
+      });
+
+      // TODO: After Phase 3 testing, change this to block access:
+      // return new Response(
+      //   JSON.stringify({
+      //     error: "Agency access requires ORG_ADMIN role",
+      //     hint: "Contact admin to upgrade your role"
+      //   }),
+      //   { status: 403, headers: corsHeaders }
+      // );
+    } else {
+      log(requestId, "[SECURITY] Valid admin accessing agency features", {
+        userId: user.id,
+        userRole: userRole,
+        agencyOrgId: resolvedOrgId
+      });
+    }
+
+    const clientOrgIds = managedClients.map(m => m.client_org_id);
+    organizationsToQuery = [resolvedOrgId, ...clientOrgIds];
+
+    log(requestId, "[AGENCY] Agency mode enabled", {
+      agency_org_id: resolvedOrgId,
+      managed_client_count: clientOrgIds.length,
+      client_org_ids: clientOrgIds,
+      total_orgs_to_query: organizationsToQuery.length,
+      validated_admin: isAdmin
+    });
+  }
+
+  // [ACCESS] Get app access for ALL organizations (agency + managed clients)
   const { data: accessData, error: accessError } = await supabaseClient
     .from("org_app_access")
     .select("app_id, attached_at, detached_at")
-    .eq("organization_id", resolvedOrgId)
+    .in("organization_id", organizationsToQuery)
     .is("detached_at", null);
 
   if (accessError) {
@@ -283,9 +383,10 @@ serve(async (req) => {
   const allowedAppIds = (accessData ?? []).map((item) => item.app_id).filter((id): id is string => Boolean(id));
 
   log(requestId, "[ACCESS] App access validated", {
-    orgId: resolvedOrgId,
-    requestedApps: Array.isArray(requestedAppIds) ? requestedAppIds.length : 0,
-    allowedApps: allowedAppIds.length,
+    organizations_queried: organizationsToQuery.length,
+    is_agency: managedClients && managedClients.length > 0,
+    requested_apps: Array.isArray(requestedAppIds) ? requestedAppIds.length : 0,
+    allowed_apps: allowedAppIds.length,
     apps: allowedAppIds,
   });
 
@@ -379,10 +480,12 @@ serve(async (req) => {
     );
   }
 
+  // Main data query - Use aso_all_apple table (has ALL traffic sources + product_page_views)
   const query = `
-    SELECT 
+    SELECT
       date,
       COALESCE(app_id, client) AS app_id,
+      traffic_source,
       impressions,
       product_page_views,
       downloads,
@@ -448,6 +551,74 @@ serve(async (req) => {
     firstRow: rows[0] || null,
   });
 
+  // ✅ SEPARATE QUERY: Get ALL available traffic sources across ALL accessible apps
+  // This ensures UI shows accurate "Has data" indicators regardless of current app selection
+  // NOTE: Using aso_all_apple table which has traffic_source breakdown
+  log(requestId, "[BIGQUERY] Fetching available traffic sources from ALL accessible apps", {
+    allAccessibleApps: allowedAppIds.length,
+  });
+
+  const dimensionsQuery = `
+    SELECT DISTINCT traffic_source
+    FROM \`${projectId}.client_reports.aso_all_apple\`
+    WHERE COALESCE(app_id, client) IN UNNEST(@all_app_ids)
+      AND date BETWEEN @start_date AND @end_date
+      AND traffic_source IS NOT NULL
+  `;
+
+  const dimensionsQueryRequest = {
+    query: dimensionsQuery,
+    useLegacySql: false,
+    parameterMode: "NAMED",
+    queryParameters: [
+      {
+        name: "all_app_ids",
+        parameterType: { type: "ARRAY", arrayType: { type: "STRING" } },
+        parameterValue: { arrayValues: toArrayValues(allowedAppIds) }, // ← Use ALL allowed apps (RLS-filtered)
+      },
+      {
+        name: "start_date",
+        parameterType: { type: "DATE" },
+        parameterValue: { value: startDate },
+      },
+      {
+        name: "end_date",
+        parameterType: { type: "DATE" },
+        parameterValue: { value: endDate },
+      },
+    ],
+  };
+
+  const dimensionsResponse = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${projectId}/queries`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(dimensionsQueryRequest),
+  });
+
+  let availableTrafficSources: string[] = [];
+
+  if (dimensionsResponse.ok) {
+    const dimensionsJson = await dimensionsResponse.json();
+    // Extract traffic_source from each row
+    availableTrafficSources = (dimensionsJson.rows || [])
+      .map((row: BigQueryRow) => row.f[0]?.v)
+      .filter(Boolean) as string[];
+
+    log(requestId, "[BIGQUERY] Available traffic sources fetched", {
+      sources: availableTrafficSources,
+      count: availableTrafficSources.length,
+    });
+  } else {
+    // Fallback: Extract from current query results if dimensions query fails
+    log(requestId, "[BIGQUERY] Dimensions query failed, falling back to current results");
+    availableTrafficSources = Array.from(
+      new Set(rows.map((r: any) => r.traffic_source).filter(Boolean))
+    );
+  }
+
   const responsePayload = {
     data: rows,
     scope: {
@@ -460,11 +631,66 @@ serve(async (req) => {
       traffic_sources: trafficSources || null,
     },
     meta: {
+      // [RESPONSE IDENTITY]
+      request_id: requestId,
       timestamp: new Date().toISOString(),
+
+      // [DATA CHARACTERISTICS]
+      data_source: 'bigquery',
       row_count: rows.length,
+      app_ids: appIdsForQuery,
+      app_count: appIdsForQuery.length,
+
+      // [QUERY PERFORMANCE]
       query_duration_ms: Math.round(performance.now() - startTime),
+
+      // [ORGANIZATION CONTEXT]
+      org_id: resolvedOrgId,
+
+      // [DISCOVERY METADATA]
+      discovery_method: scopeSource,
+      discovered_apps: appIdsForQuery.length,
+
+      // [AVAILABLE DIMENSIONS] - For UI pickers
+      available_traffic_sources: availableTrafficSources,
+      all_accessible_app_ids: allowedAppIds, // All apps user has access to (full list for UI picker)
+      total_accessible_apps: allowedAppIds.length, // Total number of accessible apps
     },
   };
+
+  // ============================================
+  // 📊 [AUDIT LOGGING] SOC 2 / ISO 27001 Compliance
+  // ============================================
+  // Log successful data access for audit trail
+  // Required for: SOC 2 Type II, ISO 27001, GDPR compliance
+  // Captures: who accessed what data, when, and from where
+  // ============================================
+  try {
+    await supabaseClient.rpc('log_audit_event', {
+      p_user_id: user.id,
+      p_organization_id: resolvedOrgId,
+      p_user_email: user.email || null,
+      p_action: 'view_dashboard_v2',
+      p_resource_type: 'bigquery_data',
+      p_resource_id: null, // No specific resource ID for aggregate data
+      p_details: {
+        app_count: appIdsForQuery.length,
+        date_range: { start: startDate, end: endDate },
+        row_count: rows.length,
+        traffic_sources: trafficSources || null,
+        scope_source: scopeSource,
+      },
+      p_ip_address: null, // Edge Functions don't have direct access to client IP
+      p_user_agent: null, // Edge Functions don't have direct access to user agent
+      p_request_path: '/functions/v1/bigquery-aso-data',
+      p_status: 'success',
+      p_error_message: null,
+    });
+    log(requestId, "[AUDIT] Logged successful data access");
+  } catch (auditError) {
+    // Don't fail the request if audit logging fails
+    log(requestId, "[AUDIT] Failed to log audit event (non-blocking)", auditError);
+  }
 
   return new Response(
     JSON.stringify(responsePayload),

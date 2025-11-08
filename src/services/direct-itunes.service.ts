@@ -109,7 +109,7 @@ class DirectItunesService {
         .map((app: any) => this.transformItunesResult(app));
 
       // Ambiguity detection logic
-      const highQualityResults = transformedResults.filter((app: ScrapedMetadata) => 
+      const highQualityResults = transformedResults.filter((app: ScrapedMetadata) =>
         app.rating && app.rating >= 3.5 && app.reviews && app.reviews >= 50
       );
 
@@ -122,9 +122,24 @@ class DirectItunesService {
         term
       });
 
+      // Always include the first result (most relevant from iTunes search algorithm)
+      // Then add other high quality results if ambiguous
+      let finalResults: ScrapedMetadata[];
+      if (isAmbiguous) {
+        // Start with first result (most relevant)
+        finalResults = [transformedResults[0]];
+        // Add other high quality results, avoiding duplicates
+        const additionalResults = highQualityResults
+          .filter(app => app.appId !== transformedResults[0].appId)
+          .slice(0, 9);
+        finalResults = [...finalResults, ...additionalResults];
+      } else {
+        finalResults = transformedResults.slice(0, 1);
+      }
+
       return {
         isAmbiguous,
-        results: isAmbiguous ? highQualityResults.slice(0, 10) : transformedResults.slice(0, 1),
+        results: finalResults,
         searchTerm: term
       };
 

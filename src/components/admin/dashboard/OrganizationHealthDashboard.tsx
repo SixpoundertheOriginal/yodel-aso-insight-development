@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, TrendingUp, AlertTriangle, Users, Activity, DollarSign } from 'lucide-react';
 import { MetricStat } from '@/components/ui/design-system/MetricStat';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface OrganizationHealth {
   id: string;
@@ -32,6 +33,7 @@ interface HealthTrends {
 }
 
 export const OrganizationHealthDashboard: React.FC = () => {
+  const { isSuperAdmin, organizationId, availableOrgs } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<OrganizationHealth[]>([]);
   const [healthTrends, setHealthTrends] = useState<HealthTrends>({
@@ -121,14 +123,29 @@ export const OrganizationHealthDashboard: React.FC = () => {
         }
       ];
 
-      setOrganizations(mockOrgs);
-      
+      // Filter organizations based on user role
+      let filteredOrgs = mockOrgs;
+      if (!isSuperAdmin && organizationId) {
+        // For ORG_ADMIN, only show their organization
+        // Match by organization name (case-insensitive) or ID
+        const userOrgName = availableOrgs[0]?.name?.toLowerCase();
+        filteredOrgs = mockOrgs.filter(org =>
+          org.id === organizationId ||
+          (userOrgName && org.name.toLowerCase().includes(userOrgName))
+        );
+        console.log(`[ORG_ADMIN] Filtered to ${filteredOrgs.length} organization(s)`);
+      } else {
+        console.log(`[SUPER_ADMIN] Showing all ${filteredOrgs.length} organizations`);
+      }
+
+      setOrganizations(filteredOrgs);
+
       // Calculate health trends
-      const trends = mockOrgs.reduce((acc, org) => {
+      const trends = filteredOrgs.reduce((acc, org) => {
         acc[org.health_status]++;
         return acc;
       }, { excellent: 0, good: 0, warning: 0, critical: 0 });
-      
+
       setHealthTrends(trends);
       setLoading(false);
     } catch (error) {

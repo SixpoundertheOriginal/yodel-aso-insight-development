@@ -17,9 +17,9 @@ const Index = () => {
     );
   }
 
-  // If user is authenticated, redirect to dashboard
+  // If user is authenticated, redirect to dashboard v2
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard-v2" replace />;
   }
 
   // Landing page for non-authenticated users
