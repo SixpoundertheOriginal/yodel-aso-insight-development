@@ -5,7 +5,6 @@ import { useMockAsoData, DateRange, AsoData } from './useMockAsoData';
 import { useBigQueryAppSelection } from '@/context/BigQueryAppContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { debugLog } from '@/lib/utils/debug';
 import { useDemoOrgDetection } from './useDemoOrgDetection';
 import { logger } from '@/utils/logger';
 
@@ -34,15 +33,18 @@ export const useAsoDataWithFallback = (
   const [organizationId, setOrganizationId] = useState<string>('');
 
   // Get auth context and app selection
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { selectedApps } = useBigQueryAppSelection();
   const { isDemoOrg } = useDemoOrgDetection();
 
   // Get organization ID from user profile or super admin context
   useEffect(() => {
     const fetchOrganizationId = async () => {
+      // Wait for auth to complete before checking user
+      if (authLoading) return;
+
       if (!user) {
-        debugLog.warn('⚠️ [Fallback] No authenticated user found');
+        logger.once('fallback-no-user', '⚠️ [Fallback] No authenticated user');
         return;
       }
 
@@ -54,25 +56,25 @@ export const useAsoDataWithFallback = (
           .single();
 
         if (error) {
-          debugLog.error('❌ [Fallback] Failed to fetch user profile:', error);
+          logger.fallback('❌ Failed to fetch user profile: ' + error.message);
           return;
         }
 
         if (profile?.organization_id) {
           setOrganizationId(profile.organization_id);
-          debugLog.info('✅ [Fallback] Organization ID retrieved:', profile.organization_id);
+          logger.fallback('✅ Organization ID retrieved: ' + profile.organization_id.slice(0, 8) + '...');
         } else {
           // ✅ ENHANCED: Handle Platform Super Admin with null organization_id
-          debugLog.info('⚡ [Fallback] Platform Super Admin detected (null organization_id)');
+          logger.fallback('⚡ Platform Super Admin detected (null organization_id)');
           setOrganizationId(''); // Empty string to trigger mock fallback
         }
       } catch (err) {
-        debugLog.error('❌ [Fallback] Error fetching organization ID:', err);
+        logger.fallback('❌ Error fetching organization ID: ' + (err as Error).message);
       }
     };
 
     fetchOrganizationId();
-  }, [user]);
+  }, [user, authLoading]);
 
   // ✅ ENHANCED: Skip BigQuery only for Platform Super Admin, demo orgs should use BigQuery (gets demo data)
   const bigQueryReady = organizationId.length > 0;
@@ -111,7 +113,7 @@ export const useAsoDataWithFallback = (
   useEffect(() => {
     // ✅ ENHANCED: Handle Platform Super Admin (no organization) with mock data
     if (preferredDataSource === 'mock' || !shouldUseBigQuery) {
-      debugLog.info('🎭 [Fallback] Using mock data (super admin or explicit preference)');
+      logger.fallback('🎭 Using mock data (super admin or explicit preference)');
       setCurrentDataSource('mock');
       setDataSourceStatus(!shouldUseBigQuery ? 'mock-only' : 'mock-only');
       setFinalResult({
@@ -139,7 +141,7 @@ export const useAsoDataWithFallback = (
     // BigQuery succeeded
     if (bigQueryResult.data && !bigQueryResult.error) {
       const isDemo = bigQueryResult.isDemo || false;
-      debugLog.info(`✅ [Fallback] Using ${isDemo ? 'demo' : 'BigQuery'} data`);
+      logger.fallback(`✅ Using ${isDemo ? 'demo' : 'BigQuery'} data`);
       setCurrentDataSource('bigquery');
       setDataSourceStatus(isDemo ? 'demo-data' : 'bigquery-success');
       setFinalResult({
@@ -154,9 +156,8 @@ export const useAsoDataWithFallback = (
 
     // BigQuery failed, attempt mock fallback
     if (bigQueryResult.error) {
-      debugLog.warn(
-        '⚠️ [Fallback] BigQuery failed, using mock data:',
-        bigQueryResult.error.message
+      logger.fallback(
+        '⚠️ BigQuery failed, using mock data: ' + bigQueryResult.error.message
       );
       setCurrentDataSource('mock');
       setDataSourceStatus(isDemoOrg ? 'demo-data' : 'bigquery-failed-fallback');

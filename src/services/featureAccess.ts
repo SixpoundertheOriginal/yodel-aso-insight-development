@@ -23,7 +23,7 @@ export class FeatureAccessService {
   async getOrgFeatures(organizationId: string): Promise<string[]> {
     try {
       const { data, error } = await supabase
-        .from('org_feature_entitlements')
+        .from('organization_features')
         .select('feature_key')
         .eq('organization_id', organizationId)
         .eq('is_enabled', true);
@@ -52,10 +52,10 @@ export class FeatureAccessService {
           feature_name,
           category,
           is_active,
-          org_feature_entitlements!left(is_enabled),
+          organization_features!left(is_enabled),
           user_feature_overrides!left(is_enabled, expires_at)
         `)
-        .eq('org_feature_entitlements.organization_id', organizationId)
+        .eq('organization_features.organization_id', organizationId)
         .eq('user_feature_overrides.user_id', userId)
         .eq('is_active', true);
 
@@ -65,7 +65,7 @@ export class FeatureAccessService {
       }
 
       return data?.map((feature: any) => {
-        const orgAccess = feature.org_feature_entitlements as any[] || [];
+        const orgAccess = feature.organization_features as any[] || [];
         const userOverrides = feature.user_feature_overrides as any[] || [];
         
         const orgEnabled = orgAccess.length > 0 ? orgAccess[0].is_enabled : false;
@@ -103,7 +103,7 @@ export class FeatureAccessService {
 
       // Otherwise check organization entitlement
       const { data: orgAccess } = await supabase
-        .from('org_feature_entitlements')
+        .from('organization_features')
         .select('is_enabled')
         .eq('organization_id', organizationId)
         .eq('feature_key', featureKey)
@@ -147,7 +147,7 @@ export class FeatureAccessService {
 
   async checkFeatureAccess(organizationId: string, featureKey: string): Promise<boolean> {
     const { data, error } = await supabase
-      .from('org_feature_entitlements')
+      .from('organization_features')
       .select('is_enabled')
       .eq('organization_id', organizationId)
       .eq('feature_key', featureKey)
@@ -163,7 +163,7 @@ export class FeatureAccessService {
 
   async updateFeatureAccess(organizationId: string, featureKey: string, enabled: boolean): Promise<void> {
     const { error } = await supabase
-      .from('org_feature_entitlements')
+      .from('organization_features')
       .upsert({
         organization_id: organizationId,
         feature_key: featureKey,
@@ -186,7 +186,7 @@ export class FeatureAccessService {
     }));
 
     const { error } = await supabase
-      .from('org_feature_entitlements')
+      .from('organization_features')
       .upsert(updates);
     
     if (error) {
@@ -197,7 +197,7 @@ export class FeatureAccessService {
 
   async getOrganizationFeatures(organizationId: string): Promise<Record<string, boolean>> {
     const { data, error } = await supabase
-      .from('org_feature_entitlements')
+      .from('organization_features')
       .select('feature_key, is_enabled')
       .eq('organization_id', organizationId);
     
