@@ -938,8 +938,8 @@ const ReviewManagementPage: React.FC = () => {
     value: string | null;
   }>({ type: null, value: null });
 
-  // Competitor comparison mode state
-  const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState<'reviews' | 'competitors'>('reviews');
 
   // Use enhanced reviews for processing
   const processedReviews = enhancedReviews;
@@ -1160,21 +1160,39 @@ const ReviewManagementPage: React.FC = () => {
     </div>
   );
 
-  // Show competitor comparison view if enabled
-  if (showCompetitorComparison && organizationId) {
-    return (
-      <MainLayout>
-        <CompetitorComparisonView
-          organizationId={organizationId}
-          onExit={() => setShowCompetitorComparison(false)}
-        />
-      </MainLayout>
-    );
-  }
-
   return (
     <MainLayout>
         <div className="space-y-6">
+          {/* Tab Navigation */}
+          <div className="border-b border-border">
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === 'reviews' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('reviews')}
+                className="rounded-b-none"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Reviews
+              </Button>
+              <Button
+                variant={activeTab === 'competitors' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('competitors')}
+                className="rounded-b-none"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Competitor Analysis
+              </Button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'competitors' && organizationId ? (
+            <CompetitorComparisonView
+              organizationId={organizationId}
+              onExit={() => setActiveTab('reviews')}
+            />
+          ) : (
+            <div className="space-y-6">
           {/* AI Intelligence Dashboard with Interactive Connections */}
           {selectedApp && reviews.length > 0 && (
             <div className="bg-gradient-to-r from-primary/5 to-secondary/5 p-6 rounded-lg border">
@@ -1600,9 +1618,8 @@ const ReviewManagementPage: React.FC = () => {
                 organizationId={organizationId}
                 country={selectedCountry}
                 onCompare={(competitorIds) => {
-                  // Quick compare button clicked - trigger comparison view
-                  // TODO: Pre-populate comparison with these specific competitors
-                  setShowCompetitorComparison(true);
+                  // Quick compare button clicked - switch to competitor analysis tab
+                  setActiveTab('competitors');
                 }}
               />
             )}
@@ -1994,21 +2011,23 @@ const ReviewManagementPage: React.FC = () => {
         </Card>
       )}
 
-      {/* App Selection Modal for ambiguous results */}
-      <AppSelectionModal
-        isOpen={showAppSelection}
-        onClose={() => {
-          setShowAppSelection(false);
-          setAppCandidates([]);
-          setPendingSearchTerm('');
-        }}
-        candidates={appCandidates}
-        onSelect={handleAppSelectionFromModal}
-        searchTerm={pendingSearchTerm}
-        mode="select"
-        searchCountry={selectedCountry}
-      />
-    </div>
+            {/* App Selection Modal for ambiguous results */}
+            <AppSelectionModal
+              isOpen={showAppSelection}
+              onClose={() => {
+                setShowAppSelection(false);
+                setAppCandidates([]);
+                setPendingSearchTerm('');
+              }}
+              candidates={appCandidates}
+              onSelect={handleAppSelectionFromModal}
+              searchTerm={pendingSearchTerm}
+              mode="select"
+              searchCountry={selectedCountry}
+            />
+          </div>
+          )}
+        </div>
     </MainLayout>
   );
 };

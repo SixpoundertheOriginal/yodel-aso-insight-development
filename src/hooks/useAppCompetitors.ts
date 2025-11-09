@@ -34,6 +34,37 @@ export const useAppCompetitors = (targetAppId?: string) => {
 };
 
 /**
+ * Fetch ALL competitors across all monitored apps for an organization
+ * Returns unique competitor apps that have been added to any monitored app
+ */
+export const useAllCompetitors = (organizationId?: string) => {
+  return useQuery({
+    queryKey: ['all-competitors', organizationId],
+    queryFn: async (): Promise<AppCompetitor[]> => {
+      if (!organizationId) {
+        throw new Error('Organization ID is required');
+      }
+
+      const { data, error } = await supabase
+        .from('app_competitors')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching all competitors:', error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
  * Add competitor to a target app
  * Takes App Store app data directly - no need for competitor to be monitored
  */

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Target, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMonitoredApps } from '@/hooks/useMonitoredApps';
+import { useAllCompetitors } from '@/hooks/useAppCompetitors';
 import type { MonitoredApp } from '@/hooks/useMonitoredApps';
 
 interface CompetitorSelectionDialogProps {
@@ -22,6 +23,7 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
   onConfirm
 }) => {
   const { data: monitoredApps } = useMonitoredApps(organizationId);
+  const { data: allCompetitors } = useAllCompetitors(organizationId);
 
   const [selectedPrimary, setSelectedPrimary] = useState<MonitoredApp | null>(null);
   const [selectedCompetitors, setSelectedCompetitors] = useState<MonitoredApp[]>([]);
@@ -29,15 +31,25 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
 
   // Filter apps by country
   const appsInCountry = monitoredApps?.filter(app => app.primary_country === selectedCountry) || [];
-  const competitorsInCountry = appsInCountry.filter(app => app.tags?.includes('competitor'));
+
+  // Get unique competitor app IDs from app_competitors table
+  const competitorAppStoreIds = useMemo(() => {
+    if (!allCompetitors) return [];
+    return [...new Set(allCompetitors.map(c => c.competitor_app_store_id))];
+  }, [allCompetitors]);
+
+  // Filter monitored apps that are also competitors in the selected country
+  const competitorsInCountry = useMemo(() => {
+    return appsInCountry.filter(app =>
+      competitorAppStoreIds.includes(app.app_store_id)
+    );
+  }, [appsInCountry, competitorAppStoreIds]);
 
   const handleToggleCompetitor = (app: MonitoredApp) => {
     if (selectedCompetitors.find(c => c.id === app.id)) {
       setSelectedCompetitors(selectedCompetitors.filter(c => c.id !== app.id));
     } else {
-      if (selectedCompetitors.length < 3) {
-        setSelectedCompetitors([...selectedCompetitors, app]);
-      }
+      setSelectedCompetitors([...selectedCompetitors, app]);
     }
   };
 
@@ -76,7 +88,7 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
           <div>
             <h2 className="text-2xl font-bold">Select Apps to Compare</h2>
             <p className="text-sm text-muted-foreground">
-              Choose your primary app and up to 3 competitors to analyze
+              Choose your primary app and competitors to analyze
             </p>
           </div>
         </div>
@@ -173,18 +185,18 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
           <div className="space-y-3">
             <div>
               <h3 className="text-lg font-semibold mb-1">
-                Competitors ({selectedCompetitors.length}/3)
+                Competitors ({selectedCompetitors.length})
               </h3>
               <p className="text-sm text-muted-foreground">
-                Select 1-3 competitors to compare against
+                Select competitors to compare against (minimum 1)
               </p>
             </div>
 
             {competitorsInCountry.length === 0 ? (
               <Alert>
                 <AlertDescription>
-                  No apps tagged as "competitor" in {selectedCountry.toUpperCase()}.
-                  Tag some monitored apps as competitors to enable comparison.
+                  No competitors added in {selectedCountry.toUpperCase()}.
+                  Add competitors to your monitored apps first to enable comparison.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -192,7 +204,7 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
                 {competitorsInCountry.map(app => {
                   const isSelected = selectedCompetitors.find(c => c.id === app.id);
                   const isPrimary = selectedPrimary?.id === app.id;
-                  const isDisabled = !isSelected && selectedCompetitors.length >= 3;
+                  const isDisabled = false; // No limit on competitor selection
 
                   return (
                     <Card
