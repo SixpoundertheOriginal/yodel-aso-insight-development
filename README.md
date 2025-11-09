@@ -1,10 +1,53 @@
-# ASO Tool - Enterprise App Store Optimization Platform
+# Yodel ASO Insight Platform
+
+**Enterprise App Store Optimization Platform**
 
 An enterprise-grade App Store Optimization platform built to extract, validate, analyze, and visualize mobile app metrics at scale.
 
+---
+
+## ✅ CURRENT STATUS (2025-11-09)
+
+**System Status**: 🟢 **FULLY OPERATIONAL** - All systems working correctly
+**Security Status**: 🟢 **FULLY COMPLIANT** - All security layers working
+
+**Yodel Mobile Configuration**:
+- Access Level: `'reporting_only'` (6-7 analytics/reporting pages)
+- This is CORRECT for internal reporting tool use case
+- See: **[YODEL_MOBILE_CORRECT_CONTEXT.md](YODEL_MOBILE_CORRECT_CONTEXT.md)** for details
+
+---
+
+## 📖 Documentation Quick Links
+
+**New to the project?** Start here:
+
+- **[QUICK_START.md](QUICK_START.md)** - Get up and running in 15 minutes
+- **[CURRENT_SYSTEM_STATUS.md](CURRENT_SYSTEM_STATUS.md)** - Current system state
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+
+**For context and architecture:**
+- **[YODEL_MOBILE_CORRECT_CONTEXT.md](YODEL_MOBILE_CORRECT_CONTEXT.md)** - Yodel Mobile use case and access level
+- **[CONTEXT_CONTRADICTION_AUDIT.md](CONTEXT_CONTRADICTION_AUDIT.md)** - Why documentation was updated (Nov 9)
+
+**For developers:**
+- **[DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)** - Coding standards and best practices (if exists)
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification (if exists)
+- **[ROLLBACK_INSTRUCTIONS.md](ROLLBACK_INSTRUCTIONS.md)** - Emergency rollback procedures (if exists)
+
+**Architecture and context:**
+- **[ORGANIZATION_ROLES_SYSTEM_DOCUMENTATION.md](ORGANIZATION_ROLES_SYSTEM_DOCUMENTATION.md)** - Official role system specification
+- **[YODEL_MOBILE_AGENCY_CONTEXT_ANALYSIS.md](YODEL_MOBILE_AGENCY_CONTEXT_ANALYSIS.md)** - Business model and agency context
+- **[docs/architecture/](docs/architecture/)** - Detailed architecture documentation
+- **[docs/completed-fixes/](docs/completed-fixes/)** - Historical issue resolutions
+
+---
+
 ## 🧭 Project Overview
 
-**ASO Tool** empowers ASO managers, analysts, and clients with precise app store data, AI-powered insights, and white-label reporting capabilities.
+**Yodel ASO Insight** empowers ASO managers, analysts, and clients with precise app store data, AI-powered insights, and white-label reporting capabilities.
+
+**Current Deployment**: Yodel Mobile (Agency) managing client apps via BigQuery analytics
 
 ### Key Differentiators
 - **Multi-tenant isolation** with row-level security
@@ -68,82 +111,33 @@ An enterprise-grade App Store Optimization platform built to extract, validate, 
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- Node.js 18+ and npm/yarn
-- Supabase account with project setup
-- BigQuery project (optional for full functionality)
+**👉 For a complete setup guide, see [QUICK_START.md](QUICK_START.md)**
 
-### Local Development
-
-1. **Clone and install dependencies**
-   ```bash
-   git clone <repository-url>
-   cd aso-tool
-   npm install
-   ```
-
-2. **Environment Configuration**
-   
-   This project supports multiple Supabase environments:
-   - **Development**: `bkbcqocpjahewqjmlgvf` (personal dev)
-   - **Staging**: `tykkyqspugowivuymqdf` (Yodel staging)
-   - **Production**: `izagplcpcdruqkwnpwpd` (Yodel prod)
-
-   Create environment files:
-   ```bash
-   # .env.development
-   VITE_SUPABASE_PROJECT_ID="bkbcqocpjahewqjmlgvf"
-   VITE_SUPABASE_URL="https://bkbcqocpjahewqjmlgvf.supabase.co"
-   VITE_SUPABASE_PUBLISHABLE_KEY="your-dev-key"
-   VITE_ENV="development"
-
-   # .env.production
-   VITE_SUPABASE_PROJECT_ID="izagplcpcdruqkwnpwpd"
-   VITE_SUPABASE_URL="https://izagplcpcdruqkwnpwpd.supabase.co"
-   VITE_SUPABASE_PUBLISHABLE_KEY="your-prod-key"
-   VITE_ENV="production"
-   ```
-
-   **Switch environments:**
-   ```bash
-   # Use your switch script
-   node scripts/switch-env.js [development|staging|production]
-   
-   # Or manually copy
-   cp .env.development .env
-   ```
-
-3. **Database Setup**
-   ```bash
-   # Apply Supabase migrations
-   npx supabase db reset
-   ```
-
-4. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-   **⚠️ Important**: After switching environments, restart the dev server and clear browser cache to ensure the correct Supabase project is used.
-
-### Environment Switching
-
-The Supabase client (`src/integrations/supabase/client.ts`) has been manually configured to use environment variables instead of hardcoded values. This allows seamless switching between Supabase projects.
-
-**If Lovable regenerates this file**, you'll need to reapply the environment variable configuration:
-```typescript
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "fallback-url";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "fallback-key";
-```
-
-### Deployment
-
-The application can be deployed using the built-in Lovable deployment system or manually:
+### Quick Setup (5 Minutes)
 
 ```bash
-npm run build
-# Deploy to your preferred hosting platform
+# 1. Clone and install
+git clone <repository-url>
+cd yodel-aso-insight
+npm install
+
+# 2. Set up environment
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
+
+# 3. Apply database migrations
+supabase db push
+
+# 4. Start development server
+npm run dev:frontend
 ```
+
+### Prerequisites
+- Node.js 18+
+- Supabase account with project setup
+- BigQuery project (for analytics features)
+
+**Full setup instructions, environment configuration, and deployment procedures are in [QUICK_START.md](QUICK_START.md)**
 
 ## 🔧 Configuration
 
@@ -170,20 +164,49 @@ The platform uses a comprehensive feature flag system defined in `src/constants/
 ## 📁 Project Structure
 
 ```
-src/
-├── components/          # Reusable UI components
-├── pages/              # Application routes and pages
-├── hooks/              # Custom React hooks
-├── utils/              # Utility functions and helpers
-├── services/           # API service layers
-├── constants/          # Feature flags and configuration
-├── context/            # React context providers
-└── integrations/       # Third-party integrations
-
-supabase/
-├── functions/          # Edge functions (serverless API)
-├── migrations/         # Database schema migrations
-└── config.toml        # Supabase configuration
+/
+├── src/
+│   ├── components/          # Reusable UI components
+│   │   ├── AppSidebar.tsx  # Navigation (route access control)
+│   │   └── ProtectedRoute.tsx  # Feature flag checks
+│   ├── pages/              # Application routes and pages
+│   ├── hooks/              # Custom React hooks
+│   │   ├── useUserProfile.ts  # User profile and permissions
+│   │   └── useOrgAccessLevel.ts  # Organization access level
+│   ├── utils/              # Utility functions and helpers
+│   ├── services/           # API service layers
+│   ├── constants/          # Feature flags and configuration
+│   ├── config/             # Configuration
+│   │   └── allowedRoutes.ts  # Route access logic
+│   ├── context/            # React context providers
+│   └── integrations/       # Third-party integrations
+│       └── supabase/
+│           ├── client.ts   # Supabase client
+│           └── types.ts    # Generated database types
+│
+├── supabase/
+│   ├── functions/          # Edge functions (serverless API)
+│   │   └── bigquery-aso-data/  # BigQuery analytics endpoint
+│   ├── migrations/         # Database schema migrations
+│   └── config.toml        # Supabase configuration
+│
+├── docs/
+│   ├── architecture/       # Architecture documentation
+│   ├── operational/        # Operational guides
+│   ├── development/        # Development guides
+│   └── completed-fixes/    # Historical issue resolutions
+│       ├── 2025-11-access-control/  # Access control fixes
+│       ├── reviews-feature/  # Reviews feature implementation
+│       ├── dashboard-v2/   # Dashboard V2 fixes
+│       └── ...             # Other feature areas
+│
+└── *.md                    # Root documentation
+    ├── README.md (this file)
+    ├── QUICK_START.md      # Developer onboarding
+    ├── CURRENT_SYSTEM_STATUS.md  # Current working state
+    ├── TROUBLESHOOTING.md  # Common issues
+    ├── ORGANIZATION_ROLES_SYSTEM_DOCUMENTATION.md  # Role system
+    └── YODEL_MOBILE_AGENCY_CONTEXT_ANALYSIS.md  # Business context
 ```
 
 ## 🔒 Security & Privacy
