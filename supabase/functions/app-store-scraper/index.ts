@@ -10,6 +10,7 @@ import { CacheManagerService } from './services/cache-manager.service.ts';
 import { AnalyticsService } from './services/analytics.service.ts';
 import { ReviewsService } from './services/reviews.service.ts';
 import { AppStoreSerpService } from './services/serp.service.ts';
+import { KeywordDiscoveryService } from './services/keyword-discovery.service.ts';  // ✅ NEW
 import { ErrorHandler } from './utils/error-handler.ts';
 import { ResponseBuilder } from './utils/response-builder.ts';
 
@@ -68,6 +69,7 @@ serve(async (req) => {
     const analyticsService = new AnalyticsService(supabase);
     const reviewsService = new ReviewsService(supabase);
     const serpService = new AppStoreSerpService();
+    const keywordDiscoveryService = new KeywordDiscoveryService();  // ✅ NEW
     const errorHandler = new ErrorHandler();
     const responseBuilder = new ResponseBuilder(corsHeaders); // ✅ Pass CORS headers
 
@@ -431,6 +433,58 @@ serve(async (req) => {
         }
         
         return responseBuilder.error('Internal error', 500, undefined, requestId);
+      }
+    }
+
+    // ============================================================================
+    // KEYWORD DISCOVERY OPERATION
+    // Purpose: Discover relevant keywords for an app
+    // Method: Analyze app metadata, competitors, and SERP suggestions
+    // Auth: Public (no organization required for basic discovery)
+    // ============================================================================
+    if (operation === 'discover_keywords') {
+      const targetApp = requestData.targetApp || null;
+      const seedKeywords = Array.isArray(requestData.seedKeywords)
+        ? requestData.seedKeywords.map((k: any) => String(k)).filter(Boolean)
+        : [];
+      const competitorAppIds = Array.isArray(requestData.competitorAppIds)
+        ? requestData.competitorAppIds.map((id: any) => String(id)).filter(Boolean)
+        : [];
+      const country = requestData.country || 'us';
+      const maxKeywords = Math.min(parseInt(requestData.maxKeywords) || 50, 200);
+      const organizationId = requestData.organizationId || 'public';
+
+      console.log(`🔍 [${requestId}] KEYWORD DISCOVERY: targetApp=${JSON.stringify(targetApp)}, seeds=${seedKeywords.length}, competitors=${competitorAppIds.length}, country=${country}`);
+
+      try {
+        // Discover keywords using the service
+        const result = await keywordDiscoveryService.discoverKeywords({
+          organizationId,
+          targetApp,
+          seedKeywords,
+          competitorApps: competitorAppIds,
+          country,
+          maxKeywords
+        });
+
+        console.log(`✅ [${requestId}] KEYWORD DISCOVERY SUCCESS: ${result.length} keywords found`);
+
+        // Return discovered keywords
+        return responseBuilder.success({
+          keywords: result,
+          count: result.length,
+          country,
+          message: `Discovered ${result.length} relevant keywords`
+        });
+
+      } catch (error: any) {
+        console.error(`❌ [${requestId}] KEYWORD DISCOVERY ERROR:`, error);
+        return responseBuilder.error(
+          `Keyword discovery failed: ${error.message}`,
+          500,
+          undefined,
+          requestId
+        );
       }
     }
 
