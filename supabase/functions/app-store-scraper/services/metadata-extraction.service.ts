@@ -41,13 +41,89 @@ export class MetadataExtractionService {
     }
   }
 
+  /**
+   * Save app metadata to apps_metadata table
+   * This method is NON-BLOCKING - errors are logged but not thrown
+   * If save fails, the calling operation continues working
+   */
+  async saveAppMetadata(appData: any): Promise<void> {
+    try {
+      // Transform iTunes API response to our schema
+      const metadata = {
+        app_store_id: String(appData.trackId || appData.id),
+        bundle_id: appData.bundleId || null,
+        app_name: appData.trackName || appData.name || 'Unknown App',
+        developer_name: appData.artistName || appData.developer || 'Unknown Developer',
+        developer_id: appData.artistId ? String(appData.artistId) : null,
+        app_icon_url: appData.artworkUrl512 || appData.artworkUrl100 || appData.icon || null,
+
+        category: appData.primaryGenreName || appData.category || null,
+        subcategory: appData.genres?.[1] || null,
+        price: appData.price !== undefined ? Number(appData.price) : 0,
+        currency: appData.currency || 'USD',
+        release_date: appData.releaseDate || null,
+        current_version: appData.version || null,
+        minimum_os_version: appData.minimumOsVersion || null,
+
+        average_rating: appData.averageUserRating || null,
+        rating_count: appData.userRatingCount || null,
+        review_count: appData.userRatingCount || null,  // iTunes API doesn't separate
+
+        description: appData.description || null,
+        short_description: appData.description ? appData.description.substring(0, 200) : null,
+        release_notes: appData.releaseNotes || null,
+
+        screenshot_urls: appData.screenshotUrls || appData.screenshots || [],
+        video_preview_urls: appData.previewUrls || [],
+
+        file_size_bytes: appData.fileSizeBytes || null,
+        supported_devices: appData.supportedDevices || [],
+        languages: appData.languageCodesISO2A || [],
+        content_rating: appData.contentAdvisoryRating || null,
+
+        data_source: 'itunes_api',
+        raw_metadata: appData,  // Store full response for debugging
+      };
+
+      // Upsert to database (insert or update if exists)
+      const { error } = await this.supabase
+        .from('apps_metadata')
+        .upsert(metadata, {
+          onConflict: 'app_store_id',
+          ignoreDuplicates: false  // Always update to refresh data
+        });
+
+      if (error) {
+        console.error('[MetadataExtraction] Failed to save app metadata:', error);
+        // DON'T throw - this is non-critical
+        // If database save fails, the calling operation should still succeed
+      } else {
+        console.log(`[MetadataExtraction] ✅ Saved metadata for ${metadata.app_name} (${metadata.app_store_id})`);
+      }
+    } catch (error) {
+      console.error('[MetadataExtraction] Error in saveAppMetadata:', error);
+      // DON'T throw - non-blocking operation
+    }
+  }
+
   transformSearchResults(results: any[]): any[] {
     if (!Array.isArray(results)) {
       console.warn('[METADATA] transformSearchResults received non-array:', typeof results);
       return [];
     }
 
-    return results.map(result => this.mapItunesDataToMetadata(result));
+    const transformed = results.map(result => this.mapItunesDataToMetadata(result));
+
+    // ✅ NEW: Save metadata to database (non-blocking, async)
+    // Use Promise.allSettled so individual failures don't stop the batch
+    Promise.allSettled(
+      results.map(item => this.saveAppMetadata(item))
+    ).catch(err => {
+      console.error('[MetadataExtraction] Batch save failed (non-critical):', err);
+    });
+
+    // Return transformed results immediately (don't wait for save)
+    return transformed;
   }
 
   private async enrichMetadata(app: any): Promise<any> {

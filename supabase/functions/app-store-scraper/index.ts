@@ -231,6 +231,24 @@ serve(async (req) => {
           rank = hit ? hit.rank : null;
         }
 
+        // ✅ NEW: Save SERP apps to metadata table (non-blocking)
+        // Convert SERP items to iTunes format (approximate - limited data from SERP)
+        const appsToSave = serp.items.slice(0, 10).map(item => ({
+          trackId: item.appId,
+          trackName: item.appName || item.name,
+          artistName: item.developer || 'Unknown',
+          artworkUrl100: item.icon || item.appIcon,
+          primaryGenreName: item.category || 'App',
+          // Note: SERP data is limited, full metadata will be fetched later if needed
+        }));
+
+        // Save asynchronously (non-blocking)
+        Promise.allSettled(
+          appsToSave.map(app => metadataService.saveAppMetadata(app))
+        ).catch(err => {
+          console.error('[SERP] Metadata save failed (non-critical):', err);
+        });
+
         return responseBuilder.success({
           term,
           country: cc,
