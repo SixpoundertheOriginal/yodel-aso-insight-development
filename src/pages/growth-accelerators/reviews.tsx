@@ -151,6 +151,62 @@ const ReviewManagementPage: React.FC = () => {
     app => app.app_store_id === selectedApp?.appId && app.primary_country === selectedCountry
   );
 
+  // Get monitored app details for cached reviews
+  const monitoredAppDetails = monitoredApps?.find(
+    ma => ma.app_store_id === selectedApp?.appId && ma.primary_country === selectedCountry
+  );
+  const monitoredAppId = monitoredAppDetails?.id;
+
+  // Build params for useCachedReviews (only when app is monitored)
+  const cachedReviewsParams = selectedApp && isAppMonitored && monitoredAppId && organizationId
+    ? {
+        monitoredAppId,
+        appStoreId: selectedApp.appId,
+        country: selectedCountry,
+        organizationId,
+        forceRefresh: false
+      }
+    : null;
+
+  // Use cached reviews hook for monitored apps
+  const {
+    data: cachedReviewsData,
+    isLoading: cachedReviewsLoading,
+    error: cachedReviewsError,
+    refetch: refetchCachedReviews
+  } = useCachedReviews(cachedReviewsParams);
+
+  // When cached reviews are loaded, populate reviews state
+  React.useEffect(() => {
+    if (cachedReviewsData && cachedReviewsData.reviews.length > 0) {
+      console.log('[Reviews] Setting reviews from cache:', {
+        count: cachedReviewsData.reviews.length,
+        fromCache: cachedReviewsData.fromCache,
+        cacheAge: cachedReviewsData.cacheAge
+      });
+
+      setReviews(cachedReviewsData.reviews);
+      setCurrentPage(1);
+      setHasMoreReviews(false); // Cached reviews don't support pagination yet
+
+      const source = cachedReviewsData.fromCache
+        ? `from cache (${Math.floor((cachedReviewsData.cacheAge || 0) / 60)} min old)`
+        : 'from iTunes (cached)';
+      toast.success(`Loaded ${cachedReviewsData.reviews.length} reviews ${source}`);
+    }
+  }, [cachedReviewsData]);
+
+  // Handle cache errors
+  React.useEffect(() => {
+    if (cachedReviewsError && isAppMonitored) {
+      console.error('[Reviews] Cache error, falling back to manual fetch:', cachedReviewsError);
+      // Don't show error - fallback will happen automatically
+    }
+  }, [cachedReviewsError, isAppMonitored]);
+
+  // Combine loading states (manual fetch + cached reviews fetch)
+  const isLoadingReviews = reviewsLoading || (isAppMonitored && cachedReviewsLoading);
+
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
     return <Navigate to="/dashboard" replace />;
@@ -324,7 +380,18 @@ const ReviewManagementPage: React.FC = () => {
     setFromDate(start);
     setToDate(end);
     setQuickRange('30d');
-    fetchReviews(app.appId, 1);
+
+    // Check if app is already monitored
+    const isMonitored = checkAppMonitored(app.appId, selectedCountry);
+
+    if (isMonitored) {
+      // For monitored apps, useCachedReviews hook will fetch automatically
+      console.log('[Reviews] Monitored app selected, will use cached reviews:', app.name);
+    } else {
+      // For non-monitored apps, use manual fetch as before
+      console.log('[Reviews] Non-monitored app selected, fetching reviews manually:', app.name);
+      fetchReviews(app.appId, 1);
+    }
 
     // Save to shared state if app is monitored
     if (checkAppMonitored(app.appId, selectedCountry)) {
@@ -353,7 +420,7 @@ const ReviewManagementPage: React.FC = () => {
 
   // Load more reviews
   const handleLoadMore = () => {
-    if (selectedApp && hasMoreReviews && !reviewsLoading) {
+    if (selectedApp && hasMoreReviews && !isLoadingReviews) {
       fetchReviews(selectedApp.appId, currentPage + 1, true);
     }
   };
@@ -1893,8 +1960,8 @@ const ReviewManagementPage: React.FC = () => {
                   Page {currentPage} • {reviews.length} reviews loaded
                 </p>
                 {hasMoreReviews && (
-                  <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={reviewsLoading}>
-                    {reviewsLoading ? 'Loading...' : 'Load More'}
+                  <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={isLoadingReviews}>
+                    {isLoadingReviews ? 'Loading...' : 'Load More'}
                   </Button>
                 )}
               </div>
@@ -2019,14 +2086,14 @@ const ReviewManagementPage: React.FC = () => {
               </div>
             )}
 
-            {filteredReviews.length === 0 && !reviewsLoading && (
+            {filteredReviews.length === 0 && !isLoadingReviews && (
               <div className="text-center py-8 text-muted-foreground">
                 <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>{reviews.length === 0 ? 'Select an app to fetch reviews' : 'No reviews match current filters'}</p>
               </div>
             )}
 
-            {reviewsLoading && (
+            {isLoadingReviews && (
               <div className="text-center py-8">
                 <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
                 <p className="text-muted-foreground">Loading reviews...</p>
