@@ -347,6 +347,52 @@ function extractIssuePatterns(reviews: EnhancedReviewItem[]): ReviewIntelligence
     });
   });
 
+  // FALLBACK: If we didn't detect many issues but have lots of negative reviews,
+  // create a generic "user complaints" issue
+  const totalIssuesDetected = Array.from(issueMap.values()).reduce((sum, data) => sum + data.count, 0);
+  const negativeReviewCount = negativeReviews.length;
+
+  console.log('🔍 [ENGINE-DEBUG] Detected', totalIssuesDetected, 'specific issues from', negativeReviewCount, 'negative reviews');
+
+  // If we have negative reviews but didn't detect specific issues for most of them
+  if (negativeReviewCount > 5 && totalIssuesDetected < negativeReviewCount * 0.3) {
+    const unmatchedNegativeReviews = negativeReviewCount - totalIssuesDetected;
+    console.log('🔍 [ENGINE-DEBUG] Adding fallback issue for', unmatchedNegativeReviews, 'unmatched negative reviews');
+
+    // Analyze common complaint words in negative reviews
+    const complaintWords = new Map<string, number>();
+    const problemIndicators = ['bad', 'terrible', 'awful', 'horrible', 'useless', 'worst', 'broken', 'poor',
+                                'disappointed', 'frustrat', 'annoying', 'waste', 'doesn\'t work', 'not work',
+                                'stop', 'hate', 'ridiculous', 'pathetic', 'garbage', 'trash', 'issue', 'problem'];
+
+    negativeReviews.forEach(review => {
+      const text = review.text?.toLowerCase() || '';
+      problemIndicators.forEach(word => {
+        if (text.includes(word)) {
+          complaintWords.set(word, (complaintWords.get(word) || 0) + 1);
+        }
+      });
+    });
+
+    // Create generic issue based on most common complaint words
+    if (unmatchedNegativeReviews >= 3) {
+      const topComplaints = Array.from(complaintWords.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([word]) => word);
+
+      const issueDescription = topComplaints.length > 0
+        ? `general usability issues (${topComplaints.join(', ')})`
+        : 'user experience problems';
+
+      issueMap.set(issueDescription, {
+        count: unmatchedNegativeReviews,
+        firstSeen: negativeReviews[0]?.updated_at ? new Date(negativeReviews[0].updated_at) : new Date(),
+        versions: new Set(negativeReviews.map(r => r.version).filter(Boolean) as string[])
+      });
+    }
+  }
+
   return Array.from(issueMap.entries())
     .filter(([_, data]) => data.count > 0)
     .map(([issue, data]) => ({
