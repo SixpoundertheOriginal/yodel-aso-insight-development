@@ -8,7 +8,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { themeImpactScoringService, ThemeImpactScore, ThemeAnalysisResult } from '@/services/theme-impact-scoring.service';
-import { logger } from '@/utils/logger';
 
 export interface UseThemeImpactScoringOptions {
   monitoredAppId?: string;
@@ -45,14 +44,14 @@ export function useThemeImpactScoring(options: UseThemeImpactScoringOptions = {}
     queryFn: async () => {
       if (!monitoredAppId) return [];
 
-      logger.info('[useThemeImpactScoring] Fetching latest scores', {
+      console.log('[useThemeImpactScoring] Fetching latest scores', {
         monitoredAppId,
         periodDays: selectedPeriod
       });
 
       const data = await themeImpactScoringService.getLatestScores(monitoredAppId);
 
-      logger.info('[useThemeImpactScoring] Scores fetched', {
+      console.log('[useThemeImpactScoring] Scores fetched', {
         count: data.length
       });
 
@@ -76,13 +75,13 @@ export function useThemeImpactScoring(options: UseThemeImpactScoringOptions = {}
     queryFn: async () => {
       if (!organizationId) return [];
 
-      logger.info('[useThemeImpactScoring] Fetching critical themes', {
+      console.log('[useThemeImpactScoring] Fetching critical themes', {
         organizationId
       });
 
       const data = await themeImpactScoringService.getCriticalThemes(organizationId);
 
-      logger.info('[useThemeImpactScoring] Critical themes fetched', {
+      console.log('[useThemeImpactScoring] Critical themes fetched', {
         count: data.length
       });
 
@@ -99,7 +98,7 @@ export function useThemeImpactScoring(options: UseThemeImpactScoringOptions = {}
   const fetchThemeHistory = async (theme: string, days: number = 90) => {
     if (!monitoredAppId) return [];
 
-    logger.info('[useThemeImpactScoring] Fetching theme history', {
+    console.log('[useThemeImpactScoring] Fetching theme history', {
       monitoredAppId,
       theme,
       days
@@ -117,14 +116,14 @@ export function useThemeImpactScoring(options: UseThemeImpactScoringOptions = {}
    */
   const analyzeThemes = useMutation({
     mutationFn: async (params: { monitoredAppId: string; periodDays?: number }) => {
-      logger.info('[useThemeImpactScoring] Starting theme analysis', params);
+      console.log('[useThemeImpactScoring] Starting theme analysis', params);
 
       const result = await themeImpactScoringService.analyzeThemes({
         monitoredAppId: params.monitoredAppId,
         periodDays: params.periodDays || selectedPeriod
       });
 
-      logger.info('[useThemeImpactScoring] Analysis complete', {
+      console.log('[useThemeImpactScoring] Analysis complete', {
         totalThemes: result.summary.totalThemes,
         criticalThemes: result.summary.criticalThemes
       });
@@ -140,10 +139,10 @@ export function useThemeImpactScoring(options: UseThemeImpactScoringOptions = {}
         queryKey: ['critical-themes']
       });
 
-      logger.info('[useThemeImpactScoring] Cache invalidated after analysis');
+      console.log('[useThemeImpactScoring] Cache invalidated after analysis');
     },
     onError: (error) => {
-      logger.error('[useThemeImpactScoring] Analysis failed', { error });
+      console.error('[useThemeImpactScoring] Analysis failed', error);
     }
   });
 
