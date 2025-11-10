@@ -32,11 +32,15 @@ interface ComparisonConfig {
 interface CompetitorComparisonViewProps {
   organizationId: string;
   onExit: () => void;
+  preSelectedAppId?: string;
+  preSelectedCountry?: string;
 }
 
 export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> = ({
   organizationId,
-  onExit
+  onExit,
+  preSelectedAppId,
+  preSelectedCountry
 }) => {
   const [comparisonConfig, setComparisonConfig] = useState<ComparisonConfig | null>(null);
   const [showSelection, setShowSelection] = useState(true);
@@ -77,6 +81,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
             organizationId={organizationId}
             onCancel={onExit}
             onConfirm={handleStartComparison}
+            preSelectedAppId={preSelectedAppId}
+            preSelectedCountry={preSelectedCountry}
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,48 +8,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Target, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMonitoredApps } from '@/hooks/useMonitoredApps';
-import { useAllCompetitors } from '@/hooks/useAppCompetitors';
-import type { MonitoredApp } from '@/hooks/useMonitoredApps';
+import { useAppCompetitors } from '@/hooks/useAppCompetitors';
+import type { MonitoredApp, AppCompetitor } from '@/hooks/useMonitoredApps';
 
 interface CompetitorSelectionDialogProps {
   organizationId: string;
   onCancel: () => void;
   onConfirm: (config: any) => void;
+  preSelectedAppId?: string;
+  preSelectedCountry?: string;
 }
 
 export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps> = ({
   organizationId,
   onCancel,
-  onConfirm
+  onConfirm,
+  preSelectedAppId,
+  preSelectedCountry
 }) => {
   const { data: monitoredApps } = useMonitoredApps(organizationId);
-  const { data: allCompetitors } = useAllCompetitors(organizationId);
 
   const [selectedPrimary, setSelectedPrimary] = useState<MonitoredApp | null>(null);
-  const [selectedCompetitors, setSelectedCompetitors] = useState<MonitoredApp[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState('us');
+  const [selectedCompetitors, setSelectedCompetitors] = useState<AppCompetitor[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState(preSelectedCountry || 'us');
 
   // Filter apps by country
   const appsInCountry = monitoredApps?.filter(app => app.primary_country === selectedCountry) || [];
 
-  // Get unique competitor app IDs from app_competitors table
-  const competitorAppStoreIds = useMemo(() => {
-    if (!allCompetitors) return [];
-    return [...new Set(allCompetitors.map(c => c.competitor_app_store_id))];
-  }, [allCompetitors]);
+  // Fetch competitors for the selected primary app
+  const { data: primaryAppCompetitors } = useAppCompetitors(selectedPrimary?.id);
 
-  // Filter monitored apps that are also competitors in the selected country
+  // Filter competitors by selected country
   const competitorsInCountry = useMemo(() => {
-    return appsInCountry.filter(app =>
-      competitorAppStoreIds.includes(app.app_store_id)
-    );
-  }, [appsInCountry, competitorAppStoreIds]);
+    if (!primaryAppCompetitors) return [];
+    return primaryAppCompetitors.filter(comp => comp.country === selectedCountry);
+  }, [primaryAppCompetitors, selectedCountry]);
 
-  const handleToggleCompetitor = (app: MonitoredApp) => {
-    if (selectedCompetitors.find(c => c.id === app.id)) {
-      setSelectedCompetitors(selectedCompetitors.filter(c => c.id !== app.id));
+  // Auto-select primary app if preSelectedAppId is provided
+  useEffect(() => {
+    if (preSelectedAppId && monitoredApps && !selectedPrimary) {
+      const preSelectedApp = monitoredApps.find(
+        app => app.app_store_id === preSelectedAppId && app.primary_country === selectedCountry
+      );
+      if (preSelectedApp) {
+        setSelectedPrimary(preSelectedApp);
+      }
+    }
+  }, [preSelectedAppId, monitoredApps, selectedCountry, selectedPrimary]);
+
+  const handleToggleCompetitor = (competitor: AppCompetitor) => {
+    if (selectedCompetitors.find(c => c.id === competitor.id)) {
+      setSelectedCompetitors(selectedCompetitors.filter(c => c.id !== competitor.id));
     } else {
-      setSelectedCompetitors([...selectedCompetitors, app]);
+      setSelectedCompetitors([...selectedCompetitors, competitor]);
     }
   };
 
@@ -65,11 +76,11 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
       primaryAppRating: selectedPrimary.snapshot_rating || 0,
       primaryAppReviewCount: selectedPrimary.snapshot_review_count || 0,
 
-      competitorAppIds: selectedCompetitors.map(c => c.app_store_id),
-      competitorAppNames: selectedCompetitors.map(c => c.app_name),
-      competitorAppIcons: selectedCompetitors.map(c => c.app_icon_url || ''),
-      competitorAppRatings: selectedCompetitors.map(c => c.snapshot_rating || 0),
-      competitorAppReviewCounts: selectedCompetitors.map(c => c.snapshot_review_count || 0),
+      competitorAppIds: selectedCompetitors.map(c => c.competitor_app_store_id),
+      competitorAppNames: selectedCompetitors.map(c => c.competitor_app_name),
+      competitorAppIcons: selectedCompetitors.map(c => c.competitor_app_icon || ''),
+      competitorAppRatings: selectedCompetitors.map(c => c.competitor_rating || 0),
+      competitorAppReviewCounts: selectedCompetitors.map(c => c.competitor_review_count || 0),
 
       country: selectedCountry
     };
@@ -192,53 +203,54 @@ export const CompetitorSelectionDialog: React.FC<CompetitorSelectionDialogProps>
               </p>
             </div>
 
-            {competitorsInCountry.length === 0 ? (
+            {!selectedPrimary ? (
               <Alert>
                 <AlertDescription>
-                  No competitors added in {selectedCountry.toUpperCase()}.
-                  Add competitors to your monitored apps first to enable comparison.
+                  Please select a primary app first to see its competitors.
+                </AlertDescription>
+              </Alert>
+            ) : competitorsInCountry.length === 0 ? (
+              <Alert>
+                <AlertDescription>
+                  No competitors added for {selectedPrimary.app_name} in {selectedCountry.toUpperCase()}.
+                  Add competitors from the app management page to enable comparison.
                 </AlertDescription>
               </Alert>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {competitorsInCountry.map(app => {
-                  const isSelected = selectedCompetitors.find(c => c.id === app.id);
-                  const isPrimary = selectedPrimary?.id === app.id;
+                {competitorsInCountry.map(competitor => {
+                  const isSelected = selectedCompetitors.find(c => c.id === competitor.id);
                   const isDisabled = false; // No limit on competitor selection
 
                   return (
                     <Card
-                      key={app.id}
+                      key={competitor.id}
                       className={cn(
                         "p-4 cursor-pointer transition-all",
-                        isPrimary && "opacity-50 cursor-not-allowed",
-                        isDisabled && !isPrimary && "opacity-50 cursor-not-allowed",
-                        isSelected && !isPrimary && "border-orange-500 bg-orange-500/5",
-                        !isSelected && !isPrimary && !isDisabled && "hover:bg-muted/50"
+                        isDisabled && "opacity-50 cursor-not-allowed",
+                        isSelected && "border-orange-500 bg-orange-500/5",
+                        !isSelected && !isDisabled && "hover:bg-muted/50"
                       )}
                       onClick={() => {
-                        if (!isPrimary && !isDisabled) {
-                          handleToggleCompetitor(app);
+                        if (!isDisabled) {
+                          handleToggleCompetitor(competitor);
                         }
                       }}
                     >
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={!!isSelected}
-                          disabled={isPrimary || isDisabled}
+                          disabled={isDisabled}
                           className="mt-1"
                         />
-                        {app.app_icon_url && (
-                          <img src={app.app_icon_url} alt={app.app_name} className="w-12 h-12 rounded-lg" />
+                        {competitor.competitor_app_icon && (
+                          <img src={competitor.competitor_app_icon} alt={competitor.competitor_app_name} className="w-12 h-12 rounded-lg" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm truncate">{app.app_name}</h4>
+                          <h4 className="font-semibold text-sm truncate">{competitor.competitor_app_name}</h4>
                           <div className="text-xs text-muted-foreground">
-                            {app.snapshot_rating?.toFixed(1)} ⭐ • {app.snapshot_review_count?.toLocaleString()} reviews
+                            {competitor.competitor_rating?.toFixed(1)} ⭐ • {competitor.competitor_review_count?.toLocaleString()} reviews
                           </div>
-                          {isPrimary && (
-                            <Badge variant="outline" className="text-xs mt-1">Primary App</Badge>
-                          )}
                         </div>
                       </div>
                     </Card>

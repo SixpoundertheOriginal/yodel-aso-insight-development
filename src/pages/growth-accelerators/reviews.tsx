@@ -1190,6 +1190,8 @@ const ReviewManagementPage: React.FC = () => {
             <CompetitorComparisonView
               organizationId={organizationId}
               onExit={() => setActiveTab('reviews')}
+              preSelectedAppId={selectedApp?.appId}
+              preSelectedCountry={selectedCountry}
             />
           ) : (
             <div className="space-y-6">
