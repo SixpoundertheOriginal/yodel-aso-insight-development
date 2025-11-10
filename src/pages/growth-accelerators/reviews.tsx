@@ -1745,6 +1745,17 @@ const ReviewManagementPage: React.FC = () => {
               </div>
             )}
 
+            {/* Detailed Analytics & Charts Section - Collapsible */}
+            {reviews.length > 0 && (
+              <CollapsibleAnalyticsSection
+                reviews={enhancedReviews}
+                intelligence={reviewIntelligence}
+                insights={actionableInsights}
+                analytics={reviewAnalytics}
+                onInsightAction={handleInsightAction}
+              />
+            )}
+
             {/* Competitor Management Panel - NEW */}
             {selectedApp && organizationId && isAppMonitored && (
               <CompetitorManagementPanel
