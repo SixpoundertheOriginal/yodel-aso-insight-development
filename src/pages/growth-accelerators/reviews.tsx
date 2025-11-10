@@ -520,17 +520,6 @@ const ReviewManagementPage: React.FC = () => {
     setToDate(end);
   };
 
-  // Default the page to last 30 days on first render
-  React.useEffect(() => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 29);
-    setFromDate(formatDateInputLocal(thirtyDaysAgo));
-    setToDate(formatDateInputLocal(today));
-    setQuickRange('30d');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Very lightweight sentiment estimation (client-only, Phase 1)
   const estimateSentiment = (r: ReviewItem): 'positive' | 'neutral' | 'negative' => {
     // Primary signal: star rating
