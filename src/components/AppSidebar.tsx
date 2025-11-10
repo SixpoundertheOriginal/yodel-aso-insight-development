@@ -136,6 +136,14 @@ const aiCopilotsItems: NavigationItem[] = [
     url: "/growth-accelerators/reviews",
     icon: Star,
     // featureKey handled by custom filtering logic below
+    children: [
+      {
+        title: "Theme Analysis",
+        url: ROUTES.themeImpact,
+        icon: BarChart3,
+        // Same feature access as parent Reviews
+      },
+    ],
   },
 ];
 
@@ -293,8 +301,9 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
     );
   };
 
-  const renderNavItem = (item: NavigationItem) => {
+  const renderNavItem = (item: NavigationItem, isChild: boolean = false) => {
     const isActive = location.pathname === item.url;
+    const hasActiveChild = item.children?.some(child => location.pathname === child.url);
     const isDisabled =
       item.status === "coming_soon" || item.status === "under_development";
     const statusTag = () => {
@@ -336,38 +345,41 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
 
     const content = (
       <>
-        <item.icon className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+        <item.icon className={`${isChild ? 'h-3 w-3' : 'h-4 w-4'} shrink-0 group-hover:scale-110 transition-transform duration-200`} />
         <span className="truncate font-medium">{item.title}</span>
         {statusTag()}
       </>
     );
 
     return (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive}
-          tooltip={item.title}
-          className={`h-11 text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg transition-all duration-200 ease-in-out group ${
-            isDisabled
-              ? "opacity-60 cursor-not-allowed hover:bg-zinc-800/30 hover:text-nav-text-secondary"
-              : "hover:bg-zinc-800/70 hover:text-nav-text"
-          }`}
-        >
-          {isDisabled ? (
-            <div
-              className="flex items-center gap-3"
-              onClick={() => showDevelopmentNotification(item)}
-            >
-              {content}
-            </div>
-          ) : (
-            <Link to={item.url} className="flex items-center gap-3">
-              {content}
-            </Link>
-          )}
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      <React.Fragment key={item.title}>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive || hasActiveChild}
+            tooltip={item.title}
+            className={`${isChild ? 'h-9 pl-8' : 'h-11'} text-nav-text-secondary data-[active=true]:bg-gradient-to-r data-[active=true]:from-yodel-orange data-[active=true]:to-orange-600 data-[active=true]:text-nav-text data-[active=true]:shadow-lg transition-all duration-200 ease-in-out group ${
+              isDisabled
+                ? "opacity-60 cursor-not-allowed hover:bg-zinc-800/30 hover:text-nav-text-secondary"
+                : "hover:bg-zinc-800/70 hover:text-nav-text"
+            }`}
+          >
+            {isDisabled ? (
+              <div
+                className="flex items-center gap-3"
+                onClick={() => showDevelopmentNotification(item)}
+              >
+                {content}
+              </div>
+            ) : (
+              <Link to={item.url} className="flex items-center gap-3">
+                {content}
+              </Link>
+            )}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        {item.children && item.children.map(child => renderNavItem(child, true))}
+      </React.Fragment>
     );
   };
 
