@@ -6,6 +6,8 @@
  */
 
 import { EnhancedReviewItem, ReviewIntelligence } from '@/types/review-intelligence.types';
+import { semanticInsightService, type StoredInsight } from './semantic-insight.service';
+import { FEATURE_FLAGS } from '@/config/feature-flags';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -99,6 +101,14 @@ export interface CompetitiveIntelligence {
   strengths: CompetitiveStrength[];
   threats: CompetitiveThreat[];
 
+  // Semantic Insights (NEW - Phase 3)
+  semanticInsights?: {
+    asoOpportunities: StoredInsight[];      // ASO keyword opportunities
+    productFeatures: StoredInsight[];       // Product feature requests
+    trending: StoredInsight[];              // Trending insights (rising topics)
+    semanticGaps: FeatureGap[];             // Semantic-powered feature gaps
+  };
+
   // Benchmarking
   metrics: BenchmarkMetrics;
 
@@ -122,18 +132,79 @@ class CompetitorReviewIntelligenceService {
    */
   async analyzeCompetitors(
     primaryApp: CompetitorApp,
-    competitors: CompetitorApp[]
+    competitors: CompetitorApp[],
+    organizationId?: string,
+    country?: string
   ): Promise<CompetitiveIntelligence> {
 
     console.log('🎯 [Intelligence] Starting competitive analysis...', {
       primaryApp: primaryApp.appName,
       competitors: competitors.map(c => c.appName),
-      totalReviews: primaryApp.reviews.length + competitors.reduce((sum, c) => sum + c.reviews.length, 0)
+      totalReviews: primaryApp.reviews.length + competitors.reduce((sum, c) => sum + c.reviews.length, 0),
+      semanticEnabled: FEATURE_FLAGS.USE_SEMANTIC_INSIGHTS
     });
 
-    // 1. Feature Gap Analysis
+    // NEW: Generate semantic insights in parallel with legacy analysis
+    let semanticInsights: CompetitiveIntelligence['semanticInsights'] | undefined;
+
+    if (FEATURE_FLAGS.USE_SEMANTIC_INSIGHTS && organizationId && country) {
+      console.log('🧠 [Intelligence] Generating semantic insights...');
+
+      try {
+        // Generate insights for all apps in parallel
+        await Promise.all([
+          // Primary app
+          semanticInsightService.generateInsights(
+            organizationId,
+            primaryApp.appId,
+            primaryApp.appName,
+            country,
+            primaryApp.reviews
+          ),
+          // All competitors
+          ...competitors.map(comp =>
+            semanticInsightService.generateInsights(
+              organizationId,
+              comp.appId,
+              comp.appName,
+              country,
+              comp.reviews
+            )
+          )
+        ]);
+
+        console.log('✅ [Intelligence] Semantic insights generated');
+
+        // Query semantic insights
+        const [asoOpportunities, productFeatures, trending, semanticGaps] = await Promise.all([
+          this.getSemanticASOOpportunities(organizationId, primaryApp, competitors, country),
+          this.getSemanticProductFeatures(organizationId, primaryApp, competitors, country),
+          this.getSemanticTrending(organizationId, primaryApp, competitors, country),
+          this.findSemanticFeatureGaps(organizationId, primaryApp, competitors, country)
+        ]);
+
+        semanticInsights = {
+          asoOpportunities,
+          productFeatures,
+          trending,
+          semanticGaps
+        };
+
+        console.log(`✅ [Intelligence] Semantic analysis complete`, {
+          asoCount: asoOpportunities.length,
+          productCount: productFeatures.length,
+          trendingCount: trending.length,
+          semanticGaps: semanticGaps.length
+        });
+      } catch (error) {
+        console.error('❌ [Intelligence] Semantic insights failed:', error);
+        // Continue with legacy analysis
+      }
+    }
+
+    // 1. Feature Gap Analysis (Legacy)
     const featureGaps = this.findFeatureGaps(primaryApp, competitors);
-    console.log(`✅ [Intelligence] Found ${featureGaps.length} feature gaps`);
+    console.log(`✅ [Intelligence] Found ${featureGaps.length} legacy feature gaps`);
 
     // 2. Opportunity Mining
     const opportunities = this.identifyOpportunities(competitors);
@@ -168,6 +239,7 @@ class CompetitorReviewIntelligenceService {
       opportunities,
       strengths,
       threats,
+      semanticInsights, // NEW: Include semantic insights
       metrics,
       summary
     };
@@ -707,6 +779,196 @@ class CompetitorReviewIntelligenceService {
       adoptionScore * 0.3 +
       sentimentScore * 0.3
     ) * 100;
+  }
+
+  // ============================================================================
+  // SEMANTIC INSIGHTS METHODS (Phase 3)
+  // ============================================================================
+
+  /**
+   * Get ASO keyword opportunities from all apps
+   */
+  private async getSemanticASOOpportunities(
+    organizationId: string,
+    primaryApp: CompetitorApp,
+    competitors: CompetitorApp[],
+    country: string
+  ): Promise<StoredInsight[]> {
+    const allApps = [primaryApp, ...competitors];
+    const allInsights: StoredInsight[] = [];
+
+    // Get ASO opportunities from all apps
+    for (const app of allApps) {
+      const insights = await semanticInsightService.getASOOpportunities(
+        organizationId,
+        app.appId,
+        country,
+        50 // minImpactScore
+      );
+      allInsights.push(...insights);
+    }
+
+    // Deduplicate by topic_id and sort by impact
+    const uniqueInsights = new Map<string, StoredInsight>();
+    allInsights.forEach(insight => {
+      const existing = uniqueInsights.get(insight.topic_id);
+      if (!existing || insight.impact_score > existing.impact_score) {
+        uniqueInsights.set(insight.topic_id, insight);
+      }
+    });
+
+    return Array.from(uniqueInsights.values())
+      .sort((a, b) => b.impact_score - a.impact_score)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+   * Get product feature requests from all apps
+   */
+  private async getSemanticProductFeatures(
+    organizationId: string,
+    primaryApp: CompetitorApp,
+    competitors: CompetitorApp[],
+    country: string
+  ): Promise<StoredInsight[]> {
+    const allApps = [primaryApp, ...competitors];
+    const allInsights: StoredInsight[] = [];
+
+    // Get product features from all apps
+    for (const app of allApps) {
+      const insights = await semanticInsightService.getProductFeatureRequests(
+        organizationId,
+        app.appId,
+        country,
+        40 // minImpactScore
+      );
+      allInsights.push(...insights);
+    }
+
+    // Deduplicate by topic_id and sort by impact
+    const uniqueInsights = new Map<string, StoredInsight>();
+    allInsights.forEach(insight => {
+      const existing = uniqueInsights.get(insight.topic_id);
+      if (!existing || insight.impact_score > existing.impact_score) {
+        uniqueInsights.set(insight.topic_id, insight);
+      }
+    });
+
+    return Array.from(uniqueInsights.values())
+      .sort((a, b) => b.impact_score - a.impact_score)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+   * Get trending insights from all apps
+   */
+  private async getSemanticTrending(
+    organizationId: string,
+    primaryApp: CompetitorApp,
+    competitors: CompetitorApp[],
+    country: string
+  ): Promise<StoredInsight[]> {
+    const allApps = [primaryApp, ...competitors];
+    const allInsights: StoredInsight[] = [];
+
+    // Get trending insights from all apps
+    for (const app of allApps) {
+      const insights = await semanticInsightService.getTrendingInsights(
+        organizationId,
+        app.appId,
+        country
+      );
+      allInsights.push(...insights);
+    }
+
+    // Deduplicate by topic_id and sort by MoM % change
+    const uniqueInsights = new Map<string, StoredInsight>();
+    allInsights.forEach(insight => {
+      const existing = uniqueInsights.get(insight.topic_id);
+      if (!existing || (insight.trend_mom_pct || 0) > (existing.trend_mom_pct || 0)) {
+        uniqueInsights.set(insight.topic_id, insight);
+      }
+    });
+
+    return Array.from(uniqueInsights.values())
+      .filter(i => i.trend_direction === 'rising')
+      .sort((a, b) => (b.trend_mom_pct || 0) - (a.trend_mom_pct || 0))
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+   * Find semantic feature gaps (topics in competitors but not in primary app)
+   */
+  private async findSemanticFeatureGaps(
+    organizationId: string,
+    primaryApp: CompetitorApp,
+    competitors: CompetitorApp[],
+    country: string
+  ): Promise<FeatureGap[]> {
+    // Get insights from primary app
+    const primaryInsights = await semanticInsightService.queryInsights(
+      organizationId,
+      primaryApp.appId,
+      country,
+      { minImpactScore: 30, limit: 100 }
+    );
+
+    // Get insights from competitors
+    const competitorInsightsPromises = competitors.map(comp =>
+      semanticInsightService.queryInsights(
+        organizationId,
+        comp.appId,
+        country,
+        { minImpactScore: 30, limit: 100 }
+      )
+    );
+
+    const competitorInsights = await Promise.all(competitorInsightsPromises);
+
+    // Find topics in competitors but NOT in primary app
+    const primaryTopics = new Set(primaryInsights.map(i => i.topic_id));
+    const gaps: FeatureGap[] = [];
+
+    competitorInsights.forEach((compInsights, idx) => {
+      const competitor = competitors[idx];
+
+      compInsights.forEach(insight => {
+        if (!primaryTopics.has(insight.topic_id)) {
+          // Check if gap already exists
+          const existingGap = gaps.find(g => g.feature === insight.context_phrase);
+
+          if (existingGap) {
+            // Add competitor to existing gap
+            existingGap.mentionedInCompetitors.push(competitor.appName);
+            existingGap.frequency += insight.mention_count;
+          } else {
+            // Create new gap
+            gaps.push({
+              feature: insight.context_phrase, // Rich context instead of "dark mode"
+              mentionedInCompetitors: [competitor.appName],
+              competitorSentiment: insight.sentiment_score,
+              frequency: insight.mention_count,
+              userDemand: insight.demand_level === 'critical' || insight.demand_level === 'high'
+                ? 'high'
+                : insight.demand_level === 'medium'
+                ? 'medium'
+                : 'low',
+              examples: [] // Could fetch from insight_examples if needed
+            });
+          }
+        }
+      });
+    });
+
+    // Sort by demand level and frequency
+    const demandScore = { high: 3, medium: 2, low: 1 };
+    return gaps
+      .sort((a, b) => {
+        const scoreA = demandScore[a.userDemand] * a.frequency;
+        const scoreB = demandScore[b.userDemand] * b.frequency;
+        return scoreB - scoreA;
+      })
+      .slice(0, 10); // Top 10 gaps
   }
 }
 

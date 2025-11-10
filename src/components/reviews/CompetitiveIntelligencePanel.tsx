@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Target, AlertTriangle, Shield, TrendingUp,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CompetitiveIntelligence, FeatureGap, CompetitiveOpportunity, CompetitiveStrength, CompetitiveThreat } from '@/services/competitor-review-intelligence.service';
+import { SemanticInsightsView } from './SemanticInsightsView';
 
 interface CompetitiveIntelligencePanelProps {
   intelligence: CompetitiveIntelligence;
@@ -39,7 +40,13 @@ export const CompetitiveIntelligencePanel: React.FC<CompetitiveIntelligencePanel
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            {intelligence.semanticInsights && (
+              <TabsTrigger value="semantic" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Semantic
+              </TabsTrigger>
+            )}
             <TabsTrigger value="gaps" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
               Gaps ({intelligence.featureGaps.length})
@@ -57,6 +64,16 @@ export const CompetitiveIntelligencePanel: React.FC<CompetitiveIntelligencePanel
               Threats ({intelligence.threats.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* Semantic Insights Tab (NEW - Phase 3) */}
+          {intelligence.semanticInsights && (
+            <TabsContent value="semantic" className="space-y-3">
+              <div className="text-sm text-muted-foreground mb-4">
+                AI-powered semantic analysis of user feedback across all apps
+              </div>
+              <SemanticInsightsView insights={intelligence.semanticInsights} />
+            </TabsContent>
+          )}
 
           {/* Feature Gaps Tab */}
           <TabsContent value="gaps" className="space-y-3">

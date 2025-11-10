@@ -211,7 +211,9 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       console.log('🎯 [Comparison] Generating competitive intelligence...');
       const intelligence = await competitorReviewIntelligenceService.analyzeCompetitors(
         primaryApp,
-        competitors
+        competitors,
+        config.organizationId, // NEW: Pass organizationId for semantic insights
+        config.country          // NEW: Pass country for semantic insights
       );
 
       console.log('✅ [Comparison] Analysis complete!', {
