@@ -311,7 +311,9 @@ function AlertCard({ alert }: AlertCardProps) {
     info: { color: 'bg-blue-100 border-blue-300', icon: Lightbulb, iconColor: 'text-blue-600' }
   };
 
-  const config = severityConfig[alert.severity];
+  // Safely get config with fallback to 'info' if severity is undefined or invalid
+  const severity = alert?.severity || 'info';
+  const config = severityConfig[severity] || severityConfig.info;
   const Icon = config.icon;
 
   return (
