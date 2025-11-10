@@ -79,7 +79,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
     // Check staleness
     const now = Date.now();
     if (now - storedApp.lastSelectedAt > STALENESS_THRESHOLD) {
-      logger.info('[ReviewAnalysisContext] Stored app is stale, clearing');
+      logger.context('[ReviewAnalysisContext] Stored app is stale, clearing');
       return false;
     }
 
@@ -92,7 +92,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
     );
 
     if (!isStillMonitored) {
-      logger.info('[ReviewAnalysisContext] Stored app is no longer monitored, clearing');
+      logger.context('[ReviewAnalysisContext] Stored app is no longer monitored, clearing');
       return false;
     }
 
@@ -110,7 +110,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
 
         // Validate before setting
         if (validateStoredApp(parsedApp)) {
-          logger.info('[ReviewAnalysisContext] Loaded valid stored app', {
+          logger.context('[ReviewAnalysisContext] Loaded valid stored app', {
             appName: parsedApp.name,
             appId: parsedApp.appStoreId
           });
@@ -121,7 +121,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
         }
       }
     } catch (error) {
-      logger.error('[ReviewAnalysisContext] Failed to load stored app', { error });
+      logger.error('ReviewAnalysisContext', 'Failed to load stored app', error);
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [organizationId, monitoredApps, validateStoredApp]);
@@ -131,11 +131,11 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
     if (selectedApp) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedApp));
-        logger.info('[ReviewAnalysisContext] Saved selected app to storage', {
+        logger.context('[ReviewAnalysisContext] Saved selected app to storage', {
           appName: selectedApp.name
         });
       } catch (error) {
-        logger.error('[ReviewAnalysisContext] Failed to save selected app', { error });
+        logger.error('ReviewAnalysisContext', 'Failed to save selected app', error);
       }
     } else {
       localStorage.removeItem(STORAGE_KEY);
@@ -157,7 +157,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
     );
 
     if (!monitoredApp) {
-      logger.warn('[ReviewAnalysisContext] Attempted to select non-monitored app', {
+      logger.error('ReviewAnalysisContext', 'Attempted to select non-monitored app', {
         appId: app.appStoreId,
         country: app.country
       });
@@ -171,7 +171,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
       lastSelectedAt: Date.now()
     };
 
-    logger.info('[ReviewAnalysisContext] Selected app', {
+    logger.context('[ReviewAnalysisContext] Selected app', {
       appName: app.name,
       monitoredAppId: monitoredApp.id
     });
@@ -181,7 +181,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
 
   // Clear selected app
   const clearSelectedApp = useCallback(() => {
-    logger.info('[ReviewAnalysisContext] Clearing selected app');
+    logger.context('[ReviewAnalysisContext] Clearing selected app');
     setSelectedAppState(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);

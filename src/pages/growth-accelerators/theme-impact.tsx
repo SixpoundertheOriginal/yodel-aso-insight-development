@@ -35,7 +35,6 @@ import {
   TrendingUp,
   AlertTriangle
 } from 'lucide-react';
-import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
 export default function ThemeImpactDashboard() {
@@ -52,7 +51,7 @@ export default function ThemeImpactDashboard() {
   useEffect(() => {
     if (sharedSelectedApp?.monitoredAppId) {
       // Load from shared state (coming from Reviews page)
-      logger.info('[ThemeImpact] Loading app from shared state', {
+      console.log('[ThemeImpact] Loading app from shared state', {
         appName: sharedSelectedApp.name,
         monitoredAppId: sharedSelectedApp.monitoredAppId
       });
@@ -61,7 +60,7 @@ export default function ThemeImpactDashboard() {
     } else if (monitoredApps.length > 0 && !selectedMonitoredAppId) {
       // Auto-select first monitored app
       const firstApp = monitoredApps[0];
-      logger.info('[ThemeImpact] Auto-selecting first monitored app', {
+      console.log('[ThemeImpact] Auto-selecting first monitored app', {
         appName: firstApp.app_name,
         monitoredAppId: firstApp.id
       });
@@ -92,7 +91,7 @@ export default function ThemeImpactDashboard() {
   // Automatically trigger analysis when app is selected and has scores
   useEffect(() => {
     if (selectedMonitoredAppId && scores.length === 0 && !isLoading && !isAnalyzing) {
-      logger.info('[ThemeImpact] Auto-triggering initial analysis', {
+      console.log('[ThemeImpact] Auto-triggering initial analysis', {
         monitoredAppId: selectedMonitoredAppId
       });
       analyzeThemes({
@@ -104,7 +103,7 @@ export default function ThemeImpactDashboard() {
 
   const handleAppChange = (appIds: string[]) => {
     const appId = appIds[0] || '';
-    logger.info('[ThemeImpact] App changed', { monitoredAppId: appId });
+    console.log('[ThemeImpact] App changed', { monitoredAppId: appId });
     setSelectedMonitoredAppId(appId);
   };
 
@@ -114,7 +113,7 @@ export default function ThemeImpactDashboard() {
       return;
     }
 
-    logger.info('[ThemeImpact] Running manual analysis', {
+    console.log('[ThemeImpact] Running manual analysis', {
       monitoredAppId: selectedMonitoredAppId,
       periodDays: selectedPeriod
     });
@@ -126,7 +125,7 @@ export default function ThemeImpactDashboard() {
   };
 
   const handleRefresh = () => {
-    logger.info('[ThemeImpact] Refreshing data');
+    console.log('[ThemeImpact] Refreshing data');
     refetch();
   };
 
