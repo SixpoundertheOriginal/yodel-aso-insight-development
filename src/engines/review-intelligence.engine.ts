@@ -307,6 +307,20 @@ function extractIssuePatterns(reviews: EnhancedReviewItem[]): ReviewIntelligence
 
   const issueMap = new Map<string, { count: number, firstSeen: Date, versions: Set<string> }>();
 
+  // DEBUG: Sample negative reviews to see what we're missing
+  const negativeReviews = reviews.filter(r => r.rating <= 2);
+  console.log('🔍 [ENGINE-DEBUG] Analyzing', negativeReviews.length, 'negative reviews (rating <= 2)');
+  if (negativeReviews.length > 0 && negativeReviews.length <= 5) {
+    negativeReviews.forEach((r, idx) => {
+      console.log(`🔍 [ENGINE-DEBUG] Negative review ${idx + 1}:`, r.text?.substring(0, 150));
+    });
+  } else if (negativeReviews.length > 5) {
+    console.log('🔍 [ENGINE-DEBUG] Sample negative reviews:');
+    negativeReviews.slice(0, 3).forEach((r, idx) => {
+      console.log(`  ${idx + 1}. "${r.text?.substring(0, 100)}..."`);
+    });
+  }
+
   reviews.forEach(review => {
     const text = review.text?.toLowerCase() || '';
     const reviewDate = review.updated_at ? new Date(review.updated_at) : new Date();
