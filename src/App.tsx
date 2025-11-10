@@ -17,6 +17,7 @@ import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
 import { SessionSecurityProvider } from "@/components/Auth/SessionSecurityProvider";
+import { ReviewAnalysisProviderWrapper } from "./contexts/ReviewAnalysisProviderWrapper";
 import Overview from "./pages/overview";
 import Index from "./pages/Index";
 
@@ -89,8 +90,9 @@ function App() {
                   <AsoDataProvider>
                   <AppProvider>
                     <ServerAuthProvider>
-                    <AsoAiHubProvider>
-                      <WorkflowProvider>
+                      <ReviewAnalysisProviderWrapper>
+                        <AsoAiHubProvider>
+                          <WorkflowProvider>
                         <Suspense fallback={<BrandedLoadingSpinner />}>
                         <Routes>
                           <Route path="/auth/sign-in" element={<SignIn />} />
@@ -254,9 +256,10 @@ function App() {
                           <Route path="*" element={<Navigate to="/404" replace />} />
                         </Routes>
                       </Suspense>
-                    </WorkflowProvider>
-                  </AsoAiHubProvider>
-                  </ServerAuthProvider>
+                          </WorkflowProvider>
+                        </AsoAiHubProvider>
+                      </ReviewAnalysisProviderWrapper>
+                    </ServerAuthProvider>
                 </AppProvider>
               </AsoDataProvider>
             </BigQueryAppProvider>

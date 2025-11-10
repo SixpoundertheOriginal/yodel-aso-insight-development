@@ -46,6 +46,7 @@ import { useMonitoredApps, useUpdateLastChecked } from '@/hooks/useMonitoredApps
 import { useCachedReviews } from '@/hooks/useCachedReviews';
 import { CompetitorComparisonView } from '@/components/reviews/CompetitorComparisonView';
 import { CompetitorManagementPanel } from '@/components/reviews/CompetitorManagementPanel';
+import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
 
 
 interface AppSearchResult {
@@ -142,6 +143,9 @@ const ReviewManagementPage: React.FC = () => {
   // Monitored apps hooks
   const { data: monitoredApps } = useMonitoredApps(organizationId);
   const updateLastChecked = useUpdateLastChecked();
+
+  // Shared state for Reviews and Theme Analysis
+  const { setSelectedApp: setSharedSelectedApp, isAppMonitored: checkAppMonitored } = useReviewAnalysis();
 
   const isAppMonitored = monitoredApps?.some(
     app => app.app_store_id === selectedApp?.appId && app.primary_country === selectedCountry
@@ -279,6 +283,32 @@ const ReviewManagementPage: React.FC = () => {
 
   // Demo preset auto-select removed: require manual app selection in demo mode
 
+  // Watch for when an app becomes monitored and update shared state
+  React.useEffect(() => {
+    if (selectedApp && isAppMonitored && monitoredApps) {
+      const monitoredApp = monitoredApps.find(
+        ma => ma.app_store_id === selectedApp.appId && ma.primary_country === selectedCountry
+      );
+
+      if (monitoredApp) {
+        console.log('[Reviews] App became monitored, updating shared state:', selectedApp.name);
+        setSharedSelectedApp({
+          appId: selectedApp.appId,
+          appStoreId: selectedApp.appId,
+          name: selectedApp.name,
+          developer: selectedApp.developer,
+          icon: selectedApp.icon,
+          country: selectedCountry,
+          rating: selectedApp.rating,
+          reviewCount: selectedApp.reviews,
+          category: selectedApp.applicationCategory,
+          monitoredAppId: monitoredApp.id,
+          lastSelectedAt: Date.now()
+        });
+      }
+    }
+  }, [isAppMonitored, selectedApp, monitoredApps, selectedCountry, setSharedSelectedApp]);
+
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
     setSelectedApp(app);
@@ -295,6 +325,30 @@ const ReviewManagementPage: React.FC = () => {
     setToDate(end);
     setQuickRange('30d');
     fetchReviews(app.appId, 1);
+
+    // Save to shared state if app is monitored
+    if (checkAppMonitored(app.appId, selectedCountry)) {
+      const monitoredApp = monitoredApps?.find(
+        ma => ma.app_store_id === app.appId && ma.primary_country === selectedCountry
+      );
+
+      if (monitoredApp) {
+        console.log('[Reviews] Saving monitored app to shared state:', app.name);
+        setSharedSelectedApp({
+          appId: app.appId,
+          appStoreId: app.appId,
+          name: app.name,
+          developer: app.developer,
+          icon: app.icon,
+          country: selectedCountry,
+          rating: app.rating,
+          reviewCount: app.reviews,
+          category: app.applicationCategory,
+          monitoredAppId: monitoredApp.id,
+          lastSelectedAt: Date.now()
+        });
+      }
+    }
   };
 
   // Load more reviews
