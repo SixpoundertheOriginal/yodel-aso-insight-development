@@ -5,7 +5,7 @@
  * Quick Win #1 from Data Availability Audit 2025
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================================================
 // TYPE DEFINITIONS
