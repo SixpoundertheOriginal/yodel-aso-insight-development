@@ -27,7 +27,7 @@ import { ThemeImpactSummaryCards } from '@/components/theme-impact/ThemeImpactSu
 import { CriticalThemesList } from '@/components/theme-impact/CriticalThemesList';
 import { ThemesDataTable } from '@/components/theme-impact/ThemesDataTable';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
-import { AddToMonitoringButton } from '@/components/AddToMonitoringButton';
+import { AddToMonitoringButton } from '@/components/reviews/AddToMonitoringButton';
 import { useQuery } from '@tanstack/react-query';
 import {
   RefreshCw,
