@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, AlertTriangle, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -47,6 +47,10 @@ import { useCachedReviews } from '@/hooks/useCachedReviews';
 import { CompetitorComparisonView } from '@/components/reviews/CompetitorComparisonView';
 import { CompetitorManagementPanel } from '@/components/reviews/CompetitorManagementPanel';
 import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
+import { useReviewIntelligence, useRegenerateIntelligence } from '@/hooks/useReviewIntelligence';
+import { ReviewIntelligenceSummary } from '@/components/reviews/ReviewIntelligenceSummary';
+import { ProductFrictionStrengths } from '@/components/reviews/ProductFrictionStrengths';
+import { AIRecommendationsPanel } from '@/components/reviews/AIRecommendationsPanel';
 
 
 interface AppSearchResult {
@@ -206,6 +210,25 @@ const ReviewManagementPage: React.FC = () => {
 
   // Combine loading states (manual fetch + cached reviews fetch)
   const isLoadingReviews = reviewsLoading || (isAppMonitored && cachedReviewsLoading);
+
+  // Review Intelligence (AI-powered insights for monitored apps)
+  const {
+    data: intelligenceData,
+    isLoading: intelligenceLoading,
+    error: intelligenceError
+  } = useReviewIntelligence({
+    monitoredAppId: isAppMonitored ? monitoredAppId || null : null,
+    organizationId: organizationId || '',
+    enabled: isAppMonitored && !!monitoredAppId && !!organizationId
+  });
+
+  // Regenerate intelligence mutation
+  const { mutate: regenerateIntelligence, isLoading: isRegenerating } = useRegenerateIntelligence();
+
+  const handleRegenerateIntelligence = () => {
+    if (!monitoredAppId || !organizationId) return;
+    regenerateIntelligence({ monitoredAppId, organizationId });
+  };
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
@@ -1719,7 +1742,84 @@ const ReviewManagementPage: React.FC = () => {
                 </div>
               </Card>
             </div>
-            
+
+            {/* AI Intelligence Hub - For Monitored Apps Only */}
+            {isAppMonitored && monitoredAppId && intelligenceData && (
+              <div className="space-y-6 mt-6">
+                {/* Regenerate Button */}
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleRegenerateIntelligence}
+                    disabled={isRegenerating || intelligenceLoading}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Brain className={cn("w-4 h-4 mr-2", isRegenerating && "animate-spin")} />
+                    {isRegenerating ? 'Regenerating...' : 'Regenerate Intelligence'}
+                  </Button>
+                </div>
+
+                {/* AI Summary */}
+                <ReviewIntelligenceSummary
+                  intelligence={intelligenceData.intelligence}
+                  insights={intelligenceData.insights}
+                  analytics={intelligenceData.analytics}
+                />
+
+                {/* Product Friction & Strengths */}
+                <ProductFrictionStrengths
+                  issuePatterns={intelligenceData.intelligence.issuePatterns}
+                  featureMentions={intelligenceData.intelligence.featureMentions}
+                  totalReviews={intelligenceData.metadata.reviewsAnalyzed}
+                />
+
+                {/* AI Recommendations */}
+                <AIRecommendationsPanel insights={intelligenceData.insights} />
+
+                {/* Last Updated Badge */}
+                <div className="text-xs text-gray-500 text-center">
+                  {intelligenceData.metadata.isCached ? (
+                    <>Last analyzed: {new Date(intelligenceData.metadata.lastUpdated).toLocaleString()}</>
+                  ) : (
+                    <>Just analyzed {intelligenceData.metadata.reviewsAnalyzed} reviews</>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Loading State for Intelligence */}
+            {isAppMonitored && monitoredAppId && intelligenceLoading && (
+              <Card className="mt-6">
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Brain className="w-12 h-12 mx-auto mb-3 text-purple-600 animate-pulse" />
+                    <p className="text-sm text-gray-600">Analyzing reviews with AI...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Error State for Intelligence */}
+            {isAppMonitored && monitoredAppId && intelligenceError && !intelligenceLoading && (
+              <Card className="mt-6 border-red-200 bg-red-50">
+                <CardContent className="py-6">
+                  <div className="text-center">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-red-600" />
+                    <p className="text-sm text-red-700 font-medium">Failed to load intelligence</p>
+                    <p className="text-xs text-red-600 mt-1">{intelligenceError.message}</p>
+                    <Button
+                      onClick={handleRegenerateIntelligence}
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* AI Analytics Section - Collapsible */}
             {reviews.length > 0 && (
               <CollapsibleAnalyticsSection
