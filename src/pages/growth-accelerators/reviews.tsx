@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -50,6 +50,7 @@ import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
 import { ReviewIntelligenceSummary } from '@/components/reviews/ReviewIntelligenceSummary';
 import { ProductFrictionStrengths } from '@/components/reviews/ProductFrictionStrengths';
 import { AIRecommendationsPanel } from '@/components/reviews/AIRecommendationsPanel';
+import { DateRangePicker } from '@/components/DateRangePicker';
 
 
 interface AppSearchResult {
@@ -509,7 +510,12 @@ const ReviewManagementPage: React.FC = () => {
 
   // Default the page to last 30 days on first render
   React.useEffect(() => {
-    applyQuickRange('30d');
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29);
+    setFromDate(formatDateInputLocal(thirtyDaysAgo));
+    setToDate(formatDateInputLocal(today));
+    setQuickRange('30d');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1577,44 +1583,77 @@ const ReviewManagementPage: React.FC = () => {
       {selectedApp && (
         <YodelCard variant="elevated" padding="md" className="shadow-md">
           <YodelCardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {selectedApp.icon && (
-                  <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
-                )}
-                <div className="flex flex-col">
-                  <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
-                    <span>Reviews for {selectedApp.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StarRating rating={Math.round(selectedApp?.rating || 0)} />
-                    <span className="text-xs text-muted-foreground">
-                      {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
-                    </span>
+            <div className="space-y-4">
+              {/* Top row: App info and actions */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {selectedApp.icon && (
+                    <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
+                  )}
+                  <div className="flex flex-col">
+                    <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      <span>Reviews for {selectedApp.name}</span>
+                      <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <StarRating rating={Math.round(selectedApp?.rating || 0)} />
+                      <span className="text-xs text-muted-foreground">
+                        {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  {organizationId && (
+                    <AddToMonitoringButton
+                      organizationId={organizationId}
+                      appStoreId={selectedApp.appId}
+                      appName={selectedApp.name}
+                      appIconUrl={selectedApp.icon}
+                      developerName={selectedApp.developer}
+                      category={selectedApp.applicationCategory}
+                      country={selectedCountry}
+                      rating={selectedApp.rating}
+                      reviewCount={selectedApp.reviews}
+                      isMonitored={isAppMonitored}
+                    />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
+                    Search Another
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {organizationId && (
-                  <AddToMonitoringButton
-                    organizationId={organizationId}
-                    appStoreId={selectedApp.appId}
-                    appName={selectedApp.name}
-                    appIconUrl={selectedApp.icon}
-                    developerName={selectedApp.developer}
-                    category={selectedApp.applicationCategory}
-                    country={selectedCountry}
-                    rating={selectedApp.rating}
-                    reviewCount={selectedApp.reviews}
-                    isMonitored={isAppMonitored}
-                  />
+
+              {/* Date Range Picker */}
+              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground mr-2">Date Range:</span>
+                <DateRangePicker
+                  dateRange={{ start: fromDate, end: toDate }}
+                  onDateRangeChange={(range) => {
+                    setFromDate(range.start);
+                    setToDate(range.end);
+                    setQuickRange('custom');
+                  }}
+                  className="min-w-[280px]"
+                />
+                {fromDate && toDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFromDate('');
+                      setToDate('');
+                      setQuickRange('all');
+                    }}
+                    className="h-8"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
-                  Search Another
-                </Button>
               </div>
             </div>
           </YodelCardHeader>
@@ -1816,26 +1855,6 @@ const ReviewManagementPage: React.FC = () => {
               {/* Text search */}
               <div className="min-w-[220px]">
                 <Input placeholder="Search title, text, author" value={textQuery} onChange={e => setTextQuery(e.target.value)} />
-              </div>
-              {/* Date range */}
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                <Select value={quickRange} onValueChange={(v: any) => applyQuickRange(v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All time</SelectItem>
-                    <SelectItem value="7d">Last 7 days</SelectItem>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                    <SelectItem value="90d">Last 90 days</SelectItem>
-                    <SelectItem value="1y">Last year</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
-                <span className="text-xs text-muted-foreground">to</span>
-                <Input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
               </div>
               {/* Sort */}
               <div className="flex items-center gap-2">
