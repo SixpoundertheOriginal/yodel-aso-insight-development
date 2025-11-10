@@ -708,19 +708,19 @@ const ReviewManagementPage: React.FC = () => {
 
   // Generate comprehensive AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
-    console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
-      return { 
-        themes: [], 
-        featureMentions: [], 
-        issuePatterns: [] 
+    console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
+      return {
+        themes: [],
+        featureMentions: [],
+        issuePatterns: []
       };
     }
-    
+
     try {
       // Try engine first, fallback to manual extraction if needed
-      const engineResult = extractReviewIntelligence(enhancedReviews);
+      const engineResult = extractReviewIntelligence(filteredReviews);
       console.log('🔍 DATA DEBUG [ENGINE]: Engine result themes:', engineResult?.themes?.length || 0);
       
       if (engineResult?.themes?.length > 0) {
@@ -729,12 +729,12 @@ const ReviewManagementPage: React.FC = () => {
       
       // Fallback: Manual intelligence extraction
       console.log('🔍 DATA DEBUG [FALLBACK]: Using manual intelligence extraction');
-      
+
       const themeMap = new Map<string, { count: number; sentiment: number[]; examples: string[]; trending: 'up' | 'down' | 'stable' }>();
       const featureMap = new Map<string, { count: number; sentiment: number[]; impact: 'high' | 'medium' | 'low' }>();
       const issueMap = new Map<string, { count: number; severity: 'critical' | 'major' | 'minor'; affectedVersions: string[]; firstSeen: Date }>();
-      
-      enhancedReviews.forEach(review => {
+
+      filteredReviews.forEach(review => {
         // Process themes
         review.extractedThemes?.forEach(theme => {
           if (!themeMap.has(theme)) {
@@ -820,35 +820,35 @@ const ReviewManagementPage: React.FC = () => {
         issuePatterns: []
       };
     }
-  }, [enhancedReviews]);
+  }, [filteredReviews]);
 
   // Generate comprehensive actionable insights
   const actionableInsights = useMemo(() => {
-    console.log('🔍 DATA DEBUG [INSIGHTS]: Generating insights for reviews:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
-      return { 
-        priorityIssues: [], 
-        improvements: [], 
-        alerts: [] 
+    console.log('🔍 DATA DEBUG [INSIGHTS]: Generating insights for reviews:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
+      return {
+        priorityIssues: [],
+        improvements: [],
+        alerts: []
       };
     }
-    
+
     try {
       // Try engine first, fallback if needed
-      const engineResult = reviewIntelligence ? generateActionableInsights(enhancedReviews, reviewIntelligence) : null;
-      
+      const engineResult = reviewIntelligence ? generateActionableInsights(filteredReviews, reviewIntelligence) : null;
+
       if (engineResult?.priorityIssues?.length > 0 || engineResult?.improvements?.length > 0) {
         return engineResult;
       }
-      
+
       // Fallback: Generate insights manually
       const priorityIssues: any[] = [];
       const improvements: any[] = [];
       const alerts: any[] = [];
-      
+
       // Analyze for critical issues
-      const negativeReviews = enhancedReviews.filter(r => r.rating <= 2);
+      const negativeReviews = filteredReviews.filter(r => r.rating <= 2);
       const issueFrequency = new Map<string, number>();
       
       negativeReviews.forEach(review => {
@@ -871,9 +871,9 @@ const ReviewManagementPage: React.FC = () => {
       });
       
       // Generate improvements from positive reviews
-      const positiveReviews = enhancedReviews.filter(r => r.rating >= 4);
+      const positiveReviews = filteredReviews.filter(r => r.rating >= 4);
       const featureRequests = new Map<string, number>();
-      
+
       positiveReviews.forEach(review => {
         const text = review.text?.toLowerCase() || '';
         if (text.includes('would be great') || text.includes('wish') || text.includes('add')) {
@@ -882,7 +882,7 @@ const ReviewManagementPage: React.FC = () => {
           });
         }
       });
-      
+
       featureRequests.forEach((count, feature) => {
         improvements.push({
           opportunity: `Enhance ${feature}`,
@@ -891,9 +891,9 @@ const ReviewManagementPage: React.FC = () => {
           description: `${count} users mentioned wanting improvements to ${feature}`
         });
       });
-      
+
       // Generate alerts for concerning trends
-      const negativePercentage = (negativeReviews.length / enhancedReviews.length) * 100;
+      const negativePercentage = (negativeReviews.length / filteredReviews.length) * 100;
       if (negativePercentage > 20) {
         alerts.push({
           type: 'warning',
@@ -902,12 +902,12 @@ const ReviewManagementPage: React.FC = () => {
           impact: 'high'
         });
       }
-      
-      const crashMentions = enhancedReviews.filter(r => 
-        r.text?.toLowerCase().includes('crash') || 
+
+      const crashMentions = filteredReviews.filter(r =>
+        r.text?.toLowerCase().includes('crash') ||
         r.text?.toLowerCase().includes('freeze')
       ).length;
-      
+
       if (crashMentions > 2) {
         alerts.push({
           type: 'critical',
@@ -916,30 +916,30 @@ const ReviewManagementPage: React.FC = () => {
           impact: 'high'
         });
       }
-      
+
       const result = { priorityIssues, improvements, alerts };
       console.log('🔍 DATA DEBUG [INSIGHTS-RESULT]:', {
         priorityIssuesCount: priorityIssues.length,
         improvementsCount: improvements.length,
         alertsCount: alerts.length
       });
-      
+
       return result;
     } catch (error) {
       console.error('Error in actionable insights generation:', error);
-      return { 
-        priorityIssues: [], 
-        improvements: [], 
-        alerts: [] 
+      return {
+        priorityIssues: [],
+        improvements: [],
+        alerts: []
       };
     }
-  }, [enhancedReviews, reviewIntelligence]);
+  }, [filteredReviews, reviewIntelligence]);
 
   // Enhanced analytics with comprehensive data population
   const reviewAnalytics = useMemo((): ReviewAnalytics => {
-    console.log('🔍 DATA DEBUG [ANALYTICS]: Processing analytics for reviews:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
+    console.log('🔍 DATA DEBUG [ANALYTICS]: Processing analytics for reviews:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
       return {
         totalReviews: 0,
         averageRating: 0,
@@ -953,13 +953,13 @@ const ReviewManagementPage: React.FC = () => {
     }
 
     try {
-      const totalReviews = enhancedReviews.length;
-      const averageRating = totalReviews > 0 ? 
-        enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
-      
+      const totalReviews = filteredReviews.length;
+      const averageRating = totalReviews > 0 ?
+        filteredReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+
       // Enhanced sentiment calculation
       const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-      enhancedReviews.forEach(r => {
+      filteredReviews.forEach(r => {
         if (r.enhancedSentiment?.overall) {
           sentimentCounts[r.enhancedSentiment.overall]++;
         } else {
@@ -972,8 +972,8 @@ const ReviewManagementPage: React.FC = () => {
 
       // Enhanced emotional profile with real text analysis
       const emotionalProfile = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
-      
-      enhancedReviews.forEach(r => {
+
+      filteredReviews.forEach(r => {
         if (r.enhancedSentiment?.emotions) {
           // Use existing emotions if available
           Object.keys(emotionalProfile).forEach(emotion => {
@@ -1056,8 +1056,8 @@ const ReviewManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error in review analytics calculation:', error);
       return {
-        totalReviews: enhancedReviews.length,
-        averageRating: enhancedReviews.length > 0 ? enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / enhancedReviews.length : 0,
+        totalReviews: filteredReviews.length,
+        averageRating: filteredReviews.length > 0 ? filteredReviews.reduce((sum, r) => sum + r.rating, 0) / filteredReviews.length : 0,
         sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
         positivePercentage: 0,
         emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
@@ -1066,7 +1066,7 @@ const ReviewManagementPage: React.FC = () => {
         trendingTopics: []
       };
     }
-  }, [enhancedReviews, reviewIntelligence]);
+  }, [filteredReviews, reviewIntelligence]);
 
   // AI Insight Filter State
   const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
@@ -1156,22 +1156,22 @@ const ReviewManagementPage: React.FC = () => {
     return sorted;
   }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
 
-  // Chart data
+  // Chart data - Use filteredReviews to respect date range
   const ratingDistribution = useMemo(() => {
     const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    processedReviews.forEach(r => { if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++; });
+    filteredReviews.forEach(r => { if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++; });
     return [1,2,3,4,5].map(v => ({ rating: `${v}★`, count: counts[v] }));
-  }, [processedReviews]);
+  }, [filteredReviews]);
 
   const sentimentBreakdown = useMemo(() => {
     const counts: Record<string, number> = { positive: 0, neutral: 0, negative: 0 };
-    processedReviews.forEach(r => { counts[(r as any).sentiment] = (counts[(r as any).sentiment] || 0) + 1; });
+    filteredReviews.forEach(r => { counts[(r as any).sentiment] = (counts[(r as any).sentiment] || 0) + 1; });
     return [
       { label: 'Positive', key: 'positive', count: counts.positive },
       { label: 'Neutral', key: 'neutral', count: counts.neutral },
       { label: 'Negative', key: 'negative', count: counts.negative },
     ];
-  }, [processedReviews]);
+  }, [filteredReviews]);
 
   // Summary metrics
   const summary = useMemo(() => {
