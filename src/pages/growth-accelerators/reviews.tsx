@@ -938,6 +938,7 @@ const ReviewManagementPage: React.FC = () => {
         totalReviews: 0,
         averageRating: 0,
         sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        positivePercentage: 0,
         emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
         topThemes: [],
         criticalIssues: 0,
@@ -1013,6 +1014,8 @@ const ReviewManagementPage: React.FC = () => {
         });
       }
 
+      const positivePercentage = totalReviews > 0 ? Number(((sentimentCounts.positive / totalReviews) * 100).toFixed(0)) : 0;
+
       const result = {
         totalReviews,
         averageRating: Number(averageRating.toFixed(2)),
@@ -1021,6 +1024,7 @@ const ReviewManagementPage: React.FC = () => {
           neutral: totalReviews > 0 ? Number(((sentimentCounts.neutral / totalReviews) * 100).toFixed(1)) : 0,
           negative: totalReviews > 0 ? Number(((sentimentCounts.negative / totalReviews) * 100).toFixed(1)) : 0,
         },
+        positivePercentage,
         emotionalProfile: {
           joy: Number(emotionalProfile.joy.toFixed(1)),
           frustration: Number(emotionalProfile.frustration.toFixed(1)),
@@ -1037,6 +1041,7 @@ const ReviewManagementPage: React.FC = () => {
         totalReviews: result.totalReviews,
         averageRating: result.averageRating,
         sentimentDist: result.sentimentDistribution,
+        positivePercentage: result.positivePercentage,
         topThemes: result.topThemes.length,
         criticalIssues: result.criticalIssues
       });
@@ -1048,6 +1053,7 @@ const ReviewManagementPage: React.FC = () => {
         totalReviews: enhancedReviews.length,
         averageRating: enhancedReviews.length > 0 ? enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / enhancedReviews.length : 0,
         sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        positivePercentage: 0,
         emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
         topThemes: [],
         criticalIssues: 0,
