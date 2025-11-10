@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { MFASetup } from '@/components/auth/MFASetup';
+import { MFASetup } from '@/components/Auth/MFASetup';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const SettingsPage: React.FC = () => {

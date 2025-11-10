@@ -18,7 +18,7 @@ import { format, subDays, parseISO } from 'date-fns';
 import { KpiTrendChart } from '@/components/analytics/KpiTrendChart';
 import { TrafficSourceComparisonChart } from '@/components/analytics/TrafficSourceComparisonChart';
 import { ConversionFunnelChart } from '@/components/analytics/ConversionFunnelChart';
-import { MFAGracePeriodBanner } from '@/components/auth/MFAGracePeriodBanner';
+import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
 
 /**
  * PRODUCTION-READY DASHBOARD V2
