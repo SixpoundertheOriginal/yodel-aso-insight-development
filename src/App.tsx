@@ -16,7 +16,7 @@ import { SuperAdminProvider } from "./context/SuperAdminContext";
 import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
-import { SessionSecurityProvider } from "@/components/auth/SessionSecurityProvider";
+import { SessionSecurityProvider } from "@/components/Auth/SessionSecurityProvider";
 import Overview from "./pages/overview";
 import Index from "./pages/Index";
 

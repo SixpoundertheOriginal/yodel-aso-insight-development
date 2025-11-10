@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Github, Twitter } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { MFAVerification } from '@/components/auth/MFAVerification';
+import { MFAVerification } from '@/components/Auth/MFAVerification';
 import { supabase } from '@/integrations/supabase/client';
 
 const signInSchema = z.object({
