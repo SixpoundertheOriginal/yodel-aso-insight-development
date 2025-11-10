@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { fetchAppReviews } from '@/utils/itunesReviews';
 import { extractReviewIntelligence, analyzeEnhancedSentiment } from '@/engines/review-intelligence.engine';
 import { competitorReviewIntelligenceService, type CompetitorApp, type CompetitiveIntelligence } from '@/services/competitor-review-intelligence.service';
+import { competitorAnalysisCacheService } from '@/services/competitor-analysis-cache.service';
 import { EnhancedReviewItem } from '@/types/review-intelligence.types';
 import { toast } from 'sonner';
 import { useMonitoredApps } from './useMonitoredApps';
@@ -21,7 +22,9 @@ interface ComparisonConfig {
   competitorAppReviewCounts: number[];
 
   country: string;
+  organizationId: string;
   maxReviewsPerApp?: number; // Default: 500
+  forceRefresh?: boolean; // Bypass cache
 }
 
 export const useCompetitorComparison = (config: ComparisonConfig | null) => {
@@ -34,7 +37,45 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
         throw new Error('Configuration required');
       }
 
+      const startTime = Date.now();
       const maxReviews = config.maxReviewsPerApp || 500;
+
+      // Step 0: Check cache first (unless force refresh)
+      if (!config.forceRefresh) {
+        console.log('🔍 [Comparison] Checking cache...');
+        const cachedResult = await competitorAnalysisCacheService.getCache(
+          config.organizationId,
+          config.primaryAppId,
+          config.competitorAppIds,
+          config.country
+        );
+
+        if (cachedResult) {
+          const cacheMetadata = await competitorAnalysisCacheService.checkCache(
+            config.organizationId,
+            config.primaryAppId,
+            config.competitorAppIds,
+            config.country
+          );
+
+          if (cacheMetadata.ageSeconds) {
+            const ageFormatted = competitorAnalysisCacheService.formatCacheAge(cacheMetadata.ageSeconds);
+            toast.success(`Loaded from cache (${ageFormatted})`);
+          }
+
+          console.log('✅ [Comparison] Returning cached analysis');
+          return cachedResult;
+        }
+      } else {
+        console.log('🔄 [Comparison] Force refresh - bypassing cache');
+        // Delete existing cache
+        await competitorAnalysisCacheService.deleteCache(
+          config.organizationId,
+          config.primaryAppId,
+          config.competitorAppIds,
+          config.country
+        );
+      }
 
       // Step 1: Fetch reviews for all apps in parallel
       console.log('🔍 [Comparison] Fetching reviews for all apps...');
@@ -179,6 +220,19 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
         strengths: intelligence.strengths.length,
         threats: intelligence.threats.length
       });
+
+      // Step 5: Save to cache
+      const analysisDuration = Date.now() - startTime;
+      console.log(`💾 [Comparison] Saving to cache (took ${analysisDuration}ms)...`);
+
+      await competitorAnalysisCacheService.saveCache(
+        config.organizationId,
+        config.primaryAppId,
+        config.competitorAppIds,
+        config.country,
+        intelligence,
+        analysisDuration
+      );
 
       return intelligence;
     },

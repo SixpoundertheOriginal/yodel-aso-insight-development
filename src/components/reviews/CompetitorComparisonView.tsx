@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Download, Target, TrendingUp, AlertTriangle,
-  Shield, Loader2, CheckCircle2
+  Shield, Loader2, CheckCircle2, RotateCw, Clock
 } from 'lucide-react';
 import { CompetitorSelectionDialog } from './CompetitorSelectionDialog';
 import { CompetitiveIntelligencePanel } from './CompetitiveIntelligencePanel';
@@ -14,6 +14,7 @@ import { BenchmarkOverviewTable } from './BenchmarkOverviewTable';
 import { useCompetitorComparison } from '@/hooks/useCompetitorComparison';
 import type { CompetitiveIntelligence } from '@/services/competitor-review-intelligence.service';
 import { competitorComparisonExportService } from '@/services/competitor-comparison-export.service';
+import { competitorAnalysisCacheService } from '@/services/competitor-analysis-cache.service';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -46,8 +47,33 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
 }) => {
   const [comparisonConfig, setComparisonConfig] = useState<ComparisonConfig | null>(null);
   const [showSelection, setShowSelection] = useState(true);
+  const [forceRefresh, setForceRefresh] = useState(false);
+  const [cacheAge, setCacheAge] = useState<string | null>(null);
 
-  const { data: intelligence, isLoading, error } = useCompetitorComparison(comparisonConfig);
+  // Add organizationId and forceRefresh to config
+  const queryConfig = comparisonConfig ? {
+    ...comparisonConfig,
+    organizationId,
+    forceRefresh
+  } : null;
+
+  const { data: intelligence, isLoading, error } = useCompetitorComparison(queryConfig);
+
+  // Check cache metadata when intelligence loads
+  React.useEffect(() => {
+    if (intelligence && comparisonConfig) {
+      competitorAnalysisCacheService.checkCache(
+        organizationId,
+        comparisonConfig.primaryAppId,
+        comparisonConfig.competitorAppIds,
+        comparisonConfig.country
+      ).then(metadata => {
+        if (metadata.ageSeconds) {
+          setCacheAge(competitorAnalysisCacheService.formatCacheAge(metadata.ageSeconds));
+        }
+      });
+    }
+  }, [intelligence, comparisonConfig, organizationId]);
 
   const handleStartComparison = (config: ComparisonConfig) => {
     setComparisonConfig(config);
@@ -57,6 +83,13 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
   const handleReset = () => {
     setComparisonConfig(null);
     setShowSelection(true);
+    setForceRefresh(false);
+  };
+
+  const handleForceRefresh = () => {
+    setForceRefresh(true);
+    // Reset force refresh flag after triggering
+    setTimeout(() => setForceRefresh(false), 1000);
   };
 
   const handleExport = () => {
@@ -186,12 +219,30 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
             </Button>
             <div>
               <h1 className="text-3xl font-bold">Competitive Analysis</h1>
-              <p className="text-sm text-muted-foreground">
-                {comparisonConfig?.primaryAppName} vs {comparisonConfig?.competitorAppNames.length} competitor{comparisonConfig && comparisonConfig.competitorAppNames.length > 1 ? 's' : ''}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {comparisonConfig?.primaryAppName} vs {comparisonConfig?.competitorAppNames.length} competitor{comparisonConfig && comparisonConfig.competitorAppNames.length > 1 ? 's' : ''}
+                </p>
+                {cacheAge && (
+                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {cacheAge}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForceRefresh}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <RotateCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm" onClick={handleReset}>
               <Target className="h-4 w-4 mr-2" />
               Change Apps
