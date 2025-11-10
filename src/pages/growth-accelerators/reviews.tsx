@@ -706,6 +706,91 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [reviews]);
 
+  // Use enhanced reviews for processing
+  const processedReviews = enhancedReviews;
+
+  // AI Insight Filter State (needed for filteredReviews)
+  const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
+    type: 'sentiment' | 'theme' | 'issue' | 'feature' | null;
+    value: string | null;
+  }>({ type: null, value: null });
+
+  const filteredReviews = useMemo(() => {
+    let list = processedReviews;
+
+    // Apply standard filters
+    if (ratingFilter !== 'all') {
+      list = list.filter(r => r.rating === ratingFilter);
+    }
+    if (sentimentFilter !== 'all') {
+      list = list.filter(r => (r as any).sentiment === sentimentFilter);
+    }
+    if (textQuery.trim()) {
+      const q = textQuery.toLowerCase();
+      list = list.filter(r =>
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.text || '').toLowerCase().includes(q) ||
+        (r.author || '').toLowerCase().includes(q)
+      );
+    }
+
+    // AI Insight-based filtering (NEW)
+    if (selectedInsightFilter.type && selectedInsightFilter.value) {
+      const { type, value } = selectedInsightFilter;
+
+      if (type === 'sentiment') {
+        list = list.filter(r => (r as any).sentiment === value);
+      } else if (type === 'theme') {
+        list = list.filter(r =>
+          r.extractedThemes?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'issue') {
+        list = list.filter(r =>
+          r.identifiedIssues?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'feature') {
+        list = list.filter(r =>
+          r.mentionedFeatures?.includes(value) ||
+          r.text?.toLowerCase().includes(value)
+        );
+      }
+    }
+    if (fromDate) {
+      const from = new Date(fromDate).getTime();
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t >= from;
+      });
+    }
+    if (toDate) {
+      const to = new Date(toDate).getTime();
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t <= to;
+      });
+    }
+
+    // Sorting
+    const sorted = [...list];
+    switch (sortBy) {
+      case 'newest':
+        sorted.sort((a, b) => (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime()));
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime()));
+        break;
+      case 'rating_high':
+        sorted.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'rating_low':
+        sorted.sort((a, b) => a.rating - b.rating);
+        break;
+    }
+    return sorted;
+  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
+
   // Generate comprehensive AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
     console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', filteredReviews?.length || 0);
@@ -1068,93 +1153,8 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [filteredReviews, reviewIntelligence]);
 
-  // AI Insight Filter State
-  const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
-    type: 'sentiment' | 'theme' | 'issue' | 'feature' | null;
-    value: string | null;
-  }>({ type: null, value: null });
-
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'reviews' | 'competitors'>('reviews');
-
-  // Use enhanced reviews for processing
-  const processedReviews = enhancedReviews;
-
-  const filteredReviews = useMemo(() => {
-    let list = processedReviews;
-    
-    // Apply standard filters
-    if (ratingFilter !== 'all') {
-      list = list.filter(r => r.rating === ratingFilter);
-    }
-    if (sentimentFilter !== 'all') {
-      list = list.filter(r => (r as any).sentiment === sentimentFilter);
-    }
-    if (textQuery.trim()) {
-      const q = textQuery.toLowerCase();
-      list = list.filter(r =>
-        (r.title || '').toLowerCase().includes(q) ||
-        (r.text || '').toLowerCase().includes(q) ||
-        (r.author || '').toLowerCase().includes(q)
-      );
-    }
-
-    // AI Insight-based filtering (NEW)
-    if (selectedInsightFilter.type && selectedInsightFilter.value) {
-      const { type, value } = selectedInsightFilter;
-      
-      if (type === 'sentiment') {
-        list = list.filter(r => (r as any).sentiment === value);
-      } else if (type === 'theme') {
-        list = list.filter(r => 
-          r.extractedThemes?.includes(value) ||
-          r.text?.toLowerCase().includes(value.toLowerCase())
-        );
-      } else if (type === 'issue') {
-        list = list.filter(r => 
-          r.identifiedIssues?.includes(value) ||
-          r.text?.toLowerCase().includes(value.toLowerCase())
-        );
-      } else if (type === 'feature') {
-        list = list.filter(r => 
-          r.mentionedFeatures?.includes(value) ||
-          r.text?.toLowerCase().includes(value)
-        );
-      }
-    }
-    if (fromDate) {
-      const from = new Date(fromDate).getTime();
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t >= from;
-      });
-    }
-    if (toDate) {
-      const to = new Date(toDate).getTime();
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t <= to;
-      });
-    }
-
-    // Sorting
-    const sorted = [...list];
-    switch (sortBy) {
-      case 'newest':
-        sorted.sort((a, b) => (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime()));
-        break;
-      case 'oldest':
-        sorted.sort((a, b) => (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime()));
-        break;
-      case 'rating_high':
-        sorted.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'rating_low':
-        sorted.sort((a, b) => a.rating - b.rating);
-        break;
-    }
-    return sorted;
-  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
 
   // Chart data - Use filteredReviews to respect date range
   const ratingDistribution = useMemo(() => {
