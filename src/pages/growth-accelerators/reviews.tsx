@@ -135,8 +135,20 @@ const ReviewManagementPage: React.FC = () => {
   const [sentimentFilter, setSentimentFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
   const [textQuery, setTextQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'rating_high' | 'rating_low'>('newest');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  // Initialize with Last 30 days as default (matching quickRange default)
+  const getDefaultDateRange = () => {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29); // 29 days ago + today = 30 days
+    return {
+      start: thirtyDaysAgo.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0]
+    };
+  };
+
+  const defaultRange = getDefaultDateRange();
+  const [fromDate, setFromDate] = useState<string>(defaultRange.start);
+  const [toDate, setToDate] = useState<string>(defaultRange.end);
   const [quickRange, setQuickRange] = useState<'all' | '7d' | '30d' | '90d' | '1y' | 'custom'>('30d');
 
   // Development self-test state; only for super admins without an assigned org (platform scope)
