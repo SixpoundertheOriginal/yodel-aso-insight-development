@@ -716,7 +716,9 @@ const ReviewManagementPage: React.FC = () => {
   }>({ type: null, value: null });
 
   const filteredReviews = useMemo(() => {
+    console.log('📅 [FILTER] filteredReviews useMemo running - fromDate:', fromDate, 'toDate:', toDate);
     let list = processedReviews;
+    console.log('📅 [FILTER] Starting with', list.length, 'reviews');
 
     // Apply standard filters
     if (ratingFilter !== 'all') {
@@ -757,19 +759,30 @@ const ReviewManagementPage: React.FC = () => {
         );
       }
     }
+
+    // Date filtering with debug logging
     if (fromDate) {
       const from = new Date(fromDate).getTime();
+      console.log('📅 [FILTER] Applying fromDate filter:', fromDate, '(timestamp:', from, ')');
+      const beforeFilter = list.length;
       list = list.filter(r => {
         const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
         return t >= from;
       });
+      console.log('📅 [FILTER] After fromDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
     }
     if (toDate) {
-      const to = new Date(toDate).getTime();
+      // Add end of day (23:59:59.999) to include all reviews from toDate
+      const toDateEnd = new Date(toDate);
+      toDateEnd.setHours(23, 59, 59, 999);
+      const to = toDateEnd.getTime();
+      console.log('📅 [FILTER] Applying toDate filter:', toDate, '(timestamp:', to, ')');
+      const beforeFilter = list.length;
       list = list.filter(r => {
         const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
         return t <= to;
       });
+      console.log('📅 [FILTER] After toDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
     }
 
     // Sorting
@@ -788,6 +801,7 @@ const ReviewManagementPage: React.FC = () => {
         sorted.sort((a, b) => a.rating - b.rating);
         break;
     }
+    console.log('📅 [FILTER] Final filtered count:', sorted.length);
     return sorted;
   }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
 
@@ -1633,9 +1647,11 @@ const ReviewManagementPage: React.FC = () => {
                 <DateRangePicker
                   dateRange={{ start: fromDate, end: toDate }}
                   onDateRangeChange={(range) => {
+                    console.log('📅 [ReviewPage] Date range changed:', range);
                     setFromDate(range.start);
                     setToDate(range.end);
                     setQuickRange('custom');
+                    console.log('📅 [ReviewPage] State updated - fromDate:', range.start, 'toDate:', range.end);
                   }}
                   className="min-w-[280px]"
                 />
