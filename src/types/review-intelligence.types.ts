@@ -132,6 +132,7 @@ export interface ReviewAnalytics {
     neutral: number;
     negative: number;
   };
+  positivePercentage: number; // Convenience field for positive sentiment percentage
   emotionalProfile: {
     joy: number;
     frustration: number;

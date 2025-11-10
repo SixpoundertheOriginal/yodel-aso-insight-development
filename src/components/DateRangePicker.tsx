@@ -39,23 +39,44 @@ interface DateRangePickerProps {
 
 const presets = [
   {
+    label: 'Today',
+    getValue: () => ({
+      start: format(new Date(), 'yyyy-MM-dd'),
+      end: format(new Date(), 'yyyy-MM-dd')
+    })
+  },
+  {
+    label: 'Yesterday',
+    getValue: () => ({
+      start: format(subDays(new Date(), 1), 'yyyy-MM-dd'),
+      end: format(subDays(new Date(), 1), 'yyyy-MM-dd')
+    })
+  },
+  {
     label: 'Last 7 days',
     getValue: () => ({
-      start: format(subDays(new Date(), 7), 'yyyy-MM-dd'),
+      start: format(subDays(new Date(), 6), 'yyyy-MM-dd'), // 6 days ago + today = 7 days
+      end: format(new Date(), 'yyyy-MM-dd')
+    })
+  },
+  {
+    label: 'Last 14 days',
+    getValue: () => ({
+      start: format(subDays(new Date(), 13), 'yyyy-MM-dd'),
       end: format(new Date(), 'yyyy-MM-dd')
     })
   },
   {
     label: 'Last 30 days',
     getValue: () => ({
-      start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+      start: format(subDays(new Date(), 29), 'yyyy-MM-dd'),
       end: format(new Date(), 'yyyy-MM-dd')
     })
   },
   {
     label: 'Last 90 days',
     getValue: () => ({
-      start: format(subDays(new Date(), 90), 'yyyy-MM-dd'),
+      start: format(subDays(new Date(), 89), 'yyyy-MM-dd'),
       end: format(new Date(), 'yyyy-MM-dd')
     })
   },
@@ -63,7 +84,7 @@ const presets = [
     label: 'This month',
     getValue: () => ({
       start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-      end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
+      end: format(new Date(), 'yyyy-MM-dd') // Up to today, not end of month
     })
   },
   {
@@ -75,6 +96,20 @@ const presets = [
         end: format(endOfMonth(lastMonth), 'yyyy-MM-dd')
       };
     }
+  },
+  {
+    label: 'Last 6 months',
+    getValue: () => ({
+      start: format(subMonths(new Date(), 6), 'yyyy-MM-dd'),
+      end: format(new Date(), 'yyyy-MM-dd')
+    })
+  },
+  {
+    label: 'Last year',
+    getValue: () => ({
+      start: format(subMonths(new Date(), 12), 'yyyy-MM-dd'),
+      end: format(new Date(), 'yyyy-MM-dd')
+    })
   }
 ];
 

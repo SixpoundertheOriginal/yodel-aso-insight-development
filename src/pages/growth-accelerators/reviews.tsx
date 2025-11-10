@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -46,6 +46,11 @@ import { useMonitoredApps, useUpdateLastChecked } from '@/hooks/useMonitoredApps
 import { useCachedReviews } from '@/hooks/useCachedReviews';
 import { CompetitorComparisonView } from '@/components/reviews/CompetitorComparisonView';
 import { CompetitorManagementPanel } from '@/components/reviews/CompetitorManagementPanel';
+import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
+import { ReviewIntelligenceSummary } from '@/components/reviews/ReviewIntelligenceSummary';
+import { ProductFrictionStrengths } from '@/components/reviews/ProductFrictionStrengths';
+import { AIRecommendationsPanel } from '@/components/reviews/AIRecommendationsPanel';
+import { DateRangePicker } from '@/components/DateRangePicker';
 
 
 interface AppSearchResult {
@@ -130,8 +135,20 @@ const ReviewManagementPage: React.FC = () => {
   const [sentimentFilter, setSentimentFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all');
   const [textQuery, setTextQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'rating_high' | 'rating_low'>('newest');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  // Initialize with Last 30 days as default (matching quickRange default)
+  const getDefaultDateRange = () => {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29); // 29 days ago + today = 30 days
+    return {
+      start: thirtyDaysAgo.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0]
+    };
+  };
+
+  const defaultRange = getDefaultDateRange();
+  const [fromDate, setFromDate] = useState<string>(defaultRange.start);
+  const [toDate, setToDate] = useState<string>(defaultRange.end);
   const [quickRange, setQuickRange] = useState<'all' | '7d' | '30d' | '90d' | '1y' | 'custom'>('30d');
 
   // Development self-test state; only for super admins without an assigned org (platform scope)
@@ -143,9 +160,68 @@ const ReviewManagementPage: React.FC = () => {
   const { data: monitoredApps } = useMonitoredApps(organizationId);
   const updateLastChecked = useUpdateLastChecked();
 
+  // Shared state for Reviews and Theme Analysis
+  const { setSelectedApp: setSharedSelectedApp, isAppMonitored: checkAppMonitored } = useReviewAnalysis();
+
   const isAppMonitored = monitoredApps?.some(
     app => app.app_store_id === selectedApp?.appId && app.primary_country === selectedCountry
   );
+
+  // Get monitored app details for cached reviews
+  const monitoredAppDetails = monitoredApps?.find(
+    ma => ma.app_store_id === selectedApp?.appId && ma.primary_country === selectedCountry
+  );
+  const monitoredAppId = monitoredAppDetails?.id;
+
+  // Build params for useCachedReviews (only when app is monitored)
+  const cachedReviewsParams = selectedApp && isAppMonitored && monitoredAppId && organizationId
+    ? {
+        monitoredAppId,
+        appStoreId: selectedApp.appId,
+        country: selectedCountry,
+        organizationId,
+        forceRefresh: false
+      }
+    : null;
+
+  // Use cached reviews hook for monitored apps
+  const {
+    data: cachedReviewsData,
+    isLoading: cachedReviewsLoading,
+    error: cachedReviewsError,
+    refetch: refetchCachedReviews
+  } = useCachedReviews(cachedReviewsParams);
+
+  // When cached reviews are loaded, populate reviews state
+  React.useEffect(() => {
+    if (cachedReviewsData && cachedReviewsData.reviews.length > 0) {
+      console.log('[Reviews] Setting reviews from cache:', {
+        count: cachedReviewsData.reviews.length,
+        fromCache: cachedReviewsData.fromCache,
+        cacheAge: cachedReviewsData.cacheAge
+      });
+
+      setReviews(cachedReviewsData.reviews);
+      setCurrentPage(1);
+      setHasMoreReviews(false); // Cached reviews don't support pagination yet
+
+      const source = cachedReviewsData.fromCache
+        ? `from cache (${Math.floor((cachedReviewsData.cacheAge || 0) / 60)} min old)`
+        : 'from iTunes (cached)';
+      toast.success(`Loaded ${cachedReviewsData.reviews.length} reviews ${source}`);
+    }
+  }, [cachedReviewsData]);
+
+  // Handle cache errors
+  React.useEffect(() => {
+    if (cachedReviewsError && isAppMonitored) {
+      console.error('[Reviews] Cache error, falling back to manual fetch:', cachedReviewsError);
+      // Don't show error - fallback will happen automatically
+    }
+  }, [cachedReviewsError, isAppMonitored]);
+
+  // Combine loading states (manual fetch + cached reviews fetch)
+  const isLoadingReviews = reviewsLoading || (isAppMonitored && cachedReviewsLoading);
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
@@ -279,6 +355,32 @@ const ReviewManagementPage: React.FC = () => {
 
   // Demo preset auto-select removed: require manual app selection in demo mode
 
+  // Watch for when an app becomes monitored and update shared state
+  React.useEffect(() => {
+    if (selectedApp && isAppMonitored && monitoredApps) {
+      const monitoredApp = monitoredApps.find(
+        ma => ma.app_store_id === selectedApp.appId && ma.primary_country === selectedCountry
+      );
+
+      if (monitoredApp) {
+        console.log('[Reviews] App became monitored, updating shared state:', selectedApp.name);
+        setSharedSelectedApp({
+          appId: selectedApp.appId,
+          appStoreId: selectedApp.appId,
+          name: selectedApp.name,
+          developer: selectedApp.developer,
+          icon: selectedApp.icon,
+          country: selectedCountry,
+          rating: selectedApp.rating,
+          reviewCount: selectedApp.reviews,
+          category: selectedApp.applicationCategory,
+          monitoredAppId: monitoredApp.id,
+          lastSelectedAt: Date.now()
+        });
+      }
+    }
+  }, [isAppMonitored, selectedApp, monitoredApps, selectedCountry, setSharedSelectedApp]);
+
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
     setSelectedApp(app);
@@ -294,12 +396,47 @@ const ReviewManagementPage: React.FC = () => {
     setFromDate(start);
     setToDate(end);
     setQuickRange('30d');
-    fetchReviews(app.appId, 1);
+
+    // Check if app is already monitored
+    const isMonitored = checkAppMonitored(app.appId, selectedCountry);
+
+    if (isMonitored) {
+      // For monitored apps, useCachedReviews hook will fetch automatically
+      console.log('[Reviews] Monitored app selected, will use cached reviews:', app.name);
+    } else {
+      // For non-monitored apps, use manual fetch as before
+      console.log('[Reviews] Non-monitored app selected, fetching reviews manually:', app.name);
+      fetchReviews(app.appId, 1);
+    }
+
+    // Save to shared state if app is monitored
+    if (checkAppMonitored(app.appId, selectedCountry)) {
+      const monitoredApp = monitoredApps?.find(
+        ma => ma.app_store_id === app.appId && ma.primary_country === selectedCountry
+      );
+
+      if (monitoredApp) {
+        console.log('[Reviews] Saving monitored app to shared state:', app.name);
+        setSharedSelectedApp({
+          appId: app.appId,
+          appStoreId: app.appId,
+          name: app.name,
+          developer: app.developer,
+          icon: app.icon,
+          country: selectedCountry,
+          rating: app.rating,
+          reviewCount: app.reviews,
+          category: app.applicationCategory,
+          monitoredAppId: monitoredApp.id,
+          lastSelectedAt: Date.now()
+        });
+      }
+    }
   };
 
   // Load more reviews
   const handleLoadMore = () => {
-    if (selectedApp && hasMoreReviews && !reviewsLoading) {
+    if (selectedApp && hasMoreReviews && !isLoadingReviews) {
       fetchReviews(selectedApp.appId, currentPage + 1, true);
     }
   };
@@ -382,12 +519,6 @@ const ReviewManagementPage: React.FC = () => {
     setFromDate(start);
     setToDate(end);
   };
-
-  // Default the page to last 30 days on first render
-  React.useEffect(() => {
-    applyQuickRange('30d');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Very lightweight sentiment estimation (client-only, Phase 1)
   const estimateSentiment = (r: ReviewItem): 'positive' | 'neutral' | 'negative' => {
@@ -576,21 +707,120 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [reviews]);
 
+  // Use enhanced reviews for processing
+  const processedReviews = enhancedReviews;
+
+  // AI Insight Filter State (needed for filteredReviews)
+  const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
+    type: 'sentiment' | 'theme' | 'issue' | 'feature' | null;
+    value: string | null;
+  }>({ type: null, value: null });
+
+  const filteredReviews = useMemo(() => {
+    console.log('📅 [FILTER] filteredReviews useMemo running - fromDate:', fromDate, 'toDate:', toDate);
+    let list = processedReviews;
+    console.log('📅 [FILTER] Starting with', list.length, 'reviews');
+
+    // Apply standard filters
+    if (ratingFilter !== 'all') {
+      list = list.filter(r => r.rating === ratingFilter);
+    }
+    if (sentimentFilter !== 'all') {
+      list = list.filter(r => (r as any).sentiment === sentimentFilter);
+    }
+    if (textQuery.trim()) {
+      const q = textQuery.toLowerCase();
+      list = list.filter(r =>
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.text || '').toLowerCase().includes(q) ||
+        (r.author || '').toLowerCase().includes(q)
+      );
+    }
+
+    // AI Insight-based filtering (NEW)
+    if (selectedInsightFilter.type && selectedInsightFilter.value) {
+      const { type, value } = selectedInsightFilter;
+
+      if (type === 'sentiment') {
+        list = list.filter(r => (r as any).sentiment === value);
+      } else if (type === 'theme') {
+        list = list.filter(r =>
+          r.extractedThemes?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'issue') {
+        list = list.filter(r =>
+          r.identifiedIssues?.includes(value) ||
+          r.text?.toLowerCase().includes(value.toLowerCase())
+        );
+      } else if (type === 'feature') {
+        list = list.filter(r =>
+          r.mentionedFeatures?.includes(value) ||
+          r.text?.toLowerCase().includes(value)
+        );
+      }
+    }
+
+    // Date filtering with debug logging
+    if (fromDate) {
+      const from = new Date(fromDate).getTime();
+      console.log('📅 [FILTER] Applying fromDate filter:', fromDate, '(timestamp:', from, ')');
+      const beforeFilter = list.length;
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t >= from;
+      });
+      console.log('📅 [FILTER] After fromDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
+    }
+    if (toDate) {
+      // Add end of day (23:59:59.999) to include all reviews from toDate
+      const toDateEnd = new Date(toDate);
+      toDateEnd.setHours(23, 59, 59, 999);
+      const to = toDateEnd.getTime();
+      console.log('📅 [FILTER] Applying toDate filter:', toDate, '(timestamp:', to, ')');
+      const beforeFilter = list.length;
+      list = list.filter(r => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t <= to;
+      });
+      console.log('📅 [FILTER] After toDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
+    }
+
+    // Sorting
+    const sorted = [...list];
+    switch (sortBy) {
+      case 'newest':
+        sorted.sort((a, b) => (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime()));
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime()));
+        break;
+      case 'rating_high':
+        sorted.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'rating_low':
+        sorted.sort((a, b) => a.rating - b.rating);
+        break;
+    }
+    console.log('📅 [FILTER] Final filtered count:', sorted.length);
+    return sorted;
+  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
+
   // Generate comprehensive AI intelligence from enhanced reviews
   const reviewIntelligence = useMemo(() => {
-    console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
-      return { 
-        themes: [], 
-        featureMentions: [], 
-        issuePatterns: [] 
+    console.log('🔍 DATA DEBUG [INTELLIGENCE]: Processing reviews count:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
+      return {
+        themes: [],
+        featureMentions: [],
+        issuePatterns: []
       };
     }
-    
+
     try {
       // Try engine first, fallback to manual extraction if needed
-      const engineResult = extractReviewIntelligence(enhancedReviews);
+      const engineResult = extractReviewIntelligence(filteredReviews);
       console.log('🔍 DATA DEBUG [ENGINE]: Engine result themes:', engineResult?.themes?.length || 0);
       
       if (engineResult?.themes?.length > 0) {
@@ -599,12 +829,12 @@ const ReviewManagementPage: React.FC = () => {
       
       // Fallback: Manual intelligence extraction
       console.log('🔍 DATA DEBUG [FALLBACK]: Using manual intelligence extraction');
-      
+
       const themeMap = new Map<string, { count: number; sentiment: number[]; examples: string[]; trending: 'up' | 'down' | 'stable' }>();
       const featureMap = new Map<string, { count: number; sentiment: number[]; impact: 'high' | 'medium' | 'low' }>();
       const issueMap = new Map<string, { count: number; severity: 'critical' | 'major' | 'minor'; affectedVersions: string[]; firstSeen: Date }>();
-      
-      enhancedReviews.forEach(review => {
+
+      filteredReviews.forEach(review => {
         // Process themes
         review.extractedThemes?.forEach(theme => {
           if (!themeMap.has(theme)) {
@@ -690,35 +920,35 @@ const ReviewManagementPage: React.FC = () => {
         issuePatterns: []
       };
     }
-  }, [enhancedReviews]);
+  }, [filteredReviews]);
 
   // Generate comprehensive actionable insights
   const actionableInsights = useMemo(() => {
-    console.log('🔍 DATA DEBUG [INSIGHTS]: Generating insights for reviews:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
-      return { 
-        priorityIssues: [], 
-        improvements: [], 
-        alerts: [] 
+    console.log('🔍 DATA DEBUG [INSIGHTS]: Generating insights for reviews:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
+      return {
+        priorityIssues: [],
+        improvements: [],
+        alerts: []
       };
     }
-    
+
     try {
       // Try engine first, fallback if needed
-      const engineResult = reviewIntelligence ? generateActionableInsights(enhancedReviews, reviewIntelligence) : null;
-      
+      const engineResult = reviewIntelligence ? generateActionableInsights(filteredReviews, reviewIntelligence) : null;
+
       if (engineResult?.priorityIssues?.length > 0 || engineResult?.improvements?.length > 0) {
         return engineResult;
       }
-      
+
       // Fallback: Generate insights manually
       const priorityIssues: any[] = [];
       const improvements: any[] = [];
       const alerts: any[] = [];
-      
+
       // Analyze for critical issues
-      const negativeReviews = enhancedReviews.filter(r => r.rating <= 2);
+      const negativeReviews = filteredReviews.filter(r => r.rating <= 2);
       const issueFrequency = new Map<string, number>();
       
       negativeReviews.forEach(review => {
@@ -741,9 +971,9 @@ const ReviewManagementPage: React.FC = () => {
       });
       
       // Generate improvements from positive reviews
-      const positiveReviews = enhancedReviews.filter(r => r.rating >= 4);
+      const positiveReviews = filteredReviews.filter(r => r.rating >= 4);
       const featureRequests = new Map<string, number>();
-      
+
       positiveReviews.forEach(review => {
         const text = review.text?.toLowerCase() || '';
         if (text.includes('would be great') || text.includes('wish') || text.includes('add')) {
@@ -752,7 +982,7 @@ const ReviewManagementPage: React.FC = () => {
           });
         }
       });
-      
+
       featureRequests.forEach((count, feature) => {
         improvements.push({
           opportunity: `Enhance ${feature}`,
@@ -761,9 +991,9 @@ const ReviewManagementPage: React.FC = () => {
           description: `${count} users mentioned wanting improvements to ${feature}`
         });
       });
-      
+
       // Generate alerts for concerning trends
-      const negativePercentage = (negativeReviews.length / enhancedReviews.length) * 100;
+      const negativePercentage = (negativeReviews.length / filteredReviews.length) * 100;
       if (negativePercentage > 20) {
         alerts.push({
           type: 'warning',
@@ -772,12 +1002,12 @@ const ReviewManagementPage: React.FC = () => {
           impact: 'high'
         });
       }
-      
-      const crashMentions = enhancedReviews.filter(r => 
-        r.text?.toLowerCase().includes('crash') || 
+
+      const crashMentions = filteredReviews.filter(r =>
+        r.text?.toLowerCase().includes('crash') ||
         r.text?.toLowerCase().includes('freeze')
       ).length;
-      
+
       if (crashMentions > 2) {
         alerts.push({
           type: 'critical',
@@ -786,34 +1016,35 @@ const ReviewManagementPage: React.FC = () => {
           impact: 'high'
         });
       }
-      
+
       const result = { priorityIssues, improvements, alerts };
       console.log('🔍 DATA DEBUG [INSIGHTS-RESULT]:', {
         priorityIssuesCount: priorityIssues.length,
         improvementsCount: improvements.length,
         alertsCount: alerts.length
       });
-      
+
       return result;
     } catch (error) {
       console.error('Error in actionable insights generation:', error);
-      return { 
-        priorityIssues: [], 
-        improvements: [], 
-        alerts: [] 
+      return {
+        priorityIssues: [],
+        improvements: [],
+        alerts: []
       };
     }
-  }, [enhancedReviews, reviewIntelligence]);
+  }, [filteredReviews, reviewIntelligence]);
 
   // Enhanced analytics with comprehensive data population
   const reviewAnalytics = useMemo((): ReviewAnalytics => {
-    console.log('🔍 DATA DEBUG [ANALYTICS]: Processing analytics for reviews:', enhancedReviews?.length || 0);
-    
-    if (!enhancedReviews || enhancedReviews.length === 0) {
+    console.log('🔍 DATA DEBUG [ANALYTICS]: Processing analytics for reviews:', filteredReviews?.length || 0);
+
+    if (!filteredReviews || filteredReviews.length === 0) {
       return {
         totalReviews: 0,
         averageRating: 0,
         sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        positivePercentage: 0,
         emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
         topThemes: [],
         criticalIssues: 0,
@@ -822,13 +1053,13 @@ const ReviewManagementPage: React.FC = () => {
     }
 
     try {
-      const totalReviews = enhancedReviews.length;
-      const averageRating = totalReviews > 0 ? 
-        enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
-      
+      const totalReviews = filteredReviews.length;
+      const averageRating = totalReviews > 0 ?
+        filteredReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+
       // Enhanced sentiment calculation
       const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-      enhancedReviews.forEach(r => {
+      filteredReviews.forEach(r => {
         if (r.enhancedSentiment?.overall) {
           sentimentCounts[r.enhancedSentiment.overall]++;
         } else {
@@ -841,8 +1072,8 @@ const ReviewManagementPage: React.FC = () => {
 
       // Enhanced emotional profile with real text analysis
       const emotionalProfile = { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 };
-      
-      enhancedReviews.forEach(r => {
+
+      filteredReviews.forEach(r => {
         if (r.enhancedSentiment?.emotions) {
           // Use existing emotions if available
           Object.keys(emotionalProfile).forEach(emotion => {
@@ -889,6 +1120,8 @@ const ReviewManagementPage: React.FC = () => {
         });
       }
 
+      const positivePercentage = totalReviews > 0 ? Number(((sentimentCounts.positive / totalReviews) * 100).toFixed(0)) : 0;
+
       const result = {
         totalReviews,
         averageRating: Number(averageRating.toFixed(2)),
@@ -897,6 +1130,7 @@ const ReviewManagementPage: React.FC = () => {
           neutral: totalReviews > 0 ? Number(((sentimentCounts.neutral / totalReviews) * 100).toFixed(1)) : 0,
           negative: totalReviews > 0 ? Number(((sentimentCounts.negative / totalReviews) * 100).toFixed(1)) : 0,
         },
+        positivePercentage,
         emotionalProfile: {
           joy: Number(emotionalProfile.joy.toFixed(1)),
           frustration: Number(emotionalProfile.frustration.toFixed(1)),
@@ -913,6 +1147,7 @@ const ReviewManagementPage: React.FC = () => {
         totalReviews: result.totalReviews,
         averageRating: result.averageRating,
         sentimentDist: result.sentimentDistribution,
+        positivePercentage: result.positivePercentage,
         topThemes: result.topThemes.length,
         criticalIssues: result.criticalIssues
       });
@@ -921,121 +1156,37 @@ const ReviewManagementPage: React.FC = () => {
     } catch (error) {
       console.error('Error in review analytics calculation:', error);
       return {
-        totalReviews: enhancedReviews.length,
-        averageRating: enhancedReviews.length > 0 ? enhancedReviews.reduce((sum, r) => sum + r.rating, 0) / enhancedReviews.length : 0,
+        totalReviews: filteredReviews.length,
+        averageRating: filteredReviews.length > 0 ? filteredReviews.reduce((sum, r) => sum + r.rating, 0) / filteredReviews.length : 0,
         sentimentDistribution: { positive: 0, neutral: 0, negative: 0 },
+        positivePercentage: 0,
         emotionalProfile: { joy: 0, frustration: 0, excitement: 0, disappointment: 0, anger: 0 },
         topThemes: [],
         criticalIssues: 0,
         trendingTopics: []
       };
     }
-  }, [enhancedReviews, reviewIntelligence]);
-
-  // AI Insight Filter State
-  const [selectedInsightFilter, setSelectedInsightFilter] = useState<{
-    type: 'sentiment' | 'theme' | 'issue' | 'feature' | null;
-    value: string | null;
-  }>({ type: null, value: null });
+  }, [filteredReviews, reviewIntelligence]);
 
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<'reviews' | 'competitors'>('reviews');
 
-  // Use enhanced reviews for processing
-  const processedReviews = enhancedReviews;
-
-  const filteredReviews = useMemo(() => {
-    let list = processedReviews;
-    
-    // Apply standard filters
-    if (ratingFilter !== 'all') {
-      list = list.filter(r => r.rating === ratingFilter);
-    }
-    if (sentimentFilter !== 'all') {
-      list = list.filter(r => (r as any).sentiment === sentimentFilter);
-    }
-    if (textQuery.trim()) {
-      const q = textQuery.toLowerCase();
-      list = list.filter(r =>
-        (r.title || '').toLowerCase().includes(q) ||
-        (r.text || '').toLowerCase().includes(q) ||
-        (r.author || '').toLowerCase().includes(q)
-      );
-    }
-
-    // AI Insight-based filtering (NEW)
-    if (selectedInsightFilter.type && selectedInsightFilter.value) {
-      const { type, value } = selectedInsightFilter;
-      
-      if (type === 'sentiment') {
-        list = list.filter(r => (r as any).sentiment === value);
-      } else if (type === 'theme') {
-        list = list.filter(r => 
-          r.extractedThemes?.includes(value) ||
-          r.text?.toLowerCase().includes(value.toLowerCase())
-        );
-      } else if (type === 'issue') {
-        list = list.filter(r => 
-          r.identifiedIssues?.includes(value) ||
-          r.text?.toLowerCase().includes(value.toLowerCase())
-        );
-      } else if (type === 'feature') {
-        list = list.filter(r => 
-          r.mentionedFeatures?.includes(value) ||
-          r.text?.toLowerCase().includes(value)
-        );
-      }
-    }
-    if (fromDate) {
-      const from = new Date(fromDate).getTime();
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t >= from;
-      });
-    }
-    if (toDate) {
-      const to = new Date(toDate).getTime();
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t <= to;
-      });
-    }
-
-    // Sorting
-    const sorted = [...list];
-    switch (sortBy) {
-      case 'newest':
-        sorted.sort((a, b) => (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime()));
-        break;
-      case 'oldest':
-        sorted.sort((a, b) => (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime()));
-        break;
-      case 'rating_high':
-        sorted.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'rating_low':
-        sorted.sort((a, b) => a.rating - b.rating);
-        break;
-    }
-    return sorted;
-  }, [processedReviews, ratingFilter, sentimentFilter, textQuery, fromDate, toDate, sortBy, selectedInsightFilter]);
-
-  // Chart data
+  // Chart data - Use filteredReviews to respect date range
   const ratingDistribution = useMemo(() => {
     const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    processedReviews.forEach(r => { if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++; });
+    filteredReviews.forEach(r => { if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++; });
     return [1,2,3,4,5].map(v => ({ rating: `${v}★`, count: counts[v] }));
-  }, [processedReviews]);
+  }, [filteredReviews]);
 
   const sentimentBreakdown = useMemo(() => {
     const counts: Record<string, number> = { positive: 0, neutral: 0, negative: 0 };
-    processedReviews.forEach(r => { counts[(r as any).sentiment] = (counts[(r as any).sentiment] || 0) + 1; });
+    filteredReviews.forEach(r => { counts[(r as any).sentiment] = (counts[(r as any).sentiment] || 0) + 1; });
     return [
       { label: 'Positive', key: 'positive', count: counts.positive },
       { label: 'Neutral', key: 'neutral', count: counts.neutral },
       { label: 'Negative', key: 'negative', count: counts.negative },
     ];
-  }, [processedReviews]);
+  }, [filteredReviews]);
 
   // Summary metrics
   const summary = useMemo(() => {
@@ -1447,44 +1598,79 @@ const ReviewManagementPage: React.FC = () => {
       {selectedApp && (
         <YodelCard variant="elevated" padding="md" className="shadow-md">
           <YodelCardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {selectedApp.icon && (
-                  <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
-                )}
-                <div className="flex flex-col">
-                  <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
-                    <span>Reviews for {selectedApp.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StarRating rating={Math.round(selectedApp?.rating || 0)} />
-                    <span className="text-xs text-muted-foreground">
-                      {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
-                    </span>
+            <div className="space-y-4">
+              {/* Top row: App info and actions */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {selectedApp.icon && (
+                    <img src={selectedApp.icon} alt={selectedApp.name} className="w-10 h-10 rounded-lg shadow" />
+                  )}
+                  <div className="flex flex-col">
+                    <div className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      <span>Reviews for {selectedApp.name}</span>
+                      <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <StarRating rating={Math.round(selectedApp?.rating || 0)} />
+                      <span className="text-xs text-muted-foreground">
+                        {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  {organizationId && (
+                    <AddToMonitoringButton
+                      organizationId={organizationId}
+                      appStoreId={selectedApp.appId}
+                      appName={selectedApp.name}
+                      appIconUrl={selectedApp.icon}
+                      developerName={selectedApp.developer}
+                      category={selectedApp.applicationCategory}
+                      country={selectedCountry}
+                      rating={selectedApp.rating}
+                      reviewCount={selectedApp.reviews}
+                      isMonitored={isAppMonitored}
+                    />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
+                    Search Another
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {organizationId && (
-                  <AddToMonitoringButton
-                    organizationId={organizationId}
-                    appStoreId={selectedApp.appId}
-                    appName={selectedApp.name}
-                    appIconUrl={selectedApp.icon}
-                    developerName={selectedApp.developer}
-                    category={selectedApp.applicationCategory}
-                    country={selectedCountry}
-                    rating={selectedApp.rating}
-                    reviewCount={selectedApp.reviews}
-                    isMonitored={isAppMonitored}
-                  />
+
+              {/* Date Range Picker */}
+              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground mr-2">Date Range:</span>
+                <DateRangePicker
+                  dateRange={{ start: fromDate, end: toDate }}
+                  onDateRangeChange={(range) => {
+                    console.log('📅 [ReviewPage] Date range changed:', range);
+                    setFromDate(range.start);
+                    setToDate(range.end);
+                    setQuickRange('custom');
+                    console.log('📅 [ReviewPage] State updated - fromDate:', range.start, 'toDate:', range.end);
+                  }}
+                  className="min-w-[280px]"
+                />
+                {fromDate && toDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFromDate('');
+                      setToDate('');
+                      setQuickRange('all');
+                    }}
+                    className="h-8"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
-                  Search Another
-                </Button>
               </div>
             </div>
           </YodelCardHeader>
@@ -1598,8 +1784,30 @@ const ReviewManagementPage: React.FC = () => {
                 </div>
               </Card>
             </div>
-            
-            {/* AI Analytics Section - Collapsible */}
+
+            {/* AI Intelligence Hub - ALWAYS visible when reviews loaded */}
+            {reviews.length > 0 && reviewIntelligence && actionableInsights && (
+              <div className="space-y-6 mt-6">
+                {/* AI Summary */}
+                <ReviewIntelligenceSummary
+                  intelligence={reviewIntelligence}
+                  insights={actionableInsights}
+                  analytics={reviewAnalytics}
+                />
+
+                {/* Product Friction & Strengths */}
+                <ProductFrictionStrengths
+                  issuePatterns={reviewIntelligence.issuePatterns}
+                  featureMentions={reviewIntelligence.featureMentions}
+                  totalReviews={reviews.length}
+                />
+
+                {/* AI Recommendations */}
+                <AIRecommendationsPanel insights={actionableInsights} />
+              </div>
+            )}
+
+            {/* Detailed Analytics & Charts Section - Collapsible */}
             {reviews.length > 0 && (
               <CollapsibleAnalyticsSection
                 reviews={enhancedReviews}
@@ -1664,26 +1872,6 @@ const ReviewManagementPage: React.FC = () => {
               {/* Text search */}
               <div className="min-w-[220px]">
                 <Input placeholder="Search title, text, author" value={textQuery} onChange={e => setTextQuery(e.target.value)} />
-              </div>
-              {/* Date range */}
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                <Select value={quickRange} onValueChange={(v: any) => applyQuickRange(v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All time</SelectItem>
-                    <SelectItem value="7d">Last 7 days</SelectItem>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                    <SelectItem value="90d">Last 90 days</SelectItem>
-                    <SelectItem value="1y">Last year</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
-                <span className="text-xs text-muted-foreground">to</span>
-                <Input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setQuickRange('custom'); }} className="w-36" />
               </div>
               {/* Sort */}
               <div className="flex items-center gap-2">
@@ -1839,8 +2027,8 @@ const ReviewManagementPage: React.FC = () => {
                   Page {currentPage} • {reviews.length} reviews loaded
                 </p>
                 {hasMoreReviews && (
-                  <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={reviewsLoading}>
-                    {reviewsLoading ? 'Loading...' : 'Load More'}
+                  <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={isLoadingReviews}>
+                    {isLoadingReviews ? 'Loading...' : 'Load More'}
                   </Button>
                 )}
               </div>
@@ -1965,14 +2153,14 @@ const ReviewManagementPage: React.FC = () => {
               </div>
             )}
 
-            {filteredReviews.length === 0 && !reviewsLoading && (
+            {filteredReviews.length === 0 && !isLoadingReviews && (
               <div className="text-center py-8 text-muted-foreground">
                 <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>{reviews.length === 0 ? 'Select an app to fetch reviews' : 'No reviews match current filters'}</p>
               </div>
             )}
 
-            {reviewsLoading && (
+            {isLoadingReviews && (
               <div className="text-center py-8">
                 <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
                 <p className="text-muted-foreground">Loading reviews...</p>

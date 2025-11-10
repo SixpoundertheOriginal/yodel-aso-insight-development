@@ -64,14 +64,19 @@ export function analyzeEnhancedSentiment(reviewText: string, rating: number): En
  * Extract themes, patterns and intelligence from review collection
  */
 export function extractReviewIntelligence(reviews: EnhancedReviewItem[]): ReviewIntelligence {
+  console.log('🔍 [ENGINE] extractReviewIntelligence called with', reviews.length, 'reviews');
+
   // Theme extraction using frequency analysis and clustering
   const themes = extractThemes(reviews);
-  
+  console.log('🔍 [ENGINE] Extracted themes:', themes.length, themes.map(t => `${t.theme}(${t.frequency})`));
+
   // Feature mention tracking
   const featureMentions = extractFeatureMentions(reviews);
-  
+  console.log('🔍 [ENGINE] Extracted features:', featureMentions.length, featureMentions.map(f => `${f.feature}(${f.mentions})`));
+
   // Issue pattern recognition
   const issuePatterns = extractIssuePatterns(reviews);
+  console.log('🔍 [ENGINE] Extracted issues:', issuePatterns.length, issuePatterns.map(i => `${i.issue}(${i.frequency}, ${i.severity})`));
 
   return {
     themes,
@@ -87,6 +92,9 @@ export function generateActionableInsights(
   reviews: EnhancedReviewItem[],
   intelligence: ReviewIntelligence
 ): ActionableInsights {
+  console.log('🔍 [ENGINE] generateActionableInsights called with', reviews.length, 'reviews');
+  console.log('🔍 [ENGINE] Intelligence has:', intelligence.issuePatterns.length, 'issues,', intelligence.featureMentions.length, 'features');
+
   // Priority issues based on frequency and impact
   const priorityIssues = intelligence.issuePatterns
     .filter(issue => issue.severity === 'critical' || issue.frequency > reviews.length * 0.1)
@@ -95,12 +103,14 @@ export function generateActionableInsights(
       impact: Math.min(issue.frequency / reviews.length, 1),
       affectedUsers: Math.floor(issue.frequency * 10), // Estimate based on frequency
       recommendation: generateRecommendation(issue),
-      urgency: issue.severity === 'critical' ? 'immediate' as const : 
+      urgency: issue.severity === 'critical' ? 'immediate' as const :
                issue.frequency > reviews.length * 0.2 ? 'high' as const :
                issue.frequency > reviews.length * 0.1 ? 'medium' as const : 'low' as const
     }))
     .sort((a, b) => b.impact - a.impact)
     .slice(0, 5);
+
+  console.log('🔍 [ENGINE] Generated priority issues:', priorityIssues.length);
 
   // Improvement opportunities from positive feedback patterns
   const improvements = intelligence.featureMentions
@@ -115,8 +125,12 @@ export function generateActionableInsights(
     .sort((a, b) => b.roi - a.roi)
     .slice(0, 3);
 
+  console.log('🔍 [ENGINE] Generated improvements:', improvements.length);
+
   // Trend alerts for significant changes
   const alerts = generateTrendAlerts(reviews, intelligence);
+
+  console.log('🔍 [ENGINE] Generated alerts:', alerts.length);
 
   return {
     priorityIssues,
@@ -231,28 +245,40 @@ function extractThemes(reviews: EnhancedReviewItem[]): ReviewIntelligence['theme
 }
 
 function extractFeatureMentions(reviews: EnhancedReviewItem[]): ReviewIntelligence['featureMentions'] {
-  const features = [
-    'dark mode', 'notifications', 'search', 'filter', 'export', 'sync',
-    'backup', 'sharing', 'offline mode', 'widgets', 'themes', 'customization'
-  ];
-  
+  // Enhanced feature patterns with multiple keyword variations (aligned with per-review extraction)
+  const featurePatterns: Record<string, string[]> = {
+    'dark mode': ['dark mode', 'night mode', 'dark theme'],
+    'notifications': ['notification', 'alert', 'remind', 'push notification'],
+    'search functionality': ['search', 'find', 'look for', 'searching'],
+    'offline mode': ['offline', 'without internet', 'no connection', 'offline mode'],
+    'sync': ['sync', 'synchronize', 'backup', 'cloud sync'],
+    'export data': ['export', 'download', 'save', 'export data'],
+    'sharing': ['share', 'send', 'forward', 'sharing'],
+    'customization': ['customize', 'personalize', 'settings', 'custom'],
+    'voice input': ['voice', 'speech', 'dictate', 'voice input'],
+    'widgets': ['widget', 'shortcut', 'quick access', 'home screen']
+  };
+
   const featureMap = new Map<string, { count: number, sentiments: number[] }>();
-  
+
   reviews.forEach(review => {
     const text = review.text?.toLowerCase() || '';
-    const sentiment = review.enhancedSentiment?.overall === 'positive' ? 1 : 
+    const sentiment = review.enhancedSentiment?.overall === 'positive' ? 1 :
                      review.enhancedSentiment?.overall === 'negative' ? -1 : 0;
-    
-    features.forEach(feature => {
-      if (text.includes(feature)) {
-        const existing = featureMap.get(feature) || { count: 0, sentiments: [] };
+
+    // Check each feature pattern
+    Object.entries(featurePatterns).forEach(([featureName, keywords]) => {
+      const hasFeature = keywords.some(keyword => text.includes(keyword));
+
+      if (hasFeature) {
+        const existing = featureMap.get(featureName) || { count: 0, sentiments: [] };
         existing.count++;
         existing.sentiments.push(sentiment);
-        featureMap.set(feature, existing);
+        featureMap.set(featureName, existing);
       }
     });
   });
-  
+
   return Array.from(featureMap.entries())
     .filter(([_, data]) => data.count > 0)
     .map(([feature, data]) => ({
@@ -265,23 +291,49 @@ function extractFeatureMentions(reviews: EnhancedReviewItem[]): ReviewIntelligen
 }
 
 function extractIssuePatterns(reviews: EnhancedReviewItem[]): ReviewIntelligence['issuePatterns'] {
-  const issues = [
-    'app crashes', 'won\'t load', 'login problems', 'sync issues', 'slow performance',
-    'battery drain', 'data loss', 'payment issues', 'notification problems', 'ui bugs'
-  ];
-  
+  // Enhanced issue patterns with multiple keyword variations (aligned with per-review extraction)
+  const issuePatterns: Record<string, string[]> = {
+    'app crashes': ['crash', 'crashes', 'freeze', 'frozen', 'stuck'],
+    'login failures': ['can\'t login', 'login failed', 'won\'t sign in', 'login problem', 'cannot log in'],
+    'loading problems': ['won\'t load', 'loading forever', 'stuck loading', 'not loading', 'load fail'],
+    'sync errors': ['sync failed', 'won\'t sync', 'sync problem', 'syncing issue', 'not syncing'],
+    'payment issues': ['payment failed', 'can\'t purchase', 'billing error', 'payment problem', 'charge issue'],
+    'slow performance': ['slow', 'laggy', 'sluggish', 'unresponsive', 'performance'],
+    'ui bugs': ['button doesn\'t work', 'interface broken', 'display issue', 'ui bug', 'broken interface'],
+    'data loss': ['lost data', 'deleted', 'missing information', 'data disappeared', 'lost my'],
+    'notification problems': ['notifications not working', 'no alerts', 'notification', 'alerts broken'],
+    'battery drain': ['drains battery', 'battery usage', 'power hungry', 'battery drain', 'kills battery']
+  };
+
   const issueMap = new Map<string, { count: number, firstSeen: Date, versions: Set<string> }>();
-  
+
+  // DEBUG: Sample negative reviews to see what we're missing
+  const negativeReviews = reviews.filter(r => r.rating <= 2);
+  console.log('🔍 [ENGINE-DEBUG] Analyzing', negativeReviews.length, 'negative reviews (rating <= 2)');
+  if (negativeReviews.length > 0 && negativeReviews.length <= 5) {
+    negativeReviews.forEach((r, idx) => {
+      console.log(`🔍 [ENGINE-DEBUG] Negative review ${idx + 1}:`, r.text?.substring(0, 150));
+    });
+  } else if (negativeReviews.length > 5) {
+    console.log('🔍 [ENGINE-DEBUG] Sample negative reviews:');
+    negativeReviews.slice(0, 3).forEach((r, idx) => {
+      console.log(`  ${idx + 1}. "${r.text?.substring(0, 100)}..."`);
+    });
+  }
+
   reviews.forEach(review => {
     const text = review.text?.toLowerCase() || '';
     const reviewDate = review.updated_at ? new Date(review.updated_at) : new Date();
-    
-    issues.forEach(issue => {
-      if (text.includes(issue)) {
-        const existing = issueMap.get(issue) || { 
-          count: 0, 
-          firstSeen: reviewDate, 
-          versions: new Set<string>() 
+
+    // Check each issue pattern
+    Object.entries(issuePatterns).forEach(([issueName, keywords]) => {
+      const hasIssue = keywords.some(keyword => text.includes(keyword));
+
+      if (hasIssue) {
+        const existing = issueMap.get(issueName) || {
+          count: 0,
+          firstSeen: reviewDate,
+          versions: new Set<string>()
         };
         existing.count++;
         if (reviewDate < existing.firstSeen) {
@@ -290,11 +342,57 @@ function extractIssuePatterns(reviews: EnhancedReviewItem[]): ReviewIntelligence
         if (review.version) {
           existing.versions.add(review.version);
         }
-        issueMap.set(issue, existing);
+        issueMap.set(issueName, existing);
       }
     });
   });
-  
+
+  // FALLBACK: If we didn't detect many issues but have lots of negative reviews,
+  // create a generic "user complaints" issue
+  const totalIssuesDetected = Array.from(issueMap.values()).reduce((sum, data) => sum + data.count, 0);
+  const negativeReviewCount = negativeReviews.length;
+
+  console.log('🔍 [ENGINE-DEBUG] Detected', totalIssuesDetected, 'specific issues from', negativeReviewCount, 'negative reviews');
+
+  // If we have negative reviews but didn't detect specific issues for most of them
+  if (negativeReviewCount > 5 && totalIssuesDetected < negativeReviewCount * 0.3) {
+    const unmatchedNegativeReviews = negativeReviewCount - totalIssuesDetected;
+    console.log('🔍 [ENGINE-DEBUG] Adding fallback issue for', unmatchedNegativeReviews, 'unmatched negative reviews');
+
+    // Analyze common complaint words in negative reviews
+    const complaintWords = new Map<string, number>();
+    const problemIndicators = ['bad', 'terrible', 'awful', 'horrible', 'useless', 'worst', 'broken', 'poor',
+                                'disappointed', 'frustrat', 'annoying', 'waste', 'doesn\'t work', 'not work',
+                                'stop', 'hate', 'ridiculous', 'pathetic', 'garbage', 'trash', 'issue', 'problem'];
+
+    negativeReviews.forEach(review => {
+      const text = review.text?.toLowerCase() || '';
+      problemIndicators.forEach(word => {
+        if (text.includes(word)) {
+          complaintWords.set(word, (complaintWords.get(word) || 0) + 1);
+        }
+      });
+    });
+
+    // Create generic issue based on most common complaint words
+    if (unmatchedNegativeReviews >= 3) {
+      const topComplaints = Array.from(complaintWords.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([word]) => word);
+
+      const issueDescription = topComplaints.length > 0
+        ? `general usability issues (${topComplaints.join(', ')})`
+        : 'user experience problems';
+
+      issueMap.set(issueDescription, {
+        count: unmatchedNegativeReviews,
+        firstSeen: negativeReviews[0]?.updated_at ? new Date(negativeReviews[0].updated_at) : new Date(),
+        versions: new Set(negativeReviews.map(r => r.version).filter(Boolean) as string[])
+      });
+    }
+  }
+
   return Array.from(issueMap.entries())
     .filter(([_, data]) => data.count > 0)
     .map(([issue, data]) => ({

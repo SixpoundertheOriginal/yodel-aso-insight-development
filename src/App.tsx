@@ -17,6 +17,7 @@ import { BrandedLoadingSpinner } from "@/components/ui/LoadingSkeleton";
 import ProtectedRoute from "@/components/Auth/ProtectedRoute";
 import SuperAdminGuard from "@/components/Auth/SuperAdminGuard";
 import { SessionSecurityProvider } from "@/components/Auth/SessionSecurityProvider";
+import { ReviewAnalysisProviderWrapper } from "./contexts/ReviewAnalysisProviderWrapper";
 import Overview from "./pages/overview";
 import Index from "./pages/Index";
 
@@ -50,6 +51,7 @@ const ReviewManagement = lazy(() => import("./pages/growth-accelerators/reviews"
 const AppReviewDetailsPage = lazy(() => import("./pages/growth-accelerators/AppReviewDetailsPage"));
 const KeywordIntelligencePage = lazy(() => import("./pages/growth-accelerators/keywords"));
 const CompetitorOverviewPage = lazy(() => import("./pages/growth-accelerators/competitor-overview"));
+const ThemeImpactDashboard = lazy(() => import("./pages/growth-accelerators/theme-impact"));
 import DemoGrowthAcceleratorsLayout from '@/layouts/DemoGrowthAcceleratorsLayout';
 import { ROUTES } from '@/constants/routes';
 const Admin = lazy(() => import("./pages/admin"));
@@ -88,8 +90,9 @@ function App() {
                   <AsoDataProvider>
                   <AppProvider>
                     <ServerAuthProvider>
-                    <AsoAiHubProvider>
-                      <WorkflowProvider>
+                      <ReviewAnalysisProviderWrapper>
+                        <AsoAiHubProvider>
+                          <WorkflowProvider>
                         <Suspense fallback={<BrandedLoadingSpinner />}>
                         <Routes>
                           <Route path="/auth/sign-in" element={<SignIn />} />
@@ -190,6 +193,10 @@ function App() {
                             element={<ProtectedRoute><DemoGrowthAcceleratorsLayout><CompetitorOverviewPage /></DemoGrowthAcceleratorsLayout></ProtectedRoute>}
                           />
                           <Route
+                            path={ROUTES.themeImpact}
+                            element={<ProtectedRoute><ThemeImpactDashboard /></ProtectedRoute>}
+                          />
+                          <Route
                             path="/aso-unified"
                             element={<ProtectedRoute><ASOUnified /></ProtectedRoute>}
                           />
@@ -249,9 +256,10 @@ function App() {
                           <Route path="*" element={<Navigate to="/404" replace />} />
                         </Routes>
                       </Suspense>
-                    </WorkflowProvider>
-                  </AsoAiHubProvider>
-                  </ServerAuthProvider>
+                          </WorkflowProvider>
+                        </AsoAiHubProvider>
+                      </ReviewAnalysisProviderWrapper>
+                    </ServerAuthProvider>
                 </AppProvider>
               </AsoDataProvider>
             </BigQueryAppProvider>

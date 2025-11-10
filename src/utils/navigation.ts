@@ -7,6 +7,7 @@ export interface NavigationItem {
   status?: "active" | "coming_soon" | "under_development" | "beta";
   statusLabel?: string;
   featureKey?: string;
+  children?: NavigationItem[];
 }
 
 export interface FilterOptions {
