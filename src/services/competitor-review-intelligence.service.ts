@@ -584,6 +584,130 @@ class CompetitorReviewIntelligenceService {
 
     return 'Continue monitoring competitive landscape';
   }
+
+  // ============================================================================
+  // PHASE 2 METHODS - Snapshot and Matrix Generation
+  // ============================================================================
+
+  /**
+   * Calculate review velocity (reviews per time period)
+   */
+  calculateReviewVelocity(
+    reviews: EnhancedReviewItem[],
+    days: 7 | 30
+  ): number {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const recentReviews = reviews.filter(r => {
+      if (!r.updated_at) return false;
+      const reviewDate = new Date(r.updated_at);
+      return reviewDate >= cutoffDate;
+    });
+
+    return recentReviews.length;
+  }
+
+  /**
+   * Calculate sentiment percentages from reviews
+   */
+  calculateSentimentPercentages(reviews: EnhancedReviewItem[]): {
+    positive: number;
+    neutral: number;
+    negative: number;
+  } {
+    if (reviews.length === 0) return { positive: 0, neutral: 0, negative: 0 };
+
+    const counts = reviews.reduce((acc, r) => {
+      acc[r.sentiment]++;
+      return acc;
+    }, { positive: 0, neutral: 0, negative: 0 } as Record<string, number>);
+
+    return {
+      positive: (counts.positive / reviews.length) * 100,
+      neutral: (counts.neutral / reviews.length) * 100,
+      negative: (counts.negative / reviews.length) * 100,
+    };
+  }
+
+  /**
+   * Generate feature sentiment matrix for heatmap
+   */
+  generateFeatureSentimentMatrix(
+    primaryApp: CompetitorApp,
+    competitors: CompetitorApp[]
+  ): {
+    features: string[];
+    apps: Array<{ appId: string; appName: string; isPrimary: boolean }>;
+    matrix: Array<{
+      featureName: string;
+      appId: string;
+      sentiment: number | null;
+      mentions: number;
+      isMissing: boolean;
+    }>;
+  } {
+    // Get all unique features across all apps
+    const allFeatures = new Set<string>();
+    const allApps = [primaryApp, ...competitors];
+
+    allApps.forEach(app => {
+      app.intelligence.featureMentions.forEach(f => allFeatures.add(f.feature));
+    });
+
+    const features = Array.from(allFeatures).sort();
+    const apps = allApps.map((app, idx) => ({
+      appId: app.appId,
+      appName: app.appName,
+      isPrimary: idx === 0
+    }));
+
+    // Build matrix
+    const matrix: Array<{
+      featureName: string;
+      appId: string;
+      sentiment: number | null;
+      mentions: number;
+      isMissing: boolean;
+    }> = [];
+
+    features.forEach(featureName => {
+      allApps.forEach(app => {
+        const featureData = app.intelligence.featureMentions.find(f => f.feature === featureName);
+
+        matrix.push({
+          featureName,
+          appId: app.appId,
+          sentiment: featureData ? featureData.sentiment : null,
+          mentions: featureData ? featureData.mentions : 0,
+          isMissing: !featureData
+        });
+      });
+    });
+
+    return { features, apps, matrix };
+  }
+
+  /**
+   * Calculate demand score for a feature (0-100)
+   */
+  calculateDemandScore(
+    mentionCount: number,
+    competitorCount: number,
+    avgSentiment: number
+  ): number {
+    // Normalize components
+    const mentionScore = Math.min(mentionCount / 50, 1); // Cap at 50 mentions = max score
+    const adoptionScore = Math.min(competitorCount / 5, 1); // Cap at 5 competitors
+    const sentimentScore = (avgSentiment + 1) / 2; // Convert -1:1 to 0:1
+
+    // Weighted average
+    return (
+      mentionScore * 0.4 +
+      adoptionScore * 0.3 +
+      sentimentScore * 0.3
+    ) * 100;
+  }
 }
 
 export const competitorReviewIntelligenceService = new CompetitorReviewIntelligenceService();

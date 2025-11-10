@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { CompetitorSelectionDialog } from './CompetitorSelectionDialog';
 import { CompetitiveIntelligencePanel } from './CompetitiveIntelligencePanel';
+import { EnhancedExecutiveSummary } from './EnhancedExecutiveSummary';
+import { BenchmarkOverviewTable } from './BenchmarkOverviewTable';
 import { useCompetitorComparison } from '@/hooks/useCompetitorComparison';
 import type { CompetitiveIntelligence } from '@/services/competitor-review-intelligence.service';
 import { competitorComparisonExportService } from '@/services/competitor-comparison-export.service';
@@ -201,133 +203,11 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
           </div>
         </div>
 
-        {/* Executive Summary Card */}
-        <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 opacity-5 blur-3xl bg-gradient-to-br from-orange-500 to-red-600" />
+        {/* Enhanced Executive Summary */}
+        <EnhancedExecutiveSummary intelligence={intelligence} />
 
-          <div className="relative p-6">
-            <h2 className="text-xl font-bold mb-4">Executive Summary</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left: Overall Assessment */}
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-2">Overall Position</div>
-                  <div className="text-2xl font-bold">{intelligence.summary.overallPosition}</div>
-                </div>
-
-                <div className="space-y-2">
-                  {[intelligence.summary.keyInsight].map((insight, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-sm">
-                      <div className="h-1.5 w-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
-                      <span>{insight}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right: Priority Actions */}
-              <div className="space-y-3">
-                <div className="text-sm text-muted-foreground mb-2">Priority Actions</div>
-                {[intelligence.summary.topPriority].map((action, idx) => (
-                  <Card key={idx} className="p-3 bg-orange-500/5 border-orange-500/20">
-                    <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="text-xs font-bold">#{idx + 1}</Badge>
-                      <div className="text-sm">{action}</div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Benchmark Metrics Bar */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Key Benchmarks</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {/* Average Rating */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                Avg Rating
-              </div>
-              <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-bold">
-                  {intelligence.metrics.avgRating.yours.toFixed(1)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  vs {intelligence.metrics.avgRating.average.toFixed(1)}
-                </div>
-              </div>
-              <div className={cn(
-                "text-xs font-medium",
-                intelligence.metrics.avgRating.yours > intelligence.metrics.avgRating.average
-                  ? "text-green-600"
-                  : "text-red-600"
-              )}>
-                {intelligence.metrics.avgRating.yours > intelligence.metrics.avgRating.average
-                  ? `+${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(1)} better`
-                  : `${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(1)} behind`
-                }
-              </div>
-            </div>
-
-            {/* Average Sentiment */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Avg Sentiment
-              </div>
-              <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-bold">
-                  {(intelligence.metrics.positiveSentiment.yours * 100).toFixed(0)}%
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  vs {(intelligence.metrics.positiveSentiment.average * 100).toFixed(0)}%
-                </div>
-              </div>
-              <div className={cn(
-                "text-xs font-medium",
-                intelligence.metrics.positiveSentiment.yours > intelligence.metrics.positiveSentiment.average
-                  ? "text-green-600"
-                  : "text-red-600"
-              )}>
-                {intelligence.metrics.positiveSentiment.yours > intelligence.metrics.positiveSentiment.average
-                  ? `+${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(0)}% better`
-                  : `${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(0)}% behind`
-                }
-              </div>
-            </div>
-
-            {/* Issues Frequency */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4" />
-                Issue Rate
-              </div>
-              <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-bold">
-                  {(intelligence.metrics.issueFrequency.yours * 100).toFixed(0)}%
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  vs {(intelligence.metrics.issueFrequency.average * 100).toFixed(0)}%
-                </div>
-              </div>
-              <div className={cn(
-                "text-xs font-medium",
-                intelligence.metrics.issueFrequency.yours < intelligence.metrics.issueFrequency.average
-                  ? "text-green-600"
-                  : "text-red-600"
-              )}>
-                {intelligence.metrics.issueFrequency.yours < intelligence.metrics.issueFrequency.average
-                  ? `${((intelligence.metrics.issueFrequency.average - intelligence.metrics.issueFrequency.yours) * 100).toFixed(0)}% fewer issues`
-                  : `${((intelligence.metrics.issueFrequency.yours - intelligence.metrics.issueFrequency.average) * 100).toFixed(0)}% more issues`
-                }
-              </div>
-            </div>
-          </div>
-        </Card>
+        {/* Benchmark Overview Table */}
+        <BenchmarkOverviewTable intelligence={intelligence} />
 
         {/* Competitive Intelligence Panel */}
         <CompetitiveIntelligencePanel intelligence={intelligence} />
