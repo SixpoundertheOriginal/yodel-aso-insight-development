@@ -68,6 +68,94 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
             monitoredAppsMap.set(app.app_store_id, app);
           });
           console.log(`✅ [Comparison] Found ${monitoredApps.length} monitored apps with potential cached data`);
+
+          // OPTIMIZATION: Check if ALL apps have fresh cached data (< 24 hours)
+          // If yes, skip fetching entirely and use cached intelligence
+          if (monitoredApps.length === allApps.length) {
+            console.log('🚀 [Comparison] All apps are monitored - checking cache freshness...');
+
+            let allFresh = true;
+            const freshnessCutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+
+            for (const app of monitoredApps) {
+              const lastChecked = app.last_checked_at ? new Date(app.last_checked_at).getTime() : 0;
+              if (lastChecked < freshnessCutoff) {
+                console.log(`⚠️ [Comparison] ${app.app_name} cache is stale (last checked: ${app.last_checked_at || 'never'})`);
+                allFresh = false;
+                break;
+              }
+            }
+
+            if (allFresh) {
+              console.log('⚡ [Comparison] ALL APPS HAVE FRESH CACHE - Using cached intelligence (instant load)');
+
+              // Load intelligence from snapshots for all apps
+              const intelligencePromises = allApps.map(async (app) => {
+                const monitoredApp = monitoredAppsMap.get(app.id);
+                if (!monitoredApp) return null;
+
+                try {
+                  const intelligenceDashboard = await reviewIntelligenceService.getIntelligenceForApp(
+                    monitoredApp.id,
+                    organizationId
+                  );
+
+                  if (intelligenceDashboard && intelligenceDashboard.intelligence) {
+                    return intelligenceDashboard.intelligence;
+                  }
+                } catch (error) {
+                  console.error(`❌ [Comparison] Failed to load cached intelligence for ${app.name}:`, error);
+                }
+
+                return null;
+              });
+
+              const cachedIntelligences = await Promise.all(intelligencePromises);
+
+              // Check if we got intelligence for all apps
+              if (cachedIntelligences.every(intel => intel !== null)) {
+                console.log('✅ [Comparison] Successfully loaded all cached intelligence - skipping fetch!');
+
+                // Build CompetitorApp objects from cached intelligence
+                const primaryApp: CompetitorApp = {
+                  appId: config.primaryAppId,
+                  appName: config.primaryAppName,
+                  appIcon: config.primaryAppIcon,
+                  rating: config.primaryAppRating,
+                  reviewCount: config.primaryAppReviewCount,
+                  reviews: [], // Empty - not needed for comparison
+                  intelligence: cachedIntelligences[0]!
+                };
+
+                const competitors: CompetitorApp[] = config.competitorAppIds.map((id, idx) => ({
+                  appId: id,
+                  appName: config.competitorAppNames[idx],
+                  appIcon: config.competitorAppIcons[idx],
+                  rating: config.competitorAppRatings[idx],
+                  reviewCount: config.competitorAppReviewCounts[idx],
+                  reviews: [], // Empty - not needed for comparison
+                  intelligence: cachedIntelligences[idx + 1]!
+                }));
+
+                // Generate competitive intelligence from cached data
+                const intelligence = await competitorReviewIntelligenceService.analyzeCompetitors(
+                  primaryApp,
+                  competitors
+                );
+
+                console.log('🎉 [Comparison] Comparison complete (from cache, instant!)', {
+                  featureGaps: intelligence.featureGaps.length,
+                  opportunities: intelligence.opportunities.length,
+                  strengths: intelligence.strengths.length,
+                  threats: intelligence.threats.length,
+                });
+
+                return intelligence;
+              } else {
+                console.log('⚠️ [Comparison] Some cached intelligence missing, falling back to fresh fetch');
+              }
+            }
+          }
         }
       }
 
@@ -224,6 +312,16 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       // Step 3.5: Cache competitor reviews for historical trends (NEW)
       if (organizationId) {
         console.log('💾 [Comparison] Caching competitor reviews for trend analysis...');
+
+        // Build competitor apps array from config
+        const competitorApps = config.competitorAppIds.map((id, idx) => ({
+          id,
+          name: config.competitorAppNames[idx],
+          icon: config.competitorAppIcons[idx],
+          rating: config.competitorAppRatings[idx],
+          reviews: config.competitorAppReviewCounts[idx],
+          developer: '', // Will get from monitored_app if available
+        }));
 
         // Cache reviews for each competitor app
         for (let i = 0; i < competitorApps.length; i++) {
