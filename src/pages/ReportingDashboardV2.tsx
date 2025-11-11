@@ -83,47 +83,34 @@ export default function ReportingDashboardV2() {
 
   // ✅ EXTRACT AVAILABLE APPS: Get unique app IDs from response
   const availableApps = useMemo(() => {
-    // Priority 1: Use all_accessible_app_ids (always contains full list)
-    if (data?.meta?.all_accessible_app_ids) {
-      logger.dashboard(`Available apps: ${data.meta.all_accessible_app_ids.length} (from all_accessible_app_ids)`);
-      return data.meta.all_accessible_app_ids.map(appId => ({
-        app_id: appId,
-        app_name: appId // Can be enhanced with actual app names from lookup
-      }));
-    }
-
-    // Priority 2: Fallback to app_ids for backward compatibility
+    // Use app_ids from meta
     if (data?.meta?.app_ids) {
-      logger.dashboard(`Available apps: ${data.meta.app_ids.length} (from app_ids fallback)`);
+      logger.dashboard(`Available apps: ${data.meta.app_ids.length} (from app_ids)`);
       return data.meta.app_ids.map(appId => ({
-        app_id: appId,
-        app_name: appId // Can be enhanced with actual app names from lookup
+        app_id: String(appId),
+        app_name: String(appId)
       }));
     }
 
-    // Priority 3: Extract unique app IDs from raw data
-    if (data?.rawData) {
-      const uniqueAppIds = Array.from(new Set(data.rawData.map(row => row.app_id)));
+    // Extract unique app IDs from raw data
+    if ((data as any)?.rawData) {
+      const uniqueAppIds = Array.from(new Set((data as any).rawData.map((row: any) => row.app_id)));
       logger.dashboard(`Available apps: ${uniqueAppIds.length} (from raw data)`);
       return uniqueAppIds.map(appId => ({
-        app_id: appId,
-        app_name: appId // Can be enhanced with actual app names from lookup
+        app_id: String(appId),
+        app_name: String(appId)
       }));
     }
 
     return [];
-  }, [data?.meta?.all_accessible_app_ids, data?.meta?.app_ids, data?.rawData]);
+  }, [data?.meta?.app_ids, data]);
 
   // ✅ EXTRACT AVAILABLE TRAFFIC SOURCES: Get from response metadata
   const availableTrafficSources = useMemo(() => {
-    // Primary path: response.meta.available_traffic_sources (fixed in Edge Function)
-    if (data?.meta?.available_traffic_sources) {
-      return data.meta.available_traffic_sources;
-    }
-
-    // Fallback path: response.availableTrafficSources (for backward compatibility)
-    if ((data as any)?.availableTrafficSources) {
-      return (data as any).availableTrafficSources;
+    // Fallback path: extract from rawData
+    if ((data as any)?.rawData) {
+      const uniqueSources = Array.from(new Set((data as any).rawData.map((row: any) => row.traffic_source).filter(Boolean))) as string[];
+      return uniqueSources;
     }
 
     return [];

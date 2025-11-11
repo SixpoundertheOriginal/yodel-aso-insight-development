@@ -129,6 +129,9 @@ const ReviewManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('us');
+  
+  // Competitor comparison state
+  const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
 
   // Local analysis + filters (Phase 1 - client only)
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');

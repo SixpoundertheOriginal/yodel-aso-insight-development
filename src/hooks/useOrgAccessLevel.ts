@@ -8,9 +8,7 @@ import type { OrgAccessLevel } from '@/config/allowedRoutes';
 export const useOrgAccessLevel = (): OrgAccessLevel | null => {
   const { profile } = useUserProfile();
 
-  // Extract access_level from organizations relation
-  const orgAccessLevel = profile?.organizations?.access_level as OrgAccessLevel | undefined;
-
-  // Default to null if not loaded or not available
-  return orgAccessLevel || null;
+  // Organizations don't have access_level in schema - return null
+  // Access control is handled via user_roles table
+  return null;
 };

@@ -10,7 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 const SettingsPage: React.FC = () => {
   const { permissions } = usePermissions();
-  const isAdmin = permissions?.isSuperAdmin || permissions?.isOrgAdmin;
+  const isAdmin = Array.isArray(permissions) ? false : (permissions?.isSuperAdmin || permissions?.isOrganizationAdmin);
 
   return (
     <MainLayout>

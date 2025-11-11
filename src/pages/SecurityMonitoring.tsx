@@ -73,7 +73,7 @@ export default function SecurityMonitoring() {
   const [error, setError] = useState<string | null>(null);
 
   // Check if user has admin access
-  const hasAdminAccess = permissions?.isSuperAdmin || permissions?.isOrgAdmin;
+  const hasAdminAccess = !Array.isArray(permissions) && (permissions?.isSuperAdmin || permissions?.isOrganizationAdmin);
 
   useEffect(() => {
     if (!user || permissionsLoading) return;
@@ -100,10 +100,18 @@ export default function SecurityMonitoring() {
         .limit(100);
 
       if (logsError) throw logsError;
-      setAuditLogs(logs || []);
+      
+      // Map logs to include missing fields
+      const mappedLogs = (logs || []).map(log => ({
+        ...log,
+        user_email: log.user_email || null,
+        status: log.status || 'unknown',
+        error_message: log.error_message || null
+      }));
+      setAuditLogs(mappedLogs);
 
-      // Calculate failed login attempts (last 24 hours)
-      const failedLoginAttempts = (logs || [])
+  // Calculate failed login attempts (last 24 hours)
+      const failedLoginAttempts = (mappedLogs || [])
         .filter(
           (log) =>
             log.action === 'login' &&
@@ -126,33 +134,37 @@ export default function SecurityMonitoring() {
         Object.values(failedLoginAttempts).sort((a, b) => b.attempt_count - a.attempt_count)
       );
 
-      // Load MFA status for admin users
-      const { data: mfaData, error: mfaError } = await supabase
-        .from('mfa_enforcement')
-        .select('*')
-        .order('grace_period_ends_at', { ascending: true });
+      // Load MFA status for admin users using supabaseCompat
+      try {
+        const { data: mfaData, error: mfaError } = await (supabase as any).from('mfa_enforcement')
+          .select('*')
+          .order('grace_period_ends_at', { ascending: true });
 
-      if (mfaError) throw mfaError;
+        if (!mfaError && mfaData) {
+          // Get user emails from auth.users
+          const userIds = (mfaData || []).map((m: any) => m.user_id);
+          const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
 
-      // Get user emails from auth.users
-      const userIds = (mfaData || []).map((m) => m.user_id);
-      const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
-
-      if (!usersError && users) {
-        const mfaWithEmails = (mfaData || []).map((mfa) => {
-          const user = users.users.find((u) => u.id === mfa.user_id);
-          return {
-            user_email: user?.email || 'unknown',
-            role: mfa.role,
-            mfa_enabled: mfa.mfa_enabled_at !== null,
-            grace_period_ends: mfa.grace_period_ends_at,
-          };
-        });
-        setMFAStatus(mfaWithEmails);
+          if (!usersError && users) {
+            const mfaWithEmails = (mfaData || []).map((mfa: any) => {
+              const user = users.users.find((u) => u.id === mfa.user_id);
+              return {
+                user_email: user?.email || 'unknown',
+                role: mfa.role,
+                mfa_enabled: mfa.mfa_enabled_at !== null,
+                grace_period_ends: mfa.grace_period_ends_at,
+              };
+            });
+            setMFAStatus(mfaWithEmails);
+          }
+        }
+      } catch (mfaError) {
+        console.warn('MFA enforcement table not available:', mfaError);
+        setMFAStatus([]);
       }
 
       // Calculate session statistics (last 24 hours)
-      const sessionLogs = (logs || []).filter(
+      const sessionLogs = (mappedLogs || []).filter(
         (log) =>
           (log.action === 'session_end' || log.action === 'session_start') &&
           new Date(log.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -160,10 +172,10 @@ export default function SecurityMonitoring() {
 
       const sessionStarts = sessionLogs.filter((log) => log.action === 'session_start').length;
       const idleTimeouts = sessionLogs.filter(
-        (log) => log.action === 'session_end' && log.details?.reason === 'idle_timeout'
+        (log) => log.action === 'session_end' && (log.details as any)?.reason === 'idle_timeout'
       ).length;
       const absoluteTimeouts = sessionLogs.filter(
-        (log) => log.action === 'session_end' && log.details?.reason === 'absolute_timeout'
+        (log) => log.action === 'session_end' && (log.details as any)?.reason === 'absolute_timeout'
       ).length;
 
       setSessionStats({

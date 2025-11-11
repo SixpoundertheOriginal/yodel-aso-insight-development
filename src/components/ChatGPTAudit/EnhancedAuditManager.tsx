@@ -152,9 +152,9 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
       if (runError) throw runError;
 
       // Copy queries from original run
-      const { data: originalQueries, error: queriesError } = await supabase
+      const { data: originalQueries, error: queriesError } = await (supabase as any)
         .from('chatgpt_queries')
-        .select('id, query_text, query_type, query_category, priority')
+        .select('query_text, query_type, query_category, priority')
         .eq('audit_run_id', originalRun.id)
         .eq('organization_id', organizationId);
 

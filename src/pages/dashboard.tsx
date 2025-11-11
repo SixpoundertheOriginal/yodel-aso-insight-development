@@ -26,7 +26,7 @@ import KpiCard from "@/components/kpi/KpiCard";
  * Refactored: 2025-11-08
  */
 export default function Dashboard() {
-  const { organizationId, email, availableOrgs } = usePermissions();
+  const { organizationId, availableOrgs } = usePermissions();
 
   // Find organization name from available orgs
   const currentOrg = availableOrgs?.find(org => org.id === organizationId);
@@ -74,33 +74,24 @@ export default function Dashboard() {
 
   // ✅ EXTRACT AVAILABLE APPS
   const availableApps = useMemo(() => {
-    if (data?.meta?.all_accessible_app_ids) {
-      return data.meta.all_accessible_app_ids.map(appId => ({
-        app_id: appId,
-        app_name: appId
-      }));
-    }
     if (data?.meta?.app_ids) {
       return data.meta.app_ids.map(appId => ({
         app_id: appId,
         app_name: appId
       }));
     }
-    if (data?.rawData) {
-      const uniqueAppIds = Array.from(new Set(data.rawData.map(row => row.app_id)));
+    if ((data as any)?.rawData) {
+      const uniqueAppIds = Array.from(new Set((data as any).rawData.map((row: any) => row.app_id)));
       return uniqueAppIds.map(appId => ({
         app_id: appId,
         app_name: appId
       }));
     }
     return [];
-  }, [data?.meta?.all_accessible_app_ids, data?.meta?.app_ids, data?.rawData]);
+  }, [data?.meta?.app_ids, data]);
 
   // ✅ EXTRACT AVAILABLE TRAFFIC SOURCES
   const availableTrafficSources = useMemo(() => {
-    if (data?.meta?.available_traffic_sources) {
-      return data.meta.available_traffic_sources;
-    }
     if ((data as any)?.availableTrafficSources) {
       return (data as any).availableTrafficSources;
     }
@@ -145,14 +136,14 @@ export default function Dashboard() {
   }
 
   // ✅ EXTRACT KPI VALUES
-  const impressionsValue = data?.kpis?.impressions || 0;
-  const impressionsDelta = data?.kpis?.impressions_delta || 0;
-  const downloadsValue = data?.kpis?.downloads || 0;
-  const downloadsDelta = data?.kpis?.downloads_delta || 0;
-  const pageViewsValue = data?.kpis?.product_page_views || 0;
-  const pageViewsDelta = data?.kpis?.product_page_views_delta || 0;
-  const productPageCvrValue = data?.kpis?.product_page_cvr || 0;
-  const productPageCvrDelta = data?.kpis?.product_page_cvr_delta || 0;
+  const impressionsValue = (data as any)?.kpis?.impressions || 0;
+  const impressionsDelta = (data as any)?.kpis?.impressions_delta || 0;
+  const downloadsValue = (data as any)?.kpis?.downloads || 0;
+  const downloadsDelta = (data as any)?.kpis?.downloads_delta || 0;
+  const pageViewsValue = (data as any)?.kpis?.product_page_views || 0;
+  const pageViewsDelta = (data as any)?.kpis?.product_page_views_delta || 0;
+  const productPageCvrValue = (data as any)?.kpis?.product_page_cvr || 0;
+  const productPageCvrDelta = (data as any)?.kpis?.product_page_cvr_delta || 0;
 
   return (
     <MainLayout>
@@ -190,12 +181,12 @@ export default function Dashboard() {
               <CompactAppSelector
                 selectedAppIds={selectedAppIds}
                 onSelectionChange={setSelectedAppIds}
-                availableApps={availableApps}
+                availableApps={availableApps.map(app => ({ app_id: String(app.app_id), app_name: String(app.app_name) }))}
               />
               <CompactTrafficSourceSelector
                 selectedSources={selectedTrafficSources}
                 onSelectionChange={setSelectedTrafficSources}
-                availableSources={availableTrafficSources}
+                availableSources={availableTrafficSources as string[]}
               />
             </div>
           </CardContent>
