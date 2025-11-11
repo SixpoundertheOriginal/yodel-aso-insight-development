@@ -221,6 +221,91 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       const primaryAppReviews = analyzeReviews(allReviews[0]);
       const competitorReviews = allReviews.slice(1).map(reviews => analyzeReviews(reviews));
 
+      // Step 3.5: Cache competitor reviews for historical trends (NEW)
+      if (organizationId) {
+        console.log('💾 [Comparison] Caching competitor reviews for trend analysis...');
+
+        // Cache reviews for each competitor app
+        for (let i = 0; i < competitorApps.length; i++) {
+          const competitorApp = competitorApps[i];
+          const reviews = competitorReviews[i];
+
+          if (!reviews || reviews.length === 0) continue;
+
+          try {
+            // Upsert monitored_app entry for this competitor
+            const { data: monitoredApp, error: upsertError } = await supabase
+              .from('monitored_apps')
+              .upsert({
+                organization_id: organizationId,
+                app_store_id: competitorApp.id,
+                app_name: competitorApp.name,
+                app_icon_url: competitorApp.icon,
+                primary_country: config.country,
+                developer_name: competitorApp.developer,
+                tags: ['competitor'], // Mark as competitor
+                monitor_type: 'reviews',
+                snapshot_rating: competitorApp.rating,
+                snapshot_review_count: competitorApp.reviews,
+                snapshot_taken_at: new Date().toISOString(),
+                last_checked_at: new Date().toISOString(),
+              }, {
+                onConflict: 'organization_id,app_store_id,primary_country',
+                ignoreDuplicates: false,
+              })
+              .select('id')
+              .single();
+
+            if (upsertError) {
+              console.error(`❌ [Cache] Failed to upsert monitored_app for ${competitorApp.name}:`, upsertError);
+              continue;
+            }
+
+            if (!monitoredApp) {
+              console.error(`❌ [Cache] No monitored_app returned for ${competitorApp.name}`);
+              continue;
+            }
+
+            // Prepare review records for batch insert
+            const reviewRecords = reviews.map(review => ({
+              monitored_app_id: monitoredApp.id,
+              organization_id: organizationId,
+              review_id: review.review_id,
+              app_store_id: competitorApp.id,
+              country: config.country,
+              title: review.title,
+              review_text: review.text,
+              rating: review.rating,
+              version: review.version,
+              author_name: review.author,
+              review_date: review.updated_at,
+              enhanced_sentiment: review.enhancedSentiment,
+              extracted_themes: review.extractedThemes,
+              mentioned_features: review.mentionedFeatures,
+              identified_issues: review.identifiedIssues,
+              business_impact: review.businessImpact,
+              fetched_at: new Date().toISOString(),
+            }));
+
+            // Batch upsert reviews (avoid duplicates by review_id)
+            const { error: reviewsError } = await supabase
+              .from('monitored_app_reviews')
+              .upsert(reviewRecords, {
+                onConflict: 'monitored_app_id,review_id',
+                ignoreDuplicates: true,
+              });
+
+            if (reviewsError) {
+              console.error(`❌ [Cache] Failed to cache reviews for ${competitorApp.name}:`, reviewsError);
+            } else {
+              console.log(`✅ [Cache] Cached ${reviews.length} reviews for ${competitorApp.name}`);
+            }
+          } catch (error) {
+            console.error(`❌ [Cache] Unexpected error caching ${competitorApp.name}:`, error);
+          }
+        }
+      }
+
       // Step 4: Try to use pre-computed intelligence snapshots (OPTIMIZATION)
       console.log('🧠 [Comparison] Extracting intelligence...');
 

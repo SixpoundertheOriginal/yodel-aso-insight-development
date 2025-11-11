@@ -2,7 +2,11 @@
  * COMPETITOR RATING TRENDS HOOK
  *
  * Fetches historical rating data for multiple apps to power trend charts
- * Uses review_intelligence_snapshots and competitor_metrics_snapshots
+ *
+ * Data sources (in priority order):
+ * 1. review_intelligence_snapshots (pre-computed, fastest)
+ * 2. competitor_metrics_snapshots (for tracked competitors)
+ * 3. monitored_app_reviews (calculate on-the-fly from cached reviews)
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -38,6 +42,69 @@ interface UseCompetitorRatingTrendsParams {
 }
 
 /**
+ * Calculate rating trends from raw cached reviews
+ * (Fallback when snapshots aren't available)
+ * Uses same grouping logic as Reviews page
+ */
+async function calculateTrendsFromReviews(
+  monitoredAppId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<RatingDataPoint[]> {
+  console.log(`📊 [Fallback] Calculating trends from cached reviews for monitored_app_id: ${monitoredAppId}`);
+
+  // Fetch all reviews for this app in the date range
+  const { data: reviews, error } = await supabase
+    .from('monitored_app_reviews')
+    .select('review_date, rating')
+    .eq('monitored_app_id', monitoredAppId)
+    .gte('review_date', format(startDate, 'yyyy-MM-dd'))
+    .lte('review_date', format(endDate, 'yyyy-MM-dd'))
+    .order('review_date', { ascending: true });
+
+  if (error) {
+    console.error('[calculateTrendsFromReviews] Query error:', error);
+    return [];
+  }
+
+  if (!reviews || reviews.length === 0) {
+    console.warn('[calculateTrendsFromReviews] No cached reviews found');
+    return [];
+  }
+
+  console.log(`📊 [Fallback] Found ${reviews.length} cached reviews, grouping by date...`);
+
+  // Group reviews by date and calculate daily average rating
+  // Same logic as Reviews page (reviews.tsx line 1219-1242)
+  const buckets: Record<string, { date: string; count: number; sumRating: number }> = {};
+
+  for (const review of reviews) {
+    if (!review.review_date || !review.rating) continue;
+
+    const date = review.review_date; // Already in YYYY-MM-DD format
+
+    if (!buckets[date]) {
+      buckets[date] = { date, count: 0, sumRating: 0 };
+    }
+
+    buckets[date].count += 1;
+    buckets[date].sumRating += review.rating;
+  }
+
+  // Convert to array and calculate averages
+  const dataPoints = Object.values(buckets)
+    .map(bucket => ({
+      date: bucket.date,
+      rating: bucket.count > 0 ? Number((bucket.sumRating / bucket.count).toFixed(2)) : 0,
+      reviewCount: bucket.count,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  console.log(`✅ [Fallback] Calculated ${dataPoints.length} daily data points`);
+  return dataPoints;
+}
+
+/**
  * Fetch historical rating trends for primary app and competitors
  */
 export function useCompetitorRatingTrends(params: UseCompetitorRatingTrendsParams) {
@@ -68,54 +135,67 @@ export function useCompetitorRatingTrends(params: UseCompetitorRatingTrendsParam
 
       const trends: AppRatingTrend[] = [];
 
-      // 1. Fetch PRIMARY APP data from review_intelligence_snapshots
+      // 1. Fetch PRIMARY APP data
       if (primaryAppId) {
-        const { data: primarySnapshots, error: primaryError } = await supabase
-          .from('review_intelligence_snapshots')
-          .select('snapshot_date, average_rating, reviews_analyzed')
-          .eq('monitored_app_id', primaryAppId)
-          .gte('snapshot_date', format(startDate, 'yyyy-MM-dd'))
-          .lte('snapshot_date', format(endDate, 'yyyy-MM-dd'))
-          .order('snapshot_date', { ascending: true });
+        // Get app metadata first (needed for both snapshot and fallback paths)
+        const { data: primaryApp } = await supabase
+          .from('monitored_apps')
+          .select('app_name, app_icon, app_store_id')
+          .eq('id', primaryAppId)
+          .single();
 
-        if (primaryError) {
-          console.error('[useCompetitorRatingTrends] Primary app error:', primaryError);
-        } else if (primarySnapshots && primarySnapshots.length > 0) {
-          // Get app metadata from monitored_apps
-          const { data: primaryApp } = await supabase
-            .from('monitored_apps')
-            .select('app_name, app_icon, app_store_id')
-            .eq('id', primaryAppId)
-            .single();
+        if (!primaryApp) {
+          console.error('[useCompetitorRatingTrends] Primary app metadata not found');
+        } else {
+          let primaryData: RatingDataPoint[] = [];
 
-          if (primaryApp) {
+          // Try snapshots first (FAST PATH)
+          const { data: primarySnapshots, error: primaryError } = await supabase
+            .from('review_intelligence_snapshots')
+            .select('snapshot_date, average_rating, reviews_analyzed')
+            .eq('monitored_app_id', primaryAppId)
+            .gte('snapshot_date', format(startDate, 'yyyy-MM-dd'))
+            .lte('snapshot_date', format(endDate, 'yyyy-MM-dd'))
+            .order('snapshot_date', { ascending: true });
+
+          if (primaryError) {
+            console.error('[useCompetitorRatingTrends] Primary app snapshot error:', primaryError);
+          } else if (primarySnapshots && primarySnapshots.length > 0) {
+            primaryData = primarySnapshots.map((snapshot) => ({
+              date: snapshot.snapshot_date,
+              rating: Number(snapshot.average_rating) || 0,
+              reviewCount: snapshot.reviews_analyzed,
+            }));
+            console.log(`✅ [Primary] ${primaryApp.app_name}: ${primarySnapshots.length} snapshot data points`);
+          }
+
+          // FALLBACK: Calculate from cached reviews if no snapshots
+          if (primaryData.length === 0) {
+            console.log(`⚠️ [Primary] No snapshots for ${primaryApp.app_name}, trying cached reviews...`);
+            primaryData = await calculateTrendsFromReviews(primaryAppId, startDate, endDate);
+          }
+
+          // Add to trends if we got any data
+          if (primaryData.length > 0) {
             trends.push({
               appId: primaryApp.app_store_id,
               appName: primaryApp.app_name,
               appIcon: primaryApp.app_icon,
               isPrimary: true,
-              data: primarySnapshots.map((snapshot) => ({
-                date: snapshot.snapshot_date,
-                rating: Number(snapshot.average_rating) || 0,
-                reviewCount: snapshot.reviews_analyzed,
-              })),
+              data: primaryData,
             });
-
-            console.log(`✅ [Primary] ${primaryApp.app_name}: ${primarySnapshots.length} data points`);
+          } else {
+            console.warn(`⚠️ [Primary] No data available for ${primaryApp.app_name}`);
           }
-        } else {
-          console.warn('[useCompetitorRatingTrends] No snapshots found for primary app');
         }
       }
 
       // 2. Fetch COMPETITOR data
-      // First, try review_intelligence_snapshots if they're monitored apps
-      // Then fall back to competitor_metrics_snapshots
-
+      // Priority: snapshots → competitor_metrics → cached reviews
       for (const competitor of competitorAppIds) {
-        let foundData = false;
+        let competitorData: RatingDataPoint[] = [];
 
-        // Try as monitored app first (more detailed data)
+        // PATH 1: Try as monitored app (snapshots)
         if (competitor.monitoredAppId) {
           const { data: compSnapshots, error: compError } = await supabase
             .from('review_intelligence_snapshots')
@@ -126,25 +206,17 @@ export function useCompetitorRatingTrends(params: UseCompetitorRatingTrendsParam
             .order('snapshot_date', { ascending: true });
 
           if (!compError && compSnapshots && compSnapshots.length > 0) {
-            trends.push({
-              appId: competitor.appId,
-              appName: competitor.appName,
-              appIcon: competitor.appIcon,
-              isPrimary: false,
-              data: compSnapshots.map((snapshot) => ({
-                date: snapshot.snapshot_date,
-                rating: Number(snapshot.average_rating) || 0,
-                reviewCount: snapshot.reviews_analyzed,
-              })),
-            });
-
-            console.log(`✅ [Competitor] ${competitor.appName}: ${compSnapshots.length} data points (monitored)`);
-            foundData = true;
+            competitorData = compSnapshots.map((snapshot) => ({
+              date: snapshot.snapshot_date,
+              rating: Number(snapshot.average_rating) || 0,
+              reviewCount: snapshot.reviews_analyzed,
+            }));
+            console.log(`✅ [Competitor] ${competitor.appName}: ${compSnapshots.length} snapshot data points`);
           }
         }
 
-        // Fallback to competitor_metrics_snapshots
-        if (!foundData) {
+        // PATH 2: Try competitor_metrics_snapshots
+        if (competitorData.length === 0) {
           const { data: metricsSnapshots, error: metricsError } = await supabase
             .from('competitor_metrics_snapshots')
             .select('snapshot_date, rating, review_count')
@@ -155,25 +227,46 @@ export function useCompetitorRatingTrends(params: UseCompetitorRatingTrendsParam
             .order('snapshot_date', { ascending: true });
 
           if (!metricsError && metricsSnapshots && metricsSnapshots.length > 0) {
-            trends.push({
-              appId: competitor.appId,
-              appName: competitor.appName,
-              appIcon: competitor.appIcon,
-              isPrimary: false,
-              data: metricsSnapshots.map((snapshot) => ({
-                date: snapshot.snapshot_date,
-                rating: Number(snapshot.rating) || 0,
-                reviewCount: snapshot.review_count,
-              })),
-            });
-
-            console.log(`✅ [Competitor] ${competitor.appName}: ${metricsSnapshots.length} data points (metrics)`);
-            foundData = true;
+            competitorData = metricsSnapshots.map((snapshot) => ({
+              date: snapshot.snapshot_date,
+              rating: Number(snapshot.rating) || 0,
+              reviewCount: snapshot.review_count,
+            }));
+            console.log(`✅ [Competitor] ${competitor.appName}: ${metricsSnapshots.length} metrics data points`);
           }
         }
 
-        if (!foundData) {
-          console.warn(`⚠️ [Competitor] No data found for ${competitor.appName}`);
+        // PATH 3: FALLBACK - Calculate from cached reviews
+        // This is KEY: competitors may have cached reviews even if they're not "monitored"
+        if (competitorData.length === 0) {
+          console.log(`⚠️ [Competitor] No snapshots for ${competitor.appName}, checking for cached reviews...`);
+
+          // Try to find if this competitor has any cached reviews
+          // (They might have been fetched during a comparison and stored)
+          const { data: monitoredApp } = await supabase
+            .from('monitored_apps')
+            .select('id')
+            .eq('organization_id', organizationId)
+            .eq('app_store_id', competitor.appId)
+            .maybeSingle();
+
+          if (monitoredApp) {
+            console.log(`📊 [Competitor] Found monitored_app entry for ${competitor.appName}, calculating from reviews...`);
+            competitorData = await calculateTrendsFromReviews(monitoredApp.id, startDate, endDate);
+          }
+        }
+
+        // Add to trends if we got any data
+        if (competitorData.length > 0) {
+          trends.push({
+            appId: competitor.appId,
+            appName: competitor.appName,
+            appIcon: competitor.appIcon,
+            isPrimary: false,
+            data: competitorData,
+          });
+        } else {
+          console.warn(`⚠️ [Competitor] No data available for ${competitor.appName}`);
         }
       }
 
