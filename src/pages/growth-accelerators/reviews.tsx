@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X, Loader2, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -187,7 +187,8 @@ const ReviewManagementPage: React.FC = () => {
         appStoreId: selectedApp.appId,
         country: selectedCountry,
         organizationId,
-        forceRefresh: false
+        forceRefresh: false,
+        dateRange: fromDate && toDate ? { fromDate, toDate } : undefined
       }
     : null;
 
@@ -198,6 +199,13 @@ const ReviewManagementPage: React.FC = () => {
     error: cachedReviewsError,
     refetch: refetchCachedReviews
   } = useCachedReviews(cachedReviewsParams);
+
+  console.log('[Reviews] Cached reviews params:', {
+    hasParams: !!cachedReviewsParams,
+    dateRange: cachedReviewsParams?.dateRange,
+    isLoading: cachedReviewsLoading,
+    reviewCount: cachedReviewsData?.reviews.length
+  });
 
   // When cached reviews are loaded, populate reviews state
   React.useEffect(() => {
@@ -768,30 +776,8 @@ const ReviewManagementPage: React.FC = () => {
       }
     }
 
-    // Date filtering with debug logging
-    if (fromDate) {
-      const from = new Date(fromDate).getTime();
-      console.log('📅 [FILTER] Applying fromDate filter:', fromDate, '(timestamp:', from, ')');
-      const beforeFilter = list.length;
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t >= from;
-      });
-      console.log('📅 [FILTER] After fromDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
-    }
-    if (toDate) {
-      // Add end of day (23:59:59.999) to include all reviews from toDate
-      const toDateEnd = new Date(toDate);
-      toDateEnd.setHours(23, 59, 59, 999);
-      const to = toDateEnd.getTime();
-      console.log('📅 [FILTER] Applying toDate filter:', toDate, '(timestamp:', to, ')');
-      const beforeFilter = list.length;
-      list = list.filter(r => {
-        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-        return t <= to;
-      });
-      console.log('📅 [FILTER] After toDate filter:', list.length, '(filtered out', beforeFilter - list.length, ')');
-    }
+    // ✅ Date filtering now handled server-side by useCachedReviews hook
+    // No client-side date filtering needed - reviews are already filtered by date range
 
     // Sorting
     const sorted = [...list];
@@ -2065,6 +2051,34 @@ const ReviewManagementPage: React.FC = () => {
                 Export CSV
               </Button>
             </div>
+
+            {/* Loading indicator for historical review fetching */}
+            {cachedReviewsData?.isFetchingHistorical && (
+              <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Fetching reviews for selected date range...
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                      Loading historical reviews from iTunes API
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Cache status indicator */}
+            {cachedReviewsData?.fromCache && cachedReviewsData.cacheAge !== undefined && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>
+                  Cached {Math.floor(cachedReviewsData.cacheAge / 3600)} hours ago •
+                  {cachedReviewsData.totalReviews} reviews
+                </span>
+              </div>
+            )}
 
             {filteredReviews.length > 0 && (
               <div className="max-h-96 overflow-y-auto space-y-3 p-4">

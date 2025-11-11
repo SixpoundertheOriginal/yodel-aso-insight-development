@@ -549,7 +549,7 @@ export async function fetchAppReviews(params: {
 }): Promise<ReviewsResponseDto> {
   const { appId, cc = 'us', page = 1 } = params;
   console.log('[fetchAppReviews] Direct iTunes RSS approach:', { appId, cc, page });
-  
+
   if (!appId) {
     return {
       success: false,
@@ -563,7 +563,7 @@ export async function fetchAppReviews(params: {
   // ✅ USING WORKING EDGE FUNCTION APPROACH
   // Edge function handles iTunes RSS format changes server-side
   try {
-    
+
     const result = await fetchReviewsViaEdgeFunction({
       appId,
       cc,
@@ -586,10 +586,10 @@ export async function fetchAppReviews(params: {
       totalReviews: result.totalReviews,
       error: result.error
     };
-    
+
   } catch (error: any) {
     console.error('[fetchAppReviews] Direct iTunes RSS failed:', error);
-    
+
     return {
       success: false,
       error: `Failed to fetch reviews: ${error.message}`,
@@ -598,4 +598,108 @@ export async function fetchAppReviews(params: {
       totalReviews: 0
     };
   }
+}
+
+/**
+ * Fetch reviews for a specific date range by paginating through iTunes API
+ *
+ * This function fetches multiple pages of reviews until it has covered the entire
+ * requested date range. It stops when:
+ * 1. The oldest review on a page is before the start date
+ * 2. The maximum number of reviews has been reached
+ * 3. There are no more pages available
+ *
+ * @param params - Fetch parameters including date range
+ * @returns Array of reviews within the date range
+ */
+export async function fetchReviewsForDateRange(params: {
+  appId: string;
+  cc: string;
+  fromDate: string; // ISO date string (YYYY-MM-DD)
+  toDate: string;   // ISO date string (YYYY-MM-DD)
+  maxReviews?: number;
+}): Promise<ReviewItem[]> {
+  const { appId, cc, fromDate, toDate, maxReviews = 500 } = params;
+
+  console.log('[fetchReviewsForDateRange] Starting date-range fetch:', {
+    appId,
+    cc,
+    fromDate,
+    toDate,
+    maxReviews
+  });
+
+  const allReviews: ReviewItem[] = [];
+  const targetStartDate = new Date(fromDate);
+  const targetEndDate = new Date(toDate);
+  targetEndDate.setHours(23, 59, 59, 999); // Include entire end day
+
+  let page = 1;
+  let hasMore = true;
+  let reachedStartDate = false;
+
+  // Keep fetching pages until we have enough reviews or reached the date range
+  while (hasMore && allReviews.length < maxReviews && !reachedStartDate) {
+    console.log(`[fetchReviewsForDateRange] Fetching page ${page}...`);
+
+    try {
+      const result = await fetchAppReviews({ appId, cc, page });
+
+      if (!result.success || !result.data || result.data.length === 0) {
+        console.log('[fetchReviewsForDateRange] No more reviews available');
+        break;
+      }
+
+      // Process reviews on this page
+      for (const review of result.data) {
+        const reviewDate = review.updated_at ? new Date(review.updated_at) : null;
+
+        if (!reviewDate) {
+          continue; // Skip reviews without dates
+        }
+
+        // Check if review is within our date range
+        if (reviewDate >= targetStartDate && reviewDate <= targetEndDate) {
+          allReviews.push(review);
+        }
+
+        // Check if we've gone past our start date
+        if (reviewDate < targetStartDate) {
+          reachedStartDate = true;
+          break;
+        }
+      }
+
+      // Check if the oldest review on this page is before our start date
+      if (result.data.length > 0) {
+        const oldestReview = result.data[result.data.length - 1];
+        const oldestDate = oldestReview.updated_at ? new Date(oldestReview.updated_at) : null;
+
+        if (oldestDate && oldestDate < targetStartDate) {
+          console.log('[fetchReviewsForDateRange] Reached start date, stopping pagination');
+          reachedStartDate = true;
+        }
+      }
+
+      hasMore = result.hasMore;
+      page++;
+
+      // Add a small delay to avoid rate limiting
+      if (hasMore && !reachedStartDate) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+    } catch (error: any) {
+      console.error('[fetchReviewsForDateRange] Error fetching page', page, ':', error.message);
+      break; // Stop on error, return what we have
+    }
+  }
+
+  console.log('[fetchReviewsForDateRange] Completed:', {
+    totalReviews: allReviews.length,
+    pagesFetched: page - 1,
+    reachedStartDate
+  });
+
+  return allReviews;
 }
