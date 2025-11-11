@@ -7,7 +7,7 @@ import { EnhancedReviewItem } from '@/types/review-intelligence.types';
 import { toast } from 'sonner';
 import { useMonitoredApps } from './useMonitoredApps';
 import { reviewIntelligenceService } from '@/services/review-intelligence.service';
-import { supabase } from '@/config/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ComparisonConfig {
   primaryAppId: string;
