@@ -246,62 +246,42 @@ export function useEnterpriseAnalytics({
     gcTime: 10 * 60 * 1000, // 10 minutes
     retry: 1, // Only retry once on failure
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
-
-    // [LOGGING] Query lifecycle logging
-    onError: (error) => {
-      console.error('━'.repeat(60));
-      console.error('❌ [ENTERPRISE-ANALYTICS] Query Error');
-      console.error('━'.repeat(60));
-      console.error('  Error:', error.message);
-      console.error('  Organization:', organizationId);
-      console.error('  Date Range:', dateRange);
-      console.error('━'.repeat(60));
-    },
-
-    onSuccess: (data) => {
-      console.log('━'.repeat(60));
-      console.log('✅ [ENTERPRISE-ANALYTICS] Query Success');
-      console.log('━'.repeat(60));
-      console.log('  Raw Rows:', data.rawData.length);
-      console.log('  Processed Summary:', data.processedData.summary);
-      console.log('  Timeseries Points:', data.processedData.timeseries.length);
-      console.log('  Traffic Sources:', data.processedData.traffic_sources.length);
-      console.log('━'.repeat(60));
-    }
   });
 
   // ✅ [CLIENT-SIDE FILTERING] Apply traffic source filter instantly without refetch
   const filteredData = useMemo(() => {
     if (!query.data) return null;
 
+    const data = query.data as EnterpriseAnalyticsResponse;
+
     // If no traffic sources selected, return all data
     if (trafficSources.length === 0) {
       console.log('🔍 [CLIENT-FILTER] No filter applied, returning all data');
-      return query.data;
+      return data;
     }
 
     // Filter data client-side
     console.log('🔍 [CLIENT-FILTER] Applying traffic source filter:', trafficSources);
 
-    const filteredRawData = query.data.rawData.filter((row: BigQueryDataPoint) =>
+    const filteredRawData = data.rawData.filter((row: BigQueryDataPoint) =>
       trafficSources.includes(row.traffic_source)
     );
 
     const filtered: EnterpriseAnalyticsResponse = {
-      ...query.data,
+      ...data,
       rawData: filteredRawData,
       processedData: {
-        ...query.data.processedData,
+        ...data.processedData,
         summary: calculateSummary(filteredRawData),
         timeseries: filterTimeseries(filteredRawData, dateRange),
-        traffic_sources: query.data.processedData.traffic_sources.filter((ts: ProcessedTrafficSource) =>
+        traffic_sources: data.processedData.traffic_sources.filter((ts: ProcessedTrafficSource) =>
           trafficSources.includes(ts.traffic_source)
         )
       }
     };
 
     console.log('🔍 [CLIENT-FILTER] Filtered result:', {
-      originalRows: query.data.rawData.length,
+      originalRows: data.rawData.length,
       filteredRows: filtered.rawData.length,
       selectedSources: trafficSources
     });

@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
 type UserProfile = Tables<'profiles'> & {
-  organizations: (Pick<Tables<'organizations'>, 'name' | 'subscription_tier' | 'slug' | 'access_level'> & {
+  organizations: (Pick<Tables<'organizations'>, 'name' | 'subscription_tier' | 'slug'> & {
     settings: { demo_mode?: boolean } | null;
   }) | null;
   user_roles: Pick<Tables<'user_roles'>, 'role' | 'organization_id'>[];

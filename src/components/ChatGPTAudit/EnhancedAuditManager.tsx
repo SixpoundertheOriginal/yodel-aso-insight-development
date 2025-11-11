@@ -161,14 +161,15 @@ export const EnhancedAuditManager: React.FC<EnhancedAuditManagerProps> = ({
       if (queriesError) throw queriesError;
 
       if (originalQueries && originalQueries.length > 0) {
-        const newQueries = originalQueries.map(query => {
-          const { id, created_at, updated_at, processed_at, ...queryWithoutSystemFields } = query;
-          return {
-            ...queryWithoutSystemFields,
-            audit_run_id: newRun.id,
-            status: 'pending'
-          };
-        });
+        // Map queries to new run (only copy data fields, not system fields)
+        const newQueries = originalQueries.map((q: any) => ({
+          query_text: q.query_text,
+          query_type: q.query_type,
+          query_category: q.query_category,
+          priority: q.priority,
+          audit_run_id: newRun.id,
+          status: 'pending'
+        }));
 
         const { error: insertError } = await supabase
           .from('chatgpt_queries')

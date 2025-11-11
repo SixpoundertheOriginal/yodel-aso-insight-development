@@ -20,6 +20,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { useNavigate } from 'react-router-dom';
 
 // Configuration
@@ -74,7 +75,7 @@ export function useSessionSecurity(config: SessionSecurityConfig = { enabled: tr
     if (!user) return;
 
     try {
-      await supabase.rpc('log_audit_event', {
+      await supabaseCompat.rpcAny('log_audit_event', {
         p_user_id: user.id,
         p_organization_id: null,
         p_user_email: user.email || null,

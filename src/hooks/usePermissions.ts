@@ -102,8 +102,8 @@ export const usePermissions = () => {
               is_platform_role: role.organization_id === null,
               is_org_scoped_role: role.organization_id !== null,
               effective_role: role.role?.toLowerCase().replace('organization_', 'org_').replace('platform_', '') || 'viewer',
-              is_super_admin: role.role === 'PLATFORM_SUPER_ADMIN',
-              is_org_admin: role.role === 'ORGANIZATION_ADMIN',
+              is_super_admin: role.role === 'SUPER_ADMIN' || (role.role as string) === 'PLATFORM_SUPER_ADMIN',
+              is_org_admin: role.role === 'ORG_ADMIN' || (role.role as string) === 'ORGANIZATION_ADMIN',
               resolved_at: new Date().toISOString()
             }));
 
@@ -184,7 +184,11 @@ export const usePermissions = () => {
           
           // Multi-org support
           allPermissions: safeArray(allPermissions),
-          availableOrgs,
+          availableOrgs: (availableOrgs as any[]).map(org => ({
+            id: org?.id || '',
+            name: org?.name || '',
+            slug: org?.slug || ''
+          })),
           isLoading: false
         };
 

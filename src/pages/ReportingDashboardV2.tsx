@@ -35,7 +35,7 @@ import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
  * - Comprehensive logging for debugging
  */
 export default function ReportingDashboardV2() {
-  const { organizationId, email, availableOrgs } = usePermissions();
+  const { organizationId, availableOrgs } = usePermissions();
 
   // Find organization name from available orgs
   const currentOrg = availableOrgs?.find(org => org.id === organizationId);

@@ -47,30 +47,8 @@ export function useReviewIntelligence(params: UseReviewIntelligenceParams) {
     },
     enabled: enabled && !!monitoredAppId && !!organizationId,
     staleTime: 1000 * 60 * 30, // 30 minutes (snapshots are daily, so this is safe)
-    cacheTime: 1000 * 60 * 60, // 1 hour
+    gcTime: 1000 * 60 * 60, // 1 hour
     retry: 1,
-    onSuccess: (data) => {
-      const source = data.metadata.isCached ? 'cached snapshot' : 'fresh analysis';
-      console.log(`[useReviewIntelligence] Intelligence loaded from ${source}:`, {
-        reviewsAnalyzed: data.metadata.reviewsAnalyzed,
-        themes: data.intelligence.themes.length,
-        issues: data.intelligence.issuePatterns.length,
-        priorityIssues: data.insights.priorityIssues.length
-      });
-
-      if (!data.metadata.isCached) {
-        toast.success(`Analyzed ${data.metadata.reviewsAnalyzed} reviews`);
-      }
-    },
-    onError: (error: any) => {
-      console.error('[useReviewIntelligence] Error:', error);
-
-      if (error.message.includes('No cached reviews found')) {
-        toast.error('No reviews cached yet. Please fetch reviews first.');
-      } else {
-        toast.error(`Failed to load intelligence: ${error.message}`);
-      }
-    }
   });
 }
 
