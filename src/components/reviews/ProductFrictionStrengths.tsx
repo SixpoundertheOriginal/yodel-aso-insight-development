@@ -36,17 +36,18 @@ export function ProductFrictionStrengths({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Product Frictions Card */}
-      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-orange-50">
-        <CardHeader>
+      <Card className="border-destructive/30 bg-card">
+        <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-destructive to-destructive/50 pointer-events-none" />
+        <CardHeader className="relative">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <AlertTriangle className="w-5 h-5 text-destructive" />
             <CardTitle className="text-lg">Top Product Frictions</CardTitle>
           </div>
           <CardDescription>
             Issues negatively impacting user experience
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           {frictions.length > 0 ? (
             <div className="space-y-4">
               {frictions.map((issue, idx) => (
@@ -62,7 +63,7 @@ export function ProductFrictionStrengths({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-text-secondary">
               <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>No significant issues detected!</p>
             </div>
@@ -71,17 +72,18 @@ export function ProductFrictionStrengths({
       </Card>
 
       {/* Strength Drivers Card */}
-      <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
-        <CardHeader>
+      <Card className="border-success/30 bg-card">
+        <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-success to-success/50 pointer-events-none" />
+        <CardHeader className="relative">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
+            <TrendingUp className="w-5 h-5 text-success" />
             <CardTitle className="text-lg">Top Strength Drivers</CardTitle>
           </div>
           <CardDescription>
             Features users love and appreciate
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           {strengths.length > 0 ? (
             <div className="space-y-4">
               {strengths.map((feature, idx) => (
@@ -97,7 +99,7 @@ export function ProductFrictionStrengths({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-text-secondary">
               <MinusCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>No standout features mentioned yet</p>
             </div>
@@ -131,9 +133,9 @@ function FrictionItem({
   const estimatedImpact = calculateIssueImpact(frequency, severity, totalReviews);
 
   const severityConfig = {
-    critical: { color: 'bg-red-600', textColor: 'text-red-700', icon: AlertCircle },
-    major: { color: 'bg-orange-500', textColor: 'text-orange-700', icon: AlertTriangle },
-    minor: { color: 'bg-yellow-500', textColor: 'text-yellow-700', icon: MinusCircle }
+    critical: { color: 'bg-destructive', textColor: 'text-destructive', icon: AlertCircle },
+    major: { color: 'bg-warning', textColor: 'text-warning', icon: AlertTriangle },
+    minor: { color: 'bg-warning/60', textColor: 'text-warning', icon: MinusCircle }
   };
 
   const config = severityConfig[severity];
@@ -143,7 +145,7 @@ function FrictionItem({
     <div className="space-y-2">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-2 flex-1">
-          <div className={`w-6 h-6 rounded-full ${config.color} text-white flex items-center justify-center text-xs font-bold shrink-0`}>
+          <div className={`w-6 h-6 rounded-full ${config.color} text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0`}>
             {rank}
           </div>
           <div className="flex-1 min-w-0">
@@ -154,7 +156,7 @@ function FrictionItem({
                 {severity}
               </Badge>
             </div>
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+            <div className="flex items-center gap-3 mt-1 text-xs text-text-tertiary">
               <span>{frequency} mention{frequency !== 1 ? 's' : ''}</span>
               <span>•</span>
               <span>{percentage}% of reviews</span>
@@ -168,13 +170,13 @@ function FrictionItem({
           </div>
         </div>
         <div className="text-right ml-2">
-          <div className="text-sm font-semibold text-red-700">
+          <div className="text-sm font-semibold text-destructive">
             {estimatedImpact > 0 ? '-' : ''}{Math.abs(estimatedImpact).toFixed(1)}★
           </div>
-          <div className="text-xs text-gray-500">impact</div>
+          <div className="text-xs text-text-tertiary">impact</div>
         </div>
       </div>
-      <Progress value={percentage} className="h-2" indicatorClassName="bg-red-500" />
+      <Progress value={percentage} className="h-2" indicatorClassName="bg-destructive" />
     </div>
   );
 }
@@ -203,9 +205,9 @@ function StrengthItem({
   const estimatedBoost = calculateStrengthBoost(mentions, sentiment, totalReviews);
 
   const impactConfig = {
-    high: { color: 'bg-green-600', textColor: 'text-green-700' },
-    medium: { color: 'bg-blue-500', textColor: 'text-blue-700' },
-    low: { color: 'bg-gray-500', textColor: 'text-gray-700' }
+    high: { color: 'bg-success', textColor: 'text-success' },
+    medium: { color: 'bg-accent', textColor: 'text-accent' },
+    low: { color: 'bg-muted-foreground', textColor: 'text-muted-foreground' }
   };
 
   const config = impactConfig[impact];
@@ -214,7 +216,7 @@ function StrengthItem({
     <div className="space-y-2">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-2 flex-1">
-          <div className={`w-6 h-6 rounded-full ${config.color} text-white flex items-center justify-center text-xs font-bold shrink-0`}>
+          <div className={`w-6 h-6 rounded-full ${config.color} text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0`}>
             {rank}
           </div>
           <div className="flex-1 min-w-0">
@@ -224,7 +226,7 @@ function StrengthItem({
                 {impact} impact
               </Badge>
             </div>
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+            <div className="flex items-center gap-3 mt-1 text-xs text-text-tertiary">
               <span>{mentions} mention{mentions !== 1 ? 's' : ''}</span>
               <span>•</span>
               <span>{percentage}% of reviews</span>
@@ -234,13 +236,13 @@ function StrengthItem({
           </div>
         </div>
         <div className="text-right ml-2">
-          <div className="text-sm font-semibold text-green-700">
+          <div className="text-sm font-semibold text-success">
             +{estimatedBoost.toFixed(1)}★
           </div>
-          <div className="text-xs text-gray-500">boost</div>
+          <div className="text-xs text-text-tertiary">boost</div>
         </div>
       </div>
-      <Progress value={sentimentPercentage} className="h-2" indicatorClassName="bg-green-500" />
+      <Progress value={sentimentPercentage} className="h-2" indicatorClassName="bg-success" />
     </div>
   );
 }
