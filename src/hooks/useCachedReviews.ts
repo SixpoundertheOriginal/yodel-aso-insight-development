@@ -8,9 +8,15 @@
  *
  * Architecture:
  * 1. Check if cached reviews exist and are fresh (< 24 hours)
- * 2. If yes, return cached reviews immediately
- * 3. If no, fetch from iTunes RSS, cache, then return
+ * 2. If yes, return cached reviews immediately (up to 1000 most recent)
+ * 3. If no, fetch from iTunes RSS with pagination (up to 500 reviews), cache, then return
  * 4. All AI analysis runs client-side as before (no changes to existing logic)
+ *
+ * Performance:
+ * - Cache hit: <100ms (database read)
+ * - Cache miss: ~5-10s (fetches up to 10 pages from iTunes RSS with 500ms delays)
+ * - Supports up to 500 reviews per refresh (10 pages × 50 reviews)
+ * - Rolling window of up to 1000 cached reviews for historical analysis
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -93,7 +99,7 @@ async function getCachedReviews(monitoredAppId: string): Promise<CachedReviewIte
       .select('*')
       .eq('monitored_app_id', monitoredAppId)
       .order('review_date', { ascending: false })
-      .limit(200); // Match existing page size
+      .limit(1000); // Increased from 200 to support historical analysis (up to 1000 most recent reviews)
 
     if (error) {
       console.error('[useCachedReviews] Error fetching cached reviews:', error);
@@ -132,15 +138,50 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
   console.log('[useCachedReviews] Fetching fresh reviews from iTunes...', { appStoreId, country });
 
   try {
-    // 1. Fetch from iTunes using existing working function
-    const result = await fetchAppReviews({ appId: appStoreId, cc: country, page: 1 });
+    // 1. Fetch from iTunes using pagination loop to get up to 500 reviews (10 pages × 50)
+    const allReviews: any[] = [];
+    let page = 1;
+    const MAX_PAGES = 10; // iTunes RSS API limit
+    let hasMore = true;
+    const fetchStartTime = Date.now();
 
-    if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to fetch reviews from iTunes');
+    while (hasMore && page <= MAX_PAGES) {
+      console.log(`[useCachedReviews] Fetching page ${page}/${MAX_PAGES}...`);
+
+      const result = await fetchAppReviews({
+        appId: appStoreId,
+        cc: country,
+        page
+      });
+
+      if (!result.success || !result.data || result.data.length === 0) {
+        console.log(`[useCachedReviews] No more reviews at page ${page}, stopping pagination`);
+        break;
+      }
+
+      allReviews.push(...result.data);
+      hasMore = result.hasMore;
+
+      console.log(`[useCachedReviews] Page ${page}: fetched ${result.data.length} reviews (total: ${allReviews.length})`);
+
+      // Move to next page
+      page++;
+
+      // Small delay between requests to be respectful to iTunes API
+      if (hasMore && page <= MAX_PAGES) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
-    const reviews = result.data;
-    console.log('[useCachedReviews] Fetched', reviews.length, 'reviews from iTunes');
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log(`[useCachedReviews] ✅ Fetched ${allReviews.length} total reviews across ${page - 1} pages in ${fetchDuration}ms`);
+
+    if (allReviews.length === 0) {
+      throw new Error('No reviews found for this app');
+    }
+
+    const reviews = allReviews;
+    console.log('[useCachedReviews] Processing', reviews.length, 'reviews for caching');
 
     // 2. Get existing review IDs to avoid duplicates
     const { data: existingReviews } = await supabaseCompat.fromAny('monitored_app_reviews')
@@ -188,7 +229,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
       }
     }
 
-    // 5. Log the fetch operation
+    // 5. Log the fetch operation with pagination metrics
     await supabaseCompat.fromAny('review_fetch_log').insert({
       monitored_app_id: monitoredAppId,
       organization_id: organizationId,
@@ -197,6 +238,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
       reviews_updated: 0,
       cache_hit: false,
       itunes_api_status: 200,
+      fetch_duration_ms: fetchDuration,
       user_id: (await supabase.auth.getUser()).data.user?.id,
     });
 

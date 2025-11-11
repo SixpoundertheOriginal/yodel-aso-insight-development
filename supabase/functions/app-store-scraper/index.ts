@@ -338,11 +338,13 @@ serve(async (req) => {
     // Handle iTunes reviews operation (POST and GET) - PUBLIC ACCESS
     if (operation === 'reviews' || requestData.op === 'reviews') {
       console.log(`📱 [${requestId}] ROUTING TO: iTunes Reviews Handler (PUBLIC)`);
-      
+
       const cc = requestData.cc || 'us';
       const appId = requestData.appId;
       const page = Math.max(parseInt(requestData.page) || 1, 1);
-      const pageSize = Math.min(Math.max(parseInt(requestData.pageSize) || 20, 1), 50);
+      // iTunes RSS typically returns ~50 reviews per page, so we keep this limit
+      // The real scaling comes from fetching multiple pages (up to 10)
+      const pageSize = Math.min(Math.max(parseInt(requestData.pageSize) || 50, 1), 50);
       
       // Validate required parameters for reviews
       if (!appId) {
