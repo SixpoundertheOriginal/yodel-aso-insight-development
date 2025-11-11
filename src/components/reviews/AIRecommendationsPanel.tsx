@@ -22,15 +22,16 @@ export function AIRecommendationsPanel({ insights }: AIRecommendationsPanelProps
     <div className="space-y-6">
       {/* Alerts (if any) */}
       {alerts && alerts.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50">
-          <CardHeader>
+        <Card className="border-warning/30 bg-card">
+          <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-warning to-warning/50 pointer-events-none" />
+          <CardHeader className="relative">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-700" />
+              <AlertTriangle className="w-5 h-5 text-warning" />
               <CardTitle className="text-lg">Active Alerts</CardTitle>
             </div>
             <CardDescription>Trending patterns requiring immediate attention</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             <div className="space-y-3">
               {alerts.map((alert, idx) => (
                 <AlertCard key={idx} alert={alert} />
@@ -41,24 +42,25 @@ export function AIRecommendationsPanel({ insights }: AIRecommendationsPanelProps
       )}
 
       {/* Main Recommendations Card */}
-      <Card className="border-blue-200">
-        <CardHeader>
+      <Card className="border-accent/30 bg-card">
+        <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50 pointer-events-none" />
+        <CardHeader className="relative">
           <div className="flex items-center gap-2">
-            <Lightbulb className="w-6 h-6 text-blue-600" />
+            <Lightbulb className="w-6 h-6 text-accent" />
             <CardTitle className="text-xl">AI Recommendations</CardTitle>
           </div>
           <CardDescription>
             Prioritized actions to improve app rating and user satisfaction
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           <div className="space-y-6">
             {/* Priority Issues Section */}
             {priorityIssues && priorityIssues.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <Wrench className="w-4 h-4 text-red-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Issues to Fix</h3>
+                  <Wrench className="w-4 h-4 text-destructive" />
+                  <h3 className="font-semibold text-sm">Issues to Fix</h3>
                   <Badge variant="destructive" className="text-xs">
                     {priorityIssues.length}
                   </Badge>
@@ -84,9 +86,9 @@ export function AIRecommendationsPanel({ insights }: AIRecommendationsPanelProps
             {improvements && improvements.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <Megaphone className="w-4 h-4 text-green-600" />
-                  <h3 className="font-semibold text-sm text-gray-700">Opportunities to Promote</h3>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                  <Megaphone className="w-4 h-4 text-success" />
+                  <h3 className="font-semibold text-sm">Opportunities to Promote</h3>
+                  <Badge variant="secondary" className="bg-success/10 text-success border-success/30 text-xs">
                     {improvements.length}
                   </Badge>
                 </div>
@@ -109,7 +111,7 @@ export function AIRecommendationsPanel({ insights }: AIRecommendationsPanelProps
             {/* Empty State */}
             {(!priorityIssues || priorityIssues.length === 0) &&
              (!improvements || improvements.length === 0) && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-text-secondary">
                 <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>No recommendations at this time</p>
                 <p className="text-sm mt-1">The app is performing well!</p>
@@ -144,26 +146,26 @@ function RecommendationCard({
 }: RecommendationCardProps) {
   const urgencyConfig = {
     immediate: {
-      color: 'bg-red-600',
-      badgeColor: 'bg-red-100 text-red-700 border-red-300',
+      color: 'bg-destructive',
+      badgeColor: 'bg-destructive/10 text-destructive border-destructive/30',
       label: 'Immediate',
       icon: AlertTriangle
     },
     high: {
-      color: 'bg-orange-500',
-      badgeColor: 'bg-orange-100 text-orange-700 border-orange-300',
+      color: 'bg-warning',
+      badgeColor: 'bg-warning/10 text-warning border-warning/30',
       label: 'High',
       icon: Clock
     },
     medium: {
-      color: 'bg-yellow-500',
-      badgeColor: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+      color: 'bg-warning/60',
+      badgeColor: 'bg-warning/10 text-warning border-warning/30',
       label: 'Medium',
       icon: Clock
     },
     low: {
-      color: 'bg-blue-500',
-      badgeColor: 'bg-blue-100 text-blue-700 border-blue-300',
+      color: 'bg-accent',
+      badgeColor: 'bg-accent/10 text-accent border-accent/30',
       label: 'Low',
       icon: Clock
     }
@@ -174,10 +176,10 @@ function RecommendationCard({
   const impactPercentage = Math.round(impact * 100);
 
   return (
-    <div className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+    <div className="border border-border rounded-lg p-4 bg-elevated hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
         {/* Rank Badge */}
-        <div className={`w-8 h-8 rounded-full ${config.color} text-white flex items-center justify-center text-sm font-bold shrink-0`}>
+        <div className={`w-8 h-8 rounded-full ${config.color} text-primary-foreground flex items-center justify-center text-sm font-bold shrink-0`}>
           {rank}
         </div>
 
@@ -191,9 +193,9 @@ function RecommendationCard({
             </Badge>
           </div>
 
-          <p className="text-sm text-gray-600 mb-3">{recommendation}</p>
+          <p className="text-sm text-text-secondary mb-3">{recommendation}</p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-text-tertiary">
             <div className="flex items-center gap-1">
               <Users className="w-3 h-3" />
               <span>~{affectedUsers} users impacted</span>
@@ -229,15 +231,15 @@ function ImprovementCard({
   rank
 }: ImprovementCardProps) {
   const effortConfig = {
-    small: { color: 'bg-green-100 text-green-700', label: 'Small' },
-    medium: { color: 'bg-yellow-100 text-yellow-700', label: 'Medium' },
-    large: { color: 'bg-red-100 text-red-700', label: 'Large' }
+    small: { color: 'bg-success/10 text-success border-success/30', label: 'Small' },
+    medium: { color: 'bg-warning/10 text-warning border-warning/30', label: 'Medium' },
+    large: { color: 'bg-destructive/10 text-destructive border-destructive/30', label: 'Large' }
   };
 
   const impactConfig = {
-    high: { color: 'text-green-700', label: 'High' },
-    medium: { color: 'text-yellow-700', label: 'Medium' },
-    low: { color: 'text-gray-700', label: 'Low' }
+    high: { color: 'text-success', label: 'High' },
+    medium: { color: 'text-warning', label: 'Medium' },
+    low: { color: 'text-muted-foreground', label: 'Low' }
   };
 
   const effortConf = effortConfig[effort];
@@ -245,10 +247,10 @@ function ImprovementCard({
   const demandPercentage = Math.round(userDemand * 100);
 
   return (
-    <div className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+    <div className="border border-border rounded-lg p-4 bg-elevated hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
         {/* Rank Badge */}
-        <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-success text-primary-foreground flex items-center justify-center text-sm font-bold shrink-0">
           {rank}
         </div>
 
@@ -263,7 +265,7 @@ function ImprovementCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+          <div className="flex items-center gap-4 text-xs text-text-tertiary mb-3">
             <div className="flex items-center gap-1">
               <Users className="w-3 h-3" />
               <span>{demandPercentage}% user demand</span>
@@ -279,13 +281,13 @@ function ImprovementCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-gray-200 rounded-full h-2">
+            <div className="flex-1 bg-muted rounded-full h-2">
               <div
-                className="bg-green-500 h-2 rounded-full"
+                className="bg-success h-2 rounded-full"
                 style={{ width: `${Math.min(roi, 100)}%` }}
               />
             </div>
-            <span className="text-xs text-gray-600 font-medium">{Math.min(roi, 100).toFixed(0)}%</span>
+            <span className="text-xs text-text-secondary font-medium">{Math.min(roi, 100).toFixed(0)}%</span>
           </div>
         </div>
       </div>
@@ -306,9 +308,9 @@ interface AlertCardProps {
 
 function AlertCard({ alert }: AlertCardProps) {
   const severityConfig = {
-    critical: { color: 'bg-red-100 border-red-300', icon: AlertTriangle, iconColor: 'text-red-600' },
-    warning: { color: 'bg-yellow-100 border-yellow-300', icon: AlertTriangle, iconColor: 'text-yellow-600' },
-    info: { color: 'bg-blue-100 border-blue-300', icon: Lightbulb, iconColor: 'text-blue-600' }
+    critical: { color: 'bg-destructive/10 border-destructive/30', icon: AlertTriangle, iconColor: 'text-destructive' },
+    warning: { color: 'bg-warning/10 border-warning/30', icon: AlertTriangle, iconColor: 'text-warning' },
+    info: { color: 'bg-info/10 border-info/30', icon: Lightbulb, iconColor: 'text-info' }
   };
 
   // Safely get config with fallback to 'info' if severity is undefined or invalid
