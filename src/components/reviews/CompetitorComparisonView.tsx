@@ -97,10 +97,10 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
           <Card className="p-12">
             <div className="flex flex-col items-center justify-center space-y-6">
               <div className="relative">
-                <div className="p-4 rounded-full bg-gradient-to-br from-orange-500 to-red-600">
+                <div className="p-4 rounded-full bg-gradient-to-br from-warning to-destructive">
                   <Target className="h-8 w-8 text-white animate-pulse" />
                 </div>
-                <Loader2 className="absolute -top-1 -right-1 h-6 w-6 text-orange-500 animate-spin" />
+                <Loader2 className="absolute -top-1 -right-1 h-6 w-6 text-warning animate-spin" />
               </div>
 
               <div className="text-center space-y-2">
@@ -123,7 +123,7 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
                   <div key={idx} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{name}</span>
-                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      <Loader2 className="h-4 w-4 animate-spin text-warning" />
                     </div>
                     <Progress value={75} className="h-2" />
                   </div>
@@ -147,8 +147,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
         <div className="max-w-6xl mx-auto">
           <Card className="p-12">
             <div className="flex flex-col items-center justify-center space-y-6">
-              <div className="p-4 rounded-full bg-red-500/10">
-                <AlertTriangle className="h-8 w-8 text-red-500" />
+              <div className="p-4 rounded-full bg-destructive/10">
+                <AlertTriangle className="h-8 w-8 text-destructive" />
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-2xl font-bold">Analysis Failed</h3>
@@ -219,7 +219,7 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
                 <div className="space-y-2">
                   {[intelligence.summary.keyInsight].map((insight, idx) => (
                     <div key={idx} className="flex items-start gap-2 text-sm">
-                      <div className="h-1.5 w-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-warning mt-1.5 flex-shrink-0" />
                       <span>{insight}</span>
                     </div>
                   ))}
@@ -230,7 +230,7 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
               <div className="space-y-3">
                 <div className="text-sm text-muted-foreground mb-2">Priority Actions</div>
                 {[intelligence.summary.topPriority].map((action, idx) => (
-                  <Card key={idx} className="p-3 bg-orange-500/5 border-orange-500/20">
+                  <Card key={idx} className="p-3 bg-warning/5 border-warning/20">
                     <div className="flex items-start gap-3">
                       <Badge variant="outline" className="text-xs font-bold">#{idx + 1}</Badge>
                       <div className="text-sm">{action}</div>

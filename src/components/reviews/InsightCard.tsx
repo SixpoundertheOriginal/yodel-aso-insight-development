@@ -19,9 +19,9 @@ interface InsightCardProps {
 export const InsightCard: React.FC<InsightCardProps> = ({ insight, onActionClick }) => {
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'high': return 'text-destructive bg-destructive/10 border-destructive/20';
+      case 'medium': return 'text-warning bg-warning/10 border-warning/20';
+      case 'low': return 'text-info bg-info/10 border-info/20';
       default: return 'text-muted-foreground bg-muted/50';
     }
   };
@@ -36,8 +36,8 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, onActionClick
   };
 
   const getTrendIcon = (trend?: 'up' | 'down') => {
-    if (trend === 'up') return <TrendingUp className="h-3 w-3 text-green-500" />;
-    if (trend === 'down') return <TrendingDown className="h-3 w-3 text-red-500" />;
+    if (trend === 'up') return <TrendingUp className="h-3 w-3 text-success" />;
+    if (trend === 'down') return <TrendingDown className="h-3 w-3 text-destructive" />;
     return null;
   };
 

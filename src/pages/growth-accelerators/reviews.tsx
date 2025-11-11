@@ -52,6 +52,10 @@ import { ProductFrictionStrengths } from '@/components/reviews/ProductFrictionSt
 import { AIRecommendationsPanel } from '@/components/reviews/AIRecommendationsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
 
+// Narrative-driven UI components
+import { ExecutiveNarrativeSummary } from '@/components/reviews/narrative/ExecutiveNarrativeSummary';
+import { EmotionalProfileChart } from '@/components/reviews/narrative/EmotionalProfileChart';
+
 
 interface AppSearchResult {
   name: string;
@@ -1789,6 +1793,20 @@ const ReviewManagementPage: React.FC = () => {
               </Card>
             </div>
 
+            {/* Executive Narrative Summary - New narrative-driven interface */}
+            {reviews.length > 0 && reviewIntelligence && actionableInsights && (
+              <ExecutiveNarrativeSummary
+                appName={selectedApp.name}
+                totalReviews={summary.total}
+                averageRating={summary.avg}
+                positivePercentage={summary.posPct}
+                sentimentDistribution={reviewAnalytics.sentimentDistribution}
+                topThemes={reviewIntelligence.themes.slice(0, 3)}
+                criticalAlerts={actionableInsights.alerts.filter(a => a.severity === 'critical')}
+                dateRange={{ start: fromDate, end: toDate }}
+              />
+            )}
+
             {/* AI Intelligence Hub - ALWAYS visible when reviews loaded */}
             {reviews.length > 0 && reviewIntelligence && actionableInsights && (
               <div className="space-y-6 mt-6">
@@ -1961,6 +1979,12 @@ const ReviewManagementPage: React.FC = () => {
                   <ChartTooltip content={<ChartTooltipContent />} />
                 </PieChart>
               </ChartContainer>
+
+              {/* Enhanced Emotional Profile */}
+              <EmotionalProfileChart
+                emotions={reviewAnalytics.emotionalProfile}
+                totalReviews={filteredReviews.length}
+              />
               </div>
             </Card>
             </div>

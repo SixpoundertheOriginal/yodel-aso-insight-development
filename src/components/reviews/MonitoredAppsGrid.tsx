@@ -29,13 +29,13 @@ interface MonitoredAppsGridProps {
 }
 
 const TAG_COLORS: Record<string, string> = {
-  client: 'bg-blue-500/10 text-blue-500 border-blue-500/50',
-  competitor: 'bg-red-500/10 text-red-500 border-red-500/50',
-  benchmark: 'bg-purple-500/10 text-purple-500 border-purple-500/50',
-  'industry-leader': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/50',
-  healthcare: 'bg-green-500/10 text-green-500 border-green-500/50',
-  social: 'bg-pink-500/10 text-pink-500 border-pink-500/50',
-  'uk-only': 'bg-indigo-500/10 text-indigo-500 border-indigo-500/50',
+  client: 'bg-primary/10 text-primary border-primary/50',
+  competitor: 'bg-destructive/10 text-destructive border-destructive/50',
+  benchmark: 'bg-accent/10 text-accent border-accent/50',
+  'industry-leader': 'bg-warning/10 text-warning border-warning/50',
+  healthcare: 'bg-success/10 text-success border-success/50',
+  social: 'bg-secondary/10 text-secondary border-secondary/50',
+  'uk-only': 'bg-info/10 text-info border-info/50',
 };
 
 export const MonitoredAppsGrid: React.FC<MonitoredAppsGridProps> = ({
@@ -87,7 +87,7 @@ export const MonitoredAppsGrid: React.FC<MonitoredAppsGridProps> = ({
     return (
       <Card className="p-4 bg-card/50 backdrop-blur-xl border-border/50">
         <div className="flex items-center gap-2">
-          <Bookmark className="h-4 w-4 animate-pulse text-blue-500" />
+          <Bookmark className="h-4 w-4 animate-pulse text-primary" />
           <span className="text-sm text-muted-foreground">Loading monitored apps...</span>
         </div>
       </Card>
@@ -105,13 +105,13 @@ export const MonitoredAppsGrid: React.FC<MonitoredAppsGridProps> = ({
         "bg-card/50 backdrop-blur-xl border-border/50",
         className
       )}>
-        <div className="absolute top-0 right-0 w-48 h-48 opacity-10 blur-3xl bg-gradient-to-br from-blue-500 to-purple-600" />
+        <div className="absolute top-0 right-0 w-48 h-48 opacity-10 blur-3xl bg-gradient-to-br from-primary to-accent" />
 
         <div className="relative p-6 space-y-4">
           {/* Header */}
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-              <Bookmark className="h-5 w-5 text-white" />
+            <div className="p-2.5 rounded-lg bg-gradient-to-br from-primary to-accent">
+              <Bookmark className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
               <h3 className="text-lg font-semibold uppercase tracking-wide">
@@ -182,7 +182,7 @@ export const MonitoredAppsGrid: React.FC<MonitoredAppsGridProps> = ({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {app.snapshot_rating && (
                       <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        <Star className="h-3 w-3 text-warning fill-warning" />
                         <span>{app.snapshot_rating.toFixed(1)}</span>
                       </div>
                     )}
@@ -206,7 +206,7 @@ export const MonitoredAppsGrid: React.FC<MonitoredAppsGridProps> = ({
                           variant="outline"
                           className={cn(
                             "text-xs px-1.5 py-0.5",
-                            TAG_COLORS[tag] || 'bg-zinc-500/10 text-zinc-500 border-zinc-500/50'
+                            TAG_COLORS[tag] || 'bg-muted/50 text-muted-foreground border-border'
                           )}
                         >
                           {tag}
