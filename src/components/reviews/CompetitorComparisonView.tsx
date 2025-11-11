@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,11 @@ import {
 } from '@/components/ui/tooltip';
 import { CompetitorSelectionDialog } from './CompetitorSelectionDialog';
 import { CompetitiveIntelligencePanel } from './CompetitiveIntelligencePanel';
+import { CompetitorTimeRangeSelector } from './CompetitorTimeRangeSelector';
+import { CompetitorSelectorPanel } from './CompetitorSelectorPanel';
+import { CompetitorRatingTrendChart } from './CompetitorRatingTrendChart';
 import { useCompetitorComparison } from '@/hooks/useCompetitorComparison';
+import { useCompetitorChartFilters } from '@/hooks/useCompetitorChartFilters';
 import type { CompetitiveIntelligence } from '@/services/competitor-review-intelligence.service';
 import { competitorComparisonExportService } from '@/services/competitor-comparison-export.service';
 import { cn } from '@/lib/utils';
@@ -50,10 +54,57 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
 }) => {
   const [comparisonConfig, setComparisonConfig] = useState<ComparisonConfig | null>(null);
   const [showSelection, setShowSelection] = useState(true);
+  const [primaryMonitoredAppId, setPrimaryMonitoredAppId] = useState<string | null>(null);
 
   // Pass organizationId to enable cached reviews and intelligence optimization
   const configWithOrgId = comparisonConfig ? { ...comparisonConfig, organizationId } : null;
   const { data: intelligence, isLoading, error } = useCompetitorComparison(configWithOrgId);
+
+  // Get chart filters store to initialize competitors
+  const { setCompetitors } = useCompetitorChartFilters();
+
+  // Initialize competitor filters when config changes
+  useEffect(() => {
+    if (comparisonConfig) {
+      const allApps = [
+        {
+          appId: comparisonConfig.primaryAppId,
+          appName: comparisonConfig.primaryAppName,
+          appIcon: comparisonConfig.primaryAppIcon,
+          isVisible: true,
+          isPrimary: true,
+        },
+        ...comparisonConfig.competitorAppIds.map((id, idx) => ({
+          appId: id,
+          appName: comparisonConfig.competitorAppNames[idx],
+          appIcon: comparisonConfig.competitorAppIcons[idx],
+          isVisible: true, // Show all by default
+          isPrimary: false,
+        })),
+      ];
+      setCompetitors(allApps);
+    }
+  }, [comparisonConfig, setCompetitors]);
+
+  // Fetch monitored_app_id for primary app (for historical chart data)
+  useEffect(() => {
+    if (comparisonConfig && organizationId) {
+      const fetchPrimaryMonitoredAppId = async () => {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data } = await supabase
+          .from('monitored_apps')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('app_store_id', comparisonConfig.primaryAppId)
+          .eq('primary_country', comparisonConfig.country)
+          .maybeSingle();
+
+        setPrimaryMonitoredAppId(data?.id || null);
+      };
+
+      fetchPrimaryMonitoredAppId();
+    }
+  }, [comparisonConfig, organizationId]);
 
   const handleStartComparison = (config: ComparisonConfig) => {
     setComparisonConfig(config);
@@ -432,6 +483,49 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
             </div>
           </div>
         </Card>
+
+        {/* Charts Section - PHASE 2A */}
+        <div className="space-y-6">
+          {/* Controls Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Time Range Selector */}
+            <Card className="col-span-2 p-4">
+              <CompetitorTimeRangeSelector />
+            </Card>
+
+            {/* Quick Stats */}
+            <Card className="p-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">Active Comparison</div>
+                <div className="text-2xl font-bold">{(comparisonConfig?.competitorAppIds.length || 0) + 1}</div>
+                <div className="text-xs text-muted-foreground">Total Apps</div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Chart (2 columns) */}
+            <div className="lg:col-span-2">
+              <CompetitorRatingTrendChart
+                organizationId={organizationId}
+                primaryAppId={primaryMonitoredAppId}
+                competitorApps={
+                  comparisonConfig?.competitorAppIds.map((id, idx) => ({
+                    appId: id,
+                    appName: comparisonConfig.competitorAppNames[idx],
+                    appIcon: comparisonConfig.competitorAppIcons[idx],
+                  })) || []
+                }
+              />
+            </div>
+
+            {/* Competitor Selector (1 column) */}
+            <div>
+              <CompetitorSelectorPanel />
+            </div>
+          </div>
+        </div>
 
         {/* Competitive Intelligence Panel */}
         <CompetitiveIntelligencePanel intelligence={intelligence} />
