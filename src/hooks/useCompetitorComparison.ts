@@ -372,10 +372,10 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
               app_store_id: competitorApp.id,
               country: config.country,
               title: review.title,
-              review_text: review.text,
+              text: review.text,  // Fixed: column name is 'text' not 'review_text'
               rating: review.rating,
               version: review.version,
-              author_name: review.author,
+              author: review.author,  // Fixed: column name is 'author' not 'author_name'
               review_date: review.updated_at,
               enhanced_sentiment: review.enhancedSentiment,
               extracted_themes: review.extractedThemes,
