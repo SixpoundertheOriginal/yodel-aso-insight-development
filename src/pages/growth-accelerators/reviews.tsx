@@ -1807,9 +1807,29 @@ const ReviewManagementPage: React.FC = () => {
               />
             )}
 
-            {/* AI Intelligence Hub - ALWAYS visible when reviews loaded */}
+            {/* Visual separator and section header */}
             {reviews.length > 0 && reviewIntelligence && actionableInsights && (
-              <div className="space-y-6 mt-6">
+              <>
+                <Separator className="my-8" />
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-accent/10 border border-accent/20">
+                      <Brain className="h-6 w-6 text-accent" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight">Review Intelligence</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        AI-powered analysis of sentiment, themes, issues, and opportunities
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* AI Intelligence Deep Dive */}
+            {reviews.length > 0 && reviewIntelligence && actionableInsights && (
+              <div className="space-y-6">
                 {/* AI Summary */}
                 <ReviewIntelligenceSummary
                   intelligence={reviewIntelligence}

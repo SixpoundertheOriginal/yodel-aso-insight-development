@@ -27,9 +27,6 @@ export function ReviewIntelligenceSummary({
   // Calculate rating impact potential
   const ratingImpact = calculatePotentialRatingImpact(insights);
 
-  // Determine satisfaction level
-  const satisfactionLevel = getSatisfactionLevel(analytics.positivePercentage);
-
   return (
     <Card className="border-accent/30 bg-card shadow-md relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50 pointer-events-none" />
@@ -37,7 +34,7 @@ export function ReviewIntelligenceSummary({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-6 h-6 text-accent" />
-            <CardTitle className="text-xl">AI Intelligence Summary</CardTitle>
+            <CardTitle className="text-xl">AI Intelligence: Deep Dive</CardTitle>
           </div>
           <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
             {analytics.totalReviews} reviews analyzed
@@ -45,6 +42,12 @@ export function ReviewIntelligenceSummary({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 relative">
+        {/* Lightweight summary line */}
+        <div className="text-sm text-muted-foreground border-b border-border pb-3 mb-1">
+          Analyzing <strong className="text-text-primary font-semibold">{analytics.totalReviews.toLocaleString()}</strong> reviews
+          ({analytics.positivePercentage}% positive, {analytics.averageRating.toFixed(1)}★ average)
+        </div>
+
         {/* Summary Text */}
         <div className="prose prose-sm max-w-none">
           <p className="text-base leading-relaxed text-text-secondary">
@@ -53,17 +56,7 @@ export function ReviewIntelligenceSummary({
         </div>
 
         {/* Key Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-accent/30">
-          {/* User Satisfaction */}
-          <MetricCard
-            icon={<ThumbsUp className="w-5 h-5" />}
-            label="User Satisfaction"
-            value={`${analytics.positivePercentage}%`}
-            trend={satisfactionLevel.trend}
-            subtitle={satisfactionLevel.label}
-            variant={satisfactionLevel.variant}
-          />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-accent/30">
           {/* Critical Issues */}
           <MetricCard
             icon={<AlertCircle className="w-5 h-5" />}

@@ -125,8 +125,8 @@ export const ExecutiveNarrativeSummary: React.FC<ExecutiveNarrativeSummaryProps>
                 <Target className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-bold tracking-tight">Executive Summary</h3>
-                <p className="text-xs text-muted-foreground">AI-powered review intelligence</p>
+                <h3 className="text-xl font-bold tracking-tight">Executive Summary: Review Performance</h3>
+                <p className="text-xs text-muted-foreground">High-level insights and key findings</p>
               </div>
             </div>
           </div>
@@ -161,61 +161,6 @@ export const ExecutiveNarrativeSummary: React.FC<ExecutiveNarrativeSummaryProps>
           </div>
         </div>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Sentiment */}
-          <div className="p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-2 mb-1">
-              <Smile className="h-3.5 w-3.5 text-success" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Sentiment
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">{positivePercentage}%</span>
-              <span className="text-xs text-muted-foreground">positive</span>
-            </div>
-          </div>
-
-          {/* Rating */}
-          <div className="p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-2 mb-1">
-              <Star className="h-3.5 w-3.5 text-warning" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Rating
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">{averageRating.toFixed(2)}</span>
-              <span className="text-xs text-muted-foreground">/ 5.0</span>
-            </div>
-          </div>
-
-          {/* Trend */}
-          <div className="p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-2 mb-1">
-              {positivePercentage >= 70 ? (
-                <TrendingUp className="h-3.5 w-3.5 text-success" />
-              ) : (
-                <TrendingDown className="h-3.5 w-3.5 text-destructive" />
-              )}
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Trend
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className={cn(
-                "text-2xl font-bold",
-                positivePercentage >= 70 ? "text-success" : "text-destructive"
-              )}>
-                {positivePercentage >= 70 ? '↑' : '↓'}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {positivePercentage >= 70 ? 'Strong' : 'Concerning'}
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Key Insights */}
         {keyInsights.length > 0 && (
