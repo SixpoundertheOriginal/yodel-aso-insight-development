@@ -15,6 +15,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { fetchAppReviews } from '@/utils/itunesReviews';
 import { toast } from 'sonner';
 
@@ -60,8 +61,7 @@ const CACHE_TTL_MS = CACHE_TTL_HOURS * 60 * 60 * 1000;
  */
 async function checkCacheFreshness(monitoredAppId: string): Promise<{ isFresh: boolean; ageSeconds: number | null }> {
   try {
-    const { data, error } = await supabase
-      .from('review_fetch_log')
+    const { data, error } = await supabaseCompat.fromAny('review_fetch_log')
       .select('fetched_at')
       .eq('monitored_app_id', monitoredAppId)
       .order('fetched_at', { ascending: false })
@@ -89,8 +89,7 @@ async function checkCacheFreshness(monitoredAppId: string): Promise<{ isFresh: b
  */
 async function getCachedReviews(monitoredAppId: string): Promise<CachedReviewItem[]> {
   try {
-    const { data, error } = await supabase
-      .from('monitored_app_reviews')
+    const { data, error } = await supabaseCompat.fromAny('monitored_app_reviews')
       .select('*')
       .eq('monitored_app_id', monitoredAppId)
       .order('review_date', { ascending: false })
@@ -102,7 +101,7 @@ async function getCachedReviews(monitoredAppId: string): Promise<CachedReviewIte
     }
 
     // Transform database format to ReviewItem format
-    return (data || []).map(row => ({
+    return (data || []).map((row: any) => ({
       review_id: row.review_id,
       title: row.title || '',
       text: row.text,
@@ -144,8 +143,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
     console.log('[useCachedReviews] Fetched', reviews.length, 'reviews from iTunes');
 
     // 2. Get existing review IDs to avoid duplicates
-    const { data: existingReviews } = await supabase
-      .from('monitored_app_reviews')
+    const { data: existingReviews } = await supabaseCompat.fromAny('monitored_app_reviews')
       .select('review_id')
       .eq('monitored_app_id', monitoredAppId);
 
@@ -179,8 +177,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
         processing_version: '1.0',
       }));
 
-      const { error: insertError } = await supabase
-        .from('monitored_app_reviews')
+      const { error: insertError } = await supabaseCompat.fromAny('monitored_app_reviews')
         .insert(reviewsToInsert);
 
       if (insertError) {
@@ -192,7 +189,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
     }
 
     // 5. Log the fetch operation
-    await supabase.from('review_fetch_log').insert({
+    await supabaseCompat.fromAny('review_fetch_log').insert({
       monitored_app_id: monitoredAppId,
       organization_id: organizationId,
       fetched_at: new Date().toISOString(),
@@ -210,7 +207,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
     console.error('[useCachedReviews] Error in fetchAndCacheReviews:', error);
 
     // Log the failed fetch
-    await supabase.from('review_fetch_log').insert({
+    await supabaseCompat.fromAny('review_fetch_log').insert({
       monitored_app_id: monitoredAppId,
       organization_id: organizationId,
       fetched_at: new Date().toISOString(),
@@ -258,7 +255,7 @@ export const useCachedReviews = (params: FetchReviewsParams | null) => {
           console.log('[useCachedReviews] ✅ Serving from cache:', cachedReviews.length, 'reviews');
 
           // Log cache hit
-          await supabase.from('review_fetch_log').insert({
+          await supabaseCompat.fromAny('review_fetch_log').insert({
             monitored_app_id: monitoredAppId,
             organization_id: organizationId,
             fetched_at: new Date().toISOString(),
@@ -289,12 +286,8 @@ export const useCachedReviews = (params: FetchReviewsParams | null) => {
     },
     enabled: !!params,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
     retry: 1,
-    onError: (error: any) => {
-      console.error('[useCachedReviews] Query error:', error);
-      toast.error(`Failed to load reviews: ${error.message}`);
-    },
   });
 };
 

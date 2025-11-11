@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useCallback } from 'react';
 import { withSafePermissions, safeArray, type SafePermissions } from '@/utils/enterpriseSafeGuards';
@@ -48,8 +49,7 @@ export const usePermissions = () => {
       try {
         // Use the unified view for consistent role resolution (avoids broken joins)
         let allPermissions, error;
-        const unifiedQuery = await supabase
-          .from('user_permissions_unified')
+        const unifiedQuery = await supabaseCompat.fromAny('user_permissions_unified')
           .select('*')
           .eq('user_id', user.id);
 

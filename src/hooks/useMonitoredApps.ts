@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { toast } from 'sonner';
 
 export interface MonitoredApp {
@@ -72,8 +73,7 @@ export const useMonitoredApps = (organizationId?: string) => {
         throw new Error('Organization ID is required');
       }
 
-      const { data, error } = await supabase
-        .from('monitored_apps')
+      const { data, error } = await supabaseCompat.fromAny('monitored_apps')
         .select('*')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
@@ -83,7 +83,7 @@ export const useMonitoredApps = (organizationId?: string) => {
         throw error;
       }
 
-      return data || [];
+      return (data || []) as MonitoredApp[];
     },
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -129,8 +129,7 @@ export const useAddMonitoredApp = () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
 
-      const { data, error } = await supabase
-        .from('monitored_apps')
+      const { data, error} = await supabaseCompat.fromAny('monitored_apps')
         .insert({
           organization_id: organizationId,
           app_store_id: appStoreId,
@@ -197,8 +196,7 @@ export const useUpdateMonitoredApp = () => {
       if (notes !== undefined) updateData.notes = notes || null;
       if (monitorType) updateData.monitor_type = monitorType;
 
-      const { error } = await supabase
-        .from('monitored_apps')
+      const { error } = await supabaseCompat.fromAny('monitored_apps')
         .update(updateData)
         .eq('id', appId);
 
@@ -229,8 +227,7 @@ export const useRemoveMonitoredApp = () => {
       appId: string;
       organizationId: string;
     }) => {
-      const { error } = await supabase
-        .from('monitored_apps')
+      const { error } = await supabaseCompat.fromAny('monitored_apps')
         .delete()
         .eq('id', appId);
 
@@ -253,8 +250,7 @@ export const useRemoveMonitoredApp = () => {
 export const useUpdateLastChecked = () => {
   return useMutation({
     mutationFn: async (appId: string) => {
-      const { error } = await supabase
-        .from('monitored_apps')
+      const { error } = await supabaseCompat.fromAny('monitored_apps')
         .update({ last_checked_at: new Date().toISOString() })
         .eq('id', appId);
 

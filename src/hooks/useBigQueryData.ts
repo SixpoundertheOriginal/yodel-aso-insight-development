@@ -241,7 +241,7 @@ export const useBigQueryData = (
           trafficSources: [] as string[]
         };
 
-        logger.bigquery(`Fetching data: org=${requestBody.organizationId?.slice(0,8)}..., apps=${requestBody.selectedApps?.length || 'all'}, dateRange=${requestBody.dateRange.start} to ${requestBody.dateRange.end}`);
+        logger.bigquery(`Fetching data: org=${requestBody.organizationId?.slice(0,8)}..., apps=${requestBody.selectedApps?.length || 'all'}, dateRange=${requestBody.dateRange.from} to ${requestBody.dateRange.to}`);
 
         debugLog.verbose('Making request to edge function', { requestBody });
 
@@ -386,7 +386,7 @@ export const useBigQueryData = (
     isDemo: meta?.isDemo || false // Extract demo flag
   };
 
-  logger.bigquery(`Hook returning: rows=${data?.length || 0}, loading=${loading}, isDemo=${hookResult.isDemo}`);
+  logger.bigquery(`Hook returning: hasData=${!!data}, loading=${loading}, isDemo=${hookResult.isDemo}`);
 
   return hookResult;
 };
