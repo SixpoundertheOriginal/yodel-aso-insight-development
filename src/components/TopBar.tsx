@@ -15,7 +15,7 @@ import GlobalDemoIndicator from "./GlobalDemoIndicator";
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
   const { selectedApps, setSelectedApps } = useBigQueryAppSelection();
-  const { permissions, isLoading: permissionsLoading } = usePermissions();
+  const { organizationId, isLoading: permissionsLoading } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
   
   const getPageTitle = () => {
@@ -86,7 +86,7 @@ const TopBar: React.FC = React.memo(() => {
           {isAnalyticsPage && !permissionsLoading && (
             <div className="hidden md:block">
               <BigQueryAppSelector
-                organizationId={permissions?.org_id}
+                organizationId={organizationId}
                 selectedApps={selectedApps}
                 onSelectionChange={setSelectedApps}
               />
@@ -116,7 +116,7 @@ const TopBar: React.FC = React.memo(() => {
         <div className="flex items-center justify-between">
           {isAnalyticsPage && !permissionsLoading && (
             <BigQueryAppSelector
-              organizationId={permissions?.org_id}
+              organizationId={organizationId}
               selectedApps={selectedApps}
               onSelectionChange={setSelectedApps}
             />

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { toast } from 'sonner';
 import type { AppCompetitor } from './useMonitoredApps';
 
@@ -14,8 +15,7 @@ export const useAppCompetitors = (targetAppId?: string) => {
         throw new Error('Target app ID is required');
       }
 
-      const { data, error } = await supabase
-        .from('app_competitors')
+      const { data, error } = await supabaseCompat.fromAny('app_competitors')
         .select('*')
         .eq('target_app_id', targetAppId)
         .eq('is_active', true)
@@ -45,8 +45,7 @@ export const useAllCompetitors = (organizationId?: string) => {
         throw new Error('Organization ID is required');
       }
 
-      const { data, error } = await supabase
-        .from('app_competitors')
+      const { data, error } = await supabaseCompat.fromAny('app_competitors')
         .select('*')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
@@ -106,8 +105,7 @@ export const useAddCompetitor = () => {
       const userId = userData?.user?.id;
 
       // Insert competitor relationship
-      const { data, error } = await supabase
-        .from('app_competitors')
+      const { data, error } = await supabaseCompat.fromAny('app_competitors')
         .insert({
           organization_id: organizationId,
           target_app_id: targetAppId,
@@ -163,8 +161,7 @@ export const useRemoveCompetitor = () => {
       competitorId: string;
       targetAppId: string;
     }) => {
-      const { error } = await supabase
-        .from('app_competitors')
+      const { error } = await supabaseCompat.fromAny('app_competitors')
         .delete()
         .eq('id', competitorId);
 
@@ -199,8 +196,7 @@ export const useUpdateCompetitorPriority = () => {
       targetAppId: string;
       priority: number;
     }) => {
-      const { error } = await supabase
-        .from('app_competitors')
+      const { error } = await supabaseCompat.fromAny('app_competitors')
         .update({ priority })
         .eq('id', competitorId);
 
@@ -234,8 +230,7 @@ export const useUpdateComparisonSummary = () => {
       competitorAppStoreId: string;
       summary: any; // CompetitiveIntelligence JSON
     }) => {
-      const { error } = await supabase
-        .from('app_competitors')
+      const { error } = await supabaseCompat.fromAny('app_competitors')
         .update({
           comparison_summary: summary,
           last_compared_at: new Date().toISOString(),

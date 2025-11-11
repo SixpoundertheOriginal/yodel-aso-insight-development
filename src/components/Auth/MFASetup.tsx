@@ -18,6 +18,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 // import { QRCodeSVG } from 'qrcode.react'; // TODO: Install qrcode.react when MFA is fully implemented
@@ -29,7 +30,7 @@ import { Shield, Copy, Check, AlertTriangle } from 'lucide-react';
 
 export function MFASetup() {
   const { user } = useAuth();
-  const { role } = usePermissions();
+  const { effectiveRole } = usePermissions();
 
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export function MFASetup() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if MFA is required for this user's role
-  const isMFARequired = role === 'org_admin' || role === 'super_admin';
+  const isMFARequired = effectiveRole === 'org_admin' || effectiveRole === 'super_admin';
 
   useEffect(() => {
     checkMFAStatus();
@@ -115,7 +116,7 @@ export function MFASetup() {
       setVerificationCode('');
 
       // Log audit event
-      await supabase.rpc('log_audit_event', {
+      await supabaseCompat.rpcAny('log_audit_event', {
         p_user_id: user?.id,
         p_organization_id: null,
         p_user_email: user?.email || null,
@@ -152,7 +153,7 @@ export function MFASetup() {
         setMfaEnabled(false);
 
         // Log audit event
-        await supabase.rpc('log_audit_event', {
+        await supabaseCompat.rpcAny('log_audit_event', {
           p_user_id: user?.id,
           p_organization_id: null,
           p_user_email: user?.email || null,
@@ -201,7 +202,7 @@ export function MFASetup() {
             <Alert className="mt-2">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                MFA is required for {role === 'org_admin' ? 'Organization Admins' : 'Super Admins'}.
+                MFA is required for {effectiveRole === 'org_admin' ? 'Organization Admins' : 'Super Admins'}.
                 Please enable it to maintain access to admin features.
               </AlertDescription>
             </Alert>

@@ -425,7 +425,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
               </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredAnalyticsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAnalyticsItems.map(item => renderNavItem(item)).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -442,7 +442,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredAiToolsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAiToolsItems.map(item => renderNavItem(item)).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -459,7 +459,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredAiCopilotsItems.map(renderNavItem).filter(Boolean)}
+                {filteredAiCopilotsItems.map(item => renderNavItem(item)).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -475,7 +475,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredDemoItems.map(renderNavItem).filter(Boolean)}
+                {filteredDemoItems.map(item => renderNavItem(item)).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -492,7 +492,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredControlCenterItems.map(renderNavItem).filter(Boolean)}
+                {filteredControlCenterItems.map(item => renderNavItem(item)).filter(Boolean)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -508,7 +508,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {accountItems.map(renderNavItem)}
+              {accountItems.map(item => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

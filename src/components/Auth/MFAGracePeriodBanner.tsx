@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Shield, Clock, X } from 'lucide-react';
@@ -28,14 +28,14 @@ interface MFAEnforcementStatus {
 
 export function MFAGracePeriodBanner() {
   const { user } = useAuth();
-  const { permissions } = usePermissions();
+  const permissions = usePermissions();
   const navigate = useNavigate();
 
   const [mfaStatus, setMFAStatus] = useState<MFAEnforcementStatus | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
-  const isAdmin = permissions?.isSuperAdmin || permissions?.isOrgAdmin;
+  const isAdmin = permissions?.isSuperAdmin || permissions?.isOrganizationAdmin;
 
   useEffect(() => {
     if (!user || !isAdmin) return;
@@ -56,8 +56,7 @@ export function MFAGracePeriodBanner() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('mfa_enforcement')
+      const { data, error } = await supabaseCompat.fromAny('mfa_enforcement')
         .select('mfa_required, grace_period_ends_at, mfa_enabled_at')
         .eq('user_id', user.id)
         .single();
@@ -68,7 +67,7 @@ export function MFAGracePeriodBanner() {
       }
 
       if (data) {
-        setMFAStatus(data);
+        setMFAStatus(data as MFAEnforcementStatus);
       }
     } catch (err) {
       console.error('Error loading MFA status:', err);

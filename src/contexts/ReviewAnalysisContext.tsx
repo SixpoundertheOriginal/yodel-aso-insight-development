@@ -17,7 +17,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { logger } from '@/utils/logger';
 
 interface SelectedApp {
@@ -62,8 +62,7 @@ export function ReviewAnalysisProvider({ children, organizationId }: ReviewAnaly
     queryFn: async () => {
       if (!organizationId) return [];
 
-      const { data, error } = await supabase
-        .from('monitored_apps')
+      const { data, error } = await supabaseCompat.fromAny('monitored_apps')
         .select('*')
         .eq('organization_id', organizationId);
 

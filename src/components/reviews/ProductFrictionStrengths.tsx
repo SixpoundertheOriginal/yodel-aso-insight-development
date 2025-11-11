@@ -176,7 +176,7 @@ function FrictionItem({
           <div className="text-xs text-text-tertiary">impact</div>
         </div>
       </div>
-      <Progress value={percentage} className="h-2" indicatorClassName="bg-destructive" />
+      <Progress value={percentage} className="h-2 [&>div]:bg-destructive" />
     </div>
   );
 }
@@ -242,7 +242,7 @@ function StrengthItem({
           <div className="text-xs text-text-tertiary">boost</div>
         </div>
       </div>
-      <Progress value={sentimentPercentage} className="h-2" indicatorClassName="bg-success" />
+      <Progress value={sentimentPercentage} className="h-2 [&>div]:bg-success" />
     </div>
   );
 }
