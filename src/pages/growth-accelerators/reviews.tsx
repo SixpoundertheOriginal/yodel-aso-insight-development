@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X } from 'lucide-react';
+import { Search, Star, Download, Eye, ChevronRight, Filter, SortAsc, Calendar as CalendarIcon, Smile, Meh, Frown, Brain, TrendingUp, MessageSquare, BarChart3, Globe, Target, X, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { toast } from 'sonner';
@@ -43,7 +43,7 @@ import { CollapsibleAnalyticsSection } from '@/components/reviews/CollapsibleAna
 import { MonitoredAppsGrid } from '@/components/reviews/MonitoredAppsGrid';
 import { AddToMonitoringButton } from '@/components/reviews/AddToMonitoringButton';
 import { useMonitoredApps, useUpdateLastChecked } from '@/hooks/useMonitoredApps';
-import { useCachedReviews } from '@/hooks/useCachedReviews';
+import { useCachedReviews, useRefreshCachedReviews } from '@/hooks/useCachedReviews';
 import { CompetitorComparisonView } from '@/components/reviews/CompetitorComparisonView';
 import { CompetitorManagementPanel } from '@/components/reviews/CompetitorManagementPanel';
 import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
@@ -199,6 +199,9 @@ const ReviewManagementPage: React.FC = () => {
     refetch: refetchCachedReviews
   } = useCachedReviews(cachedReviewsParams);
 
+  // Force refresh mutation for monitored apps
+  const refreshCachedReviewsMutation = useRefreshCachedReviews();
+
   // When cached reviews are loaded, populate reviews state
   React.useEffect(() => {
     if (cachedReviewsData && cachedReviewsData.reviews.length > 0) {
@@ -227,8 +230,33 @@ const ReviewManagementPage: React.FC = () => {
     }
   }, [cachedReviewsError, isAppMonitored]);
 
-  // Combine loading states (manual fetch + cached reviews fetch)
-  const isLoadingReviews = reviewsLoading || (isAppMonitored && cachedReviewsLoading);
+  // Combine loading states (manual fetch + cached reviews fetch + force refresh)
+  const isLoadingReviews = reviewsLoading || (isAppMonitored && cachedReviewsLoading) || refreshCachedReviewsMutation.isPending;
+
+  // Force refresh handler for monitored apps
+  const handleForceRefreshCache = async () => {
+    if (!selectedApp || !isAppMonitored || !monitoredAppId || !organizationId) {
+      toast.error('Can only force refresh for monitored apps');
+      return;
+    }
+
+    console.log('[Reviews] Force refreshing cache with pagination for:', selectedApp.name);
+    toast.info('Fetching up to 500 reviews (10 pages)... This may take 5-10 seconds');
+
+    try {
+      await refreshCachedReviewsMutation.mutateAsync({
+        monitoredAppId,
+        appStoreId: selectedApp.appId,
+        country: selectedCountry,
+        organizationId,
+        forceRefresh: true
+      });
+      // Success toast is handled by the mutation's onSuccess callback
+    } catch (error: any) {
+      // Error toast is handled by the mutation's onError callback
+      console.error('[Reviews] Force refresh failed:', error);
+    }
+  };
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
@@ -1642,6 +1670,18 @@ const ReviewManagementPage: React.FC = () => {
                       reviewCount={selectedApp.reviews}
                       isMonitored={isAppMonitored}
                     />
+                  )}
+                  {isAppMonitored && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleForceRefreshCache}
+                      disabled={isLoadingReviews}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isLoadingReviews ? 'animate-spin' : ''}`} />
+                      {isLoadingReviews ? 'Refreshing...' : 'Refresh Reviews'}
+                    </Button>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>
                     Search Another
