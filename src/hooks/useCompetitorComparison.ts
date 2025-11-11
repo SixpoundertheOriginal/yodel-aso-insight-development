@@ -313,6 +313,39 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       if (organizationId) {
         console.log('💾 [Comparison] Caching competitor reviews for trend analysis...');
 
+        // STEP 1: Get or create monitored_app entry for PRIMARY app
+        let primaryMonitoredAppId: string | null = null;
+        try {
+          const { data: primaryMonitoredApp, error: primaryError } = await supabase
+            .from('monitored_apps')
+            .upsert({
+              organization_id: organizationId,
+              app_store_id: config.primaryAppId,
+              app_name: config.primaryAppName,
+              app_icon_url: config.primaryAppIcon,
+              primary_country: config.country,
+              monitor_type: 'reviews',
+              snapshot_rating: config.primaryAppRating,
+              snapshot_review_count: config.primaryAppReviewCount,
+              snapshot_taken_at: new Date().toISOString(),
+              last_checked_at: new Date().toISOString(),
+            }, {
+              onConflict: 'organization_id,app_store_id,primary_country',
+              ignoreDuplicates: false,
+            })
+            .select('id')
+            .single();
+
+          if (primaryError) {
+            console.error('❌ [Cache] Failed to upsert primary monitored_app:', primaryError);
+          } else if (primaryMonitoredApp) {
+            primaryMonitoredAppId = primaryMonitoredApp.id;
+            console.log(`✅ [Cache] Primary app monitored_app_id: ${primaryMonitoredAppId}`);
+          }
+        } catch (error) {
+          console.error('❌ [Cache] Unexpected error getting primary monitored_app:', error);
+        }
+
         // Build competitor apps array from config
         const competitorApps = config.competitorAppIds.map((id, idx) => ({
           id,
@@ -323,7 +356,11 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
           developer: '', // Will get from monitored_app if available
         }));
 
-        // Cache reviews for each competitor app
+        // Get current user for created_by field
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+
+        // STEP 2: Cache reviews for each competitor app
         for (let i = 0; i < competitorApps.length; i++) {
           const competitorApp = competitorApps[i];
           const reviews = competitorReviews[i];
@@ -362,6 +399,39 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
             if (!monitoredApp) {
               console.error(`❌ [Cache] No monitored_app returned for ${competitorApp.name}`);
               continue;
+            }
+
+            // STEP 3: Create app_competitors relationship (NEW!)
+            if (primaryMonitoredAppId) {
+              try {
+                const { error: relationshipError } = await supabase
+                  .from('app_competitors')
+                  .upsert({
+                    organization_id: organizationId,
+                    target_app_id: primaryMonitoredAppId,
+                    competitor_app_store_id: competitorApp.id,
+                    competitor_app_name: competitorApp.name,
+                    competitor_app_icon: competitorApp.icon,
+                    competitor_rating: competitorApp.rating,
+                    competitor_review_count: competitorApp.reviews,
+                    country: config.country,
+                    priority: i + 1, // Priority based on order
+                    is_active: true,
+                    last_compared_at: new Date().toISOString(),
+                    created_by: userId,
+                  }, {
+                    onConflict: 'organization_id,target_app_id,competitor_app_store_id,country',
+                    ignoreDuplicates: false,
+                  });
+
+                if (relationshipError) {
+                  console.error(`❌ [Relationship] Failed to create app_competitors link for ${competitorApp.name}:`, relationshipError);
+                } else {
+                  console.log(`🔗 [Relationship] Linked ${config.primaryAppName} → ${competitorApp.name}`);
+                }
+              } catch (error) {
+                console.error(`❌ [Relationship] Unexpected error creating link for ${competitorApp.name}:`, error);
+              }
             }
 
             // Prepare review records for batch insert
