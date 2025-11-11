@@ -1303,9 +1303,9 @@ const ReviewManagementPage: React.FC = () => {
   const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(star => (
-        <Star 
-          key={star} 
-          className={`w-4 h-4 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
+        <Star
+          key={star}
+          className={`w-4 h-4 ${star <= rating ? 'fill-warning text-warning' : 'text-muted-foreground/40'}`}
         />
       ))}
     </div>
@@ -1380,13 +1380,14 @@ const ReviewManagementPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Review Management</h1>
-          <p className="text-muted-foreground">Search apps and fetch public customer reviews from iTunes RSS</p>
+          <p className="text-text-secondary">Search apps and fetch public customer reviews from iTunes RSS</p>
         </div>
         <div className="flex items-center gap-2">
           {organizationId && monitoredApps && monitoredApps.length >= 2 && (
             <Button
               onClick={() => setShowCompetitorComparison(true)}
-              className="gap-2 bg-gradient-to-br from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
+              className="gap-2"
+              variant="default"
             >
               <Target className="h-4 w-4" />
               Compare Competitors
@@ -1492,24 +1493,24 @@ const ReviewManagementPage: React.FC = () => {
       {!selectedApp && (
       <Card className={cn(
         "relative overflow-hidden transition-all duration-300",
-        "hover:scale-[1.005] hover:shadow-2xl",
-        "bg-card/50 backdrop-blur-xl border-border/50"
+        "hover:scale-[1.005] hover:shadow-lg",
+        "bg-card border-border"
       )}>
         {/* Gradient Background Accent */}
-        <div className="absolute top-0 right-0 w-48 h-48 opacity-10 blur-3xl bg-gradient-to-br from-blue-500 to-purple-600" />
+        <div className="absolute top-0 right-0 w-48 h-48 opacity-5 blur-3xl bg-gradient-to-br from-primary to-accent" />
 
         <div className="relative p-6 space-y-6">
           {/* Header with gradient icon */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-                <Search className="h-5 w-5 text-white" />
+              <div className="p-2.5 rounded-lg bg-primary">
+                <Search className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold uppercase tracking-wide">
                   App Search
                 </h2>
-                <p className="text-xs text-muted-foreground/80">
+                <p className="text-xs text-text-tertiary">
                   Search and select an app to analyze reviews
                 </p>
               </div>
@@ -1611,10 +1612,10 @@ const ReviewManagementPage: React.FC = () => {
                       <span>Reviews for {selectedApp.name}</span>
                       <Badge variant="secondary" className="text-[10px]">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">{selectedApp.developer}</div>
+                    <div className="text-xs text-text-tertiary">{selectedApp.developer}</div>
                     <div className="flex items-center gap-2 mt-1">
                       <StarRating rating={Math.round(selectedApp?.rating || 0)} />
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-text-tertiary">
                         {(selectedApp?.rating ?? 0).toFixed(2)} / 5 • {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
                       </span>
                     </div>
@@ -1642,9 +1643,9 @@ const ReviewManagementPage: React.FC = () => {
               </div>
 
               {/* Date Range Picker */}
-              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground mr-2">Date Range:</span>
+              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                <CalendarIcon className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-text-secondary mr-2">Date Range:</span>
                 <DateRangePicker
                   dateRange={{ start: fromDate, end: toDate }}
                   onDateRangeChange={(range) => {
@@ -1680,14 +1681,14 @@ const ReviewManagementPage: React.FC = () => {
               {/* Total Reviews */}
               <Card className={cn(
                 "relative overflow-hidden transition-all duration-300",
-                "hover:scale-[1.02] hover:shadow-xl",
-                "bg-card/50 backdrop-blur-xl border-border/50"
+                "hover:scale-[1.02] hover:shadow-lg",
+                "bg-card border-border"
               )}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-blue-500 to-cyan-600" />
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-3xl bg-gradient-to-br from-primary to-primary/50" />
                 <div className="relative p-4 space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <MessageSquare className="h-3.5 w-3.5 text-accent" />
+                    <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
                       Total Reviews
                     </span>
                   </div>
@@ -1700,22 +1701,22 @@ const ReviewManagementPage: React.FC = () => {
               {/* App Store Rating */}
               <Card className={cn(
                 "relative overflow-hidden transition-all duration-300",
-                "hover:scale-[1.02] hover:shadow-xl",
-                "bg-card/50 backdrop-blur-xl border-border/50"
+                "hover:scale-[1.02] hover:shadow-lg",
+                "bg-card border-border"
               )}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-yellow-500 to-orange-600" />
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-3xl bg-gradient-to-br from-primary to-primary/50" />
                 <div className="relative p-4 space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Star className="h-3.5 w-3.5 text-yellow-500" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <Star className="h-3.5 w-3.5 text-warning" />
+                    <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
                       App Store
                     </span>
                   </div>
                   <div className="text-3xl font-bold tracking-tight">
                     {(selectedApp?.rating ?? 0).toFixed(2)}
-                    <span className="text-base text-muted-foreground font-normal"> / 5</span>
+                    <span className="text-base text-text-tertiary font-normal"> / 5</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] text-text-tertiary">
                     {(selectedApp?.reviews ?? 0).toLocaleString()} ratings
                   </div>
                 </div>
@@ -1724,14 +1725,14 @@ const ReviewManagementPage: React.FC = () => {
               {/* Average Rating */}
               <Card className={cn(
                 "relative overflow-hidden transition-all duration-300",
-                "hover:scale-[1.02] hover:shadow-xl",
-                "bg-card/50 backdrop-blur-xl border-border/50"
+                "hover:scale-[1.02] hover:shadow-lg",
+                "bg-card border-border"
               )}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-purple-500 to-pink-600" />
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50" />
                 <div className="relative p-4 space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-purple-500" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
                       Avg Rating
                     </span>
                   </div>
@@ -1744,14 +1745,14 @@ const ReviewManagementPage: React.FC = () => {
               {/* Positive Percentage */}
               <Card className={cn(
                 "relative overflow-hidden transition-all duration-300",
-                "hover:scale-[1.02] hover:shadow-xl",
-                "bg-card/50 backdrop-blur-xl border-border/50"
+                "hover:scale-[1.02] hover:shadow-lg",
+                "bg-card border-border"
               )}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-green-500 to-emerald-600" />
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-3xl bg-gradient-to-br from-success to-success/50" />
                 <div className="relative p-4 space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Smile className="h-3.5 w-3.5 text-green-500" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <Smile className="h-3.5 w-3.5 text-success" />
+                    <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
                       Positive
                     </span>
                   </div>
@@ -1764,21 +1765,21 @@ const ReviewManagementPage: React.FC = () => {
               {/* Period Total */}
               <Card className={cn(
                 "relative overflow-hidden transition-all duration-300",
-                "hover:scale-[1.02] hover:shadow-xl",
-                "bg-card/50 backdrop-blur-xl border-border/50"
+                "hover:scale-[1.02] hover:shadow-lg",
+                "bg-card border-border"
               )}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-20 blur-2xl bg-gradient-to-br from-cyan-500 to-blue-600" />
+                <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50" />
                 <div className="relative p-4 space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="h-3.5 w-3.5 text-cyan-500" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <CalendarIcon className="h-3.5 w-3.5 text-info" />
+                    <span className="text-xs font-medium text-text-tertiary uppercase tracking-wide">
                       This Period
                     </span>
                   </div>
                   <div className="text-3xl font-bold tracking-tight">
                     {periodTotal.toLocaleString()}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] text-text-tertiary">
                     based on loaded pages
                   </div>
                 </div>
@@ -1837,8 +1838,8 @@ const ReviewManagementPage: React.FC = () => {
             {/* Filters Row */}
             <YodelToolbar>
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Filters</span>
+                <Filter className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-text-secondary">Filters</span>
               </div>
               {/* Rating chips */}
               <div className="flex items-center gap-1">
@@ -1895,13 +1896,13 @@ const ReviewManagementPage: React.FC = () => {
             <Card className={cn(
               "relative overflow-hidden transition-all duration-300",
               "hover:shadow-lg",
-              "bg-card/50 backdrop-blur-xl border-border/50"
+              "bg-card border-border"
             )}>
-              <div className="absolute top-0 left-0 w-24 h-24 opacity-10 blur-2xl bg-gradient-to-br from-yellow-500 to-orange-600" />
+              <div className="absolute top-0 left-0 w-24 h-24 opacity-5 blur-3xl bg-gradient-to-br from-primary to-primary/50" />
               <div className="relative p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-yellow-500" />
+                    <BarChart3 className="h-4 w-4 text-warning" />
                     <h4 className="text-sm font-medium uppercase tracking-wide">
                       Rating Distribution
                     </h4>
@@ -1932,13 +1933,13 @@ const ReviewManagementPage: React.FC = () => {
             <Card className={cn(
               "relative overflow-hidden transition-all duration-300",
               "hover:shadow-lg",
-              "bg-card/50 backdrop-blur-xl border-border/50"
+              "bg-card border-border"
             )}>
-              <div className="absolute top-0 left-0 w-24 h-24 opacity-10 blur-2xl bg-gradient-to-br from-purple-500 to-pink-600" />
+              <div className="absolute top-0 left-0 w-24 h-24 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50" />
               <div className="relative p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-purple-500" />
+                    <Brain className="h-4 w-4 text-accent" />
                     <h4 className="text-sm font-medium uppercase tracking-wide">
                       Sentiment Breakdown
                     </h4>
@@ -1965,19 +1966,19 @@ const ReviewManagementPage: React.FC = () => {
             <Card className={cn(
               "relative overflow-hidden transition-all duration-300",
               "hover:shadow-lg",
-              "bg-card/50 backdrop-blur-xl border-border/50"
+              "bg-card border-border"
             )}>
-              <div className="absolute top-0 left-0 w-32 h-32 opacity-10 blur-3xl bg-gradient-to-br from-blue-500 to-cyan-600" />
+              <div className="absolute top-0 left-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-primary to-accent/50" />
               <div className="relative p-5 space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   <h4 className="text-sm font-medium uppercase tracking-wide">
                     Trend Over Time
                   </h4>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Line metric</span>
+                  <span className="text-xs text-text-tertiary">Line metric</span>
                   <Select value={trendMetric} onValueChange={(v: any) => setTrendMetric(v)}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
@@ -1987,7 +1988,7 @@ const ReviewManagementPage: React.FC = () => {
                       <SelectItem value="positive">Positive %</SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground ml-2">Bar mode</span>
+                  <span className="text-xs text-text-tertiary ml-2">Bar mode</span>
                   <Select value={trendBarMode} onValueChange={(v: any) => setTrendBarMode(v)}>
                     <SelectTrigger className="w-40">
                       <SelectValue />
@@ -2023,7 +2024,7 @@ const ReviewManagementPage: React.FC = () => {
             </Card>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-text-secondary">
                   Page {currentPage} • {reviews.length} reviews loaded
                 </p>
                 {hasMoreReviews && (
@@ -2044,7 +2045,7 @@ const ReviewManagementPage: React.FC = () => {
                   <Card className="p-3 bg-primary/10 border-l-4 border-primary">
                     <div className="text-sm">
                       <strong className="text-primary">AI Filter Active:</strong>
-                      <span className="text-muted-foreground ml-1">
+                      <span className="text-text-secondary ml-1">
                         Showing reviews matching {selectedInsightFilter.type}: "{selectedInsightFilter.value}"
                       </span>
                     </div>
@@ -2054,11 +2055,11 @@ const ReviewManagementPage: React.FC = () => {
                   <Card key={review.review_id || index} className={cn(
                     "relative overflow-hidden transition-all duration-200",
                     "hover:shadow-lg hover:border-primary/30",
-                    "bg-card/30 backdrop-blur-sm border-border/30",
+                    "bg-card border-border",
                     // Sentiment-based left border
-                    review.sentiment === 'positive' && "border-l-4 border-l-green-500/80",
-                    review.sentiment === 'negative' && "border-l-4 border-l-red-500/80",
-                    review.sentiment === 'neutral' && "border-l-4 border-l-zinc-500/80",
+                    review.sentiment === 'positive' && "border-l-4 border-l-success",
+                    review.sentiment === 'negative' && "border-l-4 border-l-destructive",
+                    review.sentiment === 'neutral' && "border-l-4 border-l-border-strong",
                     // Highlight matching filter
                     selectedInsightFilter.type && (
                       (selectedInsightFilter.type === 'theme' && review.extractedThemes?.includes(selectedInsightFilter.value)) ||
@@ -2072,7 +2073,7 @@ const ReviewManagementPage: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h5 className="font-semibold text-base mb-1">{review.title || 'No title'}</h5>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 text-xs text-text-tertiary">
                             <span className="font-medium">{review.author || 'Anonymous'}</span>
                             <span>•</span>
                             <span>{formatDate(review.updated_at)}</span>
@@ -2090,9 +2091,9 @@ const ReviewManagementPage: React.FC = () => {
                               variant="outline"
                               className={cn(
                                 "text-xs",
-                                review.sentiment === 'positive' && "border-green-500/50 text-green-500 bg-green-500/10",
-                                review.sentiment === 'negative' && "border-red-500/50 text-red-500 bg-red-500/10",
-                                review.sentiment === 'neutral' && "border-zinc-500/50 text-zinc-500 bg-zinc-500/10"
+                                review.sentiment === 'positive' && "border-success/50 text-success bg-success/10",
+                                review.sentiment === 'negative' && "border-destructive/50 text-destructive bg-destructive/10",
+                                review.sentiment === 'neutral' && "border-muted-foreground/50 text-muted-foreground bg-muted/30"
                               )}
                             >
                               {review.sentiment === 'positive' && <Smile className="w-3 h-3 mr-1" />}
@@ -2105,11 +2106,11 @@ const ReviewManagementPage: React.FC = () => {
                       </div>
 
                       {/* Review text */}
-                      <p className="text-sm leading-relaxed text-muted-foreground">{review.text}</p>
+                      <p className="text-sm leading-relaxed text-text-secondary">{review.text}</p>
 
                       {/* AI Enhancement Tags */}
                       {(review.extractedThemes?.length > 0 || review.mentionedFeatures?.length > 0 || review.identifiedIssues?.length > 0) && (
-                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border">
                           {review.extractedThemes?.slice(0, 3).map((theme: string) => (
                             <Badge
                               key={theme}
@@ -2124,7 +2125,7 @@ const ReviewManagementPage: React.FC = () => {
                             <Badge
                               key={feature}
                               variant="secondary"
-                              className="text-xs bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 cursor-pointer"
+                              className="text-xs bg-accent/10 text-accent hover:bg-accent/20 cursor-pointer"
                               onClick={() => setSelectedInsightFilter({ type: 'feature', value: feature })}
                             >
                               ⭐ {feature}
@@ -2154,7 +2155,7 @@ const ReviewManagementPage: React.FC = () => {
             )}
 
             {filteredReviews.length === 0 && !isLoadingReviews && (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-text-secondary">
                 <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>{reviews.length === 0 ? 'Select an app to fetch reviews' : 'No reviews match current filters'}</p>
               </div>

@@ -86,6 +86,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Enhanced text hierarchy tokens
+        'text-secondary': "hsl(var(--text-secondary))",
+        'text-tertiary': "hsl(var(--text-tertiary))",
+        // Enhanced border tokens
+        'border-subtle': "hsl(var(--border-subtle))",
+        'border-strong': "hsl(var(--border-strong))",
+        // Elevated surfaces
+        elevated: {
+          DEFAULT: "hsl(var(--elevated))",
+          foreground: "hsl(var(--elevated-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar))",
           foreground: "hsl(var(--sidebar-foreground))",

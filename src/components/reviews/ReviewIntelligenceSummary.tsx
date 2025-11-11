@@ -31,28 +31,29 @@ export function ReviewIntelligenceSummary({
   const satisfactionLevel = getSatisfactionLevel(analytics.positivePercentage);
 
   return (
-    <Card className="bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 border-purple-200 shadow-md">
-      <CardHeader>
+    <Card className="border-accent/30 bg-card shadow-md relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl bg-gradient-to-br from-accent to-accent/50 pointer-events-none" />
+      <CardHeader className="relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain className="w-6 h-6 text-purple-600" />
+            <Brain className="w-6 h-6 text-accent" />
             <CardTitle className="text-xl">AI Intelligence Summary</CardTitle>
           </div>
-          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+          <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/30">
             {analytics.totalReviews} reviews analyzed
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 relative">
         {/* Summary Text */}
         <div className="prose prose-sm max-w-none">
-          <p className="text-base leading-relaxed text-gray-700">
+          <p className="text-base leading-relaxed text-text-secondary">
             {summary}
           </p>
         </div>
 
         {/* Key Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-purple-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-accent/30">
           {/* User Satisfaction */}
           <MetricCard
             icon={<ThumbsUp className="w-5 h-5" />}
@@ -86,17 +87,17 @@ export function ReviewIntelligenceSummary({
 
         {/* Top Themes Preview */}
         {intelligence.themes.length > 0 && (
-          <div className="pt-4 border-t border-purple-200">
-            <p className="text-sm font-medium text-gray-700 mb-2">Top Discussion Themes:</p>
+          <div className="pt-4 border-t border-accent/30">
+            <p className="text-sm font-medium text-text-secondary mb-2">Top Discussion Themes:</p>
             <div className="flex flex-wrap gap-2">
               {intelligence.themes.slice(0, 5).map((theme, idx) => (
                 <Badge
                   key={idx}
                   variant="outline"
                   className={`${
-                    theme.sentiment > 0.3 ? 'bg-green-50 border-green-300 text-green-700' :
-                    theme.sentiment < -0.3 ? 'bg-red-50 border-red-300 text-red-700' :
-                    'bg-gray-50 border-gray-300 text-gray-700'
+                    theme.sentiment > 0.3 ? 'bg-success/10 border-success/30 text-success' :
+                    theme.sentiment < -0.3 ? 'bg-destructive/10 border-destructive/30 text-destructive' :
+                    'bg-muted/10 border-muted/30 text-text-tertiary'
                   }`}
                 >
                   {theme.theme} ({theme.frequency})
@@ -123,21 +124,21 @@ interface MetricCardProps {
 
 function MetricCard({ icon, label, value, trend, subtitle, variant = 'neutral' }: MetricCardProps) {
   const variantStyles = {
-    success: 'bg-green-50 border-green-200 text-green-700',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-    danger: 'bg-red-50 border-red-200 text-red-700',
-    neutral: 'bg-gray-50 border-gray-200 text-gray-700'
+    success: 'bg-success/10 border-success/30 text-success',
+    warning: 'bg-warning/10 border-warning/30 text-warning',
+    danger: 'bg-destructive/10 border-destructive/30 text-destructive',
+    neutral: 'bg-card border-border text-text-secondary'
   };
 
   const iconColor = {
-    success: 'text-green-600',
-    warning: 'text-yellow-600',
-    danger: 'text-red-600',
-    neutral: 'text-gray-600'
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-destructive',
+    neutral: 'text-text-tertiary'
   };
 
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-400';
+  const trendColor = trend === 'up' ? 'text-success' : trend === 'down' ? 'text-destructive' : 'text-muted-foreground';
 
   return (
     <div className={`p-4 rounded-lg border ${variantStyles[variant]}`}>

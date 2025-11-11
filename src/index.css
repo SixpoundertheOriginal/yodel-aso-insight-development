@@ -9,19 +9,20 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    /* Base dark mode colors - Elevation system */
+    --background: 240 10% 3.9%;        /* #0A0A0F - Deepest level */
+    --foreground: 0 0% 98%;            /* #FAFAFA - Primary text */
+    --card: 240 10% 8%;                /* #15151A - Cards (elevated from background) */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 10% 12%;            /* #1E1E24 - Popovers (more elevated) */
     --popover-foreground: 0 0% 98%;
-    --primary: 24 100% 53%; /* Yodel orange */
+    --primary: 24 100% 53%;            /* #F97316 - Yodel orange */
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 240 3.7% 15.9%;       /* #27272A - Secondary surfaces */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 215 100% 50%; /* Yodel blue */
+    --muted: 240 3.7% 15.9%;           /* #27272A - Muted backgrounds */
+    --muted-foreground: 240 5% 64.9%;  /* #9CA3AF - Muted text */
+    --accent: 215 100% 50%;            /* #0066FF - Yodel blue */
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -31,10 +32,23 @@
     --success-foreground: 138 76% 85%;
     --info: 221 83% 63%;
     --info-foreground: 224 76% 85%;
-    --border: 240 3.7% 15.9%;
+    --border: 240 3.7% 15.9%;          /* #27272A - Default borders */
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
     --radius: 0.5rem;
+
+    /* Enhanced text hierarchy for better dark mode contrast */
+    --text-primary: 0 0% 98%;          /* #FAFAFA - ~15:1 contrast */
+    --text-secondary: 0 0% 90%;        /* #E5E5E5 - ~12:1 contrast */
+    --text-tertiary: 0 0% 75%;         /* #BFBFBF - ~8:1 contrast */
+
+    /* Enhanced borders for better visibility */
+    --border-subtle: 240 5% 20%;       /* rgba(255,255,255,0.08) equivalent */
+    --border-strong: 240 5% 25%;       /* rgba(255,255,255,0.15) equivalent */
+
+    /* Elevated surfaces */
+    --elevated: 240 10% 12%;           /* #1E1E24 - For modals, dialogs */
+    --elevated-foreground: 0 0% 98%;
     
     /* Sidebar variables */
     --sidebar: 240 5.9% 10%;
