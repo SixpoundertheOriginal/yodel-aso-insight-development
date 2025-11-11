@@ -5,8 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Download, Target, TrendingUp, AlertTriangle,
-  Shield, Loader2, CheckCircle2
+  Shield, Loader2, CheckCircle2, HelpCircle, Info
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
 import { CompetitorSelectionDialog } from './CompetitorSelectionDialog';
 import { CompetitiveIntelligencePanel } from './CompetitiveIntelligencePanel';
 import { useCompetitorComparison } from '@/hooks/useCompetitorComparison';
@@ -45,7 +51,9 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
   const [comparisonConfig, setComparisonConfig] = useState<ComparisonConfig | null>(null);
   const [showSelection, setShowSelection] = useState(true);
 
-  const { data: intelligence, isLoading, error } = useCompetitorComparison(comparisonConfig);
+  // Pass organizationId to enable cached reviews and intelligence optimization
+  const configWithOrgId = comparisonConfig ? { ...comparisonConfig, organizationId } : null;
+  const { data: intelligence, isLoading, error } = useCompetitorComparison(configWithOrgId);
 
   const handleStartComparison = (config: ComparisonConfig) => {
     setComparisonConfig(config);
@@ -201,26 +209,52 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
           </div>
         </div>
 
-        {/* Executive Summary Card */}
+        {/* Executive Summary Card - ENHANCED */}
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 opacity-5 blur-3xl bg-gradient-to-br from-orange-500 to-red-600" />
 
           <div className="relative p-6">
-            <h2 className="text-xl font-bold mb-4">Executive Summary</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Executive Summary</h2>
+              <Badge
+                variant={
+                  intelligence.summary.overallPosition === 'leading' ? 'default' :
+                  intelligence.summary.overallPosition === 'lagging' ? 'destructive' :
+                  'outline'
+                }
+                className="text-xs"
+              >
+                Confidence: {(intelligence.summary.confidenceScore * 100).toFixed(0)}%
+              </Badge>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Overall Assessment */}
               <div className="space-y-4">
                 <div>
                   <div className="text-sm text-muted-foreground mb-2">Overall Position</div>
-                  <div className="text-2xl font-bold">{intelligence.summary.overallPosition}</div>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "text-2xl font-bold capitalize",
+                      intelligence.summary.overallPosition === 'leading' && "text-success",
+                      intelligence.summary.overallPosition === 'lagging' && "text-destructive"
+                    )}>
+                      {intelligence.summary.overallPosition}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {intelligence.summary.overallPosition === 'leading' && 'You outperform competitors in most metrics'}
+                    {intelligence.summary.overallPosition === 'competitive' && 'You match competitor performance overall'}
+                    {intelligence.summary.overallPosition === 'lagging' && 'Competitors outperform you in key areas'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground mb-2">Key Insight</div>
                   {[intelligence.summary.keyInsight].map((insight, idx) => (
                     <div key={idx} className="flex items-start gap-2 text-sm">
                       <div className="h-1.5 w-1.5 rounded-full bg-warning mt-1.5 flex-shrink-0" />
-                      <span>{insight}</span>
+                      <span className="leading-relaxed">{insight}</span>
                     </div>
                   ))}
                 </div>
@@ -228,30 +262,76 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
 
               {/* Right: Priority Actions */}
               <div className="space-y-3">
-                <div className="text-sm text-muted-foreground mb-2">Priority Actions</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">Top Priority</div>
                 {[intelligence.summary.topPriority].map((action, idx) => (
                   <Card key={idx} className="p-3 bg-warning/5 border-warning/20">
                     <div className="flex items-start gap-3">
-                      <Badge variant="outline" className="text-xs font-bold">#{idx + 1}</Badge>
-                      <div className="text-sm">{action}</div>
+                      <Badge variant="outline" className="text-xs font-bold bg-warning/10">#{idx + 1}</Badge>
+                      <div className="text-sm leading-relaxed">{action}</div>
                     </div>
                   </Card>
                 ))}
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Feature Gaps</div>
+                    <div className="text-lg font-bold">{intelligence.featureGaps.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Opportunities</div>
+                    <div className="text-lg font-bold text-success">{intelligence.opportunities.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Your Strengths</div>
+                    <div className="text-lg font-bold text-primary">{intelligence.strengths.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Threats</div>
+                    <div className="text-lg font-bold text-destructive">{intelligence.threats.length}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Benchmark Metrics Bar */}
+        {/* Benchmark Metrics Bar - ENHANCED WITH TOOLTIPS */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Key Benchmarks</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Key Benchmarks</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">Metrics are compared against the average of {intelligence.competitors.length} selected competitor{intelligence.competitors.length > 1 ? 's' : ''}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             {/* Average Rating */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4" />
-                Avg Rating
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground cursor-help">
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Avg Rating</span>
+                      <HelpCircle className="h-3 w-3 opacity-50" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-xs">
+                      Average app store rating (1-5 stars). A rating above 4.0 is considered excellent for most categories.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="flex items-baseline gap-2">
                 <div className="text-3xl font-bold">
                   {intelligence.metrics.avgRating.yours.toFixed(1)}
@@ -267,18 +347,30 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
                   : "text-destructive"
               )}>
                 {intelligence.metrics.avgRating.yours > intelligence.metrics.avgRating.average
-                  ? `+${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(1)} better`
-                  : `${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(1)} behind`
+                  ? `+${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(2)} better`
+                  : `${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(2)} behind`
                 }
               </div>
             </div>
 
             {/* Average Sentiment */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Avg Sentiment
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground cursor-help">
+                      <Shield className="h-4 w-4" />
+                      <span>Positive Sentiment</span>
+                      <HelpCircle className="h-3 w-3 opacity-50" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-xs">
+                      Percentage of reviews with positive sentiment (4-5 star reviews with positive language). Above 60% is good, above 75% is excellent.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="flex items-baseline gap-2">
                 <div className="text-3xl font-bold">
                   {(intelligence.metrics.positiveSentiment.yours * 100).toFixed(0)}%
@@ -294,24 +386,36 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
                   : "text-destructive"
               )}>
                 {intelligence.metrics.positiveSentiment.yours > intelligence.metrics.positiveSentiment.average
-                  ? `+${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(0)}% better`
-                  : `${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(0)}% behind`
+                  ? `+${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(1)}pp better`
+                  : `${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(1)}pp behind`
                 }
               </div>
             </div>
 
             {/* Issues Frequency */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4" />
-                Issue Rate
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground cursor-help">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>Issue Rate</span>
+                      <HelpCircle className="h-3 w-3 opacity-50" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs max-w-xs">
+                      Percentage of reviews mentioning bugs, crashes, or technical issues. Lower is better. Below 10% is good, below 5% is excellent.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="flex items-baseline gap-2">
                 <div className="text-3xl font-bold">
-                  {(intelligence.metrics.issueFrequency.yours * 100).toFixed(0)}%
+                  {(intelligence.metrics.issueFrequency.yours * 100).toFixed(1)}%
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  vs {(intelligence.metrics.issueFrequency.average * 100).toFixed(0)}%
+                  vs {(intelligence.metrics.issueFrequency.average * 100).toFixed(1)}%
                 </div>
               </div>
               <div className={cn(
@@ -321,8 +425,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
                   : "text-destructive"
               )}>
                 {intelligence.metrics.issueFrequency.yours < intelligence.metrics.issueFrequency.average
-                  ? `${((intelligence.metrics.issueFrequency.average - intelligence.metrics.issueFrequency.yours) * 100).toFixed(0)}% fewer issues`
-                  : `${((intelligence.metrics.issueFrequency.yours - intelligence.metrics.issueFrequency.average) * 100).toFixed(0)}% more issues`
+                  ? `${((intelligence.metrics.issueFrequency.average - intelligence.metrics.issueFrequency.yours) * 100).toFixed(1)}pp fewer issues`
+                  : `${((intelligence.metrics.issueFrequency.yours - intelligence.metrics.issueFrequency.average) * 100).toFixed(1)}pp more issues`
                 }
               </div>
             </div>

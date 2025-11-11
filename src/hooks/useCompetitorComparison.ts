@@ -6,6 +6,8 @@ import { competitorReviewIntelligenceService, type CompetitorApp, type Competiti
 import { EnhancedReviewItem } from '@/types/review-intelligence.types';
 import { toast } from 'sonner';
 import { useMonitoredApps } from './useMonitoredApps';
+import { reviewIntelligenceService } from '@/services/review-intelligence.service';
+import { supabase } from '@/config/supabase';
 
 interface ComparisonConfig {
   primaryAppId: string;
@@ -21,6 +23,7 @@ interface ComparisonConfig {
   competitorAppReviewCounts: number[];
 
   country: string;
+  organizationId?: string; // NEW: For accessing cached data
   maxReviewsPerApp?: number; // Default: 500
 }
 
@@ -35,9 +38,9 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       }
 
       const maxReviews = config.maxReviewsPerApp || 500;
+      const { organizationId } = config;
 
-      // Step 1: Fetch reviews for all apps in parallel
-      console.log('🔍 [Comparison] Fetching reviews for all apps...');
+      console.log('🚀 [Comparison ENHANCED] Starting optimized analysis...');
 
       const allApps = [
         { id: config.primaryAppId, name: config.primaryAppName },
@@ -47,9 +50,82 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
         }))
       ];
 
-      const fetchPromises = allApps.map(async (app) => {
+      // Step 1: Try to use cached data for monitored apps (OPTIMIZATION)
+      let monitoredAppsMap = new Map<string, any>();
+
+      if (organizationId) {
+        console.log('🔍 [Comparison] Checking for monitored apps with cached data...');
+
+        const { data: monitoredApps } = await supabase
+          .from('monitored_apps')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .eq('primary_country', config.country)
+          .in('app_store_id', allApps.map(a => a.id));
+
+        if (monitoredApps) {
+          monitoredApps.forEach(app => {
+            monitoredAppsMap.set(app.app_store_id, app);
+          });
+          console.log(`✅ [Comparison] Found ${monitoredApps.length} monitored apps with potential cached data`);
+        }
+      }
+
+      // Step 2: Fetch reviews (use cache when available, fallback to direct fetch)
+      console.log('🔍 [Comparison] Fetching reviews for all apps...');
+
+      const fetchPromises = allApps.map(async (app, index) => {
         try {
           setProgress(prev => ({ ...prev, [app.id]: 0 }));
+
+          const monitoredApp = monitoredAppsMap.get(app.id);
+
+          // TRY CACHED REVIEWS FIRST (FAST PATH)
+          if (monitoredApp && organizationId) {
+            console.log(`⚡ [Comparison] Attempting cached reviews for ${app.name}...`);
+
+            const { data: cachedReviews } = await supabase
+              .from('monitored_app_reviews')
+              .select('*')
+              .eq('monitored_app_id', monitoredApp.id)
+              .order('fetched_at', { ascending: false })
+              .limit(maxReviews);
+
+            if (cachedReviews && cachedReviews.length > 0) {
+              // Check if cache is fresh (< 24 hours old)
+              const latestFetch = new Date(cachedReviews[0].fetched_at);
+              const hoursSinceFetch = (Date.now() - latestFetch.getTime()) / (1000 * 60 * 60);
+
+              if (hoursSinceFetch < 24) {
+                console.log(`✅ [Comparison] Using ${cachedReviews.length} cached reviews for ${app.name} (${hoursSinceFetch.toFixed(1)}h old)`);
+                setProgress(prev => ({ ...prev, [app.id]: 100 }));
+
+                // Return cached reviews (already enhanced with sentiment/themes)
+                return cachedReviews.map(r => ({
+                  review_id: r.review_id,
+                  title: r.title,
+                  text: r.review_text,
+                  rating: r.rating,
+                  version: r.version,
+                  author: r.author_name,
+                  updated_at: r.review_date,
+                  country: r.country,
+                  app_id: r.app_store_id,
+                  sentiment: r.enhanced_sentiment?.overall || (r.rating >= 4 ? 'positive' : r.rating <= 2 ? 'negative' : 'neutral'),
+                  enhancedSentiment: r.enhanced_sentiment,
+                  extractedThemes: r.extracted_themes || [],
+                  mentionedFeatures: r.mentioned_features || [],
+                  identifiedIssues: r.identified_issues || [],
+                  businessImpact: r.business_impact || (r.rating <= 2 ? 'high' : r.rating === 3 ? 'medium' : 'low')
+                } as EnhancedReviewItem));
+              } else {
+                console.log(`⚠️ [Comparison] Cache for ${app.name} is stale (${hoursSinceFetch.toFixed(1)}h old), fetching fresh data...`);
+              }
+            }
+          }
+
+          // FALLBACK: Direct fetch from iTunes RSS (SLOW PATH)
+          console.log(`🌐 [Comparison] Fetching fresh reviews from iTunes for ${app.name}...`);
 
           const result = await fetchAppReviews({
             appId: app.id,
@@ -80,7 +156,7 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
           }
 
           setProgress(prev => ({ ...prev, [app.id]: 100 }));
-          console.log(`✅ [Comparison] Fetched ${reviews.length} reviews for ${app.name}`);
+          console.log(`✅ [Comparison] Fetched ${reviews.length} fresh reviews for ${app.name}`);
 
           return reviews.slice(0, maxReviews);
         } catch (error) {
@@ -92,11 +168,17 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
 
       const allReviews = await Promise.all(fetchPromises);
 
-      // Step 2: Run AI analysis on each app's reviews
-      console.log('🤖 [Comparison] Running AI analysis...');
+      // Step 3: Enhance reviews if not already enhanced (from direct fetch)
+      console.log('🤖 [Comparison] Processing reviews...');
 
       const analyzeReviews = (reviews: any[]): EnhancedReviewItem[] => {
         return reviews.map(review => {
+          // Skip if already enhanced (from cache)
+          if (review.enhancedSentiment && review.extractedThemes) {
+            return review as EnhancedReviewItem;
+          }
+
+          // Enhance fresh reviews
           const sentiment = analyzeEnhancedSentiment(review.text || '', review.rating);
 
           // Extract basic themes, features, issues from text
@@ -139,13 +221,44 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
       const primaryAppReviews = analyzeReviews(allReviews[0]);
       const competitorReviews = allReviews.slice(1).map(reviews => analyzeReviews(reviews));
 
-      // Extract intelligence for each app
-      const primaryIntelligence = extractReviewIntelligence(primaryAppReviews);
-      const competitorIntelligences = competitorReviews.map(reviews =>
-        extractReviewIntelligence(reviews)
-      );
+      // Step 4: Try to use pre-computed intelligence snapshots (OPTIMIZATION)
+      console.log('🧠 [Comparison] Extracting intelligence...');
 
-      // Step 3: Build CompetitorApp objects
+      const getIntelligenceForApp = async (reviews: EnhancedReviewItem[], appId: string, appName: string) => {
+        const monitoredApp = monitoredAppsMap.get(appId);
+
+        // TRY INTELLIGENCE SNAPSHOT FIRST (FAST PATH)
+        if (monitoredApp && organizationId) {
+          try {
+            console.log(`⚡ [Comparison] Attempting cached intelligence for ${appName}...`);
+
+            const intelligenceDashboard = await reviewIntelligenceService.getIntelligenceForApp(
+              monitoredApp.id,
+              organizationId
+            );
+
+            if (intelligenceDashboard && intelligenceDashboard.intelligence) {
+              console.log(`✅ [Comparison] Using cached intelligence for ${appName} (${intelligenceDashboard.metadata.reviewsAnalyzed} reviews)`);
+              return intelligenceDashboard.intelligence;
+            }
+          } catch (error) {
+            console.log(`⚠️ [Comparison] No cached intelligence for ${appName}, computing fresh...`);
+          }
+        }
+
+        // FALLBACK: Extract intelligence from reviews (SLOW PATH)
+        console.log(`🔄 [Comparison] Computing fresh intelligence for ${appName}...`);
+        return extractReviewIntelligence(reviews);
+      };
+
+      const [primaryIntelligence, ...competitorIntelligences] = await Promise.all([
+        getIntelligenceForApp(primaryAppReviews, config.primaryAppId, config.primaryAppName),
+        ...competitorReviews.map((reviews, idx) =>
+          getIntelligenceForApp(reviews, config.competitorAppIds[idx], config.competitorAppNames[idx])
+        )
+      ]);
+
+      // Step 5: Build CompetitorApp objects
       const primaryApp: CompetitorApp = {
         appId: config.primaryAppId,
         appName: config.primaryAppName,
@@ -166,7 +279,7 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
         intelligence: competitorIntelligences[idx]
       }));
 
-      // Step 4: Generate competitive intelligence
+      // Step 6: Generate competitive intelligence
       console.log('🎯 [Comparison] Generating competitive intelligence...');
       const intelligence = await competitorReviewIntelligenceService.analyzeCompetitors(
         primaryApp,
@@ -177,7 +290,9 @@ export const useCompetitorComparison = (config: ComparisonConfig | null) => {
         featureGaps: intelligence.featureGaps.length,
         opportunities: intelligence.opportunities.length,
         strengths: intelligence.strengths.length,
-        threats: intelligence.threats.length
+        threats: intelligence.threats.length,
+        cacheHits: monitoredAppsMap.size,
+        totalApps: allApps.length
       });
 
       return intelligence;
