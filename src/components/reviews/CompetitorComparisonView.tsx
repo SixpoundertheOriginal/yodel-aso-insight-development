@@ -263,8 +263,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
               <div className={cn(
                 "text-xs font-medium",
                 intelligence.metrics.avgRating.yours > intelligence.metrics.avgRating.average
-                  ? "text-green-600"
-                  : "text-red-600"
+                  ? "text-success"
+                  : "text-destructive"
               )}>
                 {intelligence.metrics.avgRating.yours > intelligence.metrics.avgRating.average
                   ? `+${(intelligence.metrics.avgRating.yours - intelligence.metrics.avgRating.average).toFixed(1)} better`
@@ -290,8 +290,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
               <div className={cn(
                 "text-xs font-medium",
                 intelligence.metrics.positiveSentiment.yours > intelligence.metrics.positiveSentiment.average
-                  ? "text-green-600"
-                  : "text-red-600"
+                  ? "text-success"
+                  : "text-destructive"
               )}>
                 {intelligence.metrics.positiveSentiment.yours > intelligence.metrics.positiveSentiment.average
                   ? `+${((intelligence.metrics.positiveSentiment.yours - intelligence.metrics.positiveSentiment.average) * 100).toFixed(0)}% better`
@@ -317,8 +317,8 @@ export const CompetitorComparisonView: React.FC<CompetitorComparisonViewProps> =
               <div className={cn(
                 "text-xs font-medium",
                 intelligence.metrics.issueFrequency.yours < intelligence.metrics.issueFrequency.average
-                  ? "text-green-600"
-                  : "text-red-600"
+                  ? "text-success"
+                  : "text-destructive"
               )}>
                 {intelligence.metrics.issueFrequency.yours < intelligence.metrics.issueFrequency.average
                   ? `${((intelligence.metrics.issueFrequency.average - intelligence.metrics.issueFrequency.yours) * 100).toFixed(0)}% fewer issues`

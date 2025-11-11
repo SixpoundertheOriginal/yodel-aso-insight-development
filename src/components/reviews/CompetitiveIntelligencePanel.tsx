@@ -137,9 +137,9 @@ const FeatureGapCard: React.FC<{ gap: FeatureGap; rank: number }> = ({ gap, rank
   const [expanded, setExpanded] = useState(false);
 
   const demandColor = {
-    high: 'text-red-500 bg-red-500/10 border-red-500/50',
-    medium: 'text-orange-500 bg-orange-500/10 border-orange-500/50',
-    low: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/50'
+    high: 'text-destructive bg-destructive/10 border-destructive/30',
+    medium: 'text-warning bg-warning/10 border-warning/30',
+    low: 'text-warning/70 bg-warning/10 border-warning/30'
   };
 
   return (
@@ -193,9 +193,9 @@ const FeatureGapCard: React.FC<{ gap: FeatureGap; rank: number }> = ({ gap, rank
 
 const OpportunityCard: React.FC<{ opportunity: CompetitiveOpportunity; rank: number }> = ({ opportunity, rank }) => {
   const exploitColor = {
-    high: 'text-green-600 bg-green-500/10 border-green-500/50',
-    medium: 'text-blue-600 bg-blue-500/10 border-blue-500/50',
-    low: 'text-gray-600 bg-gray-500/10 border-gray-500/50'
+    high: 'text-success bg-success/10 border-success/30',
+    medium: 'text-accent bg-accent/10 border-accent/30',
+    low: 'text-text-tertiary bg-muted/10 border-muted/30'
   };
 
   return (
@@ -230,14 +230,14 @@ const OpportunityCard: React.FC<{ opportunity: CompetitiveOpportunity; rank: num
 
 const StrengthCard: React.FC<{ strength: CompetitiveStrength; rank: number }> = ({ strength, rank }) => {
   return (
-    <Card className="p-4 bg-green-500/5 border-green-500/20 hover:bg-green-500/10 transition-colors">
+    <Card className="p-4 bg-success/5 border-success/20 hover:bg-success/10 transition-colors">
       <div className="flex items-start gap-3">
-        <Badge variant="outline" className="text-xs font-bold bg-green-500/10">#{rank}</Badge>
+        <Badge variant="outline" className="text-xs font-bold bg-success/10 border-success/30">#{rank}</Badge>
 
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-base capitalize">{strength.aspect}</h4>
-            <Badge className="text-xs bg-green-600 text-white">
+            <Badge className="text-xs bg-success text-white border-success/30">
               +{(strength.difference * 100).toFixed(0)}% BETTER
             </Badge>
           </div>
@@ -262,7 +262,7 @@ const StrengthCard: React.FC<{ strength: CompetitiveStrength; rank: number }> = 
                 Evidence from your reviews:
               </div>
               {strength.evidence.map((evidence: string, idx: number) => (
-                <div key={idx} className="text-sm italic text-muted-foreground border-l-2 border-green-500/50 pl-3">
+                <div key={idx} className="text-sm italic text-muted-foreground border-l-2 border-success/30 pl-3">
                   "{evidence}"
                 </div>
               ))}
@@ -276,14 +276,14 @@ const StrengthCard: React.FC<{ strength: CompetitiveStrength; rank: number }> = 
 
 const ThreatCard: React.FC<{ threat: CompetitiveThreat; rank: number }> = ({ threat, rank }) => {
   return (
-    <Card className="p-4 bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10 transition-colors">
+    <Card className="p-4 bg-warning/5 border-warning/20 hover:bg-warning/10 transition-colors">
       <div className="flex items-start gap-3">
-        <Badge variant="outline" className="text-xs font-bold bg-orange-500/10">#{rank}</Badge>
+        <Badge variant="outline" className="text-xs font-bold bg-warning/10 border-warning/30">#{rank}</Badge>
 
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-base">{threat.feature}</h4>
-            <Badge className="text-xs bg-orange-600 text-white">
+            <Badge className="text-xs bg-warning text-white border-warning/30">
               {(threat.userDemand * 100).toFixed(0)}% DEMAND
             </Badge>
           </div>
@@ -296,8 +296,8 @@ const ThreatCard: React.FC<{ threat: CompetitiveThreat; rank: number }> = ({ thr
             <span className="capitalize">{threat.momentum}</span>
           </div>
 
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 mt-2">
-            <div className="text-xs font-medium text-orange-600 uppercase tracking-wide mb-1">
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mt-2">
+            <div className="text-xs font-medium text-warning uppercase tracking-wide mb-1">
               ⚠️ Recommendation:
             </div>
             <div className="text-sm">{threat.recommendation}</div>

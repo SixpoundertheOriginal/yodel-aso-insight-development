@@ -204,9 +204,9 @@ const CompetitorCard: React.FC<CompetitorCardProps> = ({
               variant="outline"
               className={cn(
                 "text-xs",
-                competitor.priority === 1 && "border-orange-500 text-orange-600",
-                competitor.priority === 2 && "border-blue-500 text-blue-600",
-                competitor.priority >= 3 && "border-gray-500 text-gray-600"
+                competitor.priority === 1 && "border-warning/30 text-warning bg-warning/10",
+                competitor.priority === 2 && "border-accent/30 text-accent bg-accent/10",
+                competitor.priority >= 3 && "border-muted/30 text-text-tertiary bg-muted/10"
               )}
             >
               {competitor.priority === 1 ? 'Primary' : competitor.priority === 2 ? 'Secondary' : `Priority ${competitor.priority}`}
