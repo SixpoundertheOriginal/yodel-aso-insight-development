@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 export interface MonitoredApp {
   id: string;
   organization_id: string;
-  app_store_id: string;
+  app_id: string; // Platform-agnostic: iTunes ID for iOS, Package ID for Android
+  platform: 'ios' | 'android'; // App platform
   app_name: string;
   bundle_id: string | null;
   app_icon_url: string | null;
@@ -23,6 +24,13 @@ export interface MonitoredApp {
   updated_at: string;
   created_by: string | null;
   last_checked_at: string | null;
+
+  // Google Play specific fields (Android only)
+  play_store_package_id: string | null;
+  play_store_url: string | null;
+
+  // Backward compatibility alias
+  app_store_id?: string; // Deprecated: use app_id instead
 }
 
 /**

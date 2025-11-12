@@ -15,6 +15,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection';
 import { PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/constants/features';
 import { fetchAppReviews } from '@/utils/itunesReviews';
+import { UniversalReviewsService, type Platform } from '@/services/universal-reviews.service';
 import { exportService } from '@/services/export.service';
 import { MainLayout } from '@/layouts';
 import { YodelCard, YodelCardHeader, YodelCardContent } from '@/components/ui/design-system';
@@ -26,9 +27,13 @@ import {
   ReviewAnalytics
 } from '@/types/review-intelligence.types';
 import {
-  analyzeEnhancedSentiment
+  analyzeEnhancedSentiment,
+  extractReviewIntelligence
 } from '@/engines/review-intelligence.engine';
 import { CollapsibleAnalyticsSection } from '@/components/reviews/CollapsibleAnalyticsSection';
+import { PlatformToggle } from '@/components/reviews/PlatformToggle';
+import { GooglePlayMetricsPanel } from '@/components/reviews/GooglePlayMetricsPanel';
+import { DeveloperReplyCard } from '@/components/reviews/DeveloperReplyCard';
 
 interface ReviewItem {
   review_id: string;
@@ -38,10 +43,18 @@ interface ReviewItem {
   version?: string;
   author?: string;
   updated_at?: string;
+  review_date?: string;
   country: string;
   app_id: string;
+  platform?: 'ios' | 'android';
   sentiment?: 'positive' | 'neutral' | 'negative';
   enhancedSentiment?: any;
+
+  // Google Play specific fields (Android only)
+  developer_reply?: string;
+  developer_reply_date?: string;
+  thumbs_up_count?: number;
+  reviewer_language?: string;
 }
 
 interface AppMetadata {
@@ -74,6 +87,7 @@ const AppReviewDetailsPage: React.FC = () => {
 
   // State
   const [appMetadata, setAppMetadata] = useState<AppMetadata | null>(null);
+  const [platform, setPlatform] = useState<Platform>('ios'); // Default to iOS
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,13 +138,24 @@ const AppReviewDetailsPage: React.FC = () => {
     }
   }, [appId]);
 
-  // Reviews fetching
+  // Reviews fetching - supports both iOS and Android
   const fetchReviews = async (appIdParam: string, page: number = 1, append: boolean = false) => {
     setReviewsLoading(true);
     try {
-      const result = await fetchAppReviews({ appId: appIdParam, cc: selectedCountry, page });
+      console.log('[fetchReviews] Fetching reviews:', { platform, appId: appIdParam, country: selectedCountry, page });
+
+      const result = await UniversalReviewsService.fetchReviews({
+        platform,
+        appId: appIdParam,
+        country: selectedCountry,
+        page,
+        pageSize: 100,
+        maxReviews: platform === 'android' ? 1000 : undefined
+      });
+
       const newReviews = result.data || [];
-      console.log('[fetchReviews OK]', newReviews.length);
+      console.log('[fetchReviews OK]', newReviews.length, 'reviews from', result.platform);
+
       if (append) {
         setReviews(prev => [...prev, ...newReviews]);
       } else {
@@ -140,7 +165,7 @@ const AppReviewDetailsPage: React.FC = () => {
       setCurrentPage(result.currentPage);
       setHasMoreReviews(result.hasMore);
 
-      toast.success(`Loaded ${newReviews.length} reviews (page ${result.currentPage})`);
+      toast.success(`Loaded ${newReviews.length} ${result.platform.toUpperCase()} reviews`);
 
     } catch (error: any) {
       console.error('Reviews fetch failed:', error);
@@ -888,7 +913,19 @@ const AppReviewDetailsPage: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {/* Platform Toggle */}
+            <PlatformToggle
+              selected={platform}
+              onChange={(newPlatform) => {
+                setPlatform(newPlatform);
+                setReviews([]);
+                setCurrentPage(1);
+                if (appId) fetchReviews(appId, 1);
+              }}
+              disabled={reviewsLoading}
+            />
+            <div className="h-8 w-px bg-border" />
             <Badge variant="secondary" className="text-xs">{ccToFlag(selectedCountry)} {selectedCountry.toUpperCase()}</Badge>
             <Select value={selectedCountry} onValueChange={(v) => {
               setSelectedCountry(v);
@@ -995,6 +1032,16 @@ const AppReviewDetailsPage: React.FC = () => {
                 insights={actionableInsights}
                 analytics={reviewAnalytics}
                 onInsightAction={handleInsightAction}
+              />
+            )}
+
+            {/* Google Play Metrics Panel (Android only) */}
+            {platform === 'android' && reviews.length > 0 && reviewIntelligence?.googlePlayMetrics && (
+              <GooglePlayMetricsPanel
+                responseRate={reviewIntelligence.googlePlayMetrics.developerResponseRate}
+                avgResponseTimeHours={reviewIntelligence.googlePlayMetrics.avgResponseTimeHours}
+                reviewsWithReplies={reviewIntelligence.googlePlayMetrics.reviewsWithReplies}
+                helpfulReviewsCount={reviewIntelligence.googlePlayMetrics.helpfulReviewsCount}
               />
             )}
 
@@ -1250,6 +1297,14 @@ const AppReviewDetailsPage: React.FC = () => {
                     <p className="text-sm text-foreground">
                       {review.text || 'No review text'}
                     </p>
+
+                    {/* Developer Reply (Android only) */}
+                    {review.developer_reply && review.developer_reply_date && (
+                      <DeveloperReplyCard
+                        reply={review.developer_reply}
+                        replyDate={review.developer_reply_date}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
