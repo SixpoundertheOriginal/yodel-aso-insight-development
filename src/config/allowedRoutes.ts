@@ -55,8 +55,9 @@ const LEGACY_FULL_APP: string[] = [
 
 // PHASE 1: Quick fix - Organizations restricted to reporting-only access
 // PHASE 2: Database-driven access level (preferred when available)
-const REPORTING_ONLY_ORGS = [
-  '7cccba3f-0a8f-446f-9dba-86e9cb68c92b', // Yodel Mobile (fallback if access_level not loaded)
+// NOTE: Yodel Mobile removed from this list to enable ORG_ADMIN access (2025-11-12)
+const REPORTING_ONLY_ORGS: string[] = [
+  // Empty - use database-driven access_level instead
 ];
 
 export type OrgAccessLevel = 'full' | 'reporting_only' | 'custom';
