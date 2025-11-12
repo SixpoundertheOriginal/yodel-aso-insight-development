@@ -1,4 +1,4 @@
-import gplay from 'npm:google-play-scraper@9.1.1';
+import gplay from 'https://esm.sh/google-play-scraper@9.1.1';
 import type { GooglePlayApp } from '../types/index.ts';
 
 export class GooglePlayAppsService {
