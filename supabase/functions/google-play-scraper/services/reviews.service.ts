@@ -1,8 +1,6 @@
-import * as gplayModule from 'https://esm.sh/google-play-scraper@9.1.1';
+// @deno-types="npm:@types/google-play-scraper@9.1.1"
+import gplay from "npm:google-play-scraper@9.1.1";
 import type { GooglePlayReview, ReviewsServiceOptions, ReviewsResponse } from '../types/index.ts';
-
-// Handle default export from esm.sh
-const gplay = (gplayModule as any).default || gplayModule;
 
 export class GooglePlayReviewsService {
   /**

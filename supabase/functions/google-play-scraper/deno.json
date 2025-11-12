@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "nodeModulesDir": true,
+  "imports": {
+    "google-play-scraper": "npm:google-play-scraper@9.1.1"
+  }
+}
