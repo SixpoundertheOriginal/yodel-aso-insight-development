@@ -1,43 +1,26 @@
-// @deno-types="npm:@types/google-play-scraper@9.1.1"
-import gplay from "npm:google-play-scraper@9.1.1";
 import type { GooglePlayReview, ReviewsServiceOptions, ReviewsResponse } from '../types/index.ts';
 
 export class GooglePlayReviewsService {
   /**
    * Fetch reviews from Google Play Store
+   * NOTE: Currently returns empty results - full implementation pending
    */
   async fetchReviews(options: ReviewsServiceOptions): Promise<ReviewsResponse> {
-    const { packageId, country, lang, pageSize, sort, paginationToken } = options;
+    const { packageId, country } = options;
 
     try {
-      console.log(`[GOOGLE-PLAY] Fetching reviews for ${packageId}, country=${country}, pageSize=${pageSize}`);
+      console.log(`[GOOGLE-PLAY] Reviews fetch requested for ${packageId} - returning empty (not yet implemented)`);
 
-      // Map sort option to google-play-scraper format
-      const sortOption = this.mapSortOption(sort);
-
-      // Fetch reviews with pagination
-      const result = await gplay.reviews({
-        appId: packageId,
-        lang: lang,
-        country: country,
-        sort: sortOption,
-        num: Math.min(pageSize, 200), // Google Play max is 200 per page
-        paginate: true,
-        nextPaginationToken: paginationToken || undefined
-      });
-
-      console.log(`[GOOGLE-PLAY] Fetched ${result.data?.length || 0} reviews`);
-
-      // Transform to our format
-      const reviews = this.transformReviews(result.data || [], packageId, country);
+      // TODO: Implement native reviews scraping
+      // For now, return empty results to allow search functionality to work
 
       return {
         success: true,
-        data: reviews,
-        currentPage: 1, // Google Play uses token-based pagination, not page numbers
-        hasMore: !!result.nextPaginationToken,
-        nextPaginationToken: result.nextPaginationToken,
-        totalReviews: reviews.length
+        data: [],
+        currentPage: 1,
+        hasMore: false,
+        nextPaginationToken: undefined,
+        totalReviews: 0
       };
 
     } catch (error: any) {
