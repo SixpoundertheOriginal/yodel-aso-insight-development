@@ -201,24 +201,40 @@ export function AppSidebar() {
 
   // Add admin items based on role
   if (isSuperAdmin) {
+    console.log('🎯 [AppSidebar] Adding System Control (SUPER_ADMIN)');
     controlCenterItems.push({
       title: "System Control",
       url: "/admin",
       icon: Shield,
     });
   } else if (isOrganizationAdmin) {
+    console.log('🎯 [AppSidebar] Adding User Management (ORG_ADMIN)');
     controlCenterItems.push({
       title: "User Management",
       url: "/admin/users",
       icon: Users,
     });
+  } else {
+    console.log('⚠️ [AppSidebar] NOT adding admin items - isSuperAdmin:', isSuperAdmin, 'isOrganizationAdmin:', isOrganizationAdmin);
   }
-  
+
   // Coordinate loading states to prevent race condition UI flicker
 const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoading;
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const routes = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel, isSuperAdmin });
+
+  // DEBUG: Log routes and filtering
+  console.log('🛣️ [AppSidebar] Routes and Filtering:', {
+    isDemoOrg,
+    orgSlug: org?.slug,
+    orgDemoMode: org?.settings?.demo_mode,
+    role,
+    routesCount: routes.length,
+    hasAdminUsersRoute: routes.includes('/admin/users'),
+    controlCenterItemsBeforeFilter: controlCenterItems.map(i => i.url),
+    sampleRoutes: routes.slice(0, 5)
+  });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
