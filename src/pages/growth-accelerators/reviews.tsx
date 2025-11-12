@@ -16,6 +16,7 @@ import { PLATFORM_FEATURES, featureEnabledForRole, type UserRole } from '@/const
 import { getDemoPresetForSlug } from '@/config/demoPresets';
 import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext';
 import { fetchAppReviews } from '@/utils/itunesReviews';
+import { UniversalReviewsService, type Platform } from '@/services/universal-reviews.service';
 import { asoSearchService } from '@/services/aso-search.service';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
@@ -28,16 +29,16 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 // Enhanced AI Intelligence imports
-import { 
-  EnhancedReviewItem, 
-  ReviewIntelligence, 
-  ActionableInsights, 
-  ReviewAnalytics 
+import {
+  EnhancedReviewItem,
+  ReviewIntelligence,
+  ActionableInsights,
+  ReviewAnalytics
 } from '@/types/review-intelligence.types';
-import { 
-  analyzeEnhancedSentiment, 
-  extractReviewIntelligence, 
-  generateActionableInsights 
+import {
+  analyzeEnhancedSentiment,
+  extractReviewIntelligence,
+  generateActionableInsights
 } from '@/engines/review-intelligence.engine';
 import { CollapsibleAnalyticsSection } from '@/components/reviews/CollapsibleAnalyticsSection';
 import { MonitoredAppsGrid } from '@/components/reviews/MonitoredAppsGrid';
@@ -51,6 +52,9 @@ import { ReviewIntelligenceSummary } from '@/components/reviews/ReviewIntelligen
 import { ProductFrictionStrengths } from '@/components/reviews/ProductFrictionStrengths';
 import { AIRecommendationsPanel } from '@/components/reviews/AIRecommendationsPanel';
 import { DateRangePicker } from '@/components/DateRangePicker';
+import { PlatformToggle } from '@/components/reviews/PlatformToggle';
+import { GooglePlayMetricsPanel } from '@/components/reviews/GooglePlayMetricsPanel';
+import { DeveloperReplyCard } from '@/components/reviews/DeveloperReplyCard';
 
 // Narrative-driven UI components
 import { ExecutiveNarrativeSummary } from '@/components/reviews/narrative/ExecutiveNarrativeSummary';
@@ -133,7 +137,8 @@ const ReviewManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('us');
-  
+  const [platform, setPlatform] = useState<Platform>('ios'); // Platform filter for monitored apps grid
+
   // Competitor comparison state
   const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
 
@@ -170,13 +175,16 @@ const ReviewManagementPage: React.FC = () => {
   // Shared state for Reviews and Theme Analysis
   const { setSelectedApp: setSharedSelectedApp, isAppMonitored: checkAppMonitored } = useReviewAnalysis();
 
+  // Filter monitored apps by platform
+  const filteredMonitoredApps = monitoredApps?.filter(app => app.platform === platform);
+
   const isAppMonitored = monitoredApps?.some(
-    app => app.app_store_id === selectedApp?.appId && app.primary_country === selectedCountry
+    app => (app.app_id === selectedApp?.appId || app.app_store_id === selectedApp?.appId) && app.primary_country === selectedCountry
   );
 
   // Get monitored app details for cached reviews
   const monitoredAppDetails = monitoredApps?.find(
-    ma => ma.app_store_id === selectedApp?.appId && ma.primary_country === selectedCountry
+    ma => (ma.app_id === selectedApp?.appId || ma.app_store_id === selectedApp?.appId) && ma.primary_country === selectedCountry
   );
   const monitoredAppId = monitoredAppDetails?.id;
 
@@ -1373,9 +1381,22 @@ const ReviewManagementPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Review Management</h1>
-          <p className="text-text-secondary">Search apps and fetch public customer reviews from iTunes RSS</p>
+          <p className="text-text-secondary">Search apps and fetch public customer reviews from App Stores</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          {/* Platform Toggle */}
+          <PlatformToggle
+            selected={platform}
+            onChange={(newPlatform) => {
+              console.log('[PlatformToggle] Switching to:', newPlatform);
+              setPlatform(newPlatform);
+              // Clear selected app when switching platforms
+              setSelectedApp(null);
+              setReviews([]);
+            }}
+            disabled={reviewsLoading}
+          />
+          <div className="h-8 w-px bg-border" />
           {organizationId && monitoredApps && monitoredApps.length >= 2 && (
             <Button
               onClick={() => setShowCompetitorComparison(true)}
@@ -1394,26 +1415,35 @@ const ReviewManagementPage: React.FC = () => {
       </div>
 
       {/* Monitored Apps Grid - Shows saved apps for quick access */}
-      {monitoredApps && monitoredApps.length > 0 && !selectedApp && organizationId && (
-        <MonitoredAppsGrid
-          organizationId={organizationId}
-          onSelectApp={(app) => {
-            console.log('[MonitoredApp] Clicked:', {
-              appName: app.app_name,
-              appId: app.app_store_id,
-              country: app.primary_country
-            });
+      {filteredMonitoredApps && filteredMonitoredApps.length > 0 && !selectedApp && organizationId && (
+        <>
+          {/* Show count of apps for selected platform */}
+          <div className="text-sm text-muted-foreground mb-2">
+            Showing {filteredMonitoredApps.length} {platform === 'ios' ? 'iOS' : 'Android'} app{filteredMonitoredApps.length !== 1 ? 's' : ''}
+          </div>
+          <MonitoredAppsGrid
+            organizationId={organizationId}
+            onSelectApp={(app) => {
+              console.log('[MonitoredApp] Clicked:', {
+                appName: app.app_name,
+                appId: app.app_id,
+                platform: app.platform,
+                country: app.primary_country
+              });
 
-            // Load app into reviews page
-            setSelectedApp({
-              name: app.app_name,
-              appId: app.app_store_id,
-              developer: app.developer_name || 'Unknown',
-              rating: app.snapshot_rating || 0,
-              reviews: app.snapshot_review_count || 0,
-              icon: app.app_icon_url || '',
-              applicationCategory: app.category || 'Unknown'
-            });
+              // Set platform to match the app
+              setPlatform(app.platform);
+
+              // Load app into reviews page
+              setSelectedApp({
+                name: app.app_name,
+                appId: app.app_id,
+                developer: app.developer_name || 'Unknown',
+                rating: app.snapshot_rating || 0,
+                reviews: app.snapshot_review_count || 0,
+                icon: app.app_icon_url || '',
+                applicationCategory: app.category || 'Unknown'
+              });
 
             // ✅ CRITICAL FIX v2: Pass country directly to avoid stale state
             // Problem: setSelectedCountry is async, fetchReviews would use old state
@@ -1433,26 +1463,29 @@ const ReviewManagementPage: React.FC = () => {
               page: 1
             });
 
-            // IMPORTANT: We need to call fetchReviews with the country
-            // But fetchReviews uses selectedCountry from state (closure)
-            // So we need to fetch directly here with explicit params
+            // IMPORTANT: Fetch reviews with platform awareness
             (async () => {
               setReviewsLoading(true);
               try {
-                console.log('[MonitoredApp] Fetching from iTunes:', {
-                  appId: app.app_store_id,
-                  cc: targetCountry,
+                console.log('[MonitoredApp] Fetching reviews:', {
+                  platform: app.platform,
+                  appId: app.app_id,
+                  country: targetCountry,
                   page: 1
                 });
 
-                const result = await fetchAppReviews({
-                  appId: app.app_store_id,
-                  cc: targetCountry,
-                  page: 1
+                const result = await UniversalReviewsService.fetchReviews({
+                  platform: app.platform,
+                  appId: app.app_id,
+                  country: targetCountry,
+                  page: 1,
+                  pageSize: 100,
+                  maxReviews: app.platform === 'android' ? 1000 : undefined
                 });
 
                 const newReviews = result.data || [];
                 console.log('[MonitoredApp] Reviews fetched:', {
+                  platform: result.platform,
                   count: newReviews.length,
                   hasMore: result.hasMore,
                   currentPage: result.currentPage
@@ -1463,7 +1496,7 @@ const ReviewManagementPage: React.FC = () => {
                 setHasMoreReviews(result.hasMore);
 
                 if (newReviews.length > 0) {
-                  toast.success(`Loaded ${newReviews.length} reviews for ${app.app_name}`);
+                  toast.success(`Loaded ${newReviews.length} ${result.platform.toUpperCase()} reviews for ${app.app_name}`);
                 } else {
                   toast.info(`No reviews found for ${app.app_name} in ${targetCountry.toUpperCase()}`);
                 }
@@ -1480,6 +1513,7 @@ const ReviewManagementPage: React.FC = () => {
             updateLastChecked.mutate(app.id);
           }}
         />
+        </>
       )}
 
       {/* Card A: App Search (hidden after app selected) */}
