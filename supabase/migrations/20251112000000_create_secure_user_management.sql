@@ -6,6 +6,13 @@
 -- ============================================
 
 -- ============================================
+-- PART 0: ENABLE REQUIRED EXTENSIONS
+-- ============================================
+
+-- Enable uuid-ossp extension for uuid_generate_v4() function
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================
 -- PART 1: CREATE SECURE USER CREATION FUNCTION
 -- ============================================
 
