@@ -229,6 +229,28 @@ export class NativeGooglePlayScraper {
           .trim();
       }
 
+      // Validate extracted name - check if it's a CSS class or obfuscated string
+      // CSS classes are typically short alphanumeric strings like "YTx6oe" or "Si6A0c Gy4nib"
+      const looksLikeCssClass = /^[A-Za-z0-9]{4,10}(\s+[A-Za-z0-9]{4,10})*$/.test(appName);
+      const isStillPackageId = appName === packageId;
+
+      if (looksLikeCssClass || isStillPackageId) {
+        console.log(`[NATIVE-SCRAPER] ⚠️ Extracted name "${appName}" looks invalid, formatting package ID instead`);
+
+        // Format package ID into a readable name
+        // "com.spotify.music" → "Spotify Music"
+        // "com.google.android.youtube" → "Google Android Youtube"
+        appName = packageId
+          .replace(/^com\./, '')  // Remove "com." prefix
+          .replace(/^org\./, '')  // Remove "org." prefix
+          .replace(/\./g, ' ')    // Replace dots with spaces
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+          .join(' ');
+
+        console.log(`[NATIVE-SCRAPER] ✨ Formatted as: "${appName}"`);
+      }
+
       // Extract developer - look for developer ID pattern
       let developer = 'Unknown Developer';
       const devMatch = chunk.match(/"([A-Z][A-Za-z\s&'-]{3,50})"/g);
