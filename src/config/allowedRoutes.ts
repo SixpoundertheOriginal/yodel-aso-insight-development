@@ -1,3 +1,14 @@
+import {
+  DEFAULT_ORG_USER_ROUTES,
+  ORG_ADMIN_ADDITIONAL_ROUTES,
+  SUPER_ADMIN_ONLY_ROUTES,
+  getAllowedRoutesForRole as getRoutesForRole,
+  isRouteAllowed as checkRouteAllowed,
+} from './defaultOrgRoutes';
+
+// ============================================
+// LEGACY DEMO ROUTES (for backward compatibility)
+// ============================================
 export const DEMO_REPORTING_ROUTES = [
   '/dashboard-v2',
   '/dashboard/executive',
@@ -12,13 +23,15 @@ export const DEMO_REPORTING_ROUTES = [
 export type Role =
   | 'SUPER_ADMIN'
   | 'ORGANIZATION_ADMIN'
+  | 'ORG_ADMIN'
   | 'MANAGER'
   | 'ANALYST'
   | 'VIEWER'
   | 'ASO_MANAGER'
   | 'CLIENT';
 
-const FULL_APP: string[] = [
+// Legacy full app routes (kept for backward compatibility)
+const LEGACY_FULL_APP: string[] = [
   '/overview',
   '/dashboard',
   '/conversion-analysis',
@@ -38,7 +51,7 @@ const FULL_APP: string[] = [
   '/admin',
   '/profile',
   '/settings'
-]; // TODO: extend with additional routes as needed
+];
 
 // PHASE 1: Quick fix - Organizations restricted to reporting-only access
 // PHASE 2: Database-driven access level (preferred when available)
@@ -48,18 +61,39 @@ const REPORTING_ONLY_ORGS = [
 
 export type OrgAccessLevel = 'full' | 'reporting_only' | 'custom';
 
+/**
+ * NEW ROUTE ACCESS MODEL (November 2025)
+ *
+ * This function implements the simplified enterprise route model:
+ * - SUPER_ADMIN: Full access to all routes (developer testing, platform admin)
+ * - ORG_ADMIN: Default org routes + user management (/admin/users)
+ * - All other roles: Default org routes only
+ *
+ * Routes are defined in src/config/defaultOrgRoutes.ts for easy maintenance.
+ */
 export function getAllowedRoutes({
   isDemoOrg,
   role,
   organizationId,
-  orgAccessLevel
+  orgAccessLevel,
+  isSuperAdmin = false,
 }: {
   isDemoOrg: boolean;
   role: Role;
   organizationId?: string | null;
   orgAccessLevel?: OrgAccessLevel | null;
+  isSuperAdmin?: boolean;
 }): string[] {
-  // PHASE 2: Database-driven organization-level restriction (preferred)
+  // ============================================
+  // SPECIAL CASE: Demo Organizations
+  // ============================================
+  if (isDemoOrg) {
+    return [...DEMO_REPORTING_ROUTES];
+  }
+
+  // ============================================
+  // SPECIAL CASE: Database-driven access level override
+  // ============================================
   if (orgAccessLevel === 'reporting_only') {
     return [...DEMO_REPORTING_ROUTES];
   }
@@ -69,12 +103,58 @@ export function getAllowedRoutes({
     return [...DEMO_REPORTING_ROUTES];
   }
 
-  // Demo organizations get reporting routes only
-  if (isDemoOrg) return [...DEMO_REPORTING_ROUTES];
+  // ============================================
+  // NEW ENTERPRISE MODEL (November 2025)
+  // ============================================
 
-  // VIEWER and CLIENT roles get reporting routes only
-  if (role === 'VIEWER' || role === 'CLIENT') return [...DEMO_REPORTING_ROUTES];
+  // Normalize role name
+  const normalizedRole = role.toUpperCase().replace('ORGANIZATION_', 'ORG_');
 
-  // All other cases: full app access
-  return [...DEMO_REPORTING_ROUTES, ...FULL_APP];
+  // SUPER_ADMIN: Full platform access
+  if (isSuperAdmin || normalizedRole === 'SUPER_ADMIN') {
+    return [
+      ...DEFAULT_ORG_USER_ROUTES,
+      ...ORG_ADMIN_ADDITIONAL_ROUTES,
+      ...SUPER_ADMIN_ONLY_ROUTES,
+    ];
+  }
+
+  // ORG_ADMIN: Default routes + user management
+  if (normalizedRole === 'ORG_ADMIN') {
+    return [
+      ...DEFAULT_ORG_USER_ROUTES,
+      ...ORG_ADMIN_ADDITIONAL_ROUTES,
+    ];
+  }
+
+  // All other roles (ASO_MANAGER, ANALYST, VIEWER, CLIENT): Default routes only
+  return [...DEFAULT_ORG_USER_ROUTES];
 }
+
+/**
+ * Check if a specific route is allowed for a user
+ */
+export function isRouteAllowed(
+  route: string,
+  role: Role,
+  isSuperAdmin: boolean
+): boolean {
+  const normalizedRole = role.toUpperCase().replace('ORGANIZATION_', 'ORG_');
+  return checkRouteAllowed(route, normalizedRole, isSuperAdmin);
+}
+
+/**
+ * MIGRATION NOTES:
+ *
+ * The old system used a complex combination of:
+ * - Role-based access (VIEWER/CLIENT get limited routes)
+ * - Organization-level access (reporting_only orgs get limited routes)
+ * - Demo mode (demo orgs get limited routes)
+ *
+ * The new system simplifies to:
+ * - SUPER_ADMIN: Full access
+ * - ORG_ADMIN: Limited + user management
+ * - Everyone else: Limited access
+ *
+ * Demo mode and reporting_only overrides are preserved for backward compatibility.
+ */

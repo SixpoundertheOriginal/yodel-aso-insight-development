@@ -55,7 +55,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   
   // Compute derived values after all hooks
   const role = (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
-  const allowed = getAllowedRoutes({ isDemoOrg, role });
+  const allowed = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel: null, isSuperAdmin });
   const pathname = location.pathname;
 
   // ✅ NOW we can do conditional returns - all hooks have been called

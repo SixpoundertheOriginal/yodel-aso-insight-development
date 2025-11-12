@@ -197,7 +197,7 @@ export function AppSidebar() {
 const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoading;
   const role =
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
-  const routes = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel });
+  const routes = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel, isSuperAdmin });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
 
