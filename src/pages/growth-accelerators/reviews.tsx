@@ -18,6 +18,7 @@ import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext';
 import { fetchAppReviews } from '@/utils/itunesReviews';
 import { UniversalReviewsService, type Platform } from '@/services/universal-reviews.service';
 import { asoSearchService } from '@/services/aso-search.service';
+import { searchGooglePlay, type GooglePlayApp } from '@/utils/googlePlayReviews';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import { exportService } from '@/services/export.service';
@@ -138,6 +139,7 @@ const ReviewManagementPage: React.FC = () => {
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('us');
   const [platform, setPlatform] = useState<Platform>('ios'); // Platform filter for monitored apps grid
+  const [searchPlatform, setSearchPlatform] = useState<Platform>('ios'); // Platform for app search (iOS App Store or Google Play)
 
   // Competitor comparison state
   const [showCompetitorComparison, setShowCompetitorComparison] = useState(false);
@@ -260,39 +262,67 @@ const ReviewManagementPage: React.FC = () => {
 
     setSearchLoading(true);
     try {
-      // Use bulletproof ASO search service with organization context
-      // Super admin can search across all organizations
-      const searchConfig = {
-        organizationId: isSuperAdmin ? null : (organizationId || '__fallback__'),
-        cacheEnabled: true,
-        country: selectedCountry,
-        onProgress: (stage: string, progress: number) => {
-          console.log(`🔍 Search progress: ${stage} (${progress}%)`);
-        }
-      };
+      console.log(`🔍 [APP-SEARCH] Searching ${searchPlatform === 'ios' ? 'App Store' : 'Google Play'} for: "${searchTerm}"`);
 
-      const result = await asoSearchService.search(searchTerm, searchConfig);
-      
-      if (result.targetApp) {
-        // Direct match found - convert to AppSearchResult format
-        const convertedApp: AppSearchResult = {
-          name: result.targetApp.name,
-          appId: result.targetApp.appId,
-          developer: result.targetApp.developer || 'Unknown Developer',
-          rating: result.targetApp.rating || 0,
-          reviews: result.targetApp.reviews || 0,
-          icon: result.targetApp.icon || '',
-          applicationCategory: result.targetApp.applicationCategory || 'Unknown'
-        };
-        
-        setSearchResults([convertedApp]);
-        toast.success('App found successfully with bulletproof search');
-        console.log('✅ [BULLETPROOF-SEARCH] Direct match found:', convertedApp);
+      // Route to appropriate search service based on platform
+      if (searchPlatform === 'android') {
+        // Google Play search
+        const result = await searchGooglePlay(searchTerm, selectedCountry, 10);
+
+        if (result.success && result.results && result.results.length > 0) {
+          // Convert Google Play results to AppSearchResult format
+          const convertedResults: AppSearchResult[] = result.results.map((app: GooglePlayApp) => ({
+            name: app.app_name,
+            appId: app.app_id,
+            developer: app.developer_name || 'Unknown Developer',
+            rating: app.app_rating || 0,
+            reviews: 0, // Google Play search doesn't return review count in search results
+            icon: app.app_icon_url || '',
+            applicationCategory: app.category || 'Unknown'
+          }));
+
+          setSearchResults(convertedResults);
+          toast.success(`Found ${convertedResults.length} Android app(s)`);
+          console.log('✅ [GOOGLE-PLAY-SEARCH] Found apps:', convertedResults);
+        } else {
+          setSearchResults([]);
+          toast.error(result.error || 'No Android apps found matching your search');
+          console.log('❌ [GOOGLE-PLAY-SEARCH] No results found');
+        }
       } else {
-        // No results found
-        setSearchResults([]);
-        toast.error('No apps found matching your search');
-        console.log('❌ [BULLETPROOF-SEARCH] No results found');
+        // iOS App Store search (existing logic)
+        const searchConfig = {
+          organizationId: isSuperAdmin ? null : (organizationId || '__fallback__'),
+          cacheEnabled: true,
+          country: selectedCountry,
+          onProgress: (stage: string, progress: number) => {
+            console.log(`🔍 Search progress: ${stage} (${progress}%)`);
+          }
+        };
+
+        const result = await asoSearchService.search(searchTerm, searchConfig);
+
+        if (result.targetApp) {
+          // Direct match found - convert to AppSearchResult format
+          const convertedApp: AppSearchResult = {
+            name: result.targetApp.name,
+            appId: result.targetApp.appId,
+            developer: result.targetApp.developer || 'Unknown Developer',
+            rating: result.targetApp.rating || 0,
+            reviews: result.targetApp.reviews || 0,
+            icon: result.targetApp.icon || '',
+            applicationCategory: result.targetApp.applicationCategory || 'Unknown'
+          };
+
+          setSearchResults([convertedApp]);
+          toast.success('App found successfully with bulletproof search');
+          console.log('✅ [BULLETPROOF-SEARCH] Direct match found:', convertedApp);
+        } else {
+          // No results found
+          setSearchResults([]);
+          toast.error('No apps found matching your search');
+          console.log('❌ [BULLETPROOF-SEARCH] No results found');
+        }
       }
       
     } catch (error: any) {
@@ -1549,10 +1579,25 @@ const ReviewManagementPage: React.FC = () => {
 
           {/* Content */}
           <div className="space-y-4">
+          {/* Platform selector for search */}
+          <div className="flex items-center gap-3 pb-2">
+            <span className="text-sm font-medium text-muted-foreground">Search Platform:</span>
+            <PlatformToggle
+              selected={searchPlatform}
+              onChange={(newPlatform) => {
+                console.log('[SearchPlatformToggle] Switching to:', newPlatform);
+                setSearchPlatform(newPlatform);
+                setSearchResults([]); // Clear previous search results
+              }}
+              disabled={searchLoading}
+            />
+          </div>
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
-                placeholder="Enter app name (e.g. WhatsApp, Instagram)..."
+                placeholder={searchPlatform === 'ios'
+                  ? "Enter app name (e.g. WhatsApp, Instagram)..."
+                  : "Enter Android app name (e.g. Spotify, TikTok)..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleAppSearch()}
@@ -1661,6 +1706,7 @@ const ReviewManagementPage: React.FC = () => {
                       rating={selectedApp.rating}
                       reviewCount={selectedApp.reviews}
                       isMonitored={isAppMonitored}
+                      platform={searchPlatform}
                     />
                   )}
                   <Button variant="outline" size="sm" onClick={() => setSelectedApp(null)}>

@@ -119,6 +119,7 @@ export const useAddMonitoredApp = () => {
       notes,
       snapshotRating,
       snapshotReviewCount,
+      platform = 'ios', // Default to iOS for backward compatibility
     }: {
       organizationId: string;
       appStoreId: string;
@@ -133,28 +134,40 @@ export const useAddMonitoredApp = () => {
       notes?: string;
       snapshotRating?: number;
       snapshotReviewCount?: number;
+      platform?: 'ios' | 'android';
     }) => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
 
+      const insertData: any = {
+        organization_id: organizationId,
+        app_id: appStoreId, // Platform-agnostic field (iTunes ID or Package ID)
+        app_name: appName,
+        platform: platform,
+        bundle_id: bundleId || null,
+        app_icon_url: appIconUrl || null,
+        developer_name: developerName || null,
+        category: category || null,
+        primary_country: primaryCountry,
+        monitor_type: monitorType,
+        tags: tags.length > 0 ? tags : null,
+        notes: notes || null,
+        snapshot_rating: snapshotRating || null,
+        snapshot_review_count: snapshotReviewCount || null,
+        snapshot_taken_at: snapshotRating ? new Date().toISOString() : null,
+        created_by: userId,
+      };
+
+      // Add platform-specific fields
+      if (platform === 'android') {
+        insertData.play_store_package_id = appStoreId;
+        insertData.play_store_url = `https://play.google.com/store/apps/details?id=${appStoreId}`;
+      } else {
+        insertData.app_store_id = appStoreId; // Backward compatibility
+      }
+
       const { data, error} = await supabaseCompat.fromAny('monitored_apps')
-        .insert({
-          organization_id: organizationId,
-          app_store_id: appStoreId,
-          app_name: appName,
-          bundle_id: bundleId || null,
-          app_icon_url: appIconUrl || null,
-          developer_name: developerName || null,
-          category: category || null,
-          primary_country: primaryCountry,
-          monitor_type: monitorType,
-          tags: tags.length > 0 ? tags : null,
-          notes: notes || null,
-          snapshot_rating: snapshotRating || null,
-          snapshot_review_count: snapshotReviewCount || null,
-          snapshot_taken_at: snapshotRating ? new Date().toISOString() : null,
-          created_by: userId,
-        })
+        .insert(insertData)
         .select()
         .single();
 

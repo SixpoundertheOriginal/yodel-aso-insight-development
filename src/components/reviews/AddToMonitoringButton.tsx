@@ -27,6 +27,7 @@ interface AddToMonitoringButtonProps {
   reviewCount?: number;
   isMonitored?: boolean;
   className?: string;
+  platform?: 'ios' | 'android'; // Platform for the app
 }
 
 export const AddToMonitoringButton: React.FC<AddToMonitoringButtonProps> = ({
@@ -41,7 +42,8 @@ export const AddToMonitoringButton: React.FC<AddToMonitoringButtonProps> = ({
   rating,
   reviewCount,
   isMonitored = false,
-  className
+  className,
+  platform = 'ios' // Default to iOS for backward compatibility
 }) => {
   const addMutation = useAddMonitoredApp();
   const [showDialog, setShowDialog] = useState(false);
@@ -67,6 +69,7 @@ export const AddToMonitoringButton: React.FC<AddToMonitoringButtonProps> = ({
         tags: tagArray,
         snapshotRating: rating,
         snapshotReviewCount: reviewCount,
+        platform, // Pass platform to mutation
       },
       {
         onSuccess: () => {
