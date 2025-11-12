@@ -1,26 +1,49 @@
+import { NativeGooglePlayScraper } from './native-scraper.service.ts';
 import type { GooglePlayReview, ReviewsServiceOptions, ReviewsResponse } from '../types/index.ts';
 
 export class GooglePlayReviewsService {
+  private scraper = new NativeGooglePlayScraper();
+
   /**
    * Fetch reviews from Google Play Store
-   * NOTE: Currently returns empty results - full implementation pending
    */
   async fetchReviews(options: ReviewsServiceOptions): Promise<ReviewsResponse> {
-    const { packageId, country } = options;
+    const { packageId, country, pageSize } = options;
 
     try {
-      console.log(`[GOOGLE-PLAY] Reviews fetch requested for ${packageId} - returning empty (not yet implemented)`);
+      console.log(`[GOOGLE-PLAY] Fetching reviews for ${packageId}, country=${country}`);
 
-      // TODO: Implement native reviews scraping
-      // For now, return empty results to allow search functionality to work
+      // Fetch reviews using native scraper
+      const limit = pageSize && pageSize < 200 ? pageSize : 100;
+      const scrapedReviews = await this.scraper.fetchReviews(packageId, country, limit);
+
+      // Transform to our format
+      const reviews: GooglePlayReview[] = scrapedReviews.map(review => ({
+        review_id: review.review_id,
+        app_id: review.app_id,
+        platform: 'android' as const,
+        country: review.country,
+        title: review.title,
+        text: review.text,
+        rating: review.rating,
+        version: review.version,
+        author: review.author,
+        review_date: review.review_date,
+        developer_reply: review.developer_reply,
+        developer_reply_date: review.developer_reply_date,
+        thumbs_up_count: review.thumbs_up_count,
+        reviewer_language: review.reviewer_language
+      }));
+
+      console.log(`[GOOGLE-PLAY] Successfully fetched ${reviews.length} reviews`);
 
       return {
         success: true,
-        data: [],
+        data: reviews,
         currentPage: 1,
-        hasMore: false,
-        nextPaginationToken: undefined,
-        totalReviews: 0
+        hasMore: reviews.length >= limit, // If we got the limit, there might be more
+        nextPaginationToken: undefined, // Not implemented yet
+        totalReviews: reviews.length
       };
 
     } catch (error: any) {
@@ -36,7 +59,7 @@ export class GooglePlayReviewsService {
   }
 
   /**
-   * Fetch reviews with 1000 limit (max allowed)
+   * Fetch reviews with limit (max 1000)
    */
   async fetchReviewsWithLimit(
     packageId: string,
@@ -44,47 +67,38 @@ export class GooglePlayReviewsService {
     lang: string,
     maxReviews: number = 1000
   ): Promise<ReviewsResponse> {
-    const allReviews: GooglePlayReview[] = [];
-    let paginationToken: string | undefined;
-    let hasMore = true;
-
     try {
-      while (allReviews.length < maxReviews && hasMore) {
-        const remaining = maxReviews - allReviews.length;
-        const batchSize = Math.min(remaining, 200); // Max 200 per request
+      console.log(`[GOOGLE-PLAY] Fetching up to ${maxReviews} reviews for ${packageId}`);
 
-        const result = await this.fetchReviews({
-          packageId,
-          country,
-          lang,
-          page: 1,
-          pageSize: batchSize,
-          sort: 'newest',
-          paginationToken
-        });
+      // For now, fetch in one batch (pagination not implemented yet)
+      const limit = Math.min(maxReviews, 1000);
+      const scrapedReviews = await this.scraper.fetchReviews(packageId, country, limit);
 
-        if (!result.success || !result.data || result.data.length === 0) {
-          break;
-        }
+      const reviews: GooglePlayReview[] = scrapedReviews.map(review => ({
+        review_id: review.review_id,
+        app_id: review.app_id,
+        platform: 'android' as const,
+        country: review.country,
+        title: review.title,
+        text: review.text,
+        rating: review.rating,
+        version: review.version,
+        author: review.author,
+        review_date: review.review_date,
+        developer_reply: review.developer_reply,
+        developer_reply_date: review.developer_reply_date,
+        thumbs_up_count: review.thumbs_up_count,
+        reviewer_language: review.reviewer_language
+      }));
 
-        allReviews.push(...result.data);
-        paginationToken = result.nextPaginationToken;
-        hasMore = result.hasMore;
-
-        // Add small delay to avoid rate limiting
-        if (hasMore && allReviews.length < maxReviews) {
-          await this.delay(500);
-        }
-      }
-
-      console.log(`[GOOGLE-PLAY] Fetched total of ${allReviews.length} reviews (limit: ${maxReviews})`);
+      console.log(`[GOOGLE-PLAY] Fetched total of ${reviews.length} reviews (limit: ${maxReviews})`);
 
       return {
         success: true,
-        data: allReviews,
+        data: reviews,
         currentPage: 1,
-        hasMore: hasMore && allReviews.length === maxReviews,
-        totalReviews: allReviews.length
+        hasMore: false, // Pagination not implemented yet
+        totalReviews: reviews.length
       };
 
     } catch (error: any) {
@@ -96,50 +110,6 @@ export class GooglePlayReviewsService {
         currentPage: 1,
         hasMore: false
       };
-    }
-  }
-
-  /**
-   * Transform google-play-scraper reviews to our format
-   */
-  private transformReviews(
-    rawReviews: any[],
-    packageId: string,
-    country: string
-  ): GooglePlayReview[] {
-    return rawReviews.map((review: any) => ({
-      review_id: review.id || `${packageId}-${review.date?.getTime()}`,
-      app_id: packageId,
-      platform: 'android' as const,
-      country: country,
-      title: review.title || '',
-      text: review.text || '',
-      rating: review.score || 0,
-      version: review.version || '',
-      author: review.userName || 'Anonymous',
-      review_date: review.date?.toISOString() || new Date().toISOString(),
-
-      // Google Play specific
-      developer_reply: review.replyText || undefined,
-      developer_reply_date: review.replyDate?.toISOString() || undefined,
-      thumbs_up_count: review.thumbsUp || 0,
-      reviewer_language: review.reviewCreatedVersion || undefined
-    }));
-  }
-
-  /**
-   * Map our sort option to google-play-scraper format
-   */
-  private mapSortOption(sort: 'newest' | 'rating' | 'helpfulness'): number {
-    switch (sort) {
-      case 'newest':
-        return gplay.sort.NEWEST;
-      case 'rating':
-        return gplay.sort.RATING;
-      case 'helpfulness':
-        return gplay.sort.HELPFULNESS;
-      default:
-        return gplay.sort.NEWEST;
     }
   }
 
