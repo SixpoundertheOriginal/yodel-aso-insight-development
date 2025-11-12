@@ -70,6 +70,7 @@ interface AppSearchResult {
   reviews: number;
   icon: string;
   applicationCategory: string;
+  platform: 'ios' | 'android';
 }
 
 interface ReviewItem {
@@ -278,7 +279,8 @@ const ReviewManagementPage: React.FC = () => {
             rating: app.app_rating || 0,
             reviews: 0, // Google Play search doesn't return review count in search results
             icon: app.app_icon_url || '',
-            applicationCategory: app.category || 'Unknown'
+            applicationCategory: app.category || 'Unknown',
+            platform: 'android' as const
           }));
 
           setSearchResults(convertedResults);
@@ -311,7 +313,8 @@ const ReviewManagementPage: React.FC = () => {
             rating: result.targetApp.rating || 0,
             reviews: result.targetApp.reviews || 0,
             icon: result.targetApp.icon || '',
-            applicationCategory: result.targetApp.applicationCategory || 'Unknown'
+            applicationCategory: result.targetApp.applicationCategory || 'Unknown',
+            platform: 'ios' as const
           };
 
           setSearchResults([convertedApp]);
@@ -369,7 +372,8 @@ const ReviewManagementPage: React.FC = () => {
       rating: selectedMetadata.rating || 0,
       reviews: selectedMetadata.reviews || 0,
       icon: selectedMetadata.icon || '',
-      applicationCategory: selectedMetadata.applicationCategory || 'Unknown'
+      applicationCategory: selectedMetadata.applicationCategory || 'Unknown',
+      platform: 'ios' as const // Modal is only used for iOS bulletproof search
     };
     
     setSearchResults([convertedApp]);
@@ -380,26 +384,41 @@ const ReviewManagementPage: React.FC = () => {
     console.log('✅ [APP-SELECTION] Selected from modal:', convertedApp);
   };
 
-  // Reviews fetching
+  // Reviews fetching with platform support
   const fetchReviews = async (appId: string, page: number = 1, append: boolean = false) => {
     setReviewsLoading(true);
     try {
-      const result = await fetchAppReviews({ appId, cc: selectedCountry, page });
+      console.log('[fetchReviews] Fetching reviews:', { platform, appId, country: selectedCountry, page });
+
+      const result = await UniversalReviewsService.fetchReviews({
+        platform: platform,
+        appId: appId,
+        country: selectedCountry,
+        page: page,
+        pageSize: 100,
+        maxReviews: platform === 'android' ? 1000 : undefined
+      });
+
       const newReviews = result.data || [];
-      console.log('[fetchReviews OK]', newReviews.length);
+      console.log('[fetchReviews] Reviews fetched:', {
+        platform: result.platform,
+        count: newReviews.length,
+        hasMore: result.hasMore
+      });
+
       if (append) {
         setReviews(prev => [...prev, ...newReviews]);
       } else {
         setReviews(newReviews);
       }
-      
+
       setCurrentPage(result.currentPage);
       setHasMoreReviews(result.hasMore);
-      
-      toast.success(`Loaded ${newReviews.length} reviews (page ${result.currentPage})`);
-      
+
+      toast.success(`Loaded ${newReviews.length} ${platform} reviews (page ${result.currentPage})`);
+
     } catch (error: any) {
-      console.error('Reviews fetch failed:', error);
+      console.error('[fetchReviews] Failed:', error);
       toast.error(`Failed to fetch reviews: ${error.message}`);
     } finally {
       setReviewsLoading(false);
@@ -437,6 +456,7 @@ const ReviewManagementPage: React.FC = () => {
   // App selection handler
   const handleSelectApp = (app: AppSearchResult) => {
     setSelectedApp(app);
+    setPlatform(app.platform); // Update platform based on selected app
     setReviews([]);
     setCurrentPage(1);
     setHasMoreReviews(false);
