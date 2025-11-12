@@ -32,6 +32,14 @@ export interface EnhancedSentiment {
   intensity: 'mild' | 'moderate' | 'strong' | 'extreme';
 }
 
+export interface GooglePlayMetrics {
+  developerResponseRate: number;      // 0-1 percentage of reviews with developer reply
+  avgResponseTimeHours: number;       // Average hours to respond to reviews
+  reviewsWithReplies: number;         // Count of reviews with developer responses
+  helpfulReviewsCount: number;        // Reviews with thumbs_up > 5
+  topRepliedThemes: string[];         // Themes most often replied to by developer
+}
+
 export interface ReviewIntelligence {
   // Theme extraction (NEW)
   themes: {
@@ -41,7 +49,7 @@ export interface ReviewIntelligence {
     examples: string[];      // sample review excerpts
     trending: 'up' | 'down' | 'stable'; // trend direction
   }[];
-  
+
   // Feature mentions (NEW)
   featureMentions: {
     feature: string;         // e.g., "dark mode", "notifications"
@@ -49,7 +57,7 @@ export interface ReviewIntelligence {
     sentiment: number;       // average sentiment (-1 to 1)
     impact: 'high' | 'medium' | 'low'; // user impact level
   }[];
-  
+
   // Issue patterns (NEW)
   issuePatterns: {
     issue: string;          // e.g., "app crashes on startup"
@@ -58,6 +66,9 @@ export interface ReviewIntelligence {
     affectedVersions: string[]; // if determinable
     firstSeen: Date;        // when first reported
   }[];
+
+  // Google Play specific metrics (Android only)
+  googlePlayMetrics?: GooglePlayMetrics;
 }
 
 export interface ActionableInsights {
@@ -113,9 +124,17 @@ export interface EnhancedReviewItem {
   version?: string;
   author?: string;
   updated_at?: string;
+  review_date?: string;
   country: string;
   app_id: string;
-  
+  platform?: 'ios' | 'android';  // Platform (iOS or Android)
+
+  // Google Play specific fields (Android only)
+  developer_reply?: string;
+  developer_reply_date?: string;
+  thumbs_up_count?: number;
+  reviewer_language?: string;
+
   // Enhanced intelligence fields
   enhancedSentiment?: EnhancedSentiment;
   extractedThemes?: string[];

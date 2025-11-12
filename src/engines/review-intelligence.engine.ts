@@ -5,11 +5,12 @@
  * into multi-dimensional insights and actionable recommendations
  */
 
-import { 
-  EnhancedSentiment, 
-  ReviewIntelligence, 
+import {
+  EnhancedSentiment,
+  ReviewIntelligence,
   ActionableInsights,
-  EnhancedReviewItem
+  EnhancedReviewItem,
+  GooglePlayMetrics
 } from '@/types/review-intelligence.types';
 
 /**
@@ -78,10 +79,23 @@ export function extractReviewIntelligence(reviews: EnhancedReviewItem[]): Review
   const issuePatterns = extractIssuePatterns(reviews);
   console.log('🔍 [ENGINE] Extracted issues:', issuePatterns.length, issuePatterns.map(i => `${i.issue}(${i.frequency}, ${i.severity})`));
 
+  // Google Play metrics (Android only)
+  const hasAndroidReviews = reviews.some(r => r.platform === 'android');
+  const googlePlayMetrics = hasAndroidReviews ? analyzeGooglePlayMetrics(reviews) : undefined;
+
+  if (googlePlayMetrics) {
+    console.log('🔍 [ENGINE] Google Play metrics:', {
+      responseRate: `${(googlePlayMetrics.developerResponseRate * 100).toFixed(1)}%`,
+      avgResponseTime: `${googlePlayMetrics.avgResponseTimeHours.toFixed(1)}h`,
+      replies: googlePlayMetrics.reviewsWithReplies
+    });
+  }
+
   return {
     themes,
     featureMentions,
-    issuePatterns
+    issuePatterns,
+    googlePlayMetrics
   };
 }
 
@@ -465,4 +479,87 @@ function generateTrendAlerts(reviews: EnhancedReviewItem[], intelligence: Review
     });
   
   return alerts.slice(0, 5);
+}
+
+/**
+ * Analyze Google Play specific metrics (developer engagement)
+ * Only applicable for Android reviews
+ */
+export function analyzeGooglePlayMetrics(reviews: EnhancedReviewItem[]): GooglePlayMetrics {
+  console.log('🤖 [ENGINE] analyzeGooglePlayMetrics called with', reviews.length, 'reviews');
+
+  // Filter only Android reviews
+  const androidReviews = reviews.filter(r => r.platform === 'android');
+
+  if (androidReviews.length === 0) {
+    console.log('🤖 [ENGINE] No Android reviews found, returning empty metrics');
+    return {
+      developerResponseRate: 0,
+      avgResponseTimeHours: 0,
+      reviewsWithReplies: 0,
+      helpfulReviewsCount: 0,
+      topRepliedThemes: []
+    };
+  }
+
+  // Find reviews with developer replies
+  const reviewsWithReplies = androidReviews.filter(r => r.developer_reply);
+  console.log('🤖 [ENGINE] Found', reviewsWithReplies.length, 'reviews with developer replies');
+
+  // Calculate developer response rate
+  const developerResponseRate = reviewsWithReplies.length / androidReviews.length;
+
+  // Calculate average response time (only for reviews with replies)
+  let totalResponseTimeHours = 0;
+  let responseTimeCount = 0;
+
+  for (const review of reviewsWithReplies) {
+    if (review.developer_reply_date && (review.review_date || review.updated_at)) {
+      const reviewTime = new Date(review.review_date || review.updated_at!).getTime();
+      const replyTime = new Date(review.developer_reply_date).getTime();
+      const diffHours = (replyTime - reviewTime) / (1000 * 60 * 60);
+
+      // Ignore anomalies (negative times or > 30 days)
+      if (diffHours > 0 && diffHours < 30 * 24) {
+        totalResponseTimeHours += diffHours;
+        responseTimeCount++;
+      }
+    }
+  }
+
+  const avgResponseTimeHours = responseTimeCount > 0
+    ? totalResponseTimeHours / responseTimeCount
+    : 0;
+
+  console.log('🤖 [ENGINE] Average response time:', avgResponseTimeHours.toFixed(1), 'hours');
+
+  // Find most replied themes
+  const themeReplyCounts = new Map<string, number>();
+  for (const review of reviewsWithReplies) {
+    if (review.extractedThemes) {
+      for (const theme of review.extractedThemes) {
+        themeReplyCounts.set(theme, (themeReplyCounts.get(theme) || 0) + 1);
+      }
+    }
+  }
+
+  const topRepliedThemes = Array.from(themeReplyCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([theme]) => theme);
+
+  console.log('🤖 [ENGINE] Top replied themes:', topRepliedThemes);
+
+  // Count helpful reviews (thumbs_up > 5)
+  const helpfulReviewsCount = androidReviews.filter(r => (r.thumbs_up_count || 0) > 5).length;
+
+  console.log('🤖 [ENGINE] Helpful reviews count:', helpfulReviewsCount);
+
+  return {
+    developerResponseRate,
+    avgResponseTimeHours,
+    reviewsWithReplies: reviewsWithReplies.length,
+    helpfulReviewsCount,
+    topRepliedThemes
+  };
 }
