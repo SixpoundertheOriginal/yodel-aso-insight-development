@@ -171,6 +171,19 @@ export function AppSidebar() {
   // Simplified: No UI permissions check needed
   const { whoami } = useServerAuth();
 
+  // DEBUG: Log isOrganizationAdmin value
+  React.useEffect(() => {
+    if (!permissionsLoading) {
+      console.log('🔍 [AppSidebar] DEBUG Permissions:', {
+        isSuperAdmin,
+        isOrganizationAdmin,
+        roles,
+        user: user?.email,
+        shouldShowUserManagement: !isSuperAdmin && isOrganizationAdmin
+      });
+    }
+  }, [isSuperAdmin, isOrganizationAdmin, permissionsLoading, user?.email]);
+
   // Define navigation items first, before filtering
   const controlCenterItems: NavigationItem[] = [
     {
