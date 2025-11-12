@@ -190,11 +190,11 @@ export default function ReportingDashboardV2() {
     return totals;
   }, [data?.rawData]);
 
-  // ✅ INITIALIZE SELECTION: Auto-select FIRST app only on first load
+  // ✅ INITIALIZE SELECTION: Auto-select ALL apps on first load
   useEffect(() => {
     if (availableApps.length > 0 && selectedAppIds.length === 0) {
-      console.log('📱 [DASHBOARD-V2] Initializing app selection to FIRST app');
-      setSelectedAppIds([availableApps[0].app_id]);
+      console.log('📱 [DASHBOARD-V2] Initializing app selection to ALL apps:', availableApps.length);
+      setSelectedAppIds(availableApps.map(app => app.app_id));
     }
   }, [availableApps.length]); // Only depend on length to avoid re-triggering
 
