@@ -5,14 +5,15 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useNavigate } from 'react-router-dom';
 
 const UsersPage: React.FC = () => {
-  const { isSuperAdmin, isLoading } = usePermissions();
+  const { isSuperAdmin, isOrganizationAdmin, isLoading } = usePermissions();
   const navigate = useNavigate();
+  const hasAccess = isSuperAdmin || isOrganizationAdmin;
 
   useEffect(() => {
-    if (!isLoading && !isSuperAdmin) {
+    if (!isLoading && !hasAccess) {
       navigate('/dashboard');
     }
-  }, [isSuperAdmin, isLoading, navigate]);
+  }, [hasAccess, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -22,7 +23,7 @@ const UsersPage: React.FC = () => {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!hasAccess) {
     return null;
   }
 

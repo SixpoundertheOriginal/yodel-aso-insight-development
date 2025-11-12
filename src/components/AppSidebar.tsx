@@ -185,11 +185,19 @@ export function AppSidebar() {
       icon: Smartphone,
     },
   ];
+
+  // Add admin items based on role
   if (isSuperAdmin) {
     controlCenterItems.push({
       title: "System Control",
       url: "/admin",
       icon: Shield,
+    });
+  } else if (isOrganizationAdmin) {
+    controlCenterItems.push({
+      title: "User Management",
+      url: "/admin/users",
+      icon: Users,
     });
   }
   
