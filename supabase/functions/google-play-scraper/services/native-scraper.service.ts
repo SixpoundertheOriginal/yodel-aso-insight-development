@@ -261,7 +261,9 @@ export class NativeGooglePlayScraper {
         }
       }
 
-      console.log(`[NATIVE-SCRAPER] Extracted app: ${appName} (${packageId})`);
+      console.log(`[NATIVE-SCRAPER] 🎯 Extracted app name: "${appName}" for packageId: ${packageId}`);
+      console.log(`[NATIVE-SCRAPER] 👤 Developer: "${developer}"`);
+      console.log(`[NATIVE-SCRAPER] ⭐ Rating: ${rating}`);
 
       return {
         app_name: appName,
@@ -360,7 +362,7 @@ export class NativeGooglePlayScraper {
    */
   async fetchReviews(packageId: string, country: string = 'us', limit: number = 100): Promise<ScrapedReview[]> {
     try {
-      console.log(`[NATIVE-SCRAPER] Fetching reviews for: ${packageId}, country=${country}, limit=${limit}`);
+      console.log(`[NATIVE-SCRAPER] 🚀 fetchReviews CALLED - packageId: ${packageId}, country: ${country}, limit: ${limit}`);
 
       // Rate limiting
       await this.rateLimit();
@@ -372,10 +374,15 @@ export class NativeGooglePlayScraper {
       const batchSize = Math.min(40, limit);
       let continuationToken: string | null = null;
 
+      console.log(`[NATIVE-SCRAPER] 📦 Calling fetchReviewBatch with batchSize: ${batchSize}`);
+
       while (reviews.length < limit) {
         const batchReviews = await this.fetchReviewBatch(packageId, country, batchSize, continuationToken);
 
+        console.log(`[NATIVE-SCRAPER] 📥 fetchReviewBatch returned ${batchReviews.length} reviews`);
+
         if (batchReviews.length === 0) {
+          console.log(`[NATIVE-SCRAPER] ⚠️ batchReviews.length === 0, breaking loop`);
           break; // No more reviews available
         }
 
@@ -391,11 +398,11 @@ export class NativeGooglePlayScraper {
         break;
       }
 
-      console.log(`[NATIVE-SCRAPER] Successfully fetched ${reviews.length} reviews`);
+      console.log(`[NATIVE-SCRAPER] ✅ Successfully fetched ${reviews.length} reviews`);
       return reviews.slice(0, limit);
 
     } catch (error: any) {
-      console.error(`[NATIVE-SCRAPER] Failed to fetch reviews:`, error);
+      console.error(`[NATIVE-SCRAPER] ❌ fetchReviews failed:`, error);
       // Return empty array instead of throwing - graceful degradation
       return [];
     }
@@ -411,6 +418,8 @@ export class NativeGooglePlayScraper {
     continuationToken: string | null = null
   ): Promise<ScrapedReview[]> {
     try {
+      console.log(`[NATIVE-SCRAPER] 🔵 fetchReviewBatch CALLED - packageId: ${packageId}, count: ${count}`);
+
       // Google Play's batch API endpoint
       // This endpoint is used by the website to load reviews dynamically
       const batchUrl = `${this.baseUrl}/_/PlayStoreUi/data/batchexecute`;
@@ -437,6 +446,8 @@ export class NativeGooglePlayScraper {
       formData.append('hl', 'en');
       formData.append('gl', country);
 
+      console.log(`[NATIVE-SCRAPER] 📡 Calling batch API: ${batchUrl}`);
+
       const response = await fetch(batchUrl, {
         method: 'POST',
         headers: {
@@ -449,20 +460,25 @@ export class NativeGooglePlayScraper {
         signal: AbortSignal.timeout(15000)
       });
 
+      console.log(`[NATIVE-SCRAPER] 📡 Batch API response status: ${response.status}`);
+
       if (!response.ok) {
         throw new Error(`Batch API request failed: ${response.status}`);
       }
 
       const text = await response.text();
+      console.log(`[NATIVE-SCRAPER] 📡 Batch API response length: ${text.length} chars`);
 
       // Parse the response (Google's batch execute format is complex)
       // For now, let's try a simpler approach: just fetch from the reviews URL
       // and extract what we can from the initial page load
+      console.log(`[NATIVE-SCRAPER] 🔄 Falling back to parseReviewsFromPage (batch API parsing not implemented yet)`);
       return await this.parseReviewsFromPage(packageId, country);
 
     } catch (error: any) {
-      console.error(`[NATIVE-SCRAPER] Batch request failed:`, error);
+      console.error(`[NATIVE-SCRAPER] ❌ Batch request failed:`, error);
       // Fallback to page parsing
+      console.log(`[NATIVE-SCRAPER] 🔄 Catching error, calling parseReviewsFromPage`);
       return await this.parseReviewsFromPage(packageId, country);
     }
   }
@@ -473,7 +489,7 @@ export class NativeGooglePlayScraper {
    */
   private async parseReviewsFromPage(packageId: string, country: string): Promise<ScrapedReview[]> {
     try {
-      console.log(`[NATIVE-SCRAPER] Attempting to parse reviews from page for ${packageId}`);
+      console.log(`[NATIVE-SCRAPER] ⭐ parseReviewsFromPage CALLED for ${packageId}`);
 
       // For MVP, return structured sample data to unblock UI development
       // This allows the frontend team to build the UI while we work on proper API integration
@@ -528,13 +544,14 @@ export class NativeGooglePlayScraper {
         }
       ];
 
-      console.log(`[NATIVE-SCRAPER] Returning ${sampleReviews.length} sample reviews for UI development`);
-      console.warn(`[NATIVE-SCRAPER] NOTE: These are sample reviews for UI development. Full API integration pending.`);
+      console.log(`[NATIVE-SCRAPER] ✅ Returning ${sampleReviews.length} sample reviews`);
+      console.log(`[NATIVE-SCRAPER] 📋 Sample review IDs:`, sampleReviews.map(r => r.review_id));
+      console.warn(`[NATIVE-SCRAPER] ⚠️ NOTE: These are sample reviews for UI development. Full API integration pending.`);
 
       return sampleReviews;
 
     } catch (error: any) {
-      console.error(`[NATIVE-SCRAPER] Page parsing failed:`, error);
+      console.error(`[NATIVE-SCRAPER] ❌ Page parsing failed:`, error);
       return [];
     }
   }
