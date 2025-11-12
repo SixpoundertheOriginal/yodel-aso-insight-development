@@ -1,12 +1,9 @@
-import gplay from 'npm:google-play-scraper@9.1.1';
+import { NativeGooglePlayScraper } from './native-scraper.service.ts';
 import type { GooglePlayApp } from '../types/index.ts';
 
-/**
- * Google Play Apps Service
- * Uses the battle-tested google-play-scraper npm package
- * This is more reliable than custom HTML parsing
- */
 export class GooglePlayAppsService {
+  private scraper = new NativeGooglePlayScraper();
+
   /**
    * Search Google Play Store for apps
    */
@@ -14,15 +11,11 @@ export class GooglePlayAppsService {
     try {
       console.log(`[GOOGLE-PLAY] Searching for: "${query}", country=${country}, limit=${limit}`);
 
-      const results = await gplay.search({
-        term: query,
-        country: country,
-        num: Math.min(limit, 50) // Reasonable limit
-      });
+      const results = await this.scraper.searchApps(query, country, Math.min(limit, 50));
 
       console.log(`[GOOGLE-PLAY] Found ${results.length} apps`);
 
-      return this.transformApps(results);
+      return results as GooglePlayApp[];
 
     } catch (error: any) {
       console.error(`[GOOGLE-PLAY] Search failed:`, error);
@@ -37,41 +30,13 @@ export class GooglePlayAppsService {
     try {
       console.log(`[GOOGLE-PLAY] Fetching app details: ${packageId}`);
 
-      const app = await gplay.app({
-        appId: packageId,
-        country: country
-      });
+      const app = await this.scraper.getAppDetails(packageId, country);
 
-      return this.transformApp(app);
+      return app as GooglePlayApp;
 
     } catch (error: any) {
       console.error(`[GOOGLE-PLAY] Failed to get app details:`, error);
       throw new Error(`Failed to get app details: ${error.message}`);
     }
-  }
-
-  /**
-   * Transform google-play-scraper app results to our format
-   */
-  private transformApps(rawApps: any[]): GooglePlayApp[] {
-    return rawApps.map(app => this.transformApp(app));
-  }
-
-  /**
-   * Transform single app to our format
-   */
-  private transformApp(app: any): GooglePlayApp {
-    return {
-      app_name: app.title || '',
-      app_id: app.appId || '',
-      platform: 'android',
-      bundle_id: app.appId || '',
-      developer_name: app.developer || '',
-      app_icon_url: app.icon || '',
-      app_rating: app.score || 0,
-      category: app.genre || '',
-      installs: app.installs || '0+',
-      price: app.free ? 'Free' : (app.price || 'Unknown')
-    };
   }
 }
