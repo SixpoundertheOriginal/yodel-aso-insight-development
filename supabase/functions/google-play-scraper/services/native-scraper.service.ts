@@ -491,17 +491,120 @@ export class NativeGooglePlayScraper {
       const text = await response.text();
       console.log(`[NATIVE-SCRAPER] 📡 Batch API response length: ${text.length} chars`);
 
-      // Parse the response (Google's batch execute format is complex)
-      // For now, let's try a simpler approach: just fetch from the reviews URL
-      // and extract what we can from the initial page load
-      console.log(`[NATIVE-SCRAPER] 🔄 Falling back to parseReviewsFromPage (batch API parsing not implemented yet)`);
-      return await this.parseReviewsFromPage(packageId, country);
+      // Parse Google's batch execute response format
+      try {
+        const reviews = this.parseBatchResponse(text, packageId, country);
+        console.log(`[NATIVE-SCRAPER] ✅ Parsed ${reviews.length} reviews from batch API`);
+        return reviews;
+      } catch (parseError: any) {
+        console.error(`[NATIVE-SCRAPER] ⚠️ Failed to parse batch response:`, parseError.message);
+        console.log(`[NATIVE-SCRAPER] 🔄 Falling back to sample data`);
+        return await this.parseReviewsFromPage(packageId, country);
+      }
 
     } catch (error: any) {
       console.error(`[NATIVE-SCRAPER] ❌ Batch request failed:`, error);
       // Fallback to page parsing
       console.log(`[NATIVE-SCRAPER] 🔄 Catching error, calling parseReviewsFromPage`);
       return await this.parseReviewsFromPage(packageId, country);
+    }
+  }
+
+  /**
+   * Parse Google Play batch execute response format
+   * Google returns data in format: )]}'[["wrb.fr","PdPjJe","[[null,[[review data]]]]",null,null,null,"generic"]]
+   */
+  private parseBatchResponse(responseText: string, packageId: string, country: string): ScrapedReview[] {
+    try {
+      // Step 1: Strip the anti-XSSI prefix ")]}'" and trim
+      let cleanedText = responseText.replace(/^\)\]\}'\s*/, '');
+
+      // Step 2: Parse the outer JSON array
+      const outerArray = JSON.parse(cleanedText);
+
+      // Step 3: Navigate to the data payload
+      // Structure: outerArray[0][2] contains the stringified JSON data
+      if (!outerArray || !outerArray[0] || !outerArray[0][2]) {
+        throw new Error('Invalid batch response structure');
+      }
+
+      // Step 4: Parse the inner JSON string
+      const innerDataStr = outerArray[0][2];
+      const innerData = JSON.parse(innerDataStr);
+
+      // Step 5: Extract reviews array
+      // Structure: innerData[0][0] contains the reviews array
+      const reviewsData = innerData?.[0]?.[0];
+
+      if (!reviewsData || !Array.isArray(reviewsData)) {
+        console.log('[NATIVE-SCRAPER] No reviews found in response');
+        return [];
+      }
+
+      // Step 6: Map each review to our format
+      const reviews: ScrapedReview[] = reviewsData
+        .filter((item: any) => item && Array.isArray(item))
+        .map((reviewItem: any) => {
+          try {
+            // Google's review structure (indices may vary)
+            // [0] = review ID
+            // [1] = author name
+            // [2] = author image
+            // [3] = review text
+            // [4] = rating (1-5)
+            // [5] = timestamp
+            // [6] = thumbs up count
+            // [7] = version
+            // [9] = developer reply array
+            // [11] = title
+
+            const reviewId = reviewItem[0] || `gp_${packageId}_${Date.now()}_${Math.random()}`;
+            const authorName = reviewItem[1] || 'Anonymous';
+            const reviewText = reviewItem[4] || '';
+            const rating = parseInt(reviewItem[10]) || 0;
+            const timestamp = reviewItem[5]?.[0] || Date.now() / 1000;
+            const thumbsUp = parseInt(reviewItem[6]) || 0;
+            const version = reviewItem[7] || '';
+            const title = reviewItem[12] || '';
+
+            // Developer reply
+            const developerReply = reviewItem[9]?.[0];
+            const developerReplyDate = reviewItem[9]?.[1]?.[0];
+
+            // Convert timestamp to ISO string
+            const reviewDate = new Date(timestamp * 1000).toISOString();
+            const devReplyDateISO = developerReplyDate
+              ? new Date(developerReplyDate * 1000).toISOString()
+              : undefined;
+
+            return {
+              review_id: reviewId,
+              app_id: packageId,
+              platform: 'android' as const,
+              country: country,
+              title: title,
+              text: reviewText,
+              rating: rating,
+              version: version,
+              author: authorName,
+              review_date: reviewDate,
+              developer_reply: developerReply || undefined,
+              developer_reply_date: devReplyDateISO,
+              thumbs_up_count: thumbsUp,
+              reviewer_language: 'en' // Google doesn't provide language in batch response
+            };
+          } catch (itemError: any) {
+            console.error('[NATIVE-SCRAPER] Failed to parse review item:', itemError.message);
+            return null;
+          }
+        })
+        .filter((review: any) => review !== null) as ScrapedReview[];
+
+      return reviews;
+
+    } catch (error: any) {
+      console.error('[NATIVE-SCRAPER] Batch response parsing error:', error);
+      throw error;
     }
   }
 
