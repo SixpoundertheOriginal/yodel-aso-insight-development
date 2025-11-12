@@ -171,43 +171,78 @@ export class NativeGooglePlayScraper {
       const idIndex = html.indexOf(packageId);
       if (idIndex === -1) return null;
 
-      // Get a larger chunk of HTML around the package ID
-      const start = Math.max(0, idIndex - 3000);
+      // Get a larger chunk of HTML around the package ID (look backward for app name)
+      const start = Math.max(0, idIndex - 5000);
       const end = Math.min(html.length, idIndex + 3000);
       const chunk = html.substring(start, end);
 
       // Try multiple strategies to extract app name
       let appName = packageId; // Fallback
 
-      // Strategy 1: Look for aria-label with app name (but skip ratings)
-      const ariaMatch = chunk.match(/aria-label="([^"]{5,80})"/);
-      if (ariaMatch &&
-          !ariaMatch[1].includes('http') &&
-          !ariaMatch[1].includes('.com') &&
-          !ariaMatch[1].includes('Rated') &&
-          !ariaMatch[1].includes('star')) {
-        appName = ariaMatch[1];
-      }
+      // Strategy 1: Look for properly quoted app names (most reliable)
+      // Google Play embeds app names as JSON strings like "Spotify: Music and Podcasts"
+      // These appear before the package ID link
+      const namePatterns = [
+        // Pattern 1: Quoted strings with capital letters, colons, and ampersands (typical app names)
+        /"([A-Z][^"]{3,80}(?::|&|and)[^"]{3,80})"/g,
+        // Pattern 2: Simple quoted app names
+        /"([A-Z][A-Za-z0-9\s&'-]{5,60})"/g
+      ];
 
-      // Strategy 2: Look for app name in heading tags
-      if (appName === packageId) {
-        const headingMatch = chunk.match(/<h1[^>]*>([^<]{3,60})<\/h1>/i);
-        if (headingMatch && !headingMatch[1].includes(packageId)) {
-          appName = headingMatch[1].trim();
+      const potentialNames: string[] = [];
+      for (const pattern of namePatterns) {
+        let match;
+        const chunkBeforeId = chunk.substring(0, chunk.indexOf(packageId));
+        while ((match = pattern.exec(chunkBeforeId)) !== null) {
+          const name = match[1];
+          // Filter out common non-app-name strings
+          if (!name.includes('http') &&
+              !name.includes('.com') &&
+              !name.includes('Rated') &&
+              !name.includes('star') &&
+              !name.includes('Store') &&
+              !name.includes('Google') &&
+              !name.includes('Install') &&
+              !name.includes('Download') &&
+              !name.includes(packageId) &&
+              name.length >= 3 &&
+              name.length <= 80) {
+            potentialNames.push(name);
+          }
         }
       }
 
-      // Strategy 3: Look for quoted strings near the package ID
-      if (appName === packageId) {
-        const quotedMatch = chunk.match(/"([A-Z][^"]{5,60})"[^"]*"/);
-        if (quotedMatch && !quotedMatch[1].includes(packageId) && !quotedMatch[1].includes('Rated')) {
-          appName = quotedMatch[1];
-        }
+      // Get the last potential name found before the package ID (most likely to be the app name)
+      if (potentialNames.length > 0) {
+        // Prefer names with colons or ampersands (more specific)
+        const specificNames = potentialNames.filter(n => n.includes(':') || n.includes('&'));
+        appName = specificNames.length > 0
+          ? specificNames[specificNames.length - 1]
+          : potentialNames[potentialNames.length - 1];
+
+        // Decode HTML entities
+        appName = appName
+          .replace(/\\u0026/g, '&')
+          .replace(/&amp;/g, '&')
+          .replace(/\\u003c/g, '<')
+          .replace(/\\u003e/g, '>')
+          .trim();
       }
 
-      // Extract developer
-      const devMatch = chunk.match(/developer\?id=([^"]+)"/);
-      const developer = devMatch ? decodeURIComponent(devMatch[1].replace(/\+/g, ' ')) : 'Unknown';
+      // Extract developer - look for developer ID pattern
+      let developer = 'Unknown Developer';
+      const devMatch = chunk.match(/"([A-Z][A-Za-z\s&'-]{3,50})"/g);
+      if (devMatch && devMatch.length > 0) {
+        // Developer name usually appears after app name
+        const afterAppName = chunk.substring(chunk.indexOf(appName) + appName.length);
+        const devInAfter = afterAppName.match(/"([A-Z][A-Za-z\s&'-]{3,40})"/);
+        if (devInAfter && devInAfter[1] !== appName) {
+          developer = devInAfter[1]
+            .replace(/\\u0026/g, '&')
+            .replace(/&amp;/g, '&')
+            .trim();
+        }
+      }
 
       // Extract icon URL - look for googleusercontent.com image URLs
       let iconUrl = 'https://play-lh.googleusercontent.com/';
@@ -216,12 +251,17 @@ export class NativeGooglePlayScraper {
         iconUrl = iconMatch[1].split('=')[0] + '=s128'; // Standardize size
       }
 
-      // Extract rating - look for decimal numbers followed by "star"
+      // Extract rating - look for decimal numbers
       let rating = 0;
-      const ratingMatch = chunk.match(/([0-9]\.[0-9])\s*(?:star|★)/i);
+      const ratingMatch = chunk.match(/([0-9]\.[0-9])/);
       if (ratingMatch) {
-        rating = parseFloat(ratingMatch[1]);
+        const potentialRating = parseFloat(ratingMatch[1]);
+        if (potentialRating >= 0 && potentialRating <= 5) {
+          rating = potentialRating;
+        }
       }
+
+      console.log(`[NATIVE-SCRAPER] Extracted app: ${appName} (${packageId})`);
 
       return {
         app_name: appName,
