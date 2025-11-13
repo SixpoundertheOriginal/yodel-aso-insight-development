@@ -7,8 +7,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useThemeImpactScoring } from '@/hooks/useThemeImpactScoring';
 import { useReviewAnalysis } from '@/contexts/ReviewAnalysisContext';
 import { CompactAppSelector } from '@/components/CompactAppSelector';
@@ -36,9 +38,21 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner';
 
 export default function ThemeImpactDashboard() {
-  const { organizationId } = usePermissions();
+  const { organizationId, isSuperAdmin } = usePermissions();
+  const { hasFeature, loading: featuresLoading } = useFeatureAccess();
+
+  // Feature access check - redirect if not enabled
+  if (featuresLoading) {
+    return <AuthLoadingSpinner />;
+  }
+
+  // Super admin bypass - always allow access
+  if (!isSuperAdmin && !hasFeature('theme_analysis')) {
+    return <Navigate to="/dashboard-v2" replace />;
+  }
   const [selectedPeriod, setSelectedPeriod] = useState<number>(30);
 
   // Shared state with Reviews page

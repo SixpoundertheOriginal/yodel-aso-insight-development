@@ -1,8 +1,11 @@
 import React from 'react'
+import { Navigate } from 'react-router-dom'
 import { MainLayout } from '@/layouts'
 import DemoGrowthAcceleratorsLayout from '@/layouts/DemoGrowthAcceleratorsLayout'
 import { useDemoOrgDetection } from '@/hooks/useDemoOrgDetection'
 import { useDemoSelectedApp } from '@/context/DemoSelectedAppContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useFeatureAccess } from '@/hooks/useFeatureAccess'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,15 +17,16 @@ import { Search, Users, BarChart3 } from 'lucide-react'
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal'
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
-import { 
-  PremiumCard, 
-  PremiumCardHeader, 
-  PremiumCardContent, 
+import {
+  PremiumCard,
+  PremiumCardHeader,
+  PremiumCardContent,
   PremiumTypography,
   ResponsiveGrid,
   AnimatedCounter
 } from '@/components/ui/premium'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
+import { AuthLoadingSpinner } from '@/components/Auth/AuthLoadingSpinner'
 
 type AppLite = {
   name: string
@@ -37,9 +41,22 @@ type AppLite = {
 type TopNHit = { keyword: string; rank: number }
 
 const CompetitorOverviewPage: React.FC = () => {
+  const { isSuperAdmin } = usePermissions()
+  const { hasFeature, loading: featuresLoading } = useFeatureAccess()
+
+  // Feature access check - redirect if not enabled
+  if (featuresLoading) {
+    return <AuthLoadingSpinner />
+  }
+
+  // Super admin bypass - always allow access
+  if (!isSuperAdmin && !hasFeature('competitor_overview')) {
+    return <Navigate to="/dashboard-v2" replace />
+  }
+
   const { isDemoOrg, organization } = useDemoOrgDetection()
   const demoKey = organization?.slug ? organization.slug.toLowerCase() : 'demo'
-  
+
   // Only use demo selected app context when in demo mode
   let anchor = null
   let country = null

@@ -39,9 +39,11 @@ export const PLATFORM_FEATURES_ENHANCED = {
   AI_METADATA_GENERATOR: 'metadata_generator',
   STRATEGIC_AUDIT_ENGINE: 'strategic_audit_engine',
 
-  // Growth Accelerators (10 features)
+  // Growth Accelerators (12 features)
   KEYWORD_INTELLIGENCE: 'keyword_intelligence',
   COMPETITIVE_INTELLIGENCE: 'competitive_intelligence',
+  COMPETITOR_OVERVIEW: 'competitor_overview',
+  THEME_ANALYSIS: 'theme_analysis',
   CREATIVE_REVIEW: 'creative_review',
   APP_DISCOVERY: 'app_discovery',
   ASO_CHAT: 'aso_chat',
@@ -80,7 +82,7 @@ export const FEATURE_CATEGORIES = {
   GROWTH_ACCELERATORS: {
     name: 'Growth Accelerators',
     description: 'User acquisition and growth optimization tools',
-    features: ['keyword_intelligence', 'competitive_intelligence', 'creative_review', 'app_discovery', 'aso_chat', 'market_intelligence', 'reviews_public_rss_enabled', 'creative_analysis', 'keyword_rank_tracking', 'visibility_optimizer']
+    features: ['keyword_intelligence', 'competitive_intelligence', 'competitor_overview', 'theme_analysis', 'creative_review', 'app_discovery', 'aso_chat', 'market_intelligence', 'reviews_public_rss_enabled', 'creative_analysis', 'keyword_rank_tracking', 'visibility_optimizer']
   },
   CONTROL_CENTER: {
     name: 'Control Center',
@@ -114,6 +116,8 @@ export const FEATURE_LABELS: Record<string, string> = {
   // Growth Accelerators
   [PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE]: 'Keyword Intelligence',
   [PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE]: 'Competitive Intelligence',
+  [PLATFORM_FEATURES_ENHANCED.COMPETITOR_OVERVIEW]: 'Competitor Overview',
+  [PLATFORM_FEATURES_ENHANCED.THEME_ANALYSIS]: 'Theme Analysis',
   [PLATFORM_FEATURES_ENHANCED.CREATIVE_REVIEW]: 'Creative Review',
   [PLATFORM_FEATURES_ENHANCED.APP_DISCOVERY]: 'App Discovery',
   [PLATFORM_FEATURES_ENHANCED.ASO_CHAT]: 'ASO Chat Assistant',
@@ -153,6 +157,8 @@ export const FEATURE_DESCRIPTIONS: Record<string, string> = {
   // Growth Accelerators
   [PLATFORM_FEATURES_ENHANCED.KEYWORD_INTELLIGENCE]: 'Advanced keyword research, tracking and optimization tools',
   [PLATFORM_FEATURES_ENHANCED.COMPETITIVE_INTELLIGENCE]: 'Competitor analysis, benchmarking and market intelligence',
+  [PLATFORM_FEATURES_ENHANCED.COMPETITOR_OVERVIEW]: 'Competitor overview dashboard with comparative metrics',
+  [PLATFORM_FEATURES_ENHANCED.THEME_ANALYSIS]: 'Review theme analysis and sentiment insights',
   [PLATFORM_FEATURES_ENHANCED.CREATIVE_REVIEW]: 'Creative asset performance analysis and optimization',
   [PLATFORM_FEATURES_ENHANCED.APP_DISCOVERY]: 'App store discovery optimization and ranking insights',
   [PLATFORM_FEATURES_ENHANCED.ASO_CHAT]: 'AI chat assistant for ASO strategy and optimization guidance',

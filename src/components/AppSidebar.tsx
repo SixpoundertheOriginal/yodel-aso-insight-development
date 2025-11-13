@@ -129,7 +129,7 @@ const aiCopilotsItems: NavigationItem[] = [
     title: "Competitor Overview",
     url: "/growth-accelerators/competitor-overview",
     icon: Users,
-    featureKey: PLATFORM_FEATURES.KEYWORD_INTELLIGENCE,
+    featureKey: PLATFORM_FEATURES.COMPETITOR_OVERVIEW,
   },
   {
     title: "Reviews",
@@ -141,7 +141,7 @@ const aiCopilotsItems: NavigationItem[] = [
         title: "Theme Analysis",
         url: ROUTES.themeImpact,
         icon: BarChart3,
-        // Same feature access as parent Reviews
+        featureKey: PLATFORM_FEATURES.THEME_ANALYSIS,
       },
     ],
   },
