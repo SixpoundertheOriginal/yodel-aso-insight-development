@@ -136,14 +136,6 @@ const aiCopilotsItems: NavigationItem[] = [
     url: "/growth-accelerators/reviews",
     icon: Star,
     // featureKey handled by custom filtering logic below
-    children: [
-      {
-        title: "Theme Analysis",
-        url: ROUTES.themeImpact,
-        icon: BarChart3,
-        featureKey: PLATFORM_FEATURES.THEME_ANALYSIS,
-      },
-    ],
   },
 ];
 

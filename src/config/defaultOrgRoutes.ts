@@ -29,7 +29,6 @@ export const DEFAULT_ORG_USER_ROUTES = [
   '/growth-accelerators/keywords',          // Keyword Intelligence
   '/growth-accelerators/reviews',           // Reviews Management
   '/growth-accelerators/reviews/:appId',    // Review Details (dynamic)
-  '/growth-accelerators/theme-impact',      // Theme Analysis
   '/growth-accelerators/competitor-overview', // Competitor Overview
 
   // Account Management
