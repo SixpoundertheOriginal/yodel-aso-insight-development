@@ -460,16 +460,50 @@ export const useCachedReviews = (params: FetchReviewsParams | null) => {
           // Determine which date range to fetch
           const fetchRange = coverage.missingRange || dateRange;
 
-          // Fetch reviews for the missing/requested date range
-          const fetchedReviews = await fetchReviewsForDateRange({
-            appId: appStoreId,
-            cc: country,
-            fromDate: fetchRange?.fromDate || '',
-            toDate: fetchRange?.toDate || new Date().toISOString().split('T')[0],
-            maxReviews: MAX_REVIEWS_TO_FETCH
-          });
+          let fetchedReviews: any[] = [];
 
-          console.log('[useCachedReviews] Fetched', fetchedReviews.length, 'reviews from iTunes');
+          // Platform-aware fetching
+          if (platform === 'ios') {
+            // iOS: Use existing date-range fetch
+            fetchedReviews = await fetchReviewsForDateRange({
+              appId: appStoreId,
+              cc: country,
+              fromDate: fetchRange?.fromDate || '',
+              toDate: fetchRange?.toDate || new Date().toISOString().split('T')[0],
+              maxReviews: MAX_REVIEWS_TO_FETCH
+            });
+            console.log('[useCachedReviews] Fetched', fetchedReviews.length, 'reviews from iTunes');
+
+          } else {
+            // Android: Use UniversalReviewsService and filter by date
+            console.log('[useCachedReviews] Fetching Android reviews for date range:', fetchRange);
+
+            const result = await UniversalReviewsService.fetchReviews({
+              platform: 'android',
+              appId: appStoreId,
+              country: country,
+              page: 1,
+              pageSize: 100,
+              maxReviews: MAX_REVIEWS_TO_FETCH
+            });
+
+            if (result.success && result.data) {
+              // Filter reviews by date range
+              const fromDate = fetchRange?.fromDate ? new Date(fetchRange.fromDate) : null;
+              const toDate = fetchRange?.toDate ? new Date(fetchRange.toDate) : new Date();
+
+              fetchedReviews = result.data.filter(review => {
+                const reviewDate = new Date(review.review_date);
+                const afterFrom = !fromDate || reviewDate >= fromDate;
+                const beforeTo = reviewDate <= toDate;
+                return afterFrom && beforeTo;
+              });
+
+              console.log('[useCachedReviews] Fetched', result.data.length, 'Android reviews, filtered to', fetchedReviews.length, 'within date range');
+            } else {
+              console.error('[useCachedReviews] Failed to fetch Android reviews:', result.error);
+            }
+          }
 
           // Transform fetched reviews to CachedReviewItem format
           const transformedReviews: CachedReviewItem[] = fetchedReviews.map(review => ({
@@ -479,7 +513,8 @@ export const useCachedReviews = (params: FetchReviewsParams | null) => {
             rating: review.rating,
             version: review.version,
             author: review.author,
-            updated_at: review.updated_at,
+            // Use review_date for both platforms (Android uses review_date, iOS uses updated_at)
+            updated_at: review.review_date || review.updated_at,
             country: review.country,
             app_id: review.app_id,
           }));
