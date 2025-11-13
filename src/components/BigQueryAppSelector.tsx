@@ -68,12 +68,8 @@ export const BigQueryAppSelector: React.FC<BigQueryAppSelectorProps> = ({
 
   if (error) {
     logger.error('BigQueryAppSelector', 'Failed to load apps', error);
-    return (
-      <div className={`flex items-center gap-2 text-sm text-red-400 ${className}`}>
-        <Database className="h-4 w-4" />
-        <span>Error loading apps</span>
-      </div>
-    );
+    // Hide component on error instead of showing error message (enterprise UX)
+    return null;
   }
 
   if (isLoading) {

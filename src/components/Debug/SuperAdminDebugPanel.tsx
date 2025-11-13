@@ -118,9 +118,11 @@ export const SuperAdminDebugPanel = () => {
     setIsRunning(false);
   };
 
-  // Only show for actual SUPER_ADMIN users (not ORG_ADMIN)
-  // This is a debug panel - only show to users who actually have SUPER_ADMIN role
-  const shouldShow = permissions.isSuperAdmin && !permissions.isLoading;
+  // Only show for igor@yodelmobile.com (enterprise deployment - hide for other super admins)
+  // This is a debug panel for development/troubleshooting
+  const shouldShow = permissions.isSuperAdmin &&
+                     !permissions.isLoading &&
+                     user?.email === 'igor@yodelmobile.com';
 
   if (!shouldShow) return null;
 

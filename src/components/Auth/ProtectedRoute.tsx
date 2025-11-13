@@ -89,8 +89,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // If server authorization has responded, trust it and skip static allowlist.
   // Use allowlist only during initial loading before server auth result.
   if (routeAllowed === null) {
-    if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard/executive') {
-      return <Navigate to="/dashboard/executive" replace />;
+    if (!allowed.some(p => pathname.startsWith(p)) && pathname !== '/dashboard-v2') {
+      return <Navigate to="/dashboard-v2" replace />;
     }
   }
 
