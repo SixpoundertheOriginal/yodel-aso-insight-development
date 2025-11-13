@@ -138,10 +138,10 @@ export const usePermissions = () => {
           });
         }
 
-        // Find primary permission (current org or super admin)
+        // Find primary permission (super admin takes priority over org roles)
         const currentOrgPermission = allPermissions.find(p => p.org_id && p.is_org_scoped_role);
         const superAdminPermission = allPermissions.find(p => p.is_super_admin);
-        const primaryPermission = currentOrgPermission || superAdminPermission || allPermissions[0];
+        const primaryPermission = superAdminPermission || currentOrgPermission || allPermissions[0];
 
         // Extract available organizations for switching with enterprise-safe access
         const availableOrgs = safeArray(
@@ -158,11 +158,15 @@ export const usePermissions = () => {
         );
 
         // Build permissions list based on roles with enterprise-safe access
+        // Check ALL permissions, not just primary (robust super admin detection)
+        const hasSuperAdmin = allPermissions.some(p => p.is_super_admin);
+        const hasOrgAdmin = allPermissions.some(p => p.is_org_admin);
+
         const permissionsList: string[] = [];
-        if (primaryPermission?.is_super_admin) {
+        if (hasSuperAdmin) {
           permissionsList.push('admin.manage_all', 'admin.approve_apps', 'admin.manage_apps', 'admin.view_audit_logs');
         }
-        if (primaryPermission?.is_org_admin) {
+        if (hasOrgAdmin) {
           permissionsList.push('admin.manage_apps', 'admin.approve_apps', 'admin.view_org_data');
         }
 
@@ -175,10 +179,10 @@ export const usePermissions = () => {
             primaryPermission?.is_org_scoped_role ? [primaryPermission.effective_role] : []
           ),
           permissions: safeArray(permissionsList),
-          isSuperAdmin: Boolean(primaryPermission?.is_super_admin),
-          isOrganizationAdmin: Boolean(primaryPermission?.is_org_admin),
-          canManageApps: Boolean(primaryPermission?.is_org_admin || primaryPermission?.is_super_admin),
-          canApproveApps: Boolean(primaryPermission?.is_org_admin || primaryPermission?.is_super_admin),
+          isSuperAdmin: hasSuperAdmin, // Check ALL permissions, not just primary
+          isOrganizationAdmin: hasOrgAdmin, // Check ALL permissions, not just primary
+          canManageApps: Boolean(hasOrgAdmin || hasSuperAdmin),
+          canApproveApps: Boolean(hasOrgAdmin || hasSuperAdmin),
           effectiveRole: primaryPermission?.effective_role || 'viewer',
           isOrgScopedRole: Boolean(primaryPermission?.is_org_scoped_role),
           
