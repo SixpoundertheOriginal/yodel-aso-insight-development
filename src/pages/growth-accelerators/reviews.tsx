@@ -198,6 +198,7 @@ const ReviewManagementPage: React.FC = () => {
         appStoreId: selectedApp.appId,
         country: selectedCountry,
         organizationId,
+        platform: selectedApp.platform,
         forceRefresh: false,
         dateRange: fromDate && toDate ? { fromDate, toDate } : undefined
       }

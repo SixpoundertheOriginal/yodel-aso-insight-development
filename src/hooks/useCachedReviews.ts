@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseCompat } from '@/lib/supabase-compat';
 import { fetchAppReviews, fetchReviewsForDateRange } from '@/utils/itunesReviews';
+import { UniversalReviewsService } from '@/services/universal-reviews.service';
 import { toast } from 'sonner';
 
 // Match the existing ReviewItem type from reviews.tsx
@@ -52,6 +53,7 @@ interface FetchReviewsParams {
   appStoreId: string;
   country: string;
   organizationId: string;
+  platform: 'ios' | 'android';
   forceRefresh?: boolean;
   dateRange?: DateRangeFilter; // Optional: fetch reviews for specific date range
 }
@@ -278,23 +280,30 @@ function mergeReviews(
 }
 
 /**
- * Fetch reviews from iTunes and save to cache
+ * Fetch reviews from App Store or Google Play and save to cache
  */
 async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedReviewItem[]> {
-  const { monitoredAppId, appStoreId, country, organizationId } = params;
+  const { monitoredAppId, appStoreId, country, organizationId, platform } = params;
 
-  console.log('[useCachedReviews] Fetching fresh reviews from iTunes...', { appStoreId, country });
+  console.log('[useCachedReviews] Fetching fresh reviews...', { platform, appStoreId, country });
 
   try {
-    // 1. Fetch from iTunes using existing working function
-    const result = await fetchAppReviews({ appId: appStoreId, cc: country, page: 1 });
+    // 1. Fetch reviews using UniversalReviewsService (supports both platforms)
+    const result = await UniversalReviewsService.fetchReviews({
+      platform: platform,
+      appId: appStoreId,
+      country: country,
+      page: 1,
+      pageSize: 100,
+      maxReviews: platform === 'android' ? 1000 : undefined
+    });
 
     if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to fetch reviews from iTunes');
+      throw new Error(result.error || `Failed to fetch ${platform} reviews`);
     }
 
     const reviews = result.data;
-    console.log('[useCachedReviews] Fetched', reviews.length, 'reviews from iTunes');
+    console.log(`[useCachedReviews] Fetched ${reviews.length} ${platform} reviews`);
 
     // 2. Get existing review IDs to avoid duplicates
     const { data: existingReviews } = await supabaseCompat.fromAny('monitored_app_reviews')
@@ -320,7 +329,7 @@ async function fetchAndCacheReviews(params: FetchReviewsParams): Promise<CachedR
         rating: review.rating,
         version: review.version || null,
         author: review.author || null,
-        review_date: review.updated_at || new Date().toISOString(),
+        review_date: review.review_date || new Date().toISOString(),
         // AI analysis fields will be populated client-side (existing behavior preserved)
         enhanced_sentiment: null,
         extracted_themes: null,
@@ -507,7 +516,7 @@ export const useCachedReviews = (params: FetchReviewsParams | null) => {
                 rating: review.rating,
                 version: review.version || null,
                 author: review.author || null,
-                review_date: review.updated_at || new Date().toISOString(),
+                review_date: review.review_date || new Date().toISOString(),
                 enhanced_sentiment: null,
                 extracted_themes: null,
                 mentioned_features: null,
