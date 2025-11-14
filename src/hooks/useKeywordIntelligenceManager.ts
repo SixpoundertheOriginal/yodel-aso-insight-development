@@ -19,18 +19,20 @@ interface KeywordIntelligenceState {
 interface UseKeywordIntelligenceManagerProps {
   organizationId: string;
   targetAppId?: string;
+  scrapedMetadata?: any; // Support scraped metadata to skip database queries
 }
 
 export const useKeywordIntelligenceManager = ({
   organizationId,
-  targetAppId
+  targetAppId,
+  scrapedMetadata
 }: UseKeywordIntelligenceManagerProps) => {
   const queryClient = useQueryClient();
   const transitionTimeoutRef = useRef<NodeJS.Timeout>();
   const errorCountRef = useRef(0);
   const initializationTimeoutRef = useRef<NodeJS.Timeout>();
   const isClusteringRef = useRef(false);
-  
+
   const [state, setState] = useState<KeywordIntelligenceState>({
     isInitialized: false,
     isTransitioning: false,
@@ -44,13 +46,14 @@ export const useKeywordIntelligenceManager = ({
   const advancedKI = useAdvancedKeywordIntelligence({
     organizationId,
     targetAppId,
-    enabled: !!targetAppId && !state.isTransitioning
+    enabled: !!targetAppId && !state.isTransitioning,
+    scrapedMetadata // Pass scraped metadata to skip database queries
   });
 
   const enhancedAnalytics = useEnhancedKeywordAnalytics({
     organizationId,
     appId: targetAppId,
-    enabled: !!targetAppId && !state.isTransitioning
+    enabled: !!targetAppId && !state.isTransitioning && !scrapedMetadata // Skip if using scraped metadata
   });
 
   // Enhanced clustering with performance analytics

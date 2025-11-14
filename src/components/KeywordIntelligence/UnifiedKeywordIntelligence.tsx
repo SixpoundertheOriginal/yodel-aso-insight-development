@@ -47,7 +47,8 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
     clearStuckTransition
   } = useKeywordIntelligenceManager({
     organizationId,
-    targetAppId: selectedAppId
+    targetAppId: selectedAppId,
+    scrapedMetadata: scrapedAppData // Pass scraped data to skip database queries
   });
 
   // Use scraped app data if available, otherwise require selectedAppId
