@@ -1,6 +1,14 @@
-import { ArrowUp, ArrowDown, Search, LayoutGrid, TrendingUp } from 'lucide-react';
+import { useMemo } from 'react';
+import { ArrowUp, ArrowDown, Search, LayoutGrid, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { generateCvrInsight } from '@/services/dashboard-narrative.service';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * ASO Metric Card Component
@@ -25,6 +33,7 @@ interface AsoMetricCardProps {
   cvr: number;
   impressionsDelta?: number;
   downloadsDelta?: number;
+  cvrDelta?: number; // Absolute percentage point change (e.g., 0.5 means CVR went from 2.0% to 2.5%)
   isLoading?: boolean;
 }
 
@@ -46,11 +55,18 @@ export function AsoMetricCard({
   cvr,
   impressionsDelta = 0,
   downloadsDelta = 0,
+  cvrDelta,
   isLoading = false
 }: AsoMetricCardProps) {
 
   const Icon = ICON_MAP[icon];
   const gradient = GRADIENT_MAP[icon];
+
+  // Generate CVR insight narrative
+  const cvrInsight = useMemo(() => {
+    const metricType = icon === 'search' ? 'search' : 'browse';
+    return generateCvrInsight(cvr, metricType, cvrDelta);
+  }, [cvr, icon, cvrDelta]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -164,16 +180,52 @@ export function AsoMetricCard({
         {/* CVR Badge */}
         <div className="pt-4 border-t border-border/50">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Conversion Rate
-            </span>
-            <div className={cn(
-              "px-3 py-1.5 rounded-full text-sm font-bold",
-              "bg-gradient-to-r",
-              gradient,
-              "text-white"
-            )}>
-              {cvr.toFixed(2)}%
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Conversion Rate
+              </span>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button className="p-0.5 rounded hover:bg-muted/50 transition-colors">
+                      <Info className="h-3 w-3 text-muted-foreground/60" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-xs bg-zinc-900 border-zinc-700 p-3"
+                  >
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {cvrInsight}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="flex items-center gap-2">
+              {cvrDelta !== undefined && Math.abs(cvrDelta) >= 0.1 && (
+                <div className={cn(
+                  "flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded",
+                  cvrDelta >= 0
+                    ? "text-green-500 bg-green-500/10"
+                    : "text-red-500 bg-red-500/10"
+                )}>
+                  {cvrDelta >= 0 ? (
+                    <ArrowUp className="h-3 w-3" />
+                  ) : (
+                    <ArrowDown className="h-3 w-3" />
+                  )}
+                  {Math.abs(cvrDelta).toFixed(1)}pp
+                </div>
+              )}
+              <div className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-bold",
+                "bg-gradient-to-r",
+                gradient,
+                "text-white"
+              )}>
+                {cvr.toFixed(2)}%
+              </div>
             </div>
           </div>
         </div>

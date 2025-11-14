@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
+import { usePeriodComparison } from '@/hooks/usePeriodComparison';
 import { usePermissions } from '@/hooks/usePermissions';
 import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import { CompactAppSelector } from '@/components/CompactAppSelector';
 import { CompactTrafficSourceSelector } from '@/components/CompactTrafficSourceSelector';
 import { AsoMetricCard } from '@/components/AsoMetricCard';
 import { TotalMetricCard } from '@/components/TotalMetricCard';
+import { ExecutiveSummaryCard } from '@/components/ExecutiveSummaryCard';
+import { TrafficIntentInsightCard } from '@/components/TrafficIntentInsightCard';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { format, subDays, parseISO } from 'date-fns';
@@ -60,6 +63,17 @@ export default function ReportingDashboardV2() {
     trafficSources: selectedTrafficSources, // Filter by selected traffic sources
     appIds: selectedAppIds // Filter by selected apps
   });
+
+  // ✅ PERIOD COMPARISON: Fetch previous period for trend analysis
+  const {
+    data: comparisonData,
+    isLoading: isComparisonLoading
+  } = usePeriodComparison(
+    organizationId || '',
+    dateRange,
+    selectedAppIds,
+    !!organizationId && !isLoading // Only fetch after main data loads
+  );
 
   // Log only when data changes
   useEffect(() => {
@@ -279,6 +293,18 @@ export default function ReportingDashboardV2() {
         {/* MFA Grace Period Banner */}
         <MFAGracePeriodBanner />
 
+        {/* ✅ EXECUTIVE SUMMARY: AI-powered insights */}
+        {data?.processedData?.traffic_sources && comparisonData && (
+          <ExecutiveSummaryCard
+            summary={totalMetrics}
+            trafficSources={data.processedData.traffic_sources}
+            dateRange={dateRange}
+            organizationName={organizationName}
+            delta={comparisonData?.deltas}
+            isLoading={isComparisonLoading}
+          />
+        )}
+
         {/* ✅ COMPACT FILTER BAR: All filters in one horizontal row */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -363,6 +389,9 @@ export default function ReportingDashboardV2() {
               impressions={asoMetrics.search.impressions}
               downloads={asoMetrics.search.downloads}
               cvr={asoMetrics.search.cvr}
+              impressionsDelta={comparisonData?.deltas.impressions.percentage}
+              downloadsDelta={comparisonData?.deltas.downloads.percentage}
+              cvrDelta={comparisonData?.deltas.cvr.value}
               isLoading={isLoading}
             />
 
@@ -372,6 +401,9 @@ export default function ReportingDashboardV2() {
               impressions={asoMetrics.browse.impressions}
               downloads={asoMetrics.browse.downloads}
               cvr={asoMetrics.browse.cvr}
+              impressionsDelta={comparisonData?.deltas.impressions.percentage}
+              downloadsDelta={comparisonData?.deltas.downloads.percentage}
+              cvrDelta={comparisonData?.deltas.cvr.value}
               isLoading={isLoading}
             />
           </div>
@@ -381,15 +413,26 @@ export default function ReportingDashboardV2() {
             <TotalMetricCard
               type="impressions"
               value={totalMetrics.impressions}
+              delta={comparisonData?.deltas.impressions.percentage}
               isLoading={isLoading}
             />
 
             <TotalMetricCard
               type="downloads"
               value={totalMetrics.downloads}
+              delta={comparisonData?.deltas.downloads.percentage}
               isLoading={isLoading}
             />
           </div>
+
+          {/* ✅ Traffic Intent Insight */}
+          {!isLoading && asoMetrics.search.impressions > 0 && asoMetrics.browse.impressions > 0 && (
+            <TrafficIntentInsightCard
+              searchMetrics={asoMetrics.search}
+              browseMetrics={asoMetrics.browse}
+              isLoading={isLoading}
+            />
+          )}
         </div>
 
         {/* ✅ CLEAN DATA SOURCE INDICATOR */}

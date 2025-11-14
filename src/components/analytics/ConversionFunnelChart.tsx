@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Target, Eye, MousePointer, Download, TrendingDown } from 'lucide-react';
+import { Target, Eye, MousePointer, Download, TrendingDown, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { generateFunnelAnalysis } from '@/services/dashboard-narrative.service';
 
 interface ConversionFunnelChartProps {
   data: any[];
@@ -50,6 +51,19 @@ export function ConversionFunnelChart({ data = [], isLoading = false }: Conversi
       overall_cvr
     };
   }, [data]);
+
+  // Generate funnel narrative and recommendation
+  const funnelInsight = useMemo(() => {
+    if (funnelData.impressions === 0) {
+      return { narrative: 'No data available', recommendation: '' };
+    }
+
+    return generateFunnelAnalysis(
+      funnelData.impressions,
+      funnelData.product_page_views,
+      funnelData.downloads
+    );
+  }, [funnelData]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
@@ -167,6 +181,31 @@ export function ConversionFunnelChart({ data = [], isLoading = false }: Conversi
           </div>
         </div>
       </div>
+
+      {/* Funnel Analysis Narrative */}
+      {funnelData.impressions > 0 && (
+        <div className="mt-4 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 p-2 rounded-lg bg-blue-500/10">
+              <Lightbulb className="h-4 w-4 text-blue-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <h4 className="text-sm font-semibold text-blue-400">Analysis</h4>
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                {funnelInsight.narrative}
+              </p>
+              {funnelInsight.recommendation && (
+                <>
+                  <h5 className="text-xs font-semibold text-blue-400 pt-2">Recommendation</h5>
+                  <p className="text-sm text-zinc-300 leading-relaxed">
+                    {funnelInsight.recommendation}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

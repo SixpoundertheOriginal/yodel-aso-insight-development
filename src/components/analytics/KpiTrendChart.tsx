@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Dot,
 } from 'recharts';
 import { Card } from '@/components/ui/card';
 import {
@@ -18,8 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { detectAnomalies, type Anomaly } from '@/utils/anomalyDetection';
+import { AnomalyMarker } from './AnomalyMarker';
 
 interface KpiTrendChartProps {
   data: any[];
@@ -80,6 +83,21 @@ export function KpiTrendChart({ data = [], isLoading = false }: KpiTrendChartPro
     return result.sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
+  // Detect anomalies for selected KPI
+  const anomalies = useMemo(() => {
+    if (chartData.length < 8) return []; // Need at least 8 days for 7-day window
+
+    const dataPoints = chartData.map(d => ({
+      date: d.date,
+      value: d[selectedKpi]
+    }));
+
+    const kpiConfig = KPI_OPTIONS.find(k => k.value === selectedKpi);
+    const metricName = kpiConfig?.label || 'Metric';
+
+    return detectAnomalies(dataPoints, metricName, 2.5, 7);
+  }, [chartData, selectedKpi]);
+
   const selectedKpiConfig = KPI_OPTIONS.find(k => k.value === selectedKpi);
 
   const formatValue = (value: number) => {
@@ -102,12 +120,32 @@ export function KpiTrendChart({ data = [], isLoading = false }: KpiTrendChartPro
     if (!active || !payload || payload.length === 0) return null;
 
     const data = payload[0].payload;
+    const anomaly = anomalies.find(a => a.date === data.date);
 
     return (
       <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
         <p className="text-sm font-medium mb-2">
           {format(parseISO(data.date), 'MMMM dd, yyyy')}
         </p>
+
+        {/* Anomaly indicator */}
+        {anomaly && (
+          <div className="mb-2 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="h-3 w-3 text-yellow-500" />
+              <span className="text-xs font-semibold text-yellow-500">
+                {anomaly.type === 'spike' ? 'Spike' : 'Drop'} Detected
+              </span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+                {anomaly.severity}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {anomaly.deviation > 0 ? '+' : ''}{anomaly.deviation.toFixed(1)}σ from expected
+            </p>
+          </div>
+        )}
+
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-4">
             <span className="text-xs text-muted-foreground">
@@ -249,6 +287,14 @@ export function KpiTrendChart({ data = [], isLoading = false }: KpiTrendChartPro
               strokeWidth={2}
               fillOpacity={1}
               fill={`url(#color${selectedKpi})`}
+              dot={(props: any) => {
+                const anomaly = anomalies.find(a => a.date === props.payload?.date);
+                if (anomaly) {
+                  return <AnomalyMarker anomaly={anomaly} cx={props.cx} cy={props.cy} size={16} />;
+                }
+                return null; // No dots for non-anomaly points in area chart
+              }}
+              activeDot={{ r: 5, fill: selectedKpiConfig?.color }}
             />
           </AreaChart>
         ) : (
@@ -272,7 +318,13 @@ export function KpiTrendChart({ data = [], isLoading = false }: KpiTrendChartPro
               dataKey={selectedKpi}
               stroke={selectedKpiConfig?.color}
               strokeWidth={3}
-              dot={{ fill: selectedKpiConfig?.color, r: 4 }}
+              dot={(props: any) => {
+                const anomaly = anomalies.find(a => a.date === props.payload?.date);
+                if (anomaly) {
+                  return <AnomalyMarker anomaly={anomaly} cx={props.cx} cy={props.cy} size={18} />;
+                }
+                return <Dot {...props} fill={selectedKpiConfig?.color} r={4} />;
+              }}
               activeDot={{ r: 6 }}
             />
           </LineChart>
@@ -308,6 +360,39 @@ export function KpiTrendChart({ data = [], isLoading = false }: KpiTrendChartPro
           </>
         )}
       </div>
+
+      {/* Anomaly Summary */}
+      {anomalies.length > 0 && (
+        <div className="mt-3 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm font-semibold text-yellow-500">
+              {anomalies.length} {anomalies.length === 1 ? 'Anomaly' : 'Anomalies'} Detected
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-muted-foreground">Spikes: </span>
+              <span className="font-medium">{anomalies.filter(a => a.type === 'spike').length}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Drops: </span>
+              <span className="font-medium">{anomalies.filter(a => a.type === 'drop').length}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">High Severity: </span>
+              <span className="font-medium text-red-400">{anomalies.filter(a => a.severity === 'high').length}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Medium/Low: </span>
+              <span className="font-medium">{anomalies.filter(a => a.severity !== 'high').length}</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Hover over highlighted data points for details
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

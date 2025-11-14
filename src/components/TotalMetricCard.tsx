@@ -1,6 +1,7 @@
-import { ArrowUp, ArrowDown, TrendingUp, Eye, Download } from 'lucide-react';
+import { TrendingUp, Eye, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { TrendBadge } from '@/components/ui/TrendBadge';
 
 /**
  * Total Metric Card Component
@@ -61,10 +62,6 @@ export function TotalMetricCard({
     return num.toLocaleString();
   };
 
-  const formatPercent = (num: number): string => {
-    return `${num >= 0 ? '+' : ''}${num.toFixed(1)}%`;
-  };
-
   if (isLoading) {
     return (
       <Card className="relative overflow-hidden">
@@ -105,20 +102,8 @@ export function TotalMetricCard({
             </div>
           </div>
 
-          {delta !== 0 && (
-            <div className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-              delta >= 0
-                ? "bg-green-500/10 text-green-500"
-                : "bg-red-500/10 text-red-500"
-            )}>
-              {delta >= 0 ? (
-                <ArrowUp className="h-3 w-3" />
-              ) : (
-                <ArrowDown className="h-3 w-3" />
-              )}
-              {formatPercent(Math.abs(delta))}
-            </div>
+          {delta !== undefined && Math.abs(delta) >= 0.1 && (
+            <TrendBadge value={delta} label="" size="sm" showIcon={true} />
           )}
         </div>
 
