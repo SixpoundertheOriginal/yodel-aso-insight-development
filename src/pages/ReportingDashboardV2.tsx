@@ -43,6 +43,10 @@ export default function ReportingDashboardV2() {
   // Find organization name from available orgs
   const currentOrg = availableOrgs?.find(org => org.id === organizationId);
   const organizationName = currentOrg?.name || 'Organization';
+  const organizationSlug = currentOrg?.slug || '';
+
+  // ✅ CHECK IF YODEL MOBILE USER: Only show AI chat for Yodel Mobile organization
+  const isYodelMobile = organizationSlug === 'yodel-mobile';
 
   // ✅ DYNAMIC DATE RANGE: Defaults to last 30 days, updates via DateRangePicker
   const [dateRange, setDateRange] = useState({
@@ -56,8 +60,8 @@ export default function ReportingDashboardV2() {
   // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
   const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
 
-  // ✅ AI CHAT SIDEBAR: Track sidebar state
-  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed');
+  // ✅ AI CHAT SIDEBAR: Track sidebar state (visible by default for Yodel Mobile)
+  const [sidebarState, setSidebarState] = useState<SidebarState>(isYodelMobile ? 'normal' : 'collapsed');
 
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
@@ -204,6 +208,14 @@ export default function ReportingDashboardV2() {
     }
   }, [availableApps.length]); // Only depend on length to avoid re-triggering
 
+  // ✅ OPEN AI CHAT SIDEBAR: Auto-open for Yodel Mobile users
+  useEffect(() => {
+    if (isYodelMobile && sidebarState === 'collapsed') {
+      console.log('🤖 [DASHBOARD-V2] Opening AI chat sidebar for Yodel Mobile');
+      setSidebarState('normal');
+    }
+  }, [isYodelMobile]); // Open sidebar when Yodel Mobile org is detected
+
   // ✅ BUILD FILTER CONTEXT FOR AI CHAT (must be before conditional returns)
   const filterContext: FilterContext = useMemo(() => ({
     dateRange: {
@@ -292,8 +304,8 @@ export default function ReportingDashboardV2() {
   return (
     <MainLayout>
       <div className="flex h-full">
-        {/* AI Chat Sidebar */}
-        {organizationId && (
+        {/* AI Chat Sidebar - Only for Yodel Mobile users */}
+        {organizationId && isYodelMobile && (
           <AsoDataProvider>
             <ContextualInsightsSidebar
               metricsData={metricsData}
@@ -308,9 +320,9 @@ export default function ReportingDashboardV2() {
         {/* Main Dashboard Content */}
         <div className={cn(
           "flex-1 transition-all duration-300",
-          sidebarState === 'normal' && "mr-96",
-          sidebarState === 'expanded' && "mr-[600px]",
-          sidebarState === 'fullscreen' && "hidden"
+          isYodelMobile && sidebarState === 'normal' && "mr-96",
+          isYodelMobile && sidebarState === 'expanded' && "mr-[600px]",
+          isYodelMobile && sidebarState === 'fullscreen' && "hidden"
         )}>
           <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
