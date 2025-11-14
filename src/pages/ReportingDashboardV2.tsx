@@ -5,7 +5,7 @@ import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp as TrendingUpIcon, TrendingDown, Minus, Database, RefreshCw, Activity, BarChart3 } from 'lucide-react';
+import { Loader2, TrendingUp as TrendingUpIcon, RefreshCw, Activity, BarChart3 } from 'lucide-react';
 import { MainLayout } from '@/layouts';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { CompactAppSelector } from '@/components/CompactAppSelector';
@@ -260,20 +260,7 @@ export default function ReportingDashboardV2() {
     );
   }
 
-  const summary = data?.processedData?.summary;
   const meta = data?.meta;
-
-  const getTrendIcon = (delta: number | undefined) => {
-    if (!delta || delta === 0) return <Minus className="h-4 w-4 text-zinc-500" />;
-    if (delta > 0) return <TrendingUpIcon className="h-4 w-4 text-green-500" />;
-    return <TrendingDown className="h-4 w-4 text-red-500" />;
-  };
-
-  const getTrendColor = (delta: number | undefined) => {
-    if (!delta || delta === 0) return 'text-zinc-500';
-    if (delta > 0) return 'text-green-500';
-    return 'text-red-500';
-  };
 
   return (
     <MainLayout>
@@ -440,122 +427,6 @@ export default function ReportingDashboardV2() {
               isLoading={isLoading}
             />
           </div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Impressions */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-300">
-                Impressions
-              </CardTitle>
-              {getTrendIcon(summary?.impressions?.delta)}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-zinc-100">
-                {summary?.impressions?.value?.toLocaleString() || '0'}
-              </div>
-              <p className={`text-xs ${getTrendColor(summary?.impressions?.delta)}`}>
-                {summary?.impressions?.delta !== undefined
-                  ? `${summary.impressions.delta >= 0 ? '+' : ''}${summary.impressions.delta.toFixed(1)}% from last period`
-                  : 'No comparison data'}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Downloads/Installs */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-300">
-                Downloads
-              </CardTitle>
-              {getTrendIcon(summary?.downloads?.delta || summary?.installs?.delta)}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-zinc-100">
-                {summary?.downloads?.value?.toLocaleString() ||
-                  summary?.installs?.value?.toLocaleString() ||
-                  '0'}
-              </div>
-              <p
-                className={`text-xs ${getTrendColor(
-                  summary?.downloads?.delta || summary?.installs?.delta
-                )}`}
-              >
-                {summary?.downloads?.delta !== undefined ||
-                summary?.installs?.delta !== undefined
-                  ? `${
-                      (summary?.downloads?.delta || summary?.installs?.delta || 0) >= 0
-                        ? '+'
-                        : ''
-                    }${(
-                      summary?.downloads?.delta ||
-                      summary?.installs?.delta ||
-                      0
-                    ).toFixed(1)}% from last period`
-                  : 'No comparison data'}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Product Page Views */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-300">
-                Product Page Views
-              </CardTitle>
-              {getTrendIcon(summary?.product_page_views?.delta)}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-zinc-100">
-                {summary?.product_page_views?.value?.toLocaleString() || '0'}
-              </div>
-              <p className={`text-xs ${getTrendColor(summary?.product_page_views?.delta)}`}>
-                {summary?.product_page_views?.delta !== undefined
-                  ? `${
-                      summary.product_page_views.delta >= 0 ? '+' : ''
-                    }${summary.product_page_views.delta.toFixed(1)}% from last period`
-                  : 'No comparison data'}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Conversion Rate */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-300">
-                Conversion Rate
-              </CardTitle>
-              {getTrendIcon(summary?.cvr?.delta || summary?.conversion_rate?.delta)}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-zinc-100">
-                {summary?.cvr?.value?.toFixed(2) ||
-                  summary?.conversion_rate?.value?.toFixed(2) ||
-                  '0.00'}
-                %
-              </div>
-              <p
-                className={`text-xs ${getTrendColor(
-                  summary?.cvr?.delta || summary?.conversion_rate?.delta
-                )}`}
-              >
-                {summary?.cvr?.delta !== undefined ||
-                summary?.conversion_rate?.delta !== undefined
-                  ? `${
-                      (summary?.cvr?.delta || summary?.conversion_rate?.delta || 0) >= 0
-                        ? '+'
-                        : ''
-                    }${(
-                      summary?.cvr?.delta ||
-                      summary?.conversion_rate?.delta ||
-                      0
-                    ).toFixed(2)}% from last period`
-                  : 'No comparison data'}
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Traffic Sources */}
