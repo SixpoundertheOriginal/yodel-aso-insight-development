@@ -21,6 +21,7 @@ import { ConversionFunnelChart } from '@/components/analytics/ConversionFunnelCh
 import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
 import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
 import type { MetricsData, FilterContext } from '@/types/aso';
+import { AsoDataProvider } from '@/context/AsoDataContext';
 
 /**
  * PRODUCTION-READY DASHBOARD V2
@@ -293,13 +294,15 @@ export default function ReportingDashboardV2() {
       <div className="flex h-full">
         {/* AI Chat Sidebar */}
         {organizationId && (
-          <ContextualInsightsSidebar
-            metricsData={metricsData}
-            organizationId={organizationId}
-            state={sidebarState}
-            onStateChange={setSidebarState}
-            isSuperAdmin={isSuperAdmin}
-          />
+          <AsoDataProvider>
+            <ContextualInsightsSidebar
+              metricsData={metricsData}
+              organizationId={organizationId}
+              state={sidebarState}
+              onStateChange={setSidebarState}
+              isSuperAdmin={isSuperAdmin}
+            />
+          </AsoDataProvider>
         )}
 
         {/* Main Dashboard Content */}
