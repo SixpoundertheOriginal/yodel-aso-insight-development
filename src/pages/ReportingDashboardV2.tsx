@@ -304,19 +304,6 @@ export default function ReportingDashboardV2() {
   return (
     <MainLayout>
       <div className="flex h-full">
-        {/* AI Chat Sidebar - Only for Yodel Mobile users */}
-        {organizationId && isYodelMobile && (
-          <AsoDataProvider>
-            <ContextualInsightsSidebar
-              metricsData={metricsData}
-              organizationId={organizationId}
-              state={sidebarState}
-              onStateChange={setSidebarState}
-              isSuperAdmin={isSuperAdmin}
-            />
-          </AsoDataProvider>
-        )}
-
         {/* Main Dashboard Content */}
         <div className={cn(
           "flex-1 transition-all duration-300",
@@ -530,6 +517,19 @@ export default function ReportingDashboardV2() {
           )}
         </div>
         </div>
+
+        {/* AI Chat Sidebar - Only for Yodel Mobile users - RIGHT SIDE */}
+        {organizationId && isYodelMobile && (
+          <AsoDataProvider>
+            <ContextualInsightsSidebar
+              metricsData={metricsData}
+              organizationId={organizationId}
+              state={sidebarState}
+              onStateChange={setSidebarState}
+              isSuperAdmin={isSuperAdmin}
+            />
+          </AsoDataProvider>
+        )}
       </div>
     </MainLayout>
   );
