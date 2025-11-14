@@ -204,6 +204,27 @@ export default function ReportingDashboardV2() {
     }
   }, [availableApps.length]); // Only depend on length to avoid re-triggering
 
+  // ✅ BUILD FILTER CONTEXT FOR AI CHAT (must be before conditional returns)
+  const filterContext: FilterContext = useMemo(() => ({
+    dateRange: {
+      start: dateRange.start,
+      end: dateRange.end
+    },
+    trafficSources: selectedTrafficSources.length > 0 ? selectedTrafficSources : availableTrafficSources,
+    selectedApps: selectedAppIds.length > 0 ? selectedAppIds.map(String) : []
+  }), [dateRange, selectedTrafficSources, selectedAppIds, availableTrafficSources]);
+
+  // ✅ BUILD METRICS DATA FOR AI CHAT (must be before conditional returns)
+  const metricsData: MetricsData | undefined = useMemo(() => {
+    if (!data?.processedData) return undefined;
+
+    return {
+      summary: data.processedData.summary || {},
+      traffic_sources: data.processedData.traffic_sources || [],
+      rawData: data.rawData || []
+    } as MetricsData;
+  }, [data]);
+
   // [STATE] No organization ID
   if (!organizationId) {
     return (
@@ -267,27 +288,6 @@ export default function ReportingDashboardV2() {
   }
 
   const meta = data?.meta;
-
-  // ✅ BUILD FILTER CONTEXT FOR AI CHAT
-  const filterContext: FilterContext = useMemo(() => ({
-    dateRange: {
-      start: dateRange.start,
-      end: dateRange.end
-    },
-    trafficSources: selectedTrafficSources.length > 0 ? selectedTrafficSources : availableTrafficSources,
-    selectedApps: selectedAppIds.length > 0 ? selectedAppIds.map(String) : []
-  }), [dateRange, selectedTrafficSources, selectedAppIds, availableTrafficSources]);
-
-  // ✅ BUILD METRICS DATA FOR AI CHAT
-  const metricsData: MetricsData | undefined = useMemo(() => {
-    if (!data?.processedData) return undefined;
-
-    return {
-      summary: data.processedData.summary || {},
-      traffic_sources: data.processedData.traffic_sources || [],
-      rawData: data.rawData || []
-    } as MetricsData;
-  }, [data]);
 
   return (
     <MainLayout>
