@@ -18,6 +18,7 @@ import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
 import { SearchDominationTab } from '../AsoAiHub/SearchDominationTab';
 import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
 import { ExecutiveSummaryPanel, KeywordStrategyPanel, RiskAssessmentPanel } from './NarrativeModules';
+import { SlideViewPanel } from './SlideView';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
@@ -50,7 +51,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
     const debug = isDebugTarget(metadata);
     console.log('🎯 [APP-AUDIT] App imported:', metadata.name, debug ? '(debug target)' : '');
     setImportedMetadata(metadata);
-    setActiveTab('executive-summary'); // Show AI-generated summary first
+    setActiveTab('slide-view'); // Show comprehensive deck-ready slide view first
     toast.success(`Started comprehensive audit for ${metadata.name}`);
 
     // Share scraped data with unified page
@@ -460,7 +461,11 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-10 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-11 bg-zinc-900 border-zinc-800">
+          <TabsTrigger value="slide-view" className="flex items-center space-x-1">
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Slide View</span>
+          </TabsTrigger>
           <TabsTrigger value="executive-summary" className="flex items-center space-x-1">
             <Sparkles className="h-4 w-4" />
             <span>Summary</span>
@@ -481,6 +486,14 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           </TabsTrigger>
           <TabsTrigger value="recommendations">Actions</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="slide-view" className="space-y-6">
+          <SlideViewPanel
+            metadata={importedMetadata!}
+            auditData={auditData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
 
         <TabsContent value="executive-summary" className="space-y-6">
           <ExecutiveSummaryPanel
