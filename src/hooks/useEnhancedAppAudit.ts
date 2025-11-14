@@ -106,18 +106,24 @@ export const useEnhancedAppAudit = ({
   // FIXED: Create truly stable dependencies to prevent infinite re-renders
   const stableDependencies = useMemo(() => {
     const currentMetadataSignature = metadata ? `${metadata.appId}-${metadata.name}-${metadata.title}` : '';
-    
+
+    // When using scraped metadata, skip waiting for analytics/competitor data (database queries)
+    const usingScrapedMetadata = !!metadata;
+
     return {
       hasValidData: !!metadata && !!appId && !!organizationId,
       metadataSignature: currentMetadataSignature,
       keywordDataReady: advancedKI.keywordData.length > 0 && !advancedKI.isLoading,
-      analyticsReady: !!enhancedAnalytics.rankDistribution && !enhancedAnalytics.isLoading,
-      competitorDataReady: !!competitorData,
-      lastSignature: lastAuditMetadataRef.current
+      // Skip analytics check if using scraped metadata (no database)
+      analyticsReady: usingScrapedMetadata ? true : (!!enhancedAnalytics.rankDistribution && !enhancedAnalytics.isLoading),
+      // Skip competitor check if using scraped metadata (no database)
+      competitorDataReady: usingScrapedMetadata ? true : !!competitorData,
+      lastSignature: lastAuditMetadataRef.current,
+      usingScrapedMetadata
     };
   }, [
     metadata?.appId,
-    metadata?.name, 
+    metadata?.name,
     metadata?.title,
     appId,
     organizationId,
