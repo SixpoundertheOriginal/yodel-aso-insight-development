@@ -491,6 +491,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           <SlideViewPanel
             metadata={importedMetadata!}
             auditData={auditData}
+            organizationId={organizationId}
             isLoading={isLoading}
           />
         </TabsContent>

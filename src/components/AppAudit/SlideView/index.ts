@@ -1,9 +1,2 @@
 export { SlideViewPanel } from './SlideViewPanel';
-export { SlideSection } from './SlideSection';
-export { CompactExecutiveSummary } from './CompactExecutiveSummary';
-export { CompactKeywordSummary } from './CompactKeywordSummary';
-export { CompactMetadataSummary } from './CompactMetadataSummary';
-export { CompactCreativeSummary } from './CompactCreativeSummary';
-export { CompactCompetitorSummary } from './CompactCompetitorSummary';
-export { CompactRiskSummary } from './CompactRiskSummary';
-export { ActionItemsSummary } from './ActionItemsSummary';
+export { SectionWrapper } from './SectionWrapper';
