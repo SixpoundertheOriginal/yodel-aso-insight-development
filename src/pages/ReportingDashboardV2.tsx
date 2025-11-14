@@ -19,6 +19,8 @@ import { KpiTrendChart } from '@/components/analytics/KpiTrendChart';
 import { TrafficSourceComparisonChart } from '@/components/analytics/TrafficSourceComparisonChart';
 import { ConversionFunnelChart } from '@/components/analytics/ConversionFunnelChart';
 import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
+import { ContextualInsightsSidebar, SidebarState } from '@/components/AiInsightsPanel/ContextualInsightsSidebar';
+import type { MetricsData, FilterContext } from '@/types/aso';
 
 /**
  * PRODUCTION-READY DASHBOARD V2
@@ -35,7 +37,7 @@ import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
  * - Comprehensive logging for debugging
  */
 export default function ReportingDashboardV2() {
-  const { organizationId, availableOrgs } = usePermissions();
+  const { organizationId, availableOrgs, isSuperAdmin } = usePermissions();
 
   // Find organization name from available orgs
   const currentOrg = availableOrgs?.find(org => org.id === organizationId);
@@ -52,6 +54,9 @@ export default function ReportingDashboardV2() {
 
   // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
   const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
+
+  // ✅ AI CHAT SIDEBAR: Track sidebar state
+  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed');
 
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
@@ -262,9 +267,49 @@ export default function ReportingDashboardV2() {
 
   const meta = data?.meta;
 
+  // ✅ BUILD FILTER CONTEXT FOR AI CHAT
+  const filterContext: FilterContext = useMemo(() => ({
+    dateRange: {
+      start: dateRange.start,
+      end: dateRange.end
+    },
+    trafficSources: selectedTrafficSources.length > 0 ? selectedTrafficSources : availableTrafficSources,
+    selectedApps: selectedAppIds.length > 0 ? selectedAppIds.map(String) : []
+  }), [dateRange, selectedTrafficSources, selectedAppIds, availableTrafficSources]);
+
+  // ✅ BUILD METRICS DATA FOR AI CHAT
+  const metricsData: MetricsData | undefined = useMemo(() => {
+    if (!data?.processedData) return undefined;
+
+    return {
+      summary: data.processedData.summary || {},
+      traffic_sources: data.processedData.traffic_sources || [],
+      rawData: data.rawData || []
+    } as MetricsData;
+  }, [data]);
+
   return (
     <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="flex h-full">
+        {/* AI Chat Sidebar */}
+        {organizationId && (
+          <ContextualInsightsSidebar
+            metricsData={metricsData}
+            organizationId={organizationId}
+            state={sidebarState}
+            onStateChange={setSidebarState}
+            isSuperAdmin={isSuperAdmin}
+          />
+        )}
+
+        {/* Main Dashboard Content */}
+        <div className={cn(
+          "flex-1 transition-all duration-300",
+          sidebarState === 'normal' && "mr-96",
+          sidebarState === 'expanded' && "mr-[600px]",
+          sidebarState === 'fullscreen' && "hidden"
+        )}>
+          <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-100 flex items-center gap-3">
@@ -468,6 +513,8 @@ export default function ReportingDashboardV2() {
               </CardContent>
             </Card>
           )}
+        </div>
+        </div>
       </div>
     </MainLayout>
   );
