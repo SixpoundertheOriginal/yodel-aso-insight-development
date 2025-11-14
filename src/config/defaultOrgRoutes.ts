@@ -31,6 +31,10 @@ export const DEFAULT_ORG_USER_ROUTES = [
   '/growth-accelerators/reviews/:appId',    // Review Details (dynamic)
   '/growth-accelerators/competitor-overview', // Competitor Overview
 
+  // AI Command Center (feature-gated per organization)
+  '/aso-ai-hub',                            // Strategic Audit Engine (requires aso_ai_hub feature)
+  '/metadata-copilot',                      // Metadata Optimizer (requires metadata_generator feature)
+
   // Account Management
   '/profile',                               // User Profile
 
@@ -60,10 +64,8 @@ export const SUPER_ADMIN_ONLY_ROUTES = [
   '/settings',                              // Platform Settings
   '/apps',                                  // App Management (full access)
   '/app-discovery',                         // App Discovery
-  '/aso-ai-hub',                            // Strategic Audit Engine
   '/chatgpt-visibility-audit',              // AI Visibility Optimizer
   '/aso-knowledge-engine',                  // Strategy Brain
-  '/metadata-copilot',                      // Metadata Optimizer
   '/growth-gap-copilot',                    // Opportunity Scanner
   '/featuring-toolkit',                     // Feature Maximizer
   '/creative-analysis',                     // Creative Analysis

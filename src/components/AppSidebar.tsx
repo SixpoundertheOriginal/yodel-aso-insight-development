@@ -71,7 +71,7 @@ const aiToolsItems: NavigationItem[] = [
     title: "Strategic Audit Engine",
     url: "/aso-ai-hub",
     icon: Bot,
-    featureKey: PLATFORM_FEATURES.ASO_CHAT,
+    featureKey: PLATFORM_FEATURES.ASO_AI_HUB,
   },
   {
     title: "AI Visibility Optimizer",
