@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { useDataAccess } from '@/hooks/useDataAccess';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { Brain } from 'lucide-react';
 import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
@@ -16,19 +17,24 @@ import { NotAuthorized } from '@/components/NotAuthorized';
 
 const AsoAiHubPage: React.FC = () => {
   const dataContext = useDataAccess();
+  const { isSuperAdmin, isOrganizationAdmin, roles } = usePermissions();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
     dataContext.organizationId
   );
 
-  // Route-level access control
-  const currentUserRole: UserRole = dataContext.canAccessAllOrgs ? 'super_admin' : 'viewer';
+  // Route-level access control - properly map user role
+  const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' :
+    (isOrganizationAdmin ? 'org_admin' :
+    (roles[0]?.toLowerCase().includes('aso') ? 'aso_manager' :
+    (roles[0]?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
+
   const hasAccess = featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, currentUserRole);
-  
+
   if (!hasAccess) {
     return (
-      <NotAuthorized 
+      <NotAuthorized
         title="ASO AI Hub Access Required"
-        message="This feature is currently available to platform administrators only. Contact support for more information."
+        message="This feature requires organization admin access or higher. Contact your organization administrator for more information."
       />
     );
   }
