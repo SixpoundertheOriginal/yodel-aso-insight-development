@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isDebugTarget } from '@/lib/debugTargets';
-import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette, FileSpreadsheet } from 'lucide-react';
+import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette, FileSpreadsheet, Shield, Sparkles } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
@@ -17,6 +17,7 @@ import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
 import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
 import { SearchDominationTab } from '../AsoAiHub/SearchDominationTab';
 import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
+import { ExecutiveSummaryPanel, KeywordStrategyPanel, RiskAssessmentPanel } from './NarrativeModules';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
@@ -49,7 +50,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
     const debug = isDebugTarget(metadata);
     console.log('🎯 [APP-AUDIT] App imported:', metadata.name, debug ? '(debug target)' : '');
     setImportedMetadata(metadata);
-    setActiveTab('overview');
+    setActiveTab('executive-summary'); // Show AI-generated summary first
     toast.success(`Started comprehensive audit for ${metadata.name}`);
 
     // Share scraped data with unified page
@@ -459,20 +460,56 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid w-full grid-cols-10 bg-zinc-900 border-zinc-800">
+          <TabsTrigger value="executive-summary" className="flex items-center space-x-1">
+            <Sparkles className="h-4 w-4" />
+            <span>Summary</span>
+          </TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="search-domination">Search Domination</TabsTrigger>
+          <TabsTrigger value="keyword-strategy" className="flex items-center space-x-1">
+            <Target className="h-4 w-4" />
+            <span>Strategy</span>
+          </TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
           <TabsTrigger value="creative">Creative</TabsTrigger>
           <TabsTrigger value="competitors">Competitors</TabsTrigger>
+          <TabsTrigger value="risk-assessment" className="flex items-center space-x-1">
+            <Shield className="h-4 w-4" />
+            <span>Risk</span>
+          </TabsTrigger>
           <TabsTrigger value="recommendations">Actions</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="executive-summary" className="space-y-6">
+          <ExecutiveSummaryPanel
+            narrative={auditData?.narratives?.executiveSummary || null}
+            overallScore={auditData?.overallScore || 0}
+            isLoading={isLoading}
+          />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
           <EnhancedOverviewTab
             metadata={importedMetadata}
             competitorData={auditData?.competitorAnalysis}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="keyword-strategy" className="space-y-6">
+          <KeywordStrategyPanel
+            narrative={auditData?.narratives?.keywordStrategy || null}
+            brandRisk={auditData?.brandRisk || null}
+            keywordScore={auditData?.keywordScore || 0}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="risk-assessment" className="space-y-6">
+          <RiskAssessmentPanel
+            narrative={auditData?.narratives?.riskAssessment || null}
             isLoading={isLoading}
           />
         </TabsContent>

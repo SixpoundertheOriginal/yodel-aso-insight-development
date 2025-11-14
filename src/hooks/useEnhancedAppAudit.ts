@@ -5,6 +5,14 @@ import { useAdvancedKeywordIntelligence } from './useAdvancedKeywordIntelligence
 import { useEnhancedKeywordAnalytics } from './useEnhancedKeywordAnalytics';
 import { semanticClusteringService } from '@/services/semantic-clustering.service';
 import { metadataScoringService } from '@/services/metadata-scoring.service';
+import { narrativeEngineService } from '@/services/narrative-engine.service';
+import { brandRiskAnalysisService, type BrandRiskAnalysis } from '@/services/brand-risk-analysis.service';
+import type {
+  ExecutiveSummaryNarrative,
+  KeywordStrategyNarrative,
+  RiskAssessmentNarrative,
+  CompetitorStoryNarrative
+} from '@/services/narrative-engine.service';
 import { ScrapedMetadata } from '@/types/aso';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,6 +35,15 @@ interface EnhancedAuditData {
     category: 'metadata' | 'keywords' | 'competitors';
     impact: number;
   }>;
+  // NEW: Narrative fields
+  narratives?: {
+    executiveSummary: ExecutiveSummaryNarrative | null;
+    keywordStrategy: KeywordStrategyNarrative | null;
+    riskAssessment: RiskAssessmentNarrative | null;
+    competitorStory: CompetitorStoryNarrative | null;
+  };
+  // NEW: Brand risk analysis
+  brandRisk?: BrandRiskAnalysis;
 }
 
 interface UseEnhancedAppAuditProps {
@@ -204,6 +221,76 @@ export const useEnhancedAppAudit = ({
         }] : [])
       ].sort((a, b) => b.impact - a.impact);
 
+      // NEW: Analyze brand risk
+      console.log('🔍 [ENHANCED-AUDIT] Analyzing brand risk...');
+      const brandRisk = brandRiskAnalysisService.analyzeBrandDependency(
+        advancedKI.keywordData.map(k => k.keyword),
+        metadata!.name,
+        metadata!.title
+      );
+
+      // NEW: Generate AI narratives (async - run in parallel)
+      console.log('📝 [ENHANCED-AUDIT] Generating AI narratives...');
+      const narrativePromises = {
+        executiveSummary: narrativeEngineService.generateExecutiveSummary(
+          metadata!,
+          { overall: overallScore, metadata: metadataScore, keyword: keywordScore, competitor: competitorScore },
+          opportunityCount,
+          recommendations.slice(0, 5)
+        ).catch(err => {
+          console.error('Failed to generate executive summary:', err);
+          return null;
+        }),
+
+        keywordStrategy: narrativeEngineService.generateKeywordStrategy(
+          metadata!,
+          clusteringResult.clusters.slice(0, 5),
+          brandRisk.brandDependencyRatio,
+          enhancedAnalytics.rankDistribution?.visibility_score || keywordScore,
+          advancedKI.keywordData.filter(k => k.rank <= 10).map(k => k.keyword)
+        ).catch(err => {
+          console.error('Failed to generate keyword strategy:', err);
+          return null;
+        }),
+
+        riskAssessment: narrativeEngineService.generateRiskAssessment(
+          metadata!,
+          brandRisk.brandDependencyRatio,
+          advancedKI.keywordData.length,
+          metadataScore,
+          competitorScore
+        ).catch(err => {
+          console.error('Failed to generate risk assessment:', err);
+          return null;
+        }),
+
+        competitorStory: narrativeEngineService.generateCompetitorStory(
+          metadata!,
+          competitorData?.length || 0,
+          advancedKI.keywordData.length,
+          competitorScore,
+          [], // TODO: Calculate shared keywords
+          []  // TODO: Calculate unique opportunities
+        ).catch(err => {
+          console.error('Failed to generate competitor story:', err);
+          return null;
+        })
+      };
+
+      const narratives = {
+        executiveSummary: await narrativePromises.executiveSummary,
+        keywordStrategy: await narrativePromises.keywordStrategy,
+        riskAssessment: await narrativePromises.riskAssessment,
+        competitorStory: await narrativePromises.competitorStory
+      };
+
+      console.log('✅ [ENHANCED-AUDIT] Narratives generated:', {
+        executiveSummary: !!narratives.executiveSummary,
+        keywordStrategy: !!narratives.keywordStrategy,
+        riskAssessment: !!narratives.riskAssessment,
+        competitorStory: !!narratives.competitorStory
+      });
+
       const enhancedAuditData: EnhancedAuditData = {
         overallScore,
         metadataScore,
@@ -216,7 +303,10 @@ export const useEnhancedAppAudit = ({
         competitorAnalysis: competitorData || [],
         currentKeywords: advancedKI.keywordData.map(k => k.keyword),
         metadataAnalysis,
-        recommendations
+        recommendations,
+        // NEW: Add narratives and brand risk
+        narratives,
+        brandRisk
       };
 
       setAuditData(enhancedAuditData);
