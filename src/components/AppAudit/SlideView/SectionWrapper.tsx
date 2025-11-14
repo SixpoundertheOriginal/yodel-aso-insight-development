@@ -16,13 +16,13 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
   children
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center space-x-3">
         <Icon className={`h-6 w-6 ${iconColor}`} />
         <h2 className="text-2xl font-bold text-foreground">{title}</h2>
       </div>
       <Separator className="bg-zinc-800" />
-      <div>{children}</div>
+      <div className="pt-2">{children}</div>
     </div>
   );
 };

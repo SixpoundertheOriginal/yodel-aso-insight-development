@@ -18,6 +18,7 @@ import {
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import { formatNumber, getScoreColor, getScoreLabel } from '@/lib/numberFormat';
 
 // Existing Tab Components (REUSE - DO NOT SIMPLIFY)
 import { ExecutiveSummaryPanel } from '../NarrativeModules/ExecutiveSummaryPanel';
@@ -182,15 +183,9 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
     );
   }
 
-  const scoreColor =
-    auditData.overallScore >= 80 ? 'text-green-400' :
-    auditData.overallScore >= 60 ? 'text-blue-400' :
-    auditData.overallScore >= 40 ? 'text-yellow-400' : 'text-red-400';
-
-  const scoreLabel =
-    auditData.overallScore >= 80 ? 'Excellent' :
-    auditData.overallScore >= 60 ? 'Good' :
-    auditData.overallScore >= 40 ? 'Fair' : 'Needs Work';
+  // Use centralized score color and label utilities
+  const scoreColor = getScoreColor(auditData.overallScore);
+  const scoreLabel = getScoreLabel(auditData.overallScore);
 
   return (
     <div className="space-y-8">
@@ -209,30 +204,30 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
       </div>
 
       {/* Slide View Content */}
-      <div ref={slideViewRef} className="space-y-10 bg-zinc-950 p-8 rounded-lg">
+      <div ref={slideViewRef} className="space-y-12 bg-zinc-950 p-8 rounded-lg">
 
         {/* Header */}
-        <div className="text-center space-y-4 pb-6 border-b border-zinc-800">
-          <div className="flex items-center justify-center space-x-3 mb-2">
+        <div className="text-center space-y-6 pb-8 border-b border-zinc-800 bg-gradient-to-b from-zinc-900/50 to-transparent rounded-t-lg -m-8 p-8 mb-12">
+          <div className="flex items-center justify-center space-x-4">
             {metadata.icon && (
               <img
                 src={metadata.icon}
                 alt={metadata.name}
-                className="w-16 h-16 rounded-xl border-2 border-zinc-700"
+                className="w-20 h-20 rounded-2xl border-2 border-zinc-700 shadow-lg"
               />
             )}
-            <div className="text-left">
-              <h1 className="text-3xl font-bold text-foreground">{metadata.name}</h1>
-              <p className="text-zinc-400 text-sm">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-foreground mb-1">{metadata.name}</h1>
+              <p className="text-zinc-400 text-base">
                 {metadata.applicationCategory} • {metadata.locale}
               </p>
             </div>
           </div>
           <div className="flex items-center justify-center space-x-4">
             <Badge className={`text-xl px-6 py-2 ${scoreColor} bg-zinc-900/50 border-zinc-700`}>
-              Overall Score: {auditData.overallScore}/100
+              Overall Score: {formatNumber.score(auditData.overallScore)}/100
             </Badge>
-            <Badge variant="outline" className="text-sm px-4 py-1 border-zinc-700">
+            <Badge variant="outline" className="text-base px-4 py-1.5 border-zinc-700 text-zinc-300">
               {scoreLabel}
             </Badge>
           </div>
@@ -240,42 +235,42 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
 
         {/* KPI Summary */}
         <div>
-          <SectionWrapper icon={Brain} title="KPI Summary" iconColor="text-yodel-orange">
-            <div className="grid grid-cols-6 gap-4">
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Overall</p>
-                  <p className={`text-3xl font-bold ${scoreColor}`}>{auditData.overallScore}</p>
+          <SectionWrapper icon={Brain} title="Performance Metrics" iconColor="text-emerald-400">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Overall</p>
+                  <p className={`text-3xl font-bold ${scoreColor}`}>{formatNumber.score(auditData.overallScore)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Metadata</p>
-                  <p className="text-3xl font-bold text-green-400">{auditData.metadataScore}</p>
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Metadata</p>
+                  <p className={`text-3xl font-bold ${getScoreColor(auditData.metadataScore)}`}>{formatNumber.score(auditData.metadataScore)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Keywords</p>
-                  <p className="text-3xl font-bold text-blue-400">{auditData.keywordScore}</p>
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Keywords</p>
+                  <p className={`text-3xl font-bold ${getScoreColor(auditData.keywordScore)}`}>{formatNumber.score(auditData.keywordScore)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Creative</p>
-                  <p className="text-3xl font-bold text-pink-400">75</p>
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Creative</p>
+                  <p className="text-3xl font-bold text-purple-400">{formatNumber.score(auditData.metadataScore * 0.9)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Competitive</p>
-                  <p className="text-3xl font-bold text-purple-400">{auditData.competitorScore}</p>
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Competitive</p>
+                  <p className={`text-3xl font-bold ${getScoreColor(auditData.competitorScore)}`}>{formatNumber.score(auditData.competitorScore)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-zinc-400 mb-1">Opportunities</p>
-                  <p className="text-3xl font-bold text-green-400">{auditData.opportunityCount}</p>
+              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
+                  <p className="text-sm text-zinc-400 mb-2 font-medium">Opportunities</p>
+                  <p className="text-3xl font-bold text-emerald-400">{auditData.opportunityCount}</p>
                 </CardContent>
               </Card>
             </div>
@@ -283,7 +278,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </div>
 
         {/* Section 1: Executive Summary */}
-        <SectionWrapper icon={Sparkles} title="Executive Summary" iconColor="text-yodel-orange">
+        <SectionWrapper icon={Sparkles} title="Executive Summary" iconColor="text-emerald-400">
           <ExecutiveSummaryPanel
             narrative={auditData.narratives?.executiveSummary || null}
             overallScore={auditData.overallScore}
@@ -292,7 +287,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 2: Element-by-Element Overview */}
-        <SectionWrapper icon={Eye} title="Element-by-Element ASO Analysis" iconColor="text-blue-400">
+        <SectionWrapper icon={Eye} title="Element-by-Element Analysis" iconColor="text-blue-400">
           <EnhancedOverviewTab
             metadata={metadata}
             competitorData={auditData.competitorAnalysis}
@@ -310,8 +305,8 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
           />
         </SectionWrapper>
 
-        {/* Section 4: Metadata Workspace */}
-        <SectionWrapper icon={FileText} title="Metadata Analysis" iconColor="text-green-400">
+        {/* Section 4: Metadata Analysis */}
+        <SectionWrapper icon={FileText} title="Metadata Optimization" iconColor="text-emerald-400">
           <MetadataWorkspace
             initialData={metadata}
             organizationId={organizationId}
@@ -319,7 +314,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 5: Keyword Trends */}
-        <SectionWrapper icon={TrendingUp} title="Keyword Trends" iconColor="text-purple-400">
+        <SectionWrapper icon={TrendingUp} title="Keyword Trends" iconColor="text-blue-400">
           <KeywordTrendsTable
             trends={auditData.keywordTrends || []}
             isLoading={false}
@@ -329,7 +324,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 6: Search Domination */}
-        <SectionWrapper icon={Target} title="Search Domination Analysis" iconColor="text-orange-400">
+        <SectionWrapper icon={Target} title="Search Visibility Analysis" iconColor="text-blue-400">
           <SearchDominationTab
             scrapedAppData={metadata}
             organizationId={organizationId}
@@ -337,7 +332,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 7: Creative Analysis */}
-        <SectionWrapper icon={Palette} title="Creative Analysis" iconColor="text-pink-400">
+        <SectionWrapper icon={Palette} title="Creative Analysis" iconColor="text-purple-400">
           <CreativeAnalysisPanel
             metadata={metadata}
             competitorData={auditData.competitorAnalysis}
@@ -346,7 +341,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 8: Competitive Analysis */}
-        <SectionWrapper icon={Users} title="Competitive Keyword Analysis" iconColor="text-purple-400">
+        <SectionWrapper icon={Users} title="Competitive Analysis" iconColor="text-yellow-400">
           <CompetitiveKeywordAnalysis
             competitorData={auditData.competitorAnalysis || []}
             userKeywords={auditData.currentKeywords || []}
@@ -355,7 +350,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Section 9: Risk Assessment */}
-        <SectionWrapper icon={Shield} title="Risk Assessment" iconColor="text-orange-400">
+        <SectionWrapper icon={Shield} title="Risk Assessment" iconColor="text-yellow-400">
           <RiskAssessmentPanel
             narrative={auditData.narratives?.riskAssessment || null}
             isLoading={false}
@@ -364,36 +359,36 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
 
         {/* Section 10: Priority Recommendations */}
         <SectionWrapper icon={AlertTriangle} title="Priority Action Items" iconColor="text-yodel-orange">
-          <div className="space-y-3">
+          <div className="space-y-4">
             {auditData.recommendations?.map((rec, index) => (
               <Card
                 key={index}
-                className="bg-gradient-to-r from-zinc-900 to-transparent border-l-4 border-yodel-orange"
+                className="bg-gradient-to-r from-zinc-900 to-transparent border-l-4 border-yodel-orange hover:border-l-yodel-orange/70 transition-all"
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start space-x-3 flex-1">
-                      <Badge className={`mt-1 ${
+                      <Badge className={`mt-0.5 capitalize ${
                         rec.priority === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                         rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
                         'bg-blue-500/20 text-blue-400 border-blue-500/30'
                       }`}>
-                        {rec.priority.toUpperCase()}
+                        {rec.priority}
                       </Badge>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-sm font-semibold text-foreground">{rec.title}</h4>
-                          <Badge variant="outline" className="text-xs text-zinc-400 border-zinc-600">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h4 className="text-base font-semibold text-foreground">{rec.title}</h4>
+                          <Badge variant="outline" className="text-xs text-zinc-300 border-zinc-600 capitalize">
                             {rec.category}
                           </Badge>
                         </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed">{rec.description}</p>
+                        <p className="text-sm text-zinc-400 leading-relaxed">{rec.description}</p>
                       </div>
                     </div>
-                    <div className="flex-shrink-0 ml-3">
+                    <div className="flex-shrink-0 ml-4">
                       <div className="text-right">
-                        <p className="text-xs text-zinc-500">Impact</p>
-                        <p className={`text-lg font-bold ${
+                        <p className="text-xs text-zinc-400 mb-1">Impact Score</p>
+                        <p className={`text-xl font-bold ${
                           rec.priority === 'high' ? 'text-red-400' :
                           rec.priority === 'medium' ? 'text-yellow-400' :
                           'text-blue-400'
@@ -403,12 +398,12 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-zinc-800 rounded-full h-2 mt-3">
                     <div
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        rec.priority === 'high' ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                        rec.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                        'bg-gradient-to-r from-blue-500 to-blue-400'
+                      className={`h-2 rounded-full transition-all duration-300 shadow-sm ${
+                        rec.priority === 'high' ? 'bg-gradient-to-r from-red-500 to-red-400 shadow-red-500/20' :
+                        rec.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-yellow-400 shadow-yellow-500/20' :
+                        'bg-gradient-to-r from-blue-500 to-blue-400 shadow-blue-500/20'
                       }`}
                       style={{ width: `${rec.impact}%` }}
                     />
@@ -420,13 +415,13 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         </SectionWrapper>
 
         {/* Footer */}
-        <div className="pt-6 border-t border-zinc-800">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+        <div className="pt-8 border-t border-zinc-800">
+          <div className="flex items-center justify-between text-sm text-zinc-400">
             <div className="flex items-center space-x-2">
-              <Sparkles className="h-3 w-3" />
+              <Sparkles className="h-4 w-4 text-emerald-400" />
               <span>AI-Powered ASO Audit • Generated by Yodel ASO Insight</span>
             </div>
-            <span>Generated: {new Date().toLocaleDateString()}</span>
+            <span>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
         </div>
       </div>
