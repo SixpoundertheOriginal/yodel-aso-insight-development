@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Target, TrendingUp, AlertTriangle, Lightbulb, Sparkles, CheckCircle2 } from 'lucide-react';
+import { formatNumber } from '@/lib/numberFormat';
 import type { KeywordStrategyNarrative } from '@/services/narrative-engine.service';
 import type { BrandRiskAnalysis } from '@/services/brand-risk-analysis.service';
 
@@ -116,7 +117,7 @@ export const KeywordStrategyPanel: React.FC<KeywordStrategyPanelProps> = ({
             </CardTitle>
             <CardDescription>
               {brandRisk.brandKeywordCount} of {brandRisk.totalKeywords} keywords contain your brand name
-              ({(brandRisk.brandDependencyRatio * 100).toFixed(0)}%)
+              ({formatNumber.ratio(brandRisk.brandDependencyRatio)})
             </CardDescription>
           </CardHeader>
           <CardContent>

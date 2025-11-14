@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, Minus, Plus, Search, Filter } from 'lucide-react';
+import { formatNumber } from '@/lib/numberFormat';
 import { KeywordTrend } from '@/services/enhanced-keyword-analytics.service';
 
 interface KeywordTrendsTableProps {
@@ -245,7 +246,7 @@ export const KeywordTrendsTable: React.FC<KeywordTrendsTableProps> = ({
                   <TableCell>
                     {trend.volume_change_pct !== 0 ? (
                       <span className={trend.volume_change_pct > 0 ? 'text-green-400' : 'text-red-400'}>
-                        {trend.volume_change_pct > 0 ? '+' : ''}{trend.volume_change_pct.toFixed(1)}%
+                        {trend.volume_change_pct > 0 ? '+' : ''}{formatNumber.decimal(trend.volume_change_pct, 1)}%
                       </span>
                     ) : (
                       <span className="text-zinc-500">-</span>

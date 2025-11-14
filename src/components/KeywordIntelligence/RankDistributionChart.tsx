@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Eye, Target } from 'lucide-react';
+import { formatNumber } from '@/lib/numberFormat';
 import { RankDistribution } from '@/services/enhanced-keyword-analytics.service';
 
 interface RankDistributionChartProps {
@@ -93,14 +94,14 @@ export const RankDistributionChart: React.FC<RankDistributionChartProps> = ({
             <div className="text-xs text-zinc-400">Total Tracked</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-400">{data.avg_rank?.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-yellow-400">{formatNumber.decimal(data.avg_rank, 1)}</div>
             <div className="text-xs text-zinc-400">Avg Rank</div>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
               <Eye className="h-4 w-4" />
               <Badge variant="outline" className={`${getVisibilityColor(data.visibility_score)} text-foreground`}>
-                {data.visibility_score?.toFixed(1)}
+                {formatNumber.decimal(data.visibility_score, 1)}
               </Badge>
             </div>
             <div className="text-xs text-zinc-400">{getVisibilityText(data.visibility_score)}</div>
