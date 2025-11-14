@@ -70,11 +70,12 @@ export const useEnhancedAppAudit = ({
   const auditCooldownRef = useRef(0);
   const auditCooldown = 3000; // 3 second cooldown between audits
 
-  // Use existing intelligence hooks
+  // Use existing intelligence hooks (pass scraped metadata to skip database queries)
   const advancedKI = useAdvancedKeywordIntelligence({
     organizationId,
     targetAppId: appId,
-    enabled: enabled && !!appId
+    enabled: enabled && !!appId,
+    scrapedMetadata: metadata // NEW: Pass scraped metadata to skip database queries
   });
 
   const enhancedAnalytics = useEnhancedKeywordAnalytics({
@@ -83,22 +84,22 @@ export const useEnhancedAppAudit = ({
     enabled: enabled && !!appId
   });
 
-  // Get competitor data
+  // Get competitor data (SKIP for scraped metadata - no database)
   const { data: competitorData } = useQuery({
     queryKey: ['competitor-data', organizationId, appId],
     queryFn: async () => {
       if (!appId) return [];
-      
+
       const { data } = await supabase
         .from('keyword_ranking_snapshots' as any) // competitor_keywords doesn't exist, using fallback
         .select('keyword, rank, search_volume, difficulty_score')
         .eq('organization_id', organizationId)
         .eq('app_id', appId)
         .limit(100);
-      
+
       return (data as any || []);
     },
-    enabled: enabled && !!appId,
+    enabled: enabled && !!appId && !metadata, // Skip database query if using scraped metadata
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

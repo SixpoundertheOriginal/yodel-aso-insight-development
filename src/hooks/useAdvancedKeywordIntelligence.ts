@@ -39,12 +39,14 @@ interface UseAdvancedKeywordIntelligenceProps {
   organizationId: string;
   targetAppId?: string;
   enabled?: boolean;
+  scrapedMetadata?: any; // NEW: Pass scraped metadata to skip database queries
 }
 
 export const useAdvancedKeywordIntelligence = ({
   organizationId,
   targetAppId,
-  enabled = true
+  enabled = true,
+  scrapedMetadata // NEW: Use scraped metadata instead of database
 }: UseAdvancedKeywordIntelligenceProps) => {
   const [keywordData, setKeywordData] = useState<KeywordData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +65,7 @@ export const useAdvancedKeywordIntelligence = ({
     opportunity: 'all'
   });
 
-  // Get app data from enhanced queries
+  // Get app data from enhanced queries (SKIP if scrapedMetadata provided)
   const {
     selectedApp,
     clusters,
@@ -72,21 +74,36 @@ export const useAdvancedKeywordIntelligence = ({
   } = useEnhancedQueries({
     organizationId,
     appId: targetAppId,
-    enabled
+    enabled: enabled && !scrapedMetadata // Skip database queries if metadata provided
   });
+
+  // Use scraped metadata or database app data
+  const appData = scrapedMetadata || selectedApp;
 
   // Generate enhanced keyword data when app changes
   useEffect(() => {
-    if (!enabled || !targetAppId || !selectedApp || isLoadingApp) {
-      console.log('🔄 [ADVANCED-KI] Waiting for app data or disabled');
+    if (!enabled || !targetAppId) {
+      console.log('🔄 [ADVANCED-KI] Disabled or no targetAppId');
+      return;
+    }
+
+    // Skip if waiting for database query (only when not using scraped metadata)
+    if (!scrapedMetadata && (!selectedApp || isLoadingApp)) {
+      console.log('🔄 [ADVANCED-KI] Waiting for app data from database');
+      return;
+    }
+
+    // Skip if no app data available at all
+    if (!appData) {
+      console.log('🔄 [ADVANCED-KI] No app data available');
       return;
     }
 
     generateKeywordData();
-  }, [targetAppId, selectedApp, organizationId, enabled, isLoadingApp]);
+  }, [targetAppId, appData, organizationId, enabled, isLoadingApp, scrapedMetadata]);
 
   const generateKeywordData = useCallback(async () => {
-    if (!targetAppId || !selectedApp) return;
+    if (!targetAppId || !appData) return;
 
     try {
       setIsLoading(true);
@@ -94,10 +111,10 @@ export const useAdvancedKeywordIntelligence = ({
       setTransitionError(null);
       setIsTransitioning(true);
 
-      console.log('🎯 [ADVANCED-KI] Generating enhanced keywords for:', selectedApp.app_name);
+      console.log('🎯 [ADVANCED-KI] Generating enhanced keywords for:', appData.app_name || appData.name);
 
       const enhancedKeywords = await enhancedKeywordDataPipelineService
-        .getEnhancedKeywordData(organizationId, targetAppId, selectedApp);
+        .getEnhancedKeywordData(organizationId, targetAppId, appData);
 
       setKeywordData(enhancedKeywords);
       setLastUpdated(new Date());
@@ -129,7 +146,7 @@ export const useAdvancedKeywordIntelligence = ({
       setIsLoading(false);
       setIsTransitioning(false);
     }
-  }, [targetAppId, selectedApp, organizationId]);
+  }, [targetAppId, appData, organizationId]);
 
   const refreshKeywordData = useCallback(async () => {
     if (!targetAppId) return;
