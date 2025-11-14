@@ -186,7 +186,8 @@ export default function ReportingDashboardV2() {
     if (!data?.rawData) {
       return {
         impressions: 0,
-        downloads: 0
+        downloads: 0,
+        cvr: 0
       };
     }
 
@@ -195,13 +196,22 @@ export default function ReportingDashboardV2() {
       downloads: acc.downloads + (row.downloads || 0)
     }), { impressions: 0, downloads: 0 });
 
+    const cvr = totals.impressions > 0
+      ? (totals.downloads / totals.impressions) * 100
+      : 0;
+
     console.log('📊 [TOTAL-METRICS] Calculated:', {
       impressions: totals.impressions,
       downloads: totals.downloads,
+      cvr,
       rows: data.rawData.length
     });
 
-    return totals;
+    return {
+      impressions: totals.impressions,
+      downloads: totals.downloads,
+      cvr
+    };
   }, [data?.rawData]);
 
   // ✅ INITIALIZE SELECTION: Auto-select ALL apps on first load
@@ -293,8 +303,8 @@ export default function ReportingDashboardV2() {
         {/* MFA Grace Period Banner */}
         <MFAGracePeriodBanner />
 
-        {/* ✅ EXECUTIVE SUMMARY: AI-powered insights */}
-        {data?.processedData?.traffic_sources && comparisonData && (
+        {/* ✅ EXECUTIVE SUMMARY: Template-based insights */}
+        {data?.processedData?.traffic_sources && (
           <ExecutiveSummaryCard
             summary={totalMetrics}
             trafficSources={data.processedData.traffic_sources}
