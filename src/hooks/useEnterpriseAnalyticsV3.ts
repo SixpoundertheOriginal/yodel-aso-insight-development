@@ -1,16 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useEnterpriseAnalytics } from './useEnterpriseAnalytics';
-import { useDashboardDataStore } from '@/stores/useDashboardDataStore';
-import { useTwoPathSelector } from '@/stores/useTwoPathSelector';
-import { useDerivedKpisSelector } from '@/stores/useDerivedKpisSelector';
+import { useDashboardDataStore, type DashboardDataState } from '@/stores/useDashboardDataStore';
+import { useTwoPathSelector, type TwoPathState } from '@/stores/useTwoPathSelector';
+import { useDerivedKpisSelector, type DerivedKpisState } from '@/stores/useDerivedKpisSelector';
 
 /**
  * Enterprise Analytics V3 Hook
  *
- * Phase B integration layer that connects useEnterpriseAnalytics
- * with the new Zustand store architecture.
+ * Phase C: UX Stability Hardening - Ensures single hydration and computation per data load.
  *
  * Key Features:
+ * - ✅ Single hydration per data fetch (Phase C Fix #1)
+ * - ✅ Stable selector references (Phase C Fix #1)
+ * - ✅ UI-only filter changes are instant (Phase C Fix #2)
+ * - ✅ No recomputation on traffic source changes (Phase C Fix #2)
  * - Automatic data store hydration
  * - Automatic Two-Path computation
  * - Automatic Derived KPIs computation
@@ -23,6 +26,16 @@ import { useDerivedKpisSelector } from '@/stores/useDerivedKpisSelector';
  *   trafficSources: ['App Store Search']
  * });
  */
+
+// ✅ PHASE C FIX #1: Stable selector functions (defined outside component)
+const selectHydrateFromQuery = (state: DashboardDataState) => state.hydrateFromQuery;
+const selectComputeTwoPath = (state: TwoPathState) => state.computeForTrafficSources;
+const selectComputeDerivedKpis = (state: DerivedKpisState) => state.computeFromTwoPath;
+const selectTwoPathSearch = (state: TwoPathState) => state.search;
+const selectTwoPathBrowse = (state: TwoPathState) => state.browse;
+const selectTwoPathCombined = (state: TwoPathState) => state.combined;
+const selectDerivedKpis = (state: DerivedKpisState) => state.kpis;
+const selectIsDataHydrated = (state: DashboardDataState) => state.isHydrated;
 
 interface DateRange {
   start: string;
@@ -42,40 +55,78 @@ export function useEnterpriseAnalyticsV3(params: AnalyticsParams) {
   // ✅ PHASE B: Use existing useEnterpriseAnalytics (backward compatible)
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics(params);
 
-  // ✅ PHASE B: Zustand store actions
-  const hydrateDataStore = useDashboardDataStore((state) => state.hydrateFromQuery);
-  const computeTwoPath = useTwoPathSelector((state) => state.computeForTrafficSources);
-  const computeDerivedKpis = useDerivedKpisSelector((state) => state.computeFromTwoPath);
+  // ✅ PHASE C FIX #1: Use stable selector references
+  const hydrateDataStore = useDashboardDataStore(selectHydrateFromQuery);
+  const computeTwoPath = useTwoPathSelector(selectComputeTwoPath);
+  const computeDerivedKpis = useDerivedKpisSelector(selectComputeDerivedKpis);
 
-  // ✅ PHASE B: Selectors for computed data
-  const twoPathSearch = useTwoPathSelector((state) => state.search);
-  const twoPathBrowse = useTwoPathSelector((state) => state.browse);
-  const twoPathCombined = useTwoPathSelector((state) => state.combined);
-  const derivedKpis = useDerivedKpisSelector((state) => state.kpis);
+  // ✅ PHASE C FIX #1: Selectors for computed data (stable references)
+  const twoPathSearch = useTwoPathSelector(selectTwoPathSearch);
+  const twoPathBrowse = useTwoPathSelector(selectTwoPathBrowse);
+  const twoPathCombined = useTwoPathSelector(selectTwoPathCombined);
+  const derivedKpis = useDerivedKpisSelector(selectDerivedKpis);
+  const isDataHydrated = useDashboardDataStore(selectIsDataHydrated);
 
-  // ✅ PHASE B: Auto-hydrate data store when data arrives
+  // ✅ PHASE C FIX #1: Track processed data to prevent duplicate hydrations
+  const processedDataRef = useRef<string>('');
+
+  // ✅ PHASE C FIX #1: Single hydration per data fetch
   useEffect(() => {
-    if (data) {
-      console.log('✅ [ANALYTICS-V3] Hydrating data store...');
-      hydrateDataStore(data);
-    }
-  }, [data, hydrateDataStore]);
+    if (!data) return;
 
-  // ✅ PHASE B: Auto-compute Two-Path metrics when data changes
-  useEffect(() => {
-    if (data) {
-      console.log('✅ [ANALYTICS-V3] Computing Two-Path metrics...');
-      computeTwoPath(trafficSources);
-    }
-  }, [data, trafficSources, computeTwoPath]);
+    const dataHash = `${data.meta.request_id}_${data.meta.timestamp}`;
 
-  // ✅ PHASE B: Auto-compute Derived KPIs when Two-Path metrics ready
-  useEffect(() => {
-    if (twoPathSearch && twoPathBrowse) {
-      console.log('✅ [ANALYTICS-V3] Computing Derived KPIs...');
-      computeDerivedKpis(twoPathSearch, twoPathBrowse);
+    // Skip if already processed this exact data
+    if (processedDataRef.current === dataHash) {
+      console.log('✅ [V3-HOOK] Data already processed, skipping hydration');
+      return;
     }
-  }, [twoPathSearch, twoPathBrowse, computeDerivedKpis]);
+
+    console.log('📥 [V3-HOOK] Hydrating data store...');
+    hydrateDataStore(data);
+    processedDataRef.current = dataHash;
+
+  }, [data, hydrateDataStore]); // ✅ hydrateDataStore is now stable
+
+  // ✅ PHASE C FIX #2: Compute Two-Path only when data hydrates (not on UI filter changes)
+  useEffect(() => {
+    if (!isDataHydrated) return;
+
+    console.log('🔄 [V3-HOOK] Computing Two-Path metrics...');
+    computeTwoPath([]); // Empty array = compute for all traffic sources
+
+  }, [isDataHydrated, computeTwoPath]); // ✅ trafficSources REMOVED from deps
+
+  // ✅ PHASE C FIX #1: Compute Derived KPIs only when Two-Path completes
+  useEffect(() => {
+    if (!twoPathSearch || !twoPathBrowse) return;
+
+    console.log('🔄 [V3-HOOK] Computing Derived KPIs...');
+    computeDerivedKpis(twoPathSearch, twoPathBrowse);
+
+  }, [twoPathSearch, twoPathBrowse, computeDerivedKpis]); // ✅ All stable now
+
+  // ✅ PHASE C FIX #2: Filter metrics client-side for instant UI updates
+  const filteredMetrics = useMemo(() => {
+    if (!twoPathSearch || !twoPathBrowse || !twoPathCombined) {
+      return null;
+    }
+
+    // If no traffic source filter, return all metrics
+    if (trafficSources.length === 0) {
+      return { search: twoPathSearch, browse: twoPathBrowse, combined: twoPathCombined };
+    }
+
+    // Filter metrics based on selected sources (instant, no recomputation)
+    const hasSearch = trafficSources.includes('App Store Search');
+    const hasBrowse = trafficSources.includes('App Store Browse');
+
+    return {
+      search: hasSearch ? twoPathSearch : null,
+      browse: hasBrowse ? twoPathBrowse : null,
+      combined: (hasSearch || hasBrowse) ? twoPathCombined : null,
+    };
+  }, [twoPathSearch, twoPathBrowse, twoPathCombined, trafficSources]);
 
   // ✅ PHASE B: Return backward-compatible API + new computed data
   return {
@@ -85,14 +136,18 @@ export function useEnterpriseAnalyticsV3(params: AnalyticsParams) {
     error,
     refetch,
 
-    // New Phase B computed data
-    twoPathMetrics: twoPathSearch && twoPathBrowse && twoPathCombined
-      ? { search: twoPathSearch, browse: twoPathBrowse, combined: twoPathCombined }
+    // Phase C: Filtered metrics (instant updates on traffic source changes)
+    twoPathMetrics: filteredMetrics && (filteredMetrics.search || filteredMetrics.browse)
+      ? {
+          search: filteredMetrics.search!,
+          browse: filteredMetrics.browse!,
+          combined: filteredMetrics.combined!,
+        }
       : null,
     derivedKpis,
 
     // Metadata
-    isHydrated: !!data,
+    isHydrated: isDataHydrated,
     isTwoPathReady: !!(twoPathSearch && twoPathBrowse),
     isDerivedKpisReady: !!derivedKpis,
   };
