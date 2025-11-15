@@ -215,20 +215,16 @@ export function useEnterpriseAnalytics({
       console.log('  Server-Side Filtering:', appIds.length > 0 ? 'Apps only' : 'None (date range only)');
 
       // [RETURN] Return processed data with traffic source metadata
+      // ✅ CRITICAL FIX: Always generate time-series client-side to ensure complete date range
+      // Server-side processed data may have sparse dates after filtering
+      // Client-side generation guarantees ALL dates in range with zero defaults
       return {
         rawData: actualData,
-        processedData: response.processed || {
-          summary: {
-            impressions: { value: 0, delta: 0 },
-            installs: { value: 0, delta: 0 },
-            downloads: { value: 0, delta: 0 },
-            product_page_views: { value: 0, delta: 0 },
-            cvr: { value: 0, delta: 0 },
-            conversion_rate: { value: 0, delta: 0 }
-          },
-          timeseries: [],
-          traffic_sources: [],
-          meta: {
+        processedData: {
+          summary: response.processed?.summary || calculateSummary(actualData),
+          timeseries: filterTimeseries(actualData, dateRange), // <-- Always use client-side generation
+          traffic_sources: response.processed?.traffic_sources || [],
+          meta: response.processed?.meta || {
             total_apps: 0,
             date_range: dateRange,
             available_traffic_sources: [],
@@ -338,26 +334,40 @@ function calculateSummary(data: BigQueryDataPoint[]): ProcessedSummary {
 
 // ✅ Helper function to recalculate timeseries from filtered data
 function filterTimeseries(data: BigQueryDataPoint[], dateRange: DateRange): ProcessedTimeSeriesPoint[] {
-  if (!data || data.length === 0) return [];
+  // Generate all dates in range first (important for ASO Intelligence Layer)
+  const allDates: string[] = [];
+  const start = new Date(dateRange.start);
+  const end = new Date(dateRange.end);
 
-  // Group by date and sum metrics
-  const grouped = data.reduce((acc: any, row: BigQueryDataPoint) => {
-    const date = row.date;
-    if (!acc[date]) {
-      acc[date] = {
-        date,
-        impressions: 0,
-        installs: 0,
-        downloads: 0,
-        product_page_views: 0
-      };
-    }
-    acc[date].impressions += row.impressions || 0;
-    acc[date].installs += row.downloads || 0;
-    acc[date].downloads += row.downloads || 0;
-    acc[date].product_page_views += row.product_page_views || 0;
-    return acc;
-  }, {});
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    allDates.push(d.toISOString().split('T')[0]);
+  }
+
+  // Initialize all dates with zero values
+  const grouped: Record<string, any> = {};
+  allDates.forEach(date => {
+    grouped[date] = {
+      date,
+      impressions: 0,
+      installs: 0,
+      downloads: 0,
+      product_page_views: 0
+    };
+  });
+
+  // Aggregate data for dates that have rows (do NOT skip zero-value rows)
+  if (data && data.length > 0) {
+    data.forEach((row: BigQueryDataPoint) => {
+      const date = row.date;
+      if (grouped[date]) {
+        // Use null-safe defaults to prevent filtering out zero values
+        grouped[date].impressions += row.impressions ?? 0;
+        grouped[date].installs += row.downloads ?? 0;
+        grouped[date].downloads += row.downloads ?? 0;
+        grouped[date].product_page_views += row.product_page_views ?? 0;
+      }
+    });
+  }
 
   // Convert to array and add calculated fields
   return Object.values(grouped).map((day: any) => ({
