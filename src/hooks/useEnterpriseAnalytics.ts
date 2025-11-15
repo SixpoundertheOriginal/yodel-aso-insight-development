@@ -107,14 +107,16 @@ export function useEnterpriseAnalytics({
 }: AnalyticsParams) {
 
   // [QUERY] Fetch data with server-side filtering for date/apps only
+  // ✅ PHASE B: Optimized cache key strategy
   const query = useQuery<EnterpriseAnalyticsResponse, Error>({
     queryKey: [
-      'enterprise-analytics',
+      'enterprise-analytics-v2', // Version bump for Phase B architecture
       organizationId,
       dateRange.start,
       dateRange.end,
-      appIds.sort().join(',')
-      // ✅ Removed trafficSources from cache key - client-side filtering only
+      appIds.sort().join(','),
+      // Note: trafficSources intentionally excluded - client-side filtering
+      // This allows instant filter changes without refetch
     ],
 
     queryFn: async () => {
@@ -237,10 +239,11 @@ export function useEnterpriseAnalytics({
     },
 
     // [QUERY CONFIG] React Query configuration
+    // ✅ PHASE B: Optimized for analytics data that updates daily
     enabled: !!organizationId && !!dateRange.start && !!dateRange.end,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 1, // Only retry once on failure
+    staleTime: 30 * 60 * 1000, // 30 minutes (was 5 min) - Analytics data updates daily
+    gcTime: 60 * 60 * 1000, // 60 minutes (was 10 min) - Keep in cache longer
+    retry: 2, // 2 retries (was 1) - More resilient for enterprise
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
   });
 

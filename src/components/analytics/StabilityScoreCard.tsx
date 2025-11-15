@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 import type { StabilityScore } from '@/utils/asoIntelligence';
@@ -7,7 +8,8 @@ interface StabilityScoreCardProps {
   stabilityScore: StabilityScore;
 }
 
-export function StabilityScoreCard({ stabilityScore }: StabilityScoreCardProps) {
+// ✅ PHASE B: Memoized to prevent unnecessary re-renders
+export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilityScore }: StabilityScoreCardProps) {
   // Handle insufficient data case
   if (stabilityScore.score === null) {
     return (
@@ -242,4 +244,4 @@ export function StabilityScoreCard({ stabilityScore }: StabilityScoreCardProps) 
       </CardContent>
     </Card>
   );
-}
+});

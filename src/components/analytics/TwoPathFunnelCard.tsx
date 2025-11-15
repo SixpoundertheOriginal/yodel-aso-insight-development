@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ interface TwoPathFunnelCardProps {
   isLoading?: boolean;
 }
 
-export function TwoPathFunnelCard({
+export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
   data = [],
   trafficSource = 'total',
   isLoading = false
@@ -243,4 +244,4 @@ export function TwoPathFunnelCard({
       )}
     </Card>
   );
-}
+});

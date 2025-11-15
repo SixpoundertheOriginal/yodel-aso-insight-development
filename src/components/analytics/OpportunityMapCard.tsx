@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Target, TrendingUp, AlertCircle } from 'lucide-react';
 import type { OpportunityCandidate } from '@/utils/asoIntelligence';
@@ -7,7 +8,8 @@ interface OpportunityMapCardProps {
   opportunities: OpportunityCandidate[];
 }
 
-export function OpportunityMapCard({ opportunities }: OpportunityMapCardProps) {
+// ✅ PHASE B: Memoized to prevent unnecessary re-renders
+export const OpportunityMapCard = memo(function OpportunityMapCard({ opportunities }: OpportunityMapCardProps) {
   // Handle no opportunities case
   if (opportunities.length === 0) {
     return (
@@ -160,4 +162,4 @@ export function OpportunityMapCard({ opportunities }: OpportunityMapCardProps) {
       </CardContent>
     </Card>
   );
-}
+});

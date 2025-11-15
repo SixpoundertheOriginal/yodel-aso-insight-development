@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
 import type { SimulationScenario } from '@/utils/asoIntelligence';
@@ -7,7 +8,7 @@ interface OutcomeSimulationCardProps {
   scenarios: SimulationScenario[];
 }
 
-export function OutcomeSimulationCard({ scenarios }: OutcomeSimulationCardProps) {
+export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scenarios }: OutcomeSimulationCardProps) {
   // Handle no scenarios case
   if (scenarios.length === 0) {
     return (
@@ -165,4 +166,4 @@ export function OutcomeSimulationCard({ scenarios }: OutcomeSimulationCardProps)
       </CardContent>
     </Card>
   );
-}
+});
