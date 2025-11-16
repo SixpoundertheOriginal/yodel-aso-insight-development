@@ -79,7 +79,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                 <Zap className="h-4 w-4 text-orange-500" />
                 <h4 className="text-sm font-semibold text-orange-400">Direct Install Path</h4>
                 <Badge variant="outline" className="ml-auto text-orange-400 border-orange-400/30">
-                  {metrics.direct_install_share.toFixed(0)}%
+                  {formatters.number.precise(metrics.direct_install_share, 0)}%
                 </Badge>
               </div>
 
@@ -113,7 +113,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                   <div className="text-right">
                     <div className="text-lg font-bold">{formatters.number.compact(metrics.direct_installs)}</div>
                     <div className="text-xs opacity-90">
-                      {metrics.direct_install_share.toFixed(0)}% of total
+                      {formatters.number.precise(metrics.direct_install_share, 0)}% of total
                     </div>
                   </div>
                 </div>
@@ -131,7 +131,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                 <MousePointer className="h-4 w-4 text-purple-500" />
                 <h4 className="text-sm font-semibold text-purple-400">PDP-Driven Install Path</h4>
                 <Badge variant="outline" className="ml-auto text-purple-400 border-purple-400/30">
-                  {metrics.pdp_install_share.toFixed(0)}%
+                  {formatters.number.precise(metrics.pdp_install_share, 0)}%
                 </Badge>
               </div>
 
@@ -151,7 +151,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
               {/* Arrow down */}
               <div className="flex items-center justify-center">
                 <div className="text-purple-500 text-xs font-semibold">
-                  ↓ Tap Through ({metrics.tap_through_rate.toFixed(1)}%)
+                  ↓ Tap Through ({formatters.number.precise(metrics.tap_through_rate, 1)}%)
                 </div>
               </div>
 
@@ -171,7 +171,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
               {/* Arrow down */}
               <div className="flex items-center justify-center">
                 <div className="text-purple-500 text-xs font-semibold">
-                  ↓ Convert ({metrics.pdp_cvr.toFixed(1)}% CVR)
+                  ↓ Convert ({formatters.number.precise(metrics.pdp_cvr, 1)}% CVR)
                 </div>
               </div>
 
@@ -183,9 +183,9 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                     <span className="font-medium text-sm">PDP Installs</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">{formatNumber(metrics.pdp_driven_installs)}</div>
+                    <div className="text-lg font-bold">{formatters.number.compact(metrics.pdp_driven_installs)}</div>
                     <div className="text-xs opacity-90">
-                      {metrics.pdp_install_share.toFixed(0)}% of total
+                      {formatters.number.precise(metrics.pdp_install_share, 0)}% of total
                     </div>
                   </div>
                 </div>
@@ -202,17 +202,17 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
           <div className="grid grid-cols-3 gap-4 mb-6 pt-6 border-t">
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Tap-Through Rate</p>
-              <p className="text-xl font-bold">{metrics.tap_through_rate.toFixed(2)}%</p>
+              <p className="text-xl font-bold">{formatters.number.precise(metrics.tap_through_rate, 2)}%</p>
               <p className="text-xs text-muted-foreground mt-1">Icon + Title</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">PDP Conversion</p>
-              <p className="text-xl font-bold">{metrics.pdp_cvr.toFixed(2)}%</p>
+              <p className="text-xl font-bold">{formatters.number.precise(metrics.pdp_cvr, 2)}%</p>
               <p className="text-xs text-muted-foreground mt-1">Creatives</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Funnel Leak</p>
-              <p className="text-xl font-bold">{metrics.funnel_leak_rate.toFixed(1)}%</p>
+              <p className="text-xl font-bold">{formatters.number.precise(metrics.funnel_leak_rate, 1)}%</p>
               <p className="text-xs text-muted-foreground mt-1">PDP Drop-off</p>
             </div>
           </div>
