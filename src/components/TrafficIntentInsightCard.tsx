@@ -1,7 +1,16 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Search, Compass, Lightbulb } from 'lucide-react';
+import { Badge, LoadingSkeleton, formatters } from '@/design-registry';
 import { generateTrafficSourceComparison } from '@/services/dashboard-narrative.service';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - LoadingSkeleton for loading states
+ * - Badge for "Best CVR" indicators
+ * - formatters.number.precise() for percentages
+ * - formatters.number.full() for download counts
+ */
 
 interface TrafficMetrics {
   impressions: number;
@@ -54,10 +63,7 @@ export function TrafficIntentInsightCard({
   if (isLoading) {
     return (
       <Card className="p-6 bg-zinc-900 border-zinc-700">
-        <div className="flex items-center gap-3">
-          <div className="h-6 w-6 rounded-full bg-zinc-800 animate-pulse" />
-          <span className="text-zinc-400">Analyzing traffic intent...</span>
-        </div>
+        <LoadingSkeleton height="h-[300px]" />
       </Card>
     );
   }
@@ -88,28 +94,28 @@ export function TrafficIntentInsightCard({
               <Search className="h-4 w-4 text-purple-400" />
               <span className="text-sm font-medium text-zinc-300">Search</span>
               {searchBetter && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-400">
+                <Badge variant="status" status="success" size="xs">
                   Best CVR
-                </span>
+                </Badge>
               )}
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-zinc-500">Traffic Share</span>
                 <span className="font-medium text-zinc-300">
-                  {searchPercent.toFixed(0)}%
+                  {formatters.number.precise(searchPercent, 0)}%
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-zinc-500">CVR</span>
                 <span className="font-medium text-purple-400">
-                  {searchMetrics.cvr.toFixed(2)}%
+                  {formatters.number.precise(searchMetrics.cvr, 2)}%
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-zinc-500">Downloads</span>
                 <span className="font-medium text-zinc-300">
-                  {searchMetrics.downloads.toLocaleString()}
+                  {formatters.number.full(searchMetrics.downloads)}
                 </span>
               </div>
             </div>
@@ -121,22 +127,22 @@ export function TrafficIntentInsightCard({
               <Compass className="h-4 w-4 text-blue-400" />
               <span className="text-sm font-medium text-zinc-300">Browse</span>
               {browseBetter && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-400">
+                <Badge variant="status" status="success" size="xs">
                   Best CVR
-                </span>
+                </Badge>
               )}
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-zinc-500">Traffic Share</span>
                 <span className="font-medium text-zinc-300">
-                  {browsePercent.toFixed(0)}%
+                  {formatters.number.precise(browsePercent, 0)}%
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-zinc-500">CVR</span>
                 <span className="font-medium text-blue-400">
-                  {browseMetrics.cvr.toFixed(2)}%
+                  {formatters.number.precise(browseMetrics.cvr, 2)}%
                 </span>
               </div>
               <div className="flex justify-between text-xs">
