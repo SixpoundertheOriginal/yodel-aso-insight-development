@@ -1,10 +1,20 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Search, Compass, TrendingUp, Lightbulb } from 'lucide-react';
+import { Badge, LoadingSkeleton, ZeroState, formatters } from '@/design-registry';
 import { cn } from '@/lib/utils';
 import type { TwoPathConversionMetrics } from '@/utils/twoPathCalculator';
 import { generateSearchBrowseDiagnostic } from '@/services/dashboard-narrative.service';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - LoadingSkeleton for loading states
+ * - ZeroState for empty states
+ * - Badge for CVR comparison indicators
+ * - formatters.number.compact() for install counts
+ * - formatters.number.precise() for percentages/CVR values
+ * - Removed inline formatNumber() function
+ */
 
 interface SearchBrowseDiagnosticCardProps {
   searchMetrics: TwoPathConversionMetrics;
@@ -22,16 +32,10 @@ export function SearchBrowseDiagnosticCard({
     return generateSearchBrowseDiagnostic(searchMetrics, browseMetrics);
   }, [searchMetrics, browseMetrics]);
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toLocaleString();
-  };
-
   if (isLoading) {
     return (
       <Card className="p-6">
-        <div className="h-[400px] animate-pulse bg-muted rounded-lg" />
+        <LoadingSkeleton height="h-[400px]" />
       </Card>
     );
   }
@@ -49,9 +53,11 @@ export function SearchBrowseDiagnosticCard({
       </div>
 
       {!hasData ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No diagnostic data available</p>
-        </div>
+        <ZeroState
+          icon={TrendingUp}
+          title="No diagnostic data available"
+          description="Select a time period with traffic data to view the Search vs Browse comparison"
+        />
       ) : (
         <>
           {/* Comparison Table */}
@@ -76,15 +82,15 @@ export function SearchBrowseDiagnosticCard({
                 <div className="text-xs text-muted-foreground">Bypass PDP</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{formatNumber(searchMetrics.direct_installs)}</div>
+                <div className="text-lg font-bold">{formatters.number.compact(searchMetrics.direct_installs)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {searchMetrics.direct_install_share.toFixed(0)}% of total
+                  {formatters.number.precise(searchMetrics.direct_install_share, 0)}% of total
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{formatNumber(browseMetrics.direct_installs)}</div>
+                <div className="text-lg font-bold">{formatters.number.compact(browseMetrics.direct_installs)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {browseMetrics.direct_install_share.toFixed(0)}% of total
+                  {formatters.number.precise(browseMetrics.direct_install_share, 0)}% of total
                 </div>
               </div>
             </div>
@@ -96,15 +102,15 @@ export function SearchBrowseDiagnosticCard({
                 <div className="text-xs text-muted-foreground">Through product page</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{formatNumber(searchMetrics.pdp_driven_installs)}</div>
+                <div className="text-lg font-bold">{formatters.number.compact(searchMetrics.pdp_driven_installs)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {searchMetrics.pdp_install_share.toFixed(0)}% of total
+                  {formatters.number.precise(searchMetrics.pdp_install_share, 0)}% of total
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{formatNumber(browseMetrics.pdp_driven_installs)}</div>
+                <div className="text-lg font-bold">{formatters.number.compact(browseMetrics.pdp_driven_installs)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {browseMetrics.pdp_install_share.toFixed(0)}% of total
+                  {formatters.number.precise(browseMetrics.pdp_install_share, 0)}% of total
                 </div>
               </div>
             </div>
@@ -118,13 +124,13 @@ export function SearchBrowseDiagnosticCard({
                     className="bg-orange-500 flex items-center justify-center text-xs font-semibold text-white"
                     style={{ width: `${searchMetrics.direct_install_share}%` }}
                   >
-                    {searchMetrics.direct_install_share > 15 && `${searchMetrics.direct_install_share.toFixed(0)}%`}
+                    {searchMetrics.direct_install_share > 15 && `${formatters.number.precise(searchMetrics.direct_install_share, 0)}%`}
                   </div>
                   <div
                     className="bg-purple-500 flex items-center justify-center text-xs font-semibold text-white"
                     style={{ width: `${searchMetrics.pdp_install_share}%` }}
                   >
-                    {searchMetrics.pdp_install_share > 15 && `${searchMetrics.pdp_install_share.toFixed(0)}%`}
+                    {searchMetrics.pdp_install_share > 15 && `${formatters.number.precise(searchMetrics.pdp_install_share, 0)}%`}
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs">
@@ -144,13 +150,13 @@ export function SearchBrowseDiagnosticCard({
                     className="bg-orange-500 flex items-center justify-center text-xs font-semibold text-white"
                     style={{ width: `${browseMetrics.direct_install_share}%` }}
                   >
-                    {browseMetrics.direct_install_share > 15 && `${browseMetrics.direct_install_share.toFixed(0)}%`}
+                    {browseMetrics.direct_install_share > 15 && `${formatters.number.precise(browseMetrics.direct_install_share, 0)}%`}
                   </div>
                   <div
                     className="bg-purple-500 flex items-center justify-center text-xs font-semibold text-white"
                     style={{ width: `${browseMetrics.pdp_install_share}%` }}
                   >
-                    {browseMetrics.pdp_install_share > 15 && `${browseMetrics.pdp_install_share.toFixed(0)}%`}
+                    {browseMetrics.pdp_install_share > 15 && `${formatters.number.precise(browseMetrics.pdp_install_share, 0)}%`}
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs">
@@ -176,14 +182,14 @@ export function SearchBrowseDiagnosticCard({
                 <Badge variant={searchMetrics.total_cvr > browseMetrics.total_cvr ? 'default' : 'secondary'} className={cn(
                   searchMetrics.total_cvr > browseMetrics.total_cvr ? 'bg-green-600' : ''
                 )}>
-                  {searchMetrics.total_cvr.toFixed(2)}%
+                  {formatters.number.precise(searchMetrics.total_cvr, 2)}%
                 </Badge>
               </div>
               <div className="text-center">
                 <Badge variant={browseMetrics.total_cvr > searchMetrics.total_cvr ? 'default' : 'secondary'} className={cn(
                   browseMetrics.total_cvr > searchMetrics.total_cvr ? 'bg-green-600' : ''
                 )}>
-                  {browseMetrics.total_cvr.toFixed(2)}%
+                  {formatters.number.precise(browseMetrics.total_cvr, 2)}%
                 </Badge>
               </div>
             </div>
@@ -195,10 +201,10 @@ export function SearchBrowseDiagnosticCard({
                 <div className="text-xs text-muted-foreground">GET button only</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-orange-400">{searchMetrics.direct_cvr.toFixed(2)}%</div>
+                <div className="text-lg font-bold text-orange-400">{formatters.number.precise(searchMetrics.direct_cvr, 2)}%</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-orange-400">{browseMetrics.direct_cvr.toFixed(2)}%</div>
+                <div className="text-lg font-bold text-orange-400">{formatters.number.precise(browseMetrics.direct_cvr, 2)}%</div>
               </div>
             </div>
 
@@ -209,10 +215,10 @@ export function SearchBrowseDiagnosticCard({
                 <div className="text-xs text-muted-foreground">Product page → Install</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-purple-400">{searchMetrics.pdp_cvr.toFixed(2)}%</div>
+                <div className="text-lg font-bold text-purple-400">{formatters.number.precise(searchMetrics.pdp_cvr, 2)}%</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-purple-400">{browseMetrics.pdp_cvr.toFixed(2)}%</div>
+                <div className="text-lg font-bold text-purple-400">{formatters.number.precise(browseMetrics.pdp_cvr, 2)}%</div>
               </div>
             </div>
           </div>
