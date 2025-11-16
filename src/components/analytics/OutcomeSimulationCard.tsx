@@ -1,8 +1,17 @@
 import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, TrendingUp, ArrowRight } from 'lucide-react';
+import { Badge, ZeroState, DeltaChip, formatters } from '@/design-registry';
 import type { SimulationScenario } from '@/utils/asoIntelligence';
 import { cn } from '@/lib/utils';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - ZeroState for empty state display
+ * - Badge for confidence indicators
+ * - DeltaChip for impact percentages
+ * - formatters.number.precise() and formatters.number.full() for value formatting
+ */
 
 interface OutcomeSimulationCardProps {
   scenarios: SimulationScenario[];
@@ -21,11 +30,11 @@ export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scena
           <CardDescription>Impact projections for targeted improvements</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-            <Sparkles className="h-12 w-12 mb-4 opacity-50" />
-            <p className="text-sm text-center">No scenarios available</p>
-            <p className="text-xs text-zinc-500 mt-2">Insufficient data for projections</p>
-          </div>
+          <ZeroState
+            icon={Sparkles}
+            title="No scenarios available"
+            description="Insufficient data for projections"
+          />
         </CardContent>
       </Card>
     );
@@ -71,7 +80,7 @@ export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scena
       <CardContent className="space-y-4">
         {scenarios.map((scenario, index) => {
           const colors = confidenceColors[scenario.confidence];
-          const impactPercentage = ((scenario.estimatedImpact.delta / scenario.estimatedImpact.currentValue) * 100).toFixed(1);
+          const impactPercentage = (scenario.estimatedImpact.delta / scenario.estimatedImpact.currentValue) * 100;
 
           return (
             <div
@@ -91,9 +100,9 @@ export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scena
                     <p className="text-xs text-zinc-400 mt-0.5">{scenario.description}</p>
                   </div>
                 </div>
-                <div className={cn('px-2 py-1 rounded text-xs font-medium border', colors.badge)}>
+                <Badge variant="status" status={scenario.confidence === 'high' ? 'success' : scenario.confidence === 'medium' ? 'warning' : 'default'}>
                   {scenario.confidence.toUpperCase()}
-                </div>
+                </Badge>
               </div>
 
               {/* Improvement Detail */}
@@ -107,11 +116,11 @@ export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scena
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-lg font-bold text-zinc-400">
-                    {scenario.improvement.currentValue.toFixed(1)}%
+                    {formatters.number.precise(scenario.improvement.currentValue, 1)}%
                   </span>
                   <ArrowRight className="h-4 w-4 text-yodel-orange" />
                   <span className="text-lg font-bold text-yodel-orange">
-                    {scenario.improvement.improvedValue.toFixed(1)}%
+                    {formatters.number.precise(scenario.improvement.improvedValue, 1)}%
                   </span>
                   <span className="text-xs text-zinc-500">({scenario.improvement.change})</span>
                 </div>
@@ -126,18 +135,15 @@ export const OutcomeSimulationCard = memo(function OutcomeSimulationCard({ scena
                     <ArrowRight className="h-3 w-3 text-zinc-600" />
                     <span className="text-sm text-zinc-400">Projected</span>
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <TrendingUp className="h-4 w-4 text-green-400" />
-                    <span className="text-sm font-medium text-green-400">+{impactPercentage}%</span>
-                  </div>
+                  <DeltaChip value={impactPercentage} format="percentage" size="sm" />
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-bold text-zinc-300">
-                    {scenario.estimatedImpact.currentValue.toLocaleString()}
+                    {formatters.number.full(scenario.estimatedImpact.currentValue)}
                   </span>
                   <ArrowRight className="h-5 w-5 text-yodel-orange" />
                   <span className="text-2xl font-bold text-yodel-orange">
-                    {scenario.estimatedImpact.projectedValue.toLocaleString()}
+                    {formatters.number.full(scenario.estimatedImpact.projectedValue)}
                   </span>
                 </div>
                 <div className="mt-2 p-2 bg-green-500/10 border border-green-500/20 rounded">

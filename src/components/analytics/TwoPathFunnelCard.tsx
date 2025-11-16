@@ -1,11 +1,20 @@
 import { memo } from 'react';
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, LoadingSkeleton, ZeroState, formatters } from '@/design-registry';
 import { Eye, Download, MousePointer, Zap, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateTwoPathMetricsFromData } from '@/utils/twoPathCalculator';
 import { generateTwoPathAnalysis } from '@/services/dashboard-narrative.service';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - Badge for install share indicators
+ * - LoadingSkeleton for loading states
+ * - ZeroState for empty states
+ * - formatters.number.compact() and formatters.number.precise() for all formatting
+ * - Removed inline formatNumber() function
+ */
 
 interface TwoPathFunnelCardProps {
   data: any[];
@@ -30,16 +39,10 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
     return generateTwoPathAnalysis(metrics, trafficSource === 'total' ? 'search' : trafficSource);
   }, [metrics, trafficSource]);
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toLocaleString();
-  };
-
   if (isLoading) {
     return (
       <Card className="p-6">
-        <div className="h-[500px] animate-pulse bg-muted rounded-lg" />
+        <LoadingSkeleton height="h-[500px]" />
       </Card>
     );
   }
@@ -56,7 +59,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
         </div>
         {hasData && (
           <Badge variant="secondary" className="text-green-600">
-            {metrics.total_cvr.toFixed(2)}% Total CVR
+            {formatters.number.precise(metrics.total_cvr, 2)}% Total CVR
           </Badge>
         )}
       </div>
@@ -88,7 +91,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                     <span className="font-medium text-sm">Impressions</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">{formatNumber(metrics.impressions)}</div>
+                    <div className="text-lg font-bold">{formatters.number.compact(metrics.impressions)}</div>
                   </div>
                 </div>
               </div>
@@ -96,7 +99,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
               {/* Arrow down */}
               <div className="flex items-center justify-center">
                 <div className="text-orange-500 text-xs font-semibold">
-                  ↓ GET Button ({metrics.direct_cvr.toFixed(2)}% CVR)
+                  ↓ GET Button ({formatters.number.precise(metrics.direct_cvr, 2)}% CVR)
                 </div>
               </div>
 
@@ -108,7 +111,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                     <span className="font-medium text-sm">Direct Installs</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">{formatNumber(metrics.direct_installs)}</div>
+                    <div className="text-lg font-bold">{formatters.number.compact(metrics.direct_installs)}</div>
                     <div className="text-xs opacity-90">
                       {metrics.direct_install_share.toFixed(0)}% of total
                     </div>
@@ -140,7 +143,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                     <span className="font-medium text-sm">Impressions</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">{formatNumber(metrics.impressions)}</div>
+                    <div className="text-lg font-bold">{formatters.number.compact(metrics.impressions)}</div>
                   </div>
                 </div>
               </div>
@@ -160,7 +163,7 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
                     <span className="font-medium text-sm">Product Page Views</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">{formatNumber(metrics.product_page_views)}</div>
+                    <div className="text-lg font-bold">{formatters.number.compact(metrics.product_page_views)}</div>
                   </div>
                 </div>
               </div>

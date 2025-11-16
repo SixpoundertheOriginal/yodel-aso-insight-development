@@ -1,8 +1,16 @@
 import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Target, TrendingUp, AlertCircle } from 'lucide-react';
+import { Target, TrendingUp } from 'lucide-react';
+import { Badge, ZeroState, formatters } from '@/design-registry';
 import type { OpportunityCandidate } from '@/utils/asoIntelligence';
 import { cn } from '@/lib/utils';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - ZeroState for empty state display
+ * - Badge for priority indicators
+ * - formatters.number.precise() for score/gap/value formatting
+ */
 
 interface OpportunityMapCardProps {
   opportunities: OpportunityCandidate[];
@@ -22,11 +30,12 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
           <CardDescription>Prioritized optimization recommendations</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-            <TrendingUp className="h-12 w-12 mb-4 opacity-50 text-green-500" />
-            <p className="text-sm font-medium text-green-400">Excellent Performance!</p>
-            <p className="text-xs text-zinc-500 mt-2">No high-priority optimization opportunities identified</p>
-          </div>
+          <ZeroState
+            icon={TrendingUp}
+            title="Excellent Performance!"
+            description="No high-priority optimization opportunities identified"
+            variant="success"
+          />
         </CardContent>
       </Card>
     );
@@ -91,9 +100,9 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
                     <p className="text-xs text-zinc-400 mt-0.5">{opp.message}</p>
                   </div>
                 </div>
-                <div className={cn('px-2 py-1 rounded text-xs font-medium border', colors.badge)}>
+                <Badge variant="priority" priority={opp.priority}>
                   {opp.priority.toUpperCase()}
-                </div>
+                </Badge>
               </div>
 
               {/* Score and Gap */}
@@ -102,7 +111,7 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
                   <p className="text-xs text-zinc-400 mb-1">Opportunity Score</p>
                   <div className="flex items-baseline gap-2">
                     <span className={cn('text-2xl font-bold', colors.text)}>
-                      {opp.score.toFixed(0)}
+                      {formatters.number.precise(opp.score, 0)}
                     </span>
                     <span className="text-sm text-zinc-500">/100</span>
                   </div>
@@ -111,7 +120,7 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
                   <p className="text-xs text-zinc-400 mb-1">Performance Gap</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-zinc-300">
-                      {Math.abs(opp.gap).toFixed(1)}
+                      {formatters.number.precise(Math.abs(opp.gap), 1)}
                       {opp.category.includes('%') || opp.category.includes('Rate') || opp.category.includes('Share') ? '%' : ''}
                     </span>
                     <span className="text-sm text-zinc-500">behind</span>
@@ -124,7 +133,7 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-400">Current</span>
                   <span className="text-zinc-300 font-medium">
-                    {opp.currentValue.toFixed(1)}
+                    {formatters.number.precise(opp.currentValue, 1)}
                     {opp.category.includes('%') || opp.category.includes('Rate') || opp.category.includes('Share') ? '%' : ''}
                   </span>
                 </div>
@@ -137,7 +146,7 @@ export const OpportunityMapCard = memo(function OpportunityMapCard({ opportuniti
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-400">Benchmark</span>
                   <span className={cn('font-medium', colors.text)}>
-                    {opp.benchmark.toFixed(1)}
+                    {formatters.number.precise(opp.benchmark, 1)}
                     {opp.category.includes('%') || opp.category.includes('Rate') || opp.category.includes('Share') ? '%' : ''}
                   </span>
                 </div>
