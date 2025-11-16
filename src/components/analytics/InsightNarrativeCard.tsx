@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Lightbulb, Sparkles } from 'lucide-react';
+import { LoadingSkeleton, ZeroState } from '@/design-registry';
 import type { TwoPathConversionMetrics, DerivedKPIs } from '@/utils/twoPathCalculator';
 import { generateDerivedKpiInsights } from '@/services/dashboard-narrative.service';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - LoadingSkeleton for loading states
+ * - ZeroState for empty states (analyzing metrics)
+ */
 
 interface InsightNarrativeCardProps {
   searchMetrics: TwoPathConversionMetrics;
@@ -24,8 +31,8 @@ export function InsightNarrativeCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6">
-        <div className="h-[200px] animate-pulse bg-muted rounded-lg" />
+      <Card className="p-6 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 border-blue-500/20">
+        <LoadingSkeleton height="h-[200px]" />
       </Card>
     );
   }
@@ -46,9 +53,11 @@ export function InsightNarrativeCard({
       </div>
 
       {!hasInsights ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">Analyzing performance metrics...</p>
-        </div>
+        <ZeroState
+          icon={Sparkles}
+          title="Analyzing performance metrics"
+          description="Insights will appear once data is processed"
+        />
       ) : (
         <div className="space-y-3">
           {insights.map((insight, idx) => (
