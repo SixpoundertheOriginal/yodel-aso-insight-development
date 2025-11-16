@@ -48,7 +48,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Search/Browse Ratio',
       value: derivedKpis.search_browse_ratio,
-      format: (v: number) => v >= 999 ? '∞' : formatters.number.ratio(v),
+      format: (v: number) => formatters.ratio(v),
       icon: Scale,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
