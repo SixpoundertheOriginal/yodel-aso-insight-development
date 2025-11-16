@@ -6,7 +6,7 @@ import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp as TrendingUpIcon, RefreshCw, Activity, BarChart3 } from 'lucide-react';
+import { Loader2, TrendingUp as TrendingUpIcon, RefreshCw, Activity, BarChart3, MessageSquare } from 'lucide-react';
 import { MainLayout } from '@/layouts';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { CompactAppSelector } from '@/components/CompactAppSelector';
@@ -16,6 +16,8 @@ import { TotalMetricCard } from '@/components/TotalMetricCard';
 import { ExecutiveSummaryCard } from '@/components/ExecutiveSummaryCard';
 import { TrafficIntentInsightCard } from '@/components/TrafficIntentInsightCard';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { DashboardAiChat } from '@/components/DashboardAiChat';
 import { cn } from '@/lib/utils';
 import { format, subDays, parseISO } from 'date-fns';
 import { KpiTrendChart } from '@/components/analytics/KpiTrendChart';
@@ -69,6 +71,9 @@ export default function ReportingDashboardV2() {
 
   // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
   const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
+
+  // ✅ AI CHAT: Track chat panel open state
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
@@ -692,6 +697,32 @@ export default function ReportingDashboardV2() {
             </Card>
           )}
       </div>
+
+      {/* ✅ AI DASHBOARD CHAT: Floating button + slide-over panel */}
+      <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <SheetTrigger asChild>
+          <Button
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg bg-yodel-orange hover:bg-yodel-orange/90"
+            size="icon"
+          >
+            <MessageSquare className="h-6 w-6" />
+            <span className="sr-only">Open AI Chat</span>
+          </Button>
+        </SheetTrigger>
+
+        <SheetContent
+          side="right"
+          className="w-[600px] p-0 flex flex-col"
+        >
+          <DashboardAiChat
+            organizationId={organizationId || ''}
+            dateRange={dateRange}
+            selectedAppIds={selectedAppIds}
+            selectedTrafficSources={selectedTrafficSources}
+            analyticsData={data}
+          />
+        </SheetContent>
+      </Sheet>
     </MainLayout>
   );
 }
