@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, LoadingSkeleton, formatters } from '@/design-registry';
 import {
   Scale,
   Eye,
@@ -18,6 +18,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - LoadingSkeleton for loading states
+ * - formatters for number/percentage formatting
+ * - Badge from design registry (semantic variants)
+ */
+
 interface DerivedKpiGridProps {
   derivedKpis: DerivedKPIs;
   isLoading?: boolean;
@@ -30,7 +37,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="p-4">
-            <div className="h-20 animate-pulse bg-muted rounded-lg" />
+            <LoadingSkeleton height="h-20" />
           </Card>
         ))}
       </div>
@@ -41,7 +48,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Search/Browse Ratio',
       value: derivedKpis.search_browse_ratio,
-      format: (v: number) => v >= 999 ? '∞' : `${v.toFixed(1)}:1`,
+      format: (v: number) => v >= 999 ? '∞' : formatters.number.ratio(v),
       icon: Scale,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
@@ -56,7 +63,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'First Impression Effectiveness',
       value: derivedKpis.first_impression_effectiveness,
-      format: (v: number) => `${v.toFixed(1)}%`,
+      format: (v: number) => formatters.percentage.standard(v, 1),
       icon: Eye,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
@@ -71,7 +78,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Metadata Strength',
       value: derivedKpis.metadata_strength,
-      format: (v: number) => v.toFixed(2),
+      format: (v: number) => formatters.number.precise(v, 2),
       icon: Award,
       color: 'text-green-400',
       bgColor: 'bg-green-500/10',
@@ -86,7 +93,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Creative Strength',
       value: derivedKpis.creative_strength,
-      format: (v: number) => v.toFixed(2),
+      format: (v: number) => formatters.number.precise(v, 2),
       icon: Palette,
       color: 'text-pink-400',
       bgColor: 'bg-pink-500/10',
@@ -101,7 +108,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Funnel Leak Rate',
       value: derivedKpis.funnel_leak_rate,
-      format: (v: number) => `${v.toFixed(1)}%`,
+      format: (v: number) => formatters.percentage.standard(v, 1),
       icon: TrendingDown,
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/10',
@@ -117,7 +124,7 @@ export function DerivedKpiGrid({ derivedKpis, isLoading = false }: DerivedKpiGri
     {
       label: 'Direct Install Propensity',
       value: derivedKpis.direct_install_propensity,
-      format: (v: number) => `${v.toFixed(1)}%`,
+      format: (v: number) => formatters.percentage.standard(v, 1),
       icon: Zap,
       color: 'text-yellow-400',
       bgColor: 'bg-yellow-500/10',

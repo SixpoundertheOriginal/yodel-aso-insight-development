@@ -1,9 +1,14 @@
 /**
  * Dashboard Narrative Service
  *
+ * MIGRATION NOTE: Now uses Design Registry formatters for consistent number/percentage formatting.
+ *
  * Template-based narrative generation for analytics dashboard
  * No AI/OpenAI dependency - fast, deterministic, cost-free
  */
+
+import { formatters } from '@/design-registry';
+import type { TwoPathConversionMetrics, DerivedKPIs } from '@/utils/twoPathCalculator';
 
 interface DashboardMetrics {
   impressions: number;
@@ -26,25 +31,9 @@ interface MetricsDelta {
 }
 
 /**
- * Format large numbers with K/M suffixes
+ * MIGRATION NOTE: formatNumber() and formatPercentChange() removed.
+ * Now using Design Registry formatters.number.compact() and formatters.percentage.delta().
  */
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toLocaleString();
-}
-
-/**
- * Format percentage change with + or - sign
- */
-function formatPercentChange(value: number): string {
-  const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(1)}%`;
-}
 
 /**
  * Determine trend descriptor based on percentage change
@@ -73,10 +62,10 @@ export function generateDashboardSummary(
 ): string {
   const { impressions, downloads, cvr } = currentMetrics;
 
-  // Format primary metrics
-  const impressionsFormatted = formatNumber(impressions);
-  const downloadsFormatted = formatNumber(downloads);
-  const cvrFormatted = cvr.toFixed(2);
+  // Format primary metrics using Design Registry formatters
+  const impressionsFormatted = formatters.number.compact(impressions);
+  const downloadsFormatted = formatters.number.compact(downloads);
+  const cvrFormatted = formatters.percentage.standard(cvr, 2);
 
   // Find dominant traffic source
   const sortedSources = [...trafficSources]
@@ -90,7 +79,7 @@ export function generateDashboardSummary(
                            'organic traffic';
 
   // Build base narrative
-  let narrative = `Your app generated ${impressionsFormatted} impressions this period, resulting in ${downloadsFormatted} downloads at a ${cvrFormatted}% conversion rate.`;
+  let narrative = `Your app generated ${impressionsFormatted} impressions this period, resulting in ${downloadsFormatted} downloads at a ${cvrFormatted} conversion rate.`;
 
   // Add traffic source insight
   if (primarySource && parseFloat(primaryPercent) > 0) {
@@ -104,12 +93,12 @@ export function generateDashboardSummary(
 
     if (Math.abs(delta.impressions) >= 5 || Math.abs(delta.downloads) >= 5) {
       const trendClause = delta.impressions > 5 && delta.downloads > 5
-        ? `with both impressions (${formatPercentChange(delta.impressions)}) and downloads (${formatPercentChange(delta.downloads)}) showing positive momentum`
+        ? `with both impressions (${formatters.percentage.delta(delta.impressions)}) and downloads (${formatters.percentage.delta(delta.downloads)}) showing positive momentum`
         : delta.impressions < -5 && delta.downloads < -5
-          ? `with both impressions (${formatPercentChange(delta.impressions)}) and downloads (${formatPercentChange(delta.downloads)}) declining`
+          ? `with both impressions (${formatters.percentage.delta(delta.impressions)}) and downloads (${formatters.percentage.delta(delta.downloads)}) declining`
           : delta.impressions > delta.downloads
-            ? `driven by impressions growth (${formatPercentChange(delta.impressions)})`
-            : `with downloads growth (${formatPercentChange(delta.downloads)}) outpacing impressions`;
+            ? `driven by impressions growth (${formatters.percentage.delta(delta.impressions)})`
+            : `with downloads growth (${formatters.percentage.delta(delta.downloads)}) outpacing impressions`;
 
       narrative += ` Performance ${impressionsTrend} compared to the previous period, ${trendClause}.`;
     }
@@ -254,10 +243,203 @@ export function generateAnomalyExplanation(
   return explanation;
 }
 
+/**
+ * Generate two-path conversion analysis narrative
+ */
+export function generateTwoPathAnalysis(
+  metrics: TwoPathConversionMetrics,
+  trafficSource: 'search' | 'browse'
+): { narrative: string; insights: string[] } {
+
+  const insights: string[] = [];
+
+  // Main narrative
+  const totalCvrFormatted = metrics.total_cvr.toFixed(2);
+  const pdpShareFormatted = metrics.pdp_install_share.toFixed(0);
+  const directShareFormatted = metrics.direct_install_share.toFixed(0);
+
+  let narrative = `${trafficSource === 'search' ? 'Search' : 'Browse'} traffic shows ${totalCvrFormatted}% total conversion. `;
+
+  // Install path breakdown
+  if (metrics.direct_install_share > 5) {
+    narrative += `${directShareFormatted}% of installs bypass the product page (direct GET button), while ${pdpShareFormatted}% come through the product page.`;
+  } else {
+    narrative += `Nearly all installs (${pdpShareFormatted}%) come through the product page.`;
+  }
+
+  // Add insights based on metrics
+
+  // High direct install share (Search behavior)
+  if (trafficSource === 'search' && metrics.direct_install_share > 30) {
+    insights.push(
+      `High direct install rate (${directShareFormatted}%) indicates strong keyword intent. Users know what they want and install immediately without viewing screenshots.`
+    );
+  }
+
+  // Low tap-through rate
+  if (metrics.tap_through_rate < 20) {
+    insights.push(
+      `Low tap-through rate (${metrics.tap_through_rate.toFixed(1)}%) suggests icon or title need optimization. Most users scroll past without engaging.`
+    );
+  }
+
+  // High funnel leak
+  if (metrics.funnel_leak_rate > 70) {
+    insights.push(
+      `${metrics.funnel_leak_rate.toFixed(0)}% of product page visitors don't install. Review screenshots, video preview, and description to reduce drop-off.`
+    );
+  }
+
+  // Strong PDP conversion
+  if (metrics.pdp_cvr > 40 && metrics.product_page_views > 0) {
+    insights.push(
+      `Strong product page conversion (${metrics.pdp_cvr.toFixed(1)}%) indicates effective creative assets. Your screenshots and video are compelling.`
+    );
+  }
+
+  return { narrative, insights };
+}
+
+/**
+ * Generate Search vs Browse diagnostic narrative
+ */
+export function generateSearchBrowseDiagnostic(
+  searchMetrics: TwoPathConversionMetrics,
+  browseMetrics: TwoPathConversionMetrics
+): string[] {
+
+  const insights: string[] = [];
+
+  // 1. Direct install analysis
+  if (searchMetrics.direct_install_share > 30) {
+    insights.push(
+      `High Search direct install rate (${searchMetrics.direct_install_share.toFixed(0)}%) indicates strong keyword intent. Users install from search results without viewing the product page.`
+    );
+  }
+
+  // 2. CVR comparison with context
+  const cvrRatio = searchMetrics.total_cvr / browseMetrics.total_cvr;
+  if (searchMetrics.total_cvr > browseMetrics.total_cvr * 1.5) {
+    insights.push(
+      `Search CVR (${searchMetrics.total_cvr.toFixed(1)}%) appears ${cvrRatio.toFixed(1)}x higher than Browse (${browseMetrics.total_cvr.toFixed(1)}%) due to direct installs bypassing the traditional funnel. This is normal App Store behavior for high-intent searches.`
+    );
+  }
+
+  // 3. Browse creative dependency
+  if (browseMetrics.pdp_install_share > 90) {
+    insights.push(
+      `Browse traffic is ${browseMetrics.pdp_install_share.toFixed(0)}% PDP-dependent, meaning creative assets (screenshots, preview video) are critical for conversion. Icon and title alone don't drive Browse installs.`
+    );
+  }
+
+  // 4. Funnel leakage comparison
+  const searchLeakRate = searchMetrics.funnel_leak_rate;
+  const browseLeakRate = browseMetrics.funnel_leak_rate;
+
+  if (browseLeakRate > searchLeakRate * 1.5 && browseMetrics.product_page_views > 100) {
+    insights.push(
+      `Browse has ${browseLeakRate.toFixed(0)}% funnel leak vs ${searchLeakRate.toFixed(0)}% for Search. Product page creative needs optimization to match Search performance.`
+    );
+  }
+
+  // 5. Growth driver identification
+  const totalDownloads = searchMetrics.downloads + browseMetrics.downloads;
+  const searchInstallShare = totalDownloads > 0
+    ? (searchMetrics.downloads / totalDownloads) * 100
+    : 0;
+
+  if (searchInstallShare > 70) {
+    insights.push(
+      `Growth is metadata-driven (${searchInstallShare.toFixed(0)}% Search installs). Focus on keyword optimization, search ads, and improving search relevance to scale acquisition.`
+    );
+  } else if (searchInstallShare < 40) {
+    insights.push(
+      `Growth is creative-driven (${(100 - searchInstallShare).toFixed(0)}% Browse installs). Invest in featuring opportunities, category optimization, and visual asset testing.`
+    );
+  } else {
+    insights.push(
+      `Balanced growth model (${searchInstallShare.toFixed(0)}% Search, ${(100 - searchInstallShare).toFixed(0)}% Browse). Maintain optimization across both channels to sustain momentum.`
+    );
+  }
+
+  return insights;
+}
+
+/**
+ * Generate derived KPI insights
+ */
+export function generateDerivedKpiInsights(
+  derivedKpis: DerivedKPIs,
+  searchMetrics: TwoPathConversionMetrics,
+  browseMetrics: TwoPathConversionMetrics
+): string[] {
+
+  const insights: string[] = [];
+
+  // Search/Browse Ratio interpretation
+  const sbr = derivedKpis.search_browse_ratio;
+  if (sbr > 3) {
+    insights.push(
+      `Search/Browse Ratio of ${sbr.toFixed(1)}:1 indicates strong metadata-driven discovery. Your app ranks well for relevant search terms.`
+    );
+  } else if (sbr < 0.5) {
+    insights.push(
+      `Search/Browse Ratio of ${sbr.toFixed(1)}:1 shows creative-driven growth. You're being featured or have strong category visibility.`
+    );
+  }
+
+  // First Impression Effectiveness
+  const fie = derivedKpis.first_impression_effectiveness;
+  if (fie < 15) {
+    insights.push(
+      `First Impression Effectiveness (${fie.toFixed(1)}%) is low. Test new icon variants and title copy to improve tap-through from impressions.`
+    );
+  } else if (fie > 30) {
+    insights.push(
+      `First Impression Effectiveness (${fie.toFixed(1)}%) is strong. Your icon and title effectively drive product page visits.`
+    );
+  }
+
+  // Metadata vs Creative Strength comparison
+  const metadataStr = derivedKpis.metadata_strength;
+  const creativeStr = derivedKpis.creative_strength;
+
+  if (metadataStr > creativeStr * 1.5) {
+    insights.push(
+      `Metadata Strength (${metadataStr.toFixed(1)}) significantly exceeds Creative Strength (${creativeStr.toFixed(1)}). Your keywords perform well, but creative assets need improvement.`
+    );
+  } else if (creativeStr > metadataStr * 1.5) {
+    insights.push(
+      `Creative Strength (${creativeStr.toFixed(1)}) exceeds Metadata Strength (${metadataStr.toFixed(1)}). Focus on keyword optimization to match your strong visual assets.`
+    );
+  }
+
+  // Direct Install Propensity
+  const dip = derivedKpis.direct_install_propensity;
+  if (dip > 40) {
+    insights.push(
+      `${dip.toFixed(0)}% of Search users install directly without viewing the product page. This signals high brand recognition or strong keyword-app fit.`
+    );
+  }
+
+  // Funnel Leak Rate
+  const flr = derivedKpis.funnel_leak_rate;
+  if (flr > 75) {
+    insights.push(
+      `${flr.toFixed(0)}% of product page visitors leave without installing. Audit your first 3 screenshots and preview video for clarity and value communication.`
+    );
+  }
+
+  return insights;
+}
+
 export default {
   generateDashboardSummary,
   generateCvrInsight,
   generateTrafficSourceComparison,
   generateFunnelAnalysis,
   generateAnomalyExplanation,
+  generateTwoPathAnalysis,
+  generateSearchBrowseDiagnostic,
+  generateDerivedKpiInsights,
 };

@@ -1,8 +1,16 @@
 import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
+import { Badge, formatters, ZeroState } from '@/design-registry';
 import type { StabilityScore } from '@/utils/asoIntelligence';
 import { cn } from '@/lib/utils';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry primitives:
+ * - Badge for score display with semantic variants
+ * - ZeroState for insufficient data case
+ * - formatters.number.precise() for CV values
+ */
 
 interface StabilityScoreCardProps {
   stabilityScore: StabilityScore;
@@ -24,11 +32,11 @@ export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilitySc
           <CardDescription>Measures volatility across key performance metrics</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-            <Activity className="h-12 w-12 mb-4 opacity-50" />
-            <p className="text-sm text-center">{stabilityScore.message}</p>
-            <p className="text-xs text-zinc-500 mt-2">Need at least 7 days for analysis</p>
-          </div>
+          <ZeroState
+            icon={Activity}
+            title={stabilityScore.message}
+            description="Need at least 7 days for analysis"
+          />
         </CardContent>
       </Card>
     );
@@ -123,7 +131,7 @@ export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilitySc
                     style={{ width: `${stabilityScore.breakdown.impressions.score}%` }}
                   />
                 </div>
-                <p className="text-xs text-zinc-500">CV: {stabilityScore.breakdown.impressions.cv.toFixed(3)}</p>
+                <p className="text-xs text-zinc-500">CV: {formatters.number.precise(stabilityScore.breakdown.impressions.cv, 3)}</p>
               </div>
 
               {/* Downloads */}
@@ -150,7 +158,7 @@ export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilitySc
                     style={{ width: `${stabilityScore.breakdown.downloads.score}%` }}
                   />
                 </div>
-                <p className="text-xs text-zinc-500">CV: {stabilityScore.breakdown.downloads.cv.toFixed(3)}</p>
+                <p className="text-xs text-zinc-500">CV: {formatters.number.precise(stabilityScore.breakdown.downloads.cv, 3)}</p>
               </div>
 
               {/* CVR */}
@@ -177,7 +185,7 @@ export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilitySc
                     style={{ width: `${stabilityScore.breakdown.cvr.score}%` }}
                   />
                 </div>
-                <p className="text-xs text-zinc-500">CV: {stabilityScore.breakdown.cvr.cv.toFixed(3)}</p>
+                <p className="text-xs text-zinc-500">CV: {formatters.number.precise(stabilityScore.breakdown.cvr.cv, 3)}</p>
               </div>
 
               {/* Direct Share */}
@@ -204,7 +212,7 @@ export const StabilityScoreCard = memo(function StabilityScoreCard({ stabilitySc
                     style={{ width: `${stabilityScore.breakdown.directShare.score}%` }}
                   />
                 </div>
-                <p className="text-xs text-zinc-500">CV: {stabilityScore.breakdown.directShare.cv.toFixed(3)}</p>
+                <p className="text-xs text-zinc-500">CV: {formatters.number.precise(stabilityScore.breakdown.directShare.cv, 3)}</p>
               </div>
             </div>
           )}

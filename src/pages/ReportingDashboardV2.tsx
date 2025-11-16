@@ -22,6 +22,20 @@ import { KpiTrendChart } from '@/components/analytics/KpiTrendChart';
 import { TrafficSourceComparisonChart } from '@/components/analytics/TrafficSourceComparisonChart';
 import { ConversionFunnelChart } from '@/components/analytics/ConversionFunnelChart';
 import { MFAGracePeriodBanner } from '@/components/Auth/MFAGracePeriodBanner';
+import { TwoPathFunnelCard } from '@/components/analytics/TwoPathFunnelCard';
+import { SearchBrowseDiagnosticCard } from '@/components/analytics/SearchBrowseDiagnosticCard';
+import { DerivedKpiGrid } from '@/components/analytics/DerivedKpiGrid';
+import { InsightNarrativeCard } from '@/components/analytics/InsightNarrativeCard';
+import { StabilityScoreCard } from '@/components/analytics/StabilityScoreCard';
+import { OpportunityMapCard } from '@/components/analytics/OpportunityMapCard';
+import { OutcomeSimulationCard } from '@/components/analytics/OutcomeSimulationCard';
+import { calculateTwoPathMetricsFromData, calculateDerivedKPIs } from '@/utils/twoPathCalculator';
+import {
+  calculateStabilityScore,
+  calculateOpportunityMap,
+  simulateOutcomes,
+  type TimeSeriesPoint
+} from '@/utils/asoIntelligence';
 
 /**
  * PRODUCTION-READY DASHBOARD V2
@@ -213,6 +227,79 @@ export default function ReportingDashboardV2() {
       cvr
     };
   }, [data?.rawData]);
+
+  // ✅ CALCULATE TWO-PATH METRICS: Extract Search & Browse two-path conversion data
+  const twoPathMetrics = useMemo(() => {
+    if (!data?.rawData) {
+      return null;
+    }
+
+    const searchData = data.rawData.filter((row: any) =>
+      row.traffic_source === 'App_Store_Search'
+    );
+    const browseData = data.rawData.filter((row: any) =>
+      row.traffic_source === 'App_Store_Browse'
+    );
+
+    const searchMetrics = calculateTwoPathMetricsFromData(searchData);
+    const browseMetrics = calculateTwoPathMetricsFromData(browseData);
+
+    console.log('📊 [TWO-PATH] Calculated:', {
+      search: {
+        direct: searchMetrics.direct_installs,
+        pdp: searchMetrics.pdp_driven_installs,
+        directShare: searchMetrics.direct_install_share.toFixed(1) + '%'
+      },
+      browse: {
+        direct: browseMetrics.direct_installs,
+        pdp: browseMetrics.pdp_driven_installs,
+        directShare: browseMetrics.direct_install_share.toFixed(1) + '%'
+      }
+    });
+
+    return { search: searchMetrics, browse: browseMetrics };
+  }, [data?.rawData]);
+
+  // ✅ CALCULATE DERIVED KPIs: Business intelligence metrics
+  const derivedKpis = useMemo(() => {
+    if (!twoPathMetrics) return null;
+    return calculateDerivedKPIs(twoPathMetrics.search, twoPathMetrics.browse);
+  }, [twoPathMetrics]);
+
+  // ✅ INTELLIGENCE LAYER: Stability Score
+  const stabilityScore = useMemo(() => {
+    if (!data?.processedData?.timeseries) return null;
+
+    const timeSeriesData: TimeSeriesPoint[] = data.processedData.timeseries.map(point => ({
+      date: point.date,
+      impressions: point.impressions || 0,
+      downloads: point.downloads || point.installs || 0,
+      product_page_views: point.product_page_views || 0,
+      cvr: point.cvr || point.conversion_rate || 0
+    }));
+
+    return calculateStabilityScore(timeSeriesData);
+  }, [data?.processedData?.timeseries]);
+
+  // ✅ INTELLIGENCE LAYER: Opportunity Map
+  const opportunities = useMemo(() => {
+    if (!derivedKpis || !twoPathMetrics) return [];
+    return calculateOpportunityMap(derivedKpis, twoPathMetrics.search, twoPathMetrics.browse);
+  }, [derivedKpis, twoPathMetrics]);
+
+  // ✅ INTELLIGENCE LAYER: Outcome Simulations
+  const scenarios = useMemo(() => {
+    if (!twoPathMetrics || !derivedKpis) return [];
+
+    const totalMetrics = {
+      impressions: twoPathMetrics.search.impressions + twoPathMetrics.browse.impressions,
+      downloads: twoPathMetrics.search.downloads + twoPathMetrics.browse.downloads,
+      cvr: ((twoPathMetrics.search.downloads + twoPathMetrics.browse.downloads) /
+            (twoPathMetrics.search.impressions + twoPathMetrics.browse.impressions)) * 100
+    };
+
+    return simulateOutcomes(totalMetrics, twoPathMetrics.search, twoPathMetrics.browse, derivedKpis);
+  }, [twoPathMetrics, derivedKpis]);
 
   // ✅ INITIALIZE SELECTION: Auto-select ALL apps on first load
   useEffect(() => {
@@ -455,11 +542,94 @@ export default function ReportingDashboardV2() {
           <span>{meta?.raw_rows || 0} records</span>
         </div>
 
+        {/* ✅ TWO-PATH CONVERSION MODEL SECTION */}
+        {twoPathMetrics && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <TrendingUpIcon className="h-6 w-6 text-yodel-orange" />
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                Two-Path Conversion Analysis
+              </h2>
+            </div>
+
+            {/* Search & Browse Diagnostic */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TwoPathFunnelCard
+                data={data?.rawData.filter((row: any) => row.traffic_source === 'App_Store_Search') || []}
+                trafficSource="search"
+                isLoading={isLoading}
+              />
+
+              <TwoPathFunnelCard
+                data={data?.rawData.filter((row: any) => row.traffic_source === 'App_Store_Browse') || []}
+                trafficSource="browse"
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Search vs Browse Diagnostic */}
+            <SearchBrowseDiagnosticCard
+              searchMetrics={twoPathMetrics.search}
+              browseMetrics={twoPathMetrics.browse}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
+
+        {/* ✅ DERIVED KPIs SECTION */}
+        {derivedKpis && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 text-yodel-orange" />
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                Derived ASO KPIs
+              </h2>
+            </div>
+
+            <DerivedKpiGrid
+              derivedKpis={derivedKpis}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
+
+        {/* ✅ ASO INTELLIGENCE LAYER */}
+        {stabilityScore && derivedKpis && twoPathMetrics && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Activity className="h-6 w-6 text-yodel-orange" />
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                ASO Intelligence Layer
+              </h2>
+            </div>
+
+            {/* Grid layout for intelligence cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Stability Score */}
+              <StabilityScoreCard stabilityScore={stabilityScore} />
+
+              {/* Opportunity Map */}
+              <OpportunityMapCard opportunities={opportunities} />
+            </div>
+
+            {/* Full-width Outcome Simulation */}
+            <OutcomeSimulationCard scenarios={scenarios} />
+
+            {/* Original narrative insights */}
+            <InsightNarrativeCard
+              searchMetrics={twoPathMetrics.search}
+              browseMetrics={twoPathMetrics.browse}
+              derivedKpis={derivedKpis}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
+
         {/* ✅ CHARTS SECTION: Analytics & Insights */}
         <div className="space-y-6">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Analytics & Insights
+            Traditional Analytics
           </h2>
 
           {/* KPI Trend Chart */}

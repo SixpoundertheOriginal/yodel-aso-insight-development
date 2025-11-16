@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
+import { LoadingSkeleton } from '@/design-registry';
 import { generateDashboardSummary } from '@/services/dashboard-narrative.service';
+
+/**
+ * MIGRATION NOTE: Now uses Design Registry LoadingSkeleton primitive.
+ * The narrative service also uses Design Registry formatters for number/percentage formatting.
+ */
 
 interface TrafficSourceData {
   traffic_source: string;
@@ -60,10 +66,7 @@ export function ExecutiveSummaryCard({
   if (isLoading) {
     return (
       <Card className="p-6 bg-gradient-to-r from-zinc-900 to-zinc-800 border-zinc-700">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-yodel-orange" />
-          <span className="text-zinc-400">Generating executive summary...</span>
-        </div>
+        <LoadingSkeleton height="h-[100px]" />
       </Card>
     );
   }

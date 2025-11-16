@@ -392,14 +392,6 @@
     animation-duration: 2s;
   }
 
-  .animate-float {
-    @apply animate-float;
-  }
-
-  .animate-particle-float {
-    @apply animate-particle-float;
-  }
-
   /* Interactive animation utilities */
   .hover-scale {
     @apply transition-transform duration-200 hover:scale-105;
