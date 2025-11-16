@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ArrowUp, ArrowDown, Search, LayoutGrid, TrendingUp, Info } from 'lucide-react';
+import { Search, LayoutGrid, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { generateCvrInsight } from '@/services/dashboard-narrative.service';
@@ -9,9 +9,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { MetricValue, DeltaChip, LoadingSkeleton } from '@/design-registry';
 
 /**
  * ASO Metric Card Component
+ *
+ * MIGRATION NOTE: Now uses Design Registry primitives (MetricValue, DeltaChip, LoadingSkeleton).
  *
  * Premium, futuristic card for displaying ASO visibility metrics:
  * - App Store Search (high-intent traffic)
@@ -23,6 +26,8 @@ import {
  * - Hover animations
  * - Responsive layout
  * - Executive-friendly design
+ * - Consistent number formatting via MetricValue
+ * - Semantic delta indicators via DeltaChip
  */
 
 interface AsoMetricCardProps {
@@ -35,6 +40,10 @@ interface AsoMetricCardProps {
   downloadsDelta?: number;
   cvrDelta?: number; // Absolute percentage point change (e.g., 0.5 means CVR went from 2.0% to 2.5%)
   isLoading?: boolean;
+  // Two-path conversion display (optional)
+  showTwoPathBreakdown?: boolean;
+  directInstalls?: number;
+  pdpInstalls?: number;
 }
 
 const ICON_MAP = {
@@ -56,7 +65,10 @@ export function AsoMetricCard({
   impressionsDelta = 0,
   downloadsDelta = 0,
   cvrDelta,
-  isLoading = false
+  isLoading = false,
+  showTwoPathBreakdown = false,
+  directInstalls = 0,
+  pdpInstalls = 0
 }: AsoMetricCardProps) {
 
   const Icon = ICON_MAP[icon];
@@ -68,24 +80,10 @@ export function AsoMetricCard({
     return generateCvrInsight(cvr, metricType, cvrDelta);
   }, [cvr, icon, cvrDelta]);
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toLocaleString();
-  };
-
-  const formatPercent = (num: number): string => {
-    return `${num >= 0 ? '+' : ''}${num.toFixed(1)}%`;
-  };
-
   if (isLoading) {
     return (
       <Card className="relative overflow-hidden">
-        <div className="h-[280px] animate-pulse bg-muted" />
+        <LoadingSkeleton height="h-[280px]" />
       </Card>
     );
   }
@@ -133,22 +131,10 @@ export function AsoMetricCard({
                 Impressions
               </span>
               {impressionsDelta !== 0 && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-medium",
-                  impressionsDelta >= 0 ? "text-green-500" : "text-red-500"
-                )}>
-                  {impressionsDelta >= 0 ? (
-                    <ArrowUp className="h-3 w-3" />
-                  ) : (
-                    <ArrowDown className="h-3 w-3" />
-                  )}
-                  {formatPercent(Math.abs(impressionsDelta))}
-                </div>
+                <DeltaChip value={impressionsDelta} format="percentage" size="xs" />
               )}
             </div>
-            <div className="text-4xl font-bold tracking-tight">
-              {formatNumber(impressions)}
-            </div>
+            <MetricValue value={impressions} format="compact" size="primary" />
           </div>
 
           {/* Downloads */}
@@ -158,22 +144,10 @@ export function AsoMetricCard({
                 Downloads
               </span>
               {downloadsDelta !== 0 && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-medium",
-                  downloadsDelta >= 0 ? "text-green-500" : "text-red-500"
-                )}>
-                  {downloadsDelta >= 0 ? (
-                    <ArrowUp className="h-3 w-3" />
-                  ) : (
-                    <ArrowDown className="h-3 w-3" />
-                  )}
-                  {formatPercent(Math.abs(downloadsDelta))}
-                </div>
+                <DeltaChip value={downloadsDelta} format="percentage" size="xs" />
               )}
             </div>
-            <div className="text-4xl font-bold tracking-tight">
-              {formatNumber(downloads)}
-            </div>
+            <MetricValue value={downloads} format="compact" size="primary" />
           </div>
         </div>
 
@@ -204,19 +178,7 @@ export function AsoMetricCard({
             </div>
             <div className="flex items-center gap-2">
               {cvrDelta !== undefined && Math.abs(cvrDelta) >= 0.1 && (
-                <div className={cn(
-                  "flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded",
-                  cvrDelta >= 0
-                    ? "text-green-500 bg-green-500/10"
-                    : "text-red-500 bg-red-500/10"
-                )}>
-                  {cvrDelta >= 0 ? (
-                    <ArrowUp className="h-3 w-3" />
-                  ) : (
-                    <ArrowDown className="h-3 w-3" />
-                  )}
-                  {Math.abs(cvrDelta).toFixed(1)}pp
-                </div>
+                <DeltaChip value={cvrDelta} format="points" size="xs" />
               )}
               <div className={cn(
                 "px-3 py-1.5 rounded-full text-sm font-bold",
@@ -229,6 +191,43 @@ export function AsoMetricCard({
             </div>
           </div>
         </div>
+
+        {/* Two-Path Install Breakdown (optional) */}
+        {showTwoPathBreakdown && (directInstalls > 0 || pdpInstalls > 0) && (
+          <div className="pt-4 border-t border-border/50">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Install Path Breakdown
+            </div>
+            <div className="flex gap-2 h-6 rounded overflow-hidden mb-2">
+              <div
+                className="bg-orange-500 flex items-center justify-center text-xs font-semibold text-white"
+                style={{ width: `${(directInstalls / downloads) * 100}%` }}
+              >
+                {((directInstalls / downloads) * 100) > 15 && `${((directInstalls / downloads) * 100).toFixed(0)}%`}
+              </div>
+              <div
+                className="bg-purple-500 flex items-center justify-center text-xs font-semibold text-white"
+                style={{ width: `${(pdpInstalls / downloads) * 100}%` }}
+              >
+                {((pdpInstalls / downloads) * 100) > 15 && `${((pdpInstalls / downloads) * 100).toFixed(0)}%`}
+              </div>
+            </div>
+            <div className="flex gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                <span>
+                  <MetricValue value={directInstalls} format="compact" size="small" className="inline" /> Direct
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <span>
+                  <MetricValue value={pdpInstalls} format="compact" size="small" className="inline" /> PDP
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );

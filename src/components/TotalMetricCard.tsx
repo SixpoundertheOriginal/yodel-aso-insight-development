@@ -2,9 +2,12 @@ import { TrendingUp, Eye, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { TrendBadge } from '@/components/ui/TrendBadge';
+import { MetricValue, LoadingSkeleton } from '@/design-registry';
 
 /**
  * Total Metric Card Component
+ *
+ * MIGRATION NOTE: Now uses Design Registry primitives (MetricValue, LoadingSkeleton).
  *
  * Premium card for displaying aggregate metrics across all traffic sources:
  * - Total Impressions (all traffic)
@@ -14,7 +17,7 @@ import { TrendBadge } from '@/components/ui/TrendBadge';
  * - Glassmorphism effect
  * - Gradient accents (Cyan for impressions, Green for downloads)
  * - Hover animations
- * - Large readable numbers
+ * - Large readable numbers from MetricValue primitive
  * - Optional delta indicators
  */
 
@@ -52,20 +55,10 @@ export function TotalMetricCard({
   const config = METRIC_CONFIG[type];
   const Icon = config.icon;
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toLocaleString();
-  };
-
   if (isLoading) {
     return (
       <Card className="relative overflow-hidden">
-        <div className="h-[160px] animate-pulse bg-muted" />
+        <LoadingSkeleton height="h-[160px]" />
       </Card>
     );
   }
@@ -107,11 +100,9 @@ export function TotalMetricCard({
           )}
         </div>
 
-        {/* Main Value */}
+        {/* Main Value - Using Design Registry MetricValue */}
         <div className="flex items-baseline gap-2">
-          <div className="text-5xl font-bold tracking-tight">
-            {formatNumber(value)}
-          </div>
+          <MetricValue value={value} format="compact" size="hero" />
           <TrendingUp className={cn("h-6 w-6 mb-2", config.color)} />
         </div>
       </div>

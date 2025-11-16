@@ -1,4 +1,13 @@
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+/**
+ * TrendBadge - Legacy wrapper for DeltaChip
+ *
+ * MIGRATION NOTE: This component now uses the Design Registry DeltaChip primitive.
+ * All new code should use DeltaChip directly from @/design-registry.
+ *
+ * This wrapper maintains backward compatibility for existing components.
+ */
+
+import { DeltaChip } from '@/design-registry';
 import { cn } from '@/lib/utils';
 
 interface TrendBadgeProps {
@@ -14,51 +23,16 @@ export function TrendBadge({
   size = 'sm',
   showIcon = true
 }: TrendBadgeProps) {
-  const isPositive = value > 0;
-  const isNeutral = Math.abs(value) < 0.1;
-
-  const Icon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown;
-
-  const colorClass = isNeutral
-    ? 'text-zinc-400 bg-zinc-800/50'
-    : isPositive
-      ? 'text-green-400 bg-green-500/10'
-      : 'text-red-400 bg-red-500/10';
-
-  const sizeClasses = {
-    sm: {
-      container: 'text-xs px-2 py-1',
-      icon: 'h-3 w-3',
-      text: 'text-xs'
-    },
-    md: {
-      container: 'text-sm px-2.5 py-1.5',
-      icon: 'h-4 w-4',
-      text: 'text-sm'
-    },
-    lg: {
-      container: 'text-base px-3 py-2',
-      icon: 'h-5 w-5',
-      text: 'text-base'
-    }
-  };
-
-  const classes = sizeClasses[size];
-
   return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full font-medium transition-colors',
-        colorClass,
-        classes.container
-      )}
-    >
-      {showIcon && <Icon className={classes.icon} />}
-      <span className={classes.text}>
-        {isPositive && '+'}{value.toFixed(1)}%
-      </span>
+    <div className="inline-flex items-center gap-2">
+      <DeltaChip
+        value={value}
+        format="percentage"
+        size={size}
+        showIcon={showIcon}
+      />
       {label && (
-        <span className={cn('text-zinc-500', classes.text)}>
+        <span className={cn('text-zinc-500', size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-base')}>
           {label}
         </span>
       )}
