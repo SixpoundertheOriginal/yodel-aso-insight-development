@@ -73,7 +73,15 @@ export function useDashboardChat() {
       console.log(`[useDashboardChat] Loaded ${data.sessions?.length || 0} sessions`);
     } catch (error: any) {
       console.error('[useDashboardChat] Failed to list sessions:', error);
-      toast.error('Failed to load chat sessions');
+
+      // Check if it's an auth error (backend not deployed or not logged in)
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        console.warn('[useDashboardChat] Backend not deployed or authentication issue');
+        // Silent fail - don't show error toast on mount
+      } else {
+        toast.error('Failed to load chat sessions');
+      }
+
       setSessions([]);
     } finally {
       setIsLoading(false);
@@ -110,8 +118,10 @@ export function useDashboardChat() {
     } catch (error: any) {
       console.error('[useDashboardChat] Failed to create session:', error);
 
-      // Check for rate limit error
-      if (error.message?.includes('Maximum active sessions')) {
+      // Check for specific errors
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        toast.error('AI Chat backend not deployed. See deployment guide in docs/QUICKSTART_CHAT.md');
+      } else if (error.message?.includes('Maximum active sessions')) {
         toast.error('Too many active chats. Please delete or wait for old chats to expire.');
       } else {
         toast.error('Failed to create chat session');

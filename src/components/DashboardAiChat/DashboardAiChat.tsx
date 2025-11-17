@@ -134,7 +134,7 @@ export function DashboardAiChat({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800 space-y-3">
+      <div className="p-4 border-b border-zinc-800 space-y-3" role="banner">
         {currentSession ? (
           <div className="space-y-2">
             {/* Session Title */}

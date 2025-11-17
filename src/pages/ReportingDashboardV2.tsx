@@ -713,7 +713,13 @@ export default function ReportingDashboardV2() {
         <SheetContent
           side="right"
           className="w-[600px] p-0 flex flex-col"
+          aria-describedby="chat-description"
         >
+          {/* Hidden title for accessibility */}
+          <span id="chat-description" className="sr-only">
+            AI-powered chat assistant for analyzing your dashboard analytics
+          </span>
+
           <DashboardAiChat
             organizationId={organizationId || ''}
             dateRange={dateRange}
