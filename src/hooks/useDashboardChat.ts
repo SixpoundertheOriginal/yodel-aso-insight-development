@@ -197,18 +197,38 @@ export function useDashboardChat() {
     setMessages(prev => [...prev, tempUserMsg]);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-dashboard-chat', {
+      const { data, error, response } = await supabase.functions.invoke('ai-dashboard-chat', {
         body: {
           action: 'send_message',
           sessionId,
           message,
           dashboardContext: context
         }
-      });
+      }) as { data: any; error: any; response?: Response };
 
       if (error) {
         console.error('[useDashboardChat] Send message error:', error);
-        throw error;
+
+        // Parse error response from Edge Function if available
+        let errorMessage = 'Failed to send message. Please try again.';
+
+        if (response) {
+          try {
+            const errorBody = await response.json();
+            if (errorBody.error) {
+              errorMessage = errorBody.error;
+            }
+          } catch (e) {
+            console.error('[useDashboardChat] Failed to parse error response:', e);
+          }
+        }
+
+        // Remove temp message on error
+        setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id));
+
+        // Show error to user
+        toast.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
       // Remove temp message and reload session to get encrypted messages
@@ -221,16 +241,10 @@ export function useDashboardChat() {
     } catch (error: any) {
       console.error('[useDashboardChat] Failed to send message:', error);
 
-      // Remove temp message on error
+      // Remove temp message on error (in case it wasn't removed above)
       setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id));
 
-      // Check for rate limit error
-      if (error.message?.includes('Daily message limit')) {
-        toast.error('Daily message limit reached. Please try again tomorrow.');
-      } else {
-        toast.error('Failed to send message. Please try again.');
-      }
-
+      // Re-throw if error already handled above
       throw error;
     } finally {
       setIsSending(false);

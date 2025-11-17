@@ -447,7 +447,21 @@ async function handleSendMessage(
   if (!response.ok) {
     const errorText = await response.text();
     console.error('[ai-dashboard-chat] OpenAI API error:', errorText);
-    throw new Error(`OpenAI API error: ${response.statusText}`);
+
+    // Parse error response for better user feedback
+    let errorMessage = `OpenAI API error: ${response.statusText}`;
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.error?.code === 'billing_not_active') {
+        errorMessage = 'AI service is currently unavailable due to billing configuration. Please contact your administrator.';
+      } else if (errorData.error?.message) {
+        errorMessage = `AI service error: ${errorData.error.message}`;
+      }
+    } catch (e) {
+      // If error parsing fails, use the original error message
+    }
+
+    throw new Error(errorMessage);
   }
 
   const aiData = await response.json();
