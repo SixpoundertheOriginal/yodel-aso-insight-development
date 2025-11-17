@@ -86,12 +86,19 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Extract organization_id from JWT
-    const organizationId = user.user_metadata?.organization_id;
-    if (!organizationId) {
-      throw new Error('Organization ID not found in user metadata');
+    // Get organization_id from user_roles table
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('[ai-dashboard-chat] Failed to fetch user organization:', roleError);
+      throw new Error('User not assigned to an organization');
     }
 
+    const organizationId = roleData.organization_id;
     console.log(`[ai-dashboard-chat] Request from user ${user.id} in org ${organizationId}`);
 
     // 2. Parse request body
