@@ -12,7 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * - Pinned sessions (is_pinned = true) are never deleted
  * - Messages are cascaded-deleted when session is deleted
  *
- * Schedule: 0 */6 * * * (every 6 hours)
+ * Schedule: Run every 6 hours (cron: 0 star/6 star star star)
  */
 
 serve(async (req) => {

@@ -54,8 +54,8 @@ ON public.chat_sessions(user_id, updated_at DESC);
 
 -- Index for cleanup cron (expired sessions)
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_expires_at
-ON public.chat_sessions(expires_at)
-WHERE expires_at <= now() AND is_pinned = false;
+ON public.chat_sessions(expires_at, is_pinned)
+WHERE is_pinned = false;
 
 -- Index for organization queries
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_org_user
