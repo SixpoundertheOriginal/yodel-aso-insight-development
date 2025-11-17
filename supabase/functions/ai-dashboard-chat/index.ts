@@ -70,32 +70,52 @@ serve(async (req) => {
   try {
     // 1. Extract and validate JWT
     const authHeader = req.headers.get('authorization');
+    console.log('[ai-dashboard-chat] Auth header present:', !!authHeader);
+
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
-    const supabase = createClient(
+    // Create Supabase client with service role for admin operations
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Extract the JWT token from the authorization header
+    const jwt = authHeader.replace('Bearer ', '');
+
+    console.log('[ai-dashboard-chat] Verifying JWT token...');
+
+    // Use the admin client to verify the user's JWT
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(jwt);
+
+    console.log('[ai-dashboard-chat] User:', user?.id);
+
     if (userError || !user) {
-      console.error('[ai-dashboard-chat] Auth error:', userError);
+      console.error('[ai-dashboard-chat] Auth error:', userError?.message);
       throw new Error('Unauthorized');
     }
 
-    // Get organization_id from user_roles table
-    const { data: roleData, error: roleError } = await supabase
+    // Get organization_id from user_roles table using admin client
+    console.log(`[ai-dashboard-chat] Fetching organization for user: ${user.id}`);
+    const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('organization_id')
       .eq('user_id', user.id)
       .single();
 
+    console.log('[ai-dashboard-chat] Role query result:', { roleData, roleError });
+
     if (roleError || !roleData) {
-      console.error('[ai-dashboard-chat] Failed to fetch user organization:', roleError);
-      throw new Error('User not assigned to an organization');
+      console.error('[ai-dashboard-chat] Failed to fetch user organization:', {
+        error: roleError,
+        message: roleError?.message,
+        details: roleError?.details,
+        hint: roleError?.hint,
+        code: roleError?.code
+      });
+      throw new Error(`User not assigned to an organization: ${roleError?.message || 'Unknown error'}`);
     }
 
     const organizationId = roleData.organization_id;
@@ -108,22 +128,23 @@ serve(async (req) => {
     console.log(`[ai-dashboard-chat] Action: ${action}`);
 
     // 3. Route to appropriate handler
+    // Use admin client for all operations to bypass RLS
     switch (action) {
       case 'validate_encryption':
         return await handleValidateEncryption();
 
       case 'create_session':
-        return await handleCreateSession(supabase, user, organizationId, body.dashboardContext);
+        return await handleCreateSession(supabaseAdmin, user, organizationId, body.dashboardContext);
 
       case 'list_sessions':
-        return await handleListSessions(supabase, user, organizationId);
+        return await handleListSessions(supabaseAdmin, user, organizationId);
 
       case 'get_session':
-        return await handleGetSession(supabase, user, organizationId, body.sessionId);
+        return await handleGetSession(supabaseAdmin, user, organizationId, body.sessionId);
 
       case 'send_message':
         return await handleSendMessage(
-          supabase,
+          supabaseAdmin,
           user,
           organizationId,
           body.sessionId,
@@ -132,13 +153,13 @@ serve(async (req) => {
         );
 
       case 'pin_session':
-        return await handlePinSession(supabase, user, organizationId, body.sessionId, body.isPinned);
+        return await handlePinSession(supabaseAdmin, user, organizationId, body.sessionId, body.isPinned);
 
       case 'update_session_title':
-        return await handleUpdateSessionTitle(supabase, user, organizationId, body.sessionId, body.title);
+        return await handleUpdateSessionTitle(supabaseAdmin, user, organizationId, body.sessionId, body.title);
 
       case 'delete_session':
-        return await handleDeleteSession(supabase, user, organizationId, body.sessionId);
+        return await handleDeleteSession(supabaseAdmin, user, organizationId, body.sessionId);
 
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -146,8 +167,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[ai-dashboard-chat] Error:', error);
+    console.error('[ai-dashboard-chat] Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message,
+        details: error.stack || 'No stack trace available'
+      }),
       {
         status: error.message === 'Unauthorized' ? 401 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

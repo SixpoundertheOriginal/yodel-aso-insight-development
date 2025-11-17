@@ -103,7 +103,14 @@ export function useDashboardChat() {
 
       if (error) {
         console.error('[useDashboardChat] Create session error:', error);
+        console.error('[useDashboardChat] Error details:', JSON.stringify(error, null, 2));
         throw error;
+      }
+
+      // Check if data contains an error
+      if (data?.error) {
+        console.error('[useDashboardChat] Server error:', data.error);
+        throw new Error(data.error);
       }
 
       const newSession = data.session;
@@ -124,7 +131,9 @@ export function useDashboardChat() {
       } else if (error.message?.includes('Maximum active sessions')) {
         toast.error('Too many active chats. Please delete or wait for old chats to expire.');
       } else {
-        toast.error('Failed to create chat session');
+        // Show the actual error message
+        const errorMsg = error.message || error.error || 'Failed to create chat session';
+        toast.error(`Failed to create chat: ${errorMsg}`);
       }
 
       throw error;
