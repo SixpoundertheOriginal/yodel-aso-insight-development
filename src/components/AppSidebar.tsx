@@ -271,31 +271,14 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
     return false;
   });
   let filteredAiToolsItems = applyPermFilter(filteredAiToolsItemsBase);
-  
-  // Apply feature-based access control with defensive super_admin handling
-  if (filteredAiToolsItems?.length) {
-    const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 
-      (isOrganizationAdmin ? 'org_admin' : 
-      (role?.toLowerCase().includes('aso') ? 'aso_manager' :
-      (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
-    
-    filteredAiToolsItems = filteredAiToolsItems.filter(item => {
-      if (item.url === '/aso-ai-hub') {
-        return featureEnabledForRole(PLATFORM_FEATURES.ASO_AI_HUB, currentUserRole);
-      }
-      if (item.url === '/chatgpt-visibility-audit') {
-        return featureEnabledForRole(PLATFORM_FEATURES.CHATGPT_VISIBILITY_AUDIT, currentUserRole);
-      }
-      return true;
-    });
-  }
-
   let filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
 
-  // REMOVED: Redundant role-based filtering
+  // REMOVED: Redundant role-based filtering for BOTH AI Tools and AI Copilots sections
   // Feature access is already checked by filterNavigationByRoutes() via hasFeature()
   // which properly respects org-level feature flags from organization_features table.
-  // The previous featureEnabledForRole() check was bypassing org-level feature flags.
+  // The previous featureEnabledForRole() checks were:
+  // 1. Bypassing org-level feature flags (using static role defaults)
+  // 2. Causing navigation flicker during feature loading
   
   const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 
@@ -412,120 +395,133 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
-        {/* Preview (Marketing) - top placement above Performance Intelligence */}
-        {showPreviewEntry && (
+        {/* ANTI-FLICKER: Only render feature-gated sections when all permissions are loaded */}
+        {!allPermissionsLoaded ? (
           <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full"></div>
-                Preview
-              </div>
-            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {renderNavItem(previewNavItem)}
-              </SidebarMenu>
+              <div className="flex items-center justify-center py-8">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-yodel-orange border-t-transparent"></div>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
-        {/* Performance Intelligence Section */}
-        {filteredAnalyticsItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-gradient-to-r from-yodel-blue to-blue-500"></div>
-                  Performance Intelligence
+        ) : (
+          <>
+            {/* Preview (Marketing) - top placement above Performance Intelligence */}
+            {showPreviewEntry && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full"></div>
+                    Preview
+                  </div>
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {renderNavItem(previewNavItem)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+            {/* Performance Intelligence Section */}
+            {filteredAnalyticsItems.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-gradient-to-r from-yodel-blue to-blue-500"></div>
+                      Performance Intelligence
+                    </div>
+                  </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {filteredAnalyticsItems.map(item => renderNavItem(item)).filter(Boolean)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* AI Command Center Section */}
+            {filteredAiToolsItems.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-yodel-orange to-orange-500 rounded-full"></div>
+                    AI Command Center
+                  </div>
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {filteredAiToolsItems.map(item => renderNavItem(item)).filter(Boolean)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Growth Accelerators Section */}
+            {filteredAiCopilotsItems.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
+                    Growth Accelerators
+                  </div>
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {filteredAiCopilotsItems.map(item => renderNavItem(item)).filter(Boolean)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {filteredDemoItems.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full"></div>
+                    Demo Sections
+                  </div>
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {filteredDemoItems.map(item => renderNavItem(item)).filter(Boolean)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Control Center Section - visible to org admins and super admins */}
+            {filteredControlCenterItems.length > 0 && (isSuperAdmin || isOrganizationAdmin) && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full"></div>
+                    Control Center
+                  </div>
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {filteredControlCenterItems.map(item => renderNavItem(item)).filter(Boolean)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Account Section */}
+            <SidebarGroup>
+              <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-zinc-500 to-zinc-400 rounded-full"></div>
+                  Account
                 </div>
               </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredAnalyticsItems.map(item => renderNavItem(item)).filter(Boolean)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {accountItems.map(item => renderNavItem(item))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
         )}
-
-        {/* AI Command Center Section */}
-        {filteredAiToolsItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-yodel-orange to-orange-500 rounded-full"></div>
-                AI Command Center
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredAiToolsItems.map(item => renderNavItem(item)).filter(Boolean)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Growth Accelerators Section */}
-        {filteredAiCopilotsItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
-                Growth Accelerators
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredAiCopilotsItems.map(item => renderNavItem(item)).filter(Boolean)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {filteredDemoItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full"></div>
-                Demo Sections
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredDemoItems.map(item => renderNavItem(item)).filter(Boolean)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Control Center Section - visible to org admins and super admins */}
-        {filteredControlCenterItems.length > 0 && (isSuperAdmin || isOrganizationAdmin) && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full"></div>
-                Control Center
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredControlCenterItems.map(item => renderNavItem(item)).filter(Boolean)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Account Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 border-b border-footer-border/50 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-nav-text-secondary">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-zinc-500 to-zinc-400 rounded-full"></div>
-              Account
-            </div>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accountItems.map(item => renderNavItem(item))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-footer-border/50 bg-gradient-to-r from-zinc-900/50 to-zinc-800/30 p-4">
