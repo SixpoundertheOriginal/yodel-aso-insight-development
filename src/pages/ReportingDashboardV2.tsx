@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { usePeriodComparison } from '@/hooks/usePeriodComparison';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAvailableApps } from '@/hooks/useAvailableApps';
 import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -66,6 +67,9 @@ export default function ReportingDashboardV2() {
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
+  // ✅ AVAILABLE APPS: Fetch from org_app_access (agency-aware via RLS)
+  const { data: availableApps = [], isLoading: appsLoading } = useAvailableApps();
+
   // ✅ APP SELECTION: Track selected app IDs for filtering
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
 
@@ -114,29 +118,20 @@ export default function ReportingDashboardV2() {
     }
   };
 
-  // ✅ EXTRACT AVAILABLE APPS: Get unique app IDs from response
-  const availableApps = useMemo(() => {
-    // Use app_ids from meta
-    if (data?.meta?.app_ids) {
-      logger.dashboard(`Available apps: ${data.meta.app_ids.length} (from app_ids)`);
-      return data.meta.app_ids.map(appId => ({
-        app_id: String(appId),
-        app_name: String(appId)
-      }));
-    }
-
-    // Extract unique app IDs from raw data
-    if ((data as any)?.rawData) {
-      const uniqueAppIds = Array.from(new Set((data as any).rawData.map((row: any) => row.app_id)));
-      logger.dashboard(`Available apps: ${uniqueAppIds.length} (from raw data)`);
-      return uniqueAppIds.map(appId => ({
-        app_id: String(appId),
-        app_name: String(appId)
-      }));
-    }
-
-    return [];
-  }, [data?.meta?.app_ids, data]);
+  // ✅ AVAILABLE APPS: Now fetched via useAvailableApps hook (see above)
+  // This fixes the bug where apps disappeared from picker when switching apps.
+  //
+  // BEFORE (Buggy):
+  // - availableApps calculated from filtered analytics response
+  // - When user selected App1, analytics query filtered to App1 only
+  // - Response contained only App1 data → availableApps = [App1]
+  // - User couldn't select App2/App3 anymore (not in list!)
+  //
+  // AFTER (Fixed):
+  // - availableApps fetched independently from org_app_access table
+  // - Always returns ALL apps user can access (via RLS policy)
+  // - Agency support: RLS automatically includes client org apps
+  // - Analytics query can filter without affecting app picker
 
   // ✅ EXTRACT AVAILABLE TRAFFIC SOURCES: Get from response metadata
   const availableTrafficSources = useMemo(() => {
@@ -308,11 +303,12 @@ export default function ReportingDashboardV2() {
 
   // ✅ INITIALIZE SELECTION: Auto-select ALL apps on first load
   useEffect(() => {
-    if (availableApps.length > 0 && selectedAppIds.length === 0) {
+    if (availableApps.length > 0 && selectedAppIds.length === 0 && !appsLoading) {
       console.log('📱 [DASHBOARD-V2] Initializing app selection to ALL apps:', availableApps.length);
+      console.log('   Apps:', availableApps.map(app => app.app_id).join(', '));
       setSelectedAppIds(availableApps.map(app => app.app_id));
     }
-  }, [availableApps.length]); // Only depend on length to avoid re-triggering
+  }, [availableApps.length, appsLoading]); // Depend on length and loading state
 
   // [STATE] No organization ID
   if (!organizationId) {
@@ -332,17 +328,17 @@ export default function ReportingDashboardV2() {
     );
   }
 
-  // [STATE] Loading
-  if (isLoading) {
+  // [STATE] Loading (wait for both apps and analytics data)
+  if (isLoading || appsLoading) {
     return (
       <MainLayout>
         <div className="flex flex-col items-center justify-center h-screen space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-yodel-orange" />
           <div className="text-lg font-medium text-zinc-200">
-            Loading analytics data...
+            {appsLoading ? 'Loading available apps...' : 'Loading analytics data...'}
           </div>
           <div className="text-sm text-zinc-400">
-            Fetching from BigQuery warehouse
+            {appsLoading ? 'Checking app access permissions' : 'Fetching from BigQuery warehouse'}
           </div>
         </div>
       </MainLayout>
@@ -434,7 +430,7 @@ export default function ReportingDashboardV2() {
                     availableApps={availableApps}
                     selectedAppIds={selectedAppIds}
                     onSelectionChange={setSelectedAppIds}
-                    isLoading={isLoading}
+                    isLoading={appsLoading}
                   />
                 </div>
 

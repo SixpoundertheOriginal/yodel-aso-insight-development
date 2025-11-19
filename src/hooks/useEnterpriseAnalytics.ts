@@ -106,17 +106,17 @@ export function useEnterpriseAnalytics({
   appIds = []
 }: AnalyticsParams) {
 
-  // [QUERY] Fetch data with server-side filtering for date/apps only
-  // ✅ PHASE B: Optimized cache key strategy
+  // [QUERY] Fetch data with server-side filtering for date range only
+  // ✅ PHASE C: App filtering moved to client-side (fixes disappearing apps bug)
   const query = useQuery<EnterpriseAnalyticsResponse, Error>({
     queryKey: [
-      'enterprise-analytics-v2', // Version bump for Phase B architecture
+      'enterprise-analytics-v3', // Version bump for Phase C architecture (client-side app filtering)
       organizationId,
       dateRange.start,
       dateRange.end,
-      appIds.sort().join(','),
+      // Note: appIds intentionally excluded - client-side filtering
       // Note: trafficSources intentionally excluded - client-side filtering
-      // This allows instant filter changes without refetch
+      // This allows instant filter changes without refetch AND fixes app picker bug
     ],
 
     queryFn: async () => {
@@ -134,20 +134,23 @@ export function useEnterpriseAnalytics({
       console.log('━'.repeat(60));
       console.log('  Organization:', organizationId);
       console.log('  Date Range:', dateRange);
-      console.log('  App IDs:', appIds.length > 0 ? appIds : 'Auto-discover');
-      console.log('  🔍 SERVER will return: ALL traffic sources');
-      console.log('  🔍 CLIENT will filter to:', trafficSources.length > 0 ? trafficSources : 'No filter (show all)');
+      console.log('  🔍 SERVER will return: ALL apps + ALL traffic sources');
+      console.log('  🔍 CLIENT will filter to:');
+      console.log('     Apps:', appIds.length > 0 ? appIds.join(', ') : 'All apps (no filter)');
+      console.log('     Traffic Sources:', trafficSources.length > 0 ? trafficSources.join(', ') : 'All sources (no filter)');
       console.log('━'.repeat(60));
 
-      // [REQUEST] Call BigQuery edge function - NO traffic_source parameter
+      // [REQUEST] Call BigQuery edge function - NO app_ids or traffic_source filters
+      // Server returns ALL data, client filters as needed
       const { data: response, error: functionError } = await supabase.functions.invoke(
         'bigquery-aso-data',
         {
           body: {
             org_id: organizationId,
             date_range: dateRange,
-            // ✅ Removed traffic_source - get ALL sources from server
-            app_ids: appIds.length > 0 ? appIds : undefined,
+            // ✅ PHASE C: Removed app_ids - get ALL apps from server (fixes app picker bug)
+            // ✅ PHASE B: Removed traffic_source - get ALL sources from server
+            // Client-side filtering allows instant changes without refetch
             metrics: ['impressions', 'installs', 'cvr'],
             granularity: 'daily'
           }
@@ -247,24 +250,42 @@ export function useEnterpriseAnalytics({
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
   });
 
-  // ✅ [CLIENT-SIDE FILTERING] Apply traffic source filter instantly without refetch
+  // ✅ [CLIENT-SIDE FILTERING] Apply app + traffic source filters instantly without refetch
   const filteredData = useMemo(() => {
     if (!query.data) return null;
 
     const data = query.data as EnterpriseAnalyticsResponse;
 
-    // If no traffic sources selected, return all data
-    if (trafficSources.length === 0) {
-      console.log('🔍 [CLIENT-FILTER] No filter applied, returning all data');
+    // Check if any filters are applied
+    const hasAppFilter = appIds.length > 0;
+    const hasTrafficFilter = trafficSources.length > 0;
+
+    if (!hasAppFilter && !hasTrafficFilter) {
+      console.log('🔍 [CLIENT-FILTER] No filters applied, returning all data');
       return data;
     }
 
-    // Filter data client-side
-    console.log('🔍 [CLIENT-FILTER] Applying traffic source filter:', trafficSources);
+    // Apply filters client-side
+    console.log('🔍 [CLIENT-FILTER] Applying filters:', {
+      apps: hasAppFilter ? appIds : 'All apps',
+      sources: hasTrafficFilter ? trafficSources : 'All sources'
+    });
 
-    const filteredRawData = data.rawData.filter((row: BigQueryDataPoint) =>
-      trafficSources.includes(row.traffic_source)
-    );
+    let filteredRawData = data.rawData;
+
+    // Filter by apps if specified
+    if (hasAppFilter) {
+      filteredRawData = filteredRawData.filter((row: BigQueryDataPoint) =>
+        appIds.includes(row.app_id)
+      );
+    }
+
+    // Filter by traffic sources if specified
+    if (hasTrafficFilter) {
+      filteredRawData = filteredRawData.filter((row: BigQueryDataPoint) =>
+        trafficSources.includes(row.traffic_source)
+      );
+    }
 
     const filtered: EnterpriseAnalyticsResponse = {
       ...data,
@@ -274,7 +295,7 @@ export function useEnterpriseAnalytics({
         summary: calculateSummary(filteredRawData),
         timeseries: filterTimeseries(filteredRawData, dateRange),
         traffic_sources: data.processedData.traffic_sources.filter((ts: ProcessedTrafficSource) =>
-          trafficSources.includes(ts.traffic_source)
+          !hasTrafficFilter || trafficSources.includes(ts.traffic_source)
         )
       }
     };
@@ -282,11 +303,14 @@ export function useEnterpriseAnalytics({
     console.log('🔍 [CLIENT-FILTER] Filtered result:', {
       originalRows: data.rawData.length,
       filteredRows: filtered.rawData.length,
-      selectedSources: trafficSources
+      appliedFilters: {
+        apps: hasAppFilter ? appIds : 'none',
+        sources: hasTrafficFilter ? trafficSources : 'none'
+      }
     });
 
     return filtered;
-  }, [query.data, trafficSources, dateRange]);
+  }, [query.data, appIds, trafficSources, dateRange]);
 
   return {
     data: filteredData,
