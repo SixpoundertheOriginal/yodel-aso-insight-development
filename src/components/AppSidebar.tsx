@@ -291,26 +291,11 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
   }
 
   let filteredAiCopilotsItems = applyPermFilter(filteredAiCopilotsItemsBase);
-  
-  // Apply feature-based access control for Growth Accelerators
-  if (filteredAiCopilotsItems?.length) {
-    const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' : 
-      (isOrganizationAdmin ? 'org_admin' : 
-      (role?.toLowerCase().includes('aso') ? 'aso_manager' :
-      (role?.toLowerCase().includes('analyst') ? 'analyst' : 'viewer')));
-    
-    filteredAiCopilotsItems = filteredAiCopilotsItems.filter(item => {
-      if (item.url === '/growth-accelerators/reviews') {
-        // In demo orgs, always show Reviews entries
-        return isDemoOrg || featureEnabledForRole(PLATFORM_FEATURES.REVIEWS_PUBLIC_RSS_ENABLED, currentUserRole);
-      }
-      if (item.url === '/growth-accelerators/competitor-overview' || item.url === '/growth-accelerators/keywords') {
-        // Show competitor overview and keywords in demo or when feature is enabled
-        return isDemoOrg || featureEnabledForRole(PLATFORM_FEATURES.KEYWORD_INTELLIGENCE, currentUserRole);
-      }
-      return true;
-    });
-  }
+
+  // REMOVED: Redundant role-based filtering
+  // Feature access is already checked by filterNavigationByRoutes() via hasFeature()
+  // which properly respects org-level feature flags from organization_features table.
+  // The previous featureEnabledForRole() check was bypassing org-level feature flags.
   
   const filteredControlCenterItems = applyPermFilter(filteredControlCenterItemsBase);
 
