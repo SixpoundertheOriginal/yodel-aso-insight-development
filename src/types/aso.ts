@@ -15,7 +15,17 @@ export interface ScrapedMetadata {
   rating?: number;
   reviews?: number;
   price?: string;
-  screenshots?: string[];
+
+  // Source-specific metadata fields (Phase B enhancement)
+  appStoreName?: string;        // From App Store HTML <h1> only
+  appStoreSubtitle?: string;    // From App Store HTML <h2> only
+  fallbackName?: string;        // From iTunes API trackName (parsed)
+  fallbackSubtitle?: string;    // From iTunes API trackName (parsed)
+  _htmlExtraction?: boolean;    // True if data came from HTML scraping
+
+  // Creative assets
+  screenshots?: string[]; // Primary field - array of screenshot URLs
+  /** @deprecated Use screenshots (plural) instead - kept for backward compatibility */
   screenshot?: string;
   
   // Enhanced ASO Intelligence Fields

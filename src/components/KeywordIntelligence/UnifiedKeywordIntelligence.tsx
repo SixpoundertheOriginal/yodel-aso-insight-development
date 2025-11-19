@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, RefreshCw, AlertTriangle, Zap, TrendingUp, Target, Database, Search, Eye } from 'lucide-react';
 import { useKeywordIntelligenceManager } from '@/hooks/useKeywordIntelligenceManager';
 import { keywordVisibilityCalculatorService } from '@/services/keyword-visibility-calculator.service';
-import { KeywordClustersPanel } from './KeywordClustersPanel';
-import { RankDistributionChart } from './RankDistributionChart';
-import { KeywordTrendsTable } from './KeywordTrendsTable';
+// DELETED (2025-01-18): KeywordClustersPanel, RankDistributionChart, KeywordTrendsTable - Keyword intelligence cleanup
+// import { KeywordClustersPanel } from './KeywordClustersPanel';
+// import { RankDistributionChart } from './RankDistributionChart';
+// import { KeywordTrendsTable } from './KeywordTrendsTable';
 import { UsageTrackingPanel } from './UsageTrackingPanel';
 import { ProgressiveKeywordLoader } from './ProgressiveKeywordLoader';
 import { KeywordPoolManager } from './KeywordPoolManager';
@@ -280,15 +281,19 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
               appVisibility={appVisibilityMetrics}
               isLoading={isLoading}
             />
-            <RankDistributionChart 
-              data={rankDistribution} 
+            {/* DELETED (2025-01-18): RankDistributionChart - keyword intelligence cleanup
+            <RankDistributionChart
+              data={rankDistribution}
               isLoading={isLoading}
             />
+            */}
           </div>
+          {/* DELETED (2025-01-18): KeywordClustersPanel - keyword intelligence cleanup
           <KeywordClustersPanel
             clusters={clusters}
             isLoading={isLoading}
           />
+          */}
         </TabsContent>
 
         <TabsContent value="discovery" className="space-y-6">
@@ -369,12 +374,20 @@ export const UnifiedKeywordIntelligence: React.FC<UnifiedKeywordIntelligenceProp
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
+          {/* DELETED (2025-01-18): KeywordTrendsTable - keyword intelligence cleanup
           <KeywordTrendsTable
             trends={keywordTrends}
             isLoading={isLoading}
             onTimeframeChange={() => {}}
             selectedTimeframe={30}
           />
+          */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-foreground">Keyword Trends</CardTitle>
+              <CardDescription>This feature has been removed</CardDescription>
+            </CardHeader>
+          </Card>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">

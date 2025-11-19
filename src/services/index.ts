@@ -7,7 +7,7 @@ export { dataValidationService } from './data-validation.service';
 export { inputDetectionService } from './input-detection.service';
 export { bypassPatternsService } from './bypass-patterns.service';
 export { correlationTracker } from './correlation-tracker.service';
-export { directItunesService } from './direct-itunes.service';
+// DEPRECATED: export { directItunesService } from './direct-itunes.service'; - Use metadataOrchestrator instead
 export { asoSearchService } from './aso-search.service';
 export { keywordRankingService } from './keyword-ranking.service';
 export { keywordIntelligenceService } from './keyword-intelligence.service';
@@ -31,7 +31,7 @@ export { auditKeywordAnalysisService } from './audit-keyword-analysis.service';
 // Re-export types for convenience
 export type { SearchResult, SearchConfig } from './aso-search.service';
 export type { SearchParameters } from './input-detection.service';
-export type { SearchResultsResponse } from './direct-itunes.service';
+// DEPRECATED: export type { SearchResultsResponse } from './direct-itunes.service'; - No longer used
 export type { KeywordRanking, KeywordAnalysisConfig } from './keyword-ranking.service';
 export type { KeywordValidationResult } from './keyword-validation.service';
 export type { CacheConfig } from './keyword-cache.service';

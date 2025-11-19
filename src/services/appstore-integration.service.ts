@@ -1,5 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
+// Import Phase A adapters for modern metadata ingestion
+import { metadataOrchestrator } from './metadata-adapters';
 
 interface AppStoreSearchResult {
   name: string;
@@ -27,123 +29,109 @@ interface SearchResponse {
 export class AppStoreIntegrationService {
   static async searchApp(searchTerm: string, organizationId: string): Promise<SearchResponse> {
     try {
-      console.log('🔍 [APPSTORE-INTEGRATION] Searching for:', searchTerm);
-      
-      const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-        body: {
-          searchTerm: searchTerm.trim(),
-          searchType: 'keyword',
-          organizationId,
-          includeCompetitorAnalysis: false,
-          searchParameters: {
-            country: 'us',
-            limit: 10
-          }
-        }
+      console.log('🔍 [APPSTORE-INTEGRATION-V2] Searching via Phase A adapters:', searchTerm);
+
+      // Use Phase A adapter orchestrator for metadata fetching
+      const metadata = await metadataOrchestrator.fetchMetadata(searchTerm, {
+        country: 'us',
+        timeout: 30000,
+        retries: 2
       });
 
-      if (error) {
-        console.error('❌ [APPSTORE-INTEGRATION] Error calling scraper:', error);
-        return { success: false, error: error.message || 'Failed to search App Store' };
-      }
-
-      // Handle edge function response - check for results array instead of success field
-      if (!data || !data.results || !Array.isArray(data.results)) {
-        console.error('❌ [APPSTORE-INTEGRATION] No results in response:', data);
-        return { success: false, error: data?.error || 'No results found' };
-      }
-
-      // Log response status for debugging
-      if (data.isAmbiguous) {
-        console.log(`✅ [APPSTORE-INTEGRATION] Found ${data.results.length} apps - disambiguation needed`);
-      } else {
-        console.log('✅ [APPSTORE-INTEGRATION] Single app result found');
-      }
-
-      // Extract results directly from the edge function response
-      const resultsToTransform = data.results;
-
-      console.log('📊 [APPSTORE-INTEGRATION] Transforming results:', {
-        resultsCount: resultsToTransform.length,
-        isAmbiguous: data.isAmbiguous,
-        sampleResult: resultsToTransform[0]
+      console.log('✅ [APPSTORE-INTEGRATION-V2] Metadata fetched successfully:', {
+        name: metadata.name,
+        appId: metadata.appId,
+        hasScreenshots: !!metadata.screenshots?.length,
+        source: metadata._source
       });
 
-      // Transform the response to match our interface
-      const transformedResults: AppStoreSearchResult[] = resultsToTransform.map((appData: any, index: number) => {
-        const result = {
-          name: appData.name || appData.trackName || appData.title || searchTerm,
-          appId: appData.appId || appData.trackId?.toString() || appData.bundleId || `unknown-${index}`,
-          title: appData.title || appData.trackName || appData.name || searchTerm,
-          subtitle: appData.subtitle || appData.sellerName || '',
-          description: appData.description || '',
-          url: appData.url || appData.trackViewUrl || '',
-          icon: appData.icon || appData.artworkUrl512 || appData.artworkUrl100 || appData.artworkUrl60 || '',
-          rating: appData.rating || appData.averageUserRating || 0,
-          reviews: appData.reviews || appData.userRatingCount || 0,
-          developer: appData.developer || appData.artistName || appData.sellerName || '',
-          applicationCategory: appData.applicationCategory || appData.primaryGenreName || appData.genres?.[0] || '',
-          locale: appData.locale || 'en-US'
-        };
+      // Transform Phase A adapter result to AppStoreSearchResult format
+      const result: AppStoreSearchResult = {
+        name: metadata.name,
+        appId: metadata.appId,
+        title: metadata.title,
+        subtitle: metadata.subtitle || '',
+        description: metadata.description || '',
+        url: metadata.url || '',
+        icon: metadata.icon || '',
+        rating: metadata.rating || 0,
+        reviews: metadata.reviews || 0,
+        developer: metadata.developer || '',
+        applicationCategory: metadata.applicationCategory || '',
+        locale: metadata.locale,
+        screenshots: metadata.screenshots || []
+      };
 
-        console.log(`🔄 [APPSTORE-INTEGRATION] Transformed result ${index + 1}:`, {
-          name: result.name,
-          developer: result.developer,
-          appId: result.appId,
-          hasIcon: !!result.icon,
-          rating: result.rating
-        });
-
-        return result;
+      console.log('✅ [APPSTORE-INTEGRATION-V2] Transformed result:', {
+        name: result.name,
+        developer: result.developer,
+        appId: result.appId,
+        hasIcon: !!result.icon,
+        hasScreenshots: !!result.screenshots?.length,
+        rating: result.rating
       });
 
-      // Filter results but be less aggressive for ambiguous searches
-      const validResults = transformedResults.filter(result => 
-        result.name && result.name.trim().length > 0
-      );
-
-      console.log('✅ [APPSTORE-INTEGRATION] Final results:', {
-        originalCount: transformedResults.length,
-        validCount: validResults.length,
-        isAmbiguous: data.isAmbiguous,
-        results: validResults.map(r => ({ name: r.name, developer: r.developer }))
-      });
-
-      if (validResults.length === 0) {
-        return { success: false, error: `No valid apps found for "${searchTerm.trim()}"` };
-      }
-
-      // Return success with ambiguity information preserved
-      return { 
-        success: true, 
-        data: validResults,
-        isAmbiguous: data.isAmbiguous || false,
-        totalResults: validResults.length
+      // Return single result
+      return {
+        success: true,
+        data: [result],
+        isAmbiguous: false,
+        totalResults: 1
       };
     } catch (error: any) {
-      console.error('💥 [APPSTORE-INTEGRATION] Exception:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to connect to App Store service' 
+      console.error('💥 [APPSTORE-INTEGRATION-V2] Adapter fetch failed:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch app metadata via Phase A adapters'
       };
     }
   }
 
   static async validateAppStoreId(appStoreId: string, platform: 'ios' | 'android', organizationId: string): Promise<SearchResponse> {
     try {
-      console.log('🔍 [APPSTORE-INTEGRATION] Validating App Store ID:', appStoreId);
-      
-      // For iOS, search by app store URL
-      const searchUrl = platform === 'ios' 
-        ? `https://apps.apple.com/app/id${appStoreId}`
-        : `https://play.google.com/store/apps/details?id=${appStoreId}`;
+      console.log('🔍 [APPSTORE-INTEGRATION-V2] Validating App Store ID:', appStoreId);
 
-      return await this.searchApp(searchUrl, organizationId);
+      if (platform === 'android') {
+        return {
+          success: false,
+          error: 'Android platform not yet supported by Phase A adapters'
+        };
+      }
+
+      // For iOS, fetch directly by app ID using Phase A adapters
+      const metadata = await metadataOrchestrator.fetchMetadata(appStoreId, {
+        country: 'us',
+        timeout: 30000,
+        retries: 2
+      });
+
+      const result: AppStoreSearchResult = {
+        name: metadata.name,
+        appId: metadata.appId,
+        title: metadata.title,
+        subtitle: metadata.subtitle || '',
+        description: metadata.description || '',
+        url: metadata.url || '',
+        icon: metadata.icon || '',
+        rating: metadata.rating || 0,
+        reviews: metadata.reviews || 0,
+        developer: metadata.developer || '',
+        applicationCategory: metadata.applicationCategory || '',
+        locale: metadata.locale,
+        screenshots: metadata.screenshots || []
+      };
+
+      return {
+        success: true,
+        data: [result],
+        isAmbiguous: false,
+        totalResults: 1
+      };
     } catch (error: any) {
-      console.error('💥 [APPSTORE-INTEGRATION] Exception validating ID:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to validate App Store ID' 
+      console.error('💥 [APPSTORE-INTEGRATION-V2] Validation failed:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to validate App Store ID'
       };
     }
   }

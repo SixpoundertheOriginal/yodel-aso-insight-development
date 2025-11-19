@@ -90,26 +90,67 @@ export class MetadataExtractionService {
 
   private extractFromHtml(html: string): any {
     const scrapedData: any = {};
-    
-    // Extract from JSON-LD
+
+    // Extract from JSON-LD (most reliable source)
     this.extractFromJsonLd(html, scrapedData);
-    
-    // Extract from Open Graph
+
+    // CRITICAL FIX: Extract from actual HTML elements BEFORE Open Graph
+    // App Store uses <h1 class="product-header__title"> for app name
+    // This must take priority over og:title which contains review text!
+    this.extractFromHtmlElements(html, scrapedData);
+
+    // Extract from Open Graph (FALLBACK ONLY - contains review titles!)
     this.extractFromOpenGraph(html, scrapedData);
-    
+
     // Extract from Apple-specific tags
     this.extractFromAppleTags(html, scrapedData);
-    
+
     // Extract from standard meta tags
     this.extractFromStandardMeta(html, scrapedData);
-    
+
     return scrapedData;
+  }
+
+  /**
+   * CRITICAL FIX: Extract app name from actual HTML elements
+   *
+   * App Store structure:
+   * <h1 class="product-header__title">Pimsleur: Learn Languages Fast</h1>
+   * <h2 class="product-header__subtitle">Speak fluently in 30 Days!</h2>
+   *
+   * This extraction runs BEFORE OpenGraph because og:title contains review text!
+   *
+   * IMPORTANT: This OVERRIDES any previous name/subtitle because HTML elements
+   * are the most reliable source (JSON-LD and Open Graph can contain review text)
+   */
+  private extractFromHtmlElements(html: string, data: any) {
+    // Extract app name from <h1 class="product-header__title">
+    const h1Match = html.match(/<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>(.*?)<\/h1>/i);
+    if (h1Match && h1Match[1]) {
+      const cleanName = h1Match[1].trim().replace(/<[^>]+>/g, ''); // Strip any nested tags
+      if (cleanName) {
+        // FORCE OVERRIDE - HTML elements are most reliable source
+        data.name = cleanName;
+        console.log(`[HTML-EXTRACTION] ✅ Extracted name from <h1>: "${cleanName}"`);
+      }
+    }
+
+    // Extract subtitle from <h2 class="product-header__subtitle">
+    const h2Match = html.match(/<h2[^>]*class="[^"]*product-header__subtitle[^"]*"[^>]*>(.*?)<\/h2>/i);
+    if (h2Match && h2Match[1]) {
+      const cleanSubtitle = h2Match[1].trim().replace(/<[^>]+>/g, '');
+      if (cleanSubtitle) {
+        // FORCE OVERRIDE - HTML elements are most reliable source
+        data.subtitle = cleanSubtitle;
+        console.log(`[HTML-EXTRACTION] ✅ Extracted subtitle from <h2>: "${cleanSubtitle}"`);
+      }
+    }
   }
 
   private extractFromJsonLd(html: string, data: any) {
     const regex = /<script name="schema:software-application" type="application\/ld\+json">([\s\S]*?)<\/script>/;
     const match = html.match(regex);
-    
+
     if (match && match[1]) {
       try {
         const jsonData = JSON.parse(match[1]);
@@ -126,7 +167,7 @@ export class MetadataExtractionService {
           const numVal = Number(jsonData.aggregateRating.ratingValue);
           if (!isNaN(numVal)) data.ratingValue = numVal;
         }
-        
+
         if (jsonData.aggregateRating?.reviewCount !== undefined && data.reviewCount === undefined) {
           const numVal = Number(jsonData.aggregateRating.reviewCount);
           if (!isNaN(numVal)) data.reviewCount = numVal;
@@ -198,7 +239,8 @@ export class MetadataExtractionService {
     metadata.author = itunesData.artistName;
     metadata.ratingValue = itunesData.averageUserRating;
     metadata.reviewCount = itunesData.userRatingCount;
-    metadata.screenshot = itunesData.screenshotUrls;
+    // FIX: Use plural "screenshots" to match ScrapedMetadata type
+    metadata.screenshots = itunesData.screenshotUrls || [];
 
     return metadata;
   }
@@ -209,7 +251,8 @@ export class MetadataExtractionService {
       // Use secondary data for enrichment
       description: secondary.description ?? primary.description,
       icon: primary.icon ?? secondary.icon,
-      screenshot: primary.screenshot ?? secondary.screenshot,
+      // FIX: Use plural "screenshots" to match ScrapedMetadata type
+      screenshots: primary.screenshots ?? secondary.screenshots ?? [],
       ratingValue: primary.ratingValue ?? secondary.ratingValue,
       reviewCount: primary.reviewCount ?? secondary.reviewCount,
       // Keep primary data for core fields
@@ -248,6 +291,8 @@ export class MetadataExtractionService {
       rating: getValidNumber(metadata.rating, metadata.ratingValue),
       reviews: getValidNumber(metadata.reviews, metadata.reviewCount),
       price: metadata.price || 'Free',
+      // FIX: Include screenshots array (was previously dropped)
+      screenshots: Array.isArray(metadata.screenshots) ? metadata.screenshots : [],
     };
   }
 }

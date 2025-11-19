@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Brain, TrendingUp, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import type { ExecutiveSummaryNarrative } from '@/services/narrative-engine.service';
+import { getScoreColor, getScoreBgColor } from '@/lib/scoringUtils';
 
 interface ExecutiveSummaryPanelProps {
   narrative: ExecutiveSummaryNarrative | null;
@@ -40,16 +41,9 @@ export const ExecutiveSummaryPanel: React.FC<ExecutiveSummaryPanelProps> = ({
     );
   }
 
-  const scoreColor =
-    overallScore >= 80 ? 'text-green-400' :
-    overallScore >= 60 ? 'text-blue-400' :
-    overallScore >= 40 ? 'text-yellow-400' : 'text-red-400';
-
-  const scoreBadgeColor =
-    overallScore >= 80 ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-    overallScore >= 60 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-    overallScore >= 40 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-    'bg-red-500/20 text-red-400 border-red-500/30';
+  // Use centralized scoring utilities
+  const scoreColor = getScoreColor(overallScore);
+  const scoreBadgeColor = getScoreBgColor(overallScore);
 
   return (
     <div className="space-y-6">

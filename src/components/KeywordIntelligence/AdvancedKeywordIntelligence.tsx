@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, Search, Filter, Target, BarChart3, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAdvancedKeywordIntelligence } from '@/hooks/useAdvancedKeywordIntelligence';
 import { KeywordVolumeChart } from './KeywordVolumeChart';
-import { KeywordClustersPanel } from './KeywordClustersPanel';
+// DELETED (2025-01-18): import { KeywordClustersPanel } from './KeywordClustersPanel';
 
 interface AdvancedKeywordIntelligenceProps {
   organizationId: string;

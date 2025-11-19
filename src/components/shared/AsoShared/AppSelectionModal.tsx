@@ -11,11 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Star, Target, BarChart3, TrendingUp } from 'lucide-react';
+import { Target, BarChart3, TrendingUp } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
 import { isDebugTarget } from '@/lib/debugTargets';
 import { asoSearchService } from '@/services/aso-search.service';
-import { directItunesService } from '@/services/direct-itunes.service';
+import { metadataOrchestrator } from '@/services/metadata-adapters';
 
 interface AppSelectionModalProps {
   isOpen: boolean;
@@ -75,6 +75,7 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
   const [searchResults, setSearchResults] = useState<ScrapedMetadata[]>(candidates);
   const [searching, setSearching] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [fetchingMetadata, setFetchingMetadata] = useState(false);
 
   useEffect(() => {
     const uniqueApps = stableSelectedApps.filter(
@@ -90,9 +91,23 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
 
   useEffect(() => {
     if (selectMode === 'single') {
+      console.log(`[APP-SELECTION-MODAL] 📋 Candidates updated: ${candidates.length} apps`);
+      console.log(`[APP-SELECTION-MODAL] 👁️ Modal state: isOpen=${isOpen}, searchTerm="${searchTerm}"`);
       setSearchResults(candidates);
     }
   }, [candidates, selectMode]);
+
+  useEffect(() => {
+    if (isOpen) {
+      console.log(`[APP-SELECTION-MODAL] 🎬 Modal OPENED for "${searchTerm}"`);
+      console.log(`[APP-SELECTION-MODAL] 📦 Rendering ${searchResults.length} apps`);
+      searchResults.forEach((app, i) => {
+        console.log(`[APP-SELECTION-MODAL]   ${i + 1}. ${app.name} (${app.appId}) - ${app.developer}`);
+      });
+    } else {
+      console.log(`[APP-SELECTION-MODAL] 🚪 Modal CLOSED`);
+    }
+  }, [isOpen, searchTerm, searchResults]);
 
   const handleAppToggle = (app: ScrapedMetadata) => {
     const isSelected = internalSelectedApps.some((a) => a.appId === app.appId);
@@ -111,12 +126,56 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
     onClose();
   };
 
+  /**
+   * Fetch full metadata for an app and call onSelect
+   *
+   * This is critical because searchApps() returns ONLY lightweight fields.
+   * We must fetch full metadata (subtitle, screenshots, description) before import.
+   */
+  const handleSelectWithMetadata = async (app: ScrapedMetadata) => {
+    console.log(`[APP-SELECTION-MODAL] 🎯 User selected: ${app.name} (${app.appId})`);
+    setFetchingMetadata(true);
+    try {
+      console.log(`[APP-SELECTION-MODAL] 🔍 IMPORT → Fetching full metadata for ${app.name} (${app.appId})`);
+
+      // Fetch full metadata including subtitle, screenshots, description
+      const fullMetadata = await metadataOrchestrator.fetchMetadata(app.appId, {
+        country: searchCountry.toLowerCase(),
+      });
+
+      // Phase E: Use fullMetadata.name (not app.name) to ensure we're using fresh data
+      console.log(`[APP-SELECTION-MODAL] ✅ IMPORT → Full metadata fetched for ${fullMetadata.name}`);
+      console.log(`[APP-SELECTION-MODAL] 📦 Metadata includes: subtitle="${fullMetadata.subtitle}", screenshots=${fullMetadata.screenshots?.length || 0}, description length=${fullMetadata.description?.length || 0}`);
+
+      // DIAGNOSTIC: Log name/title/subtitle BEFORE calling onSelect
+      console.log('[DIAGNOSTIC-IMPORT-AppSelectionModal] BEFORE onSelect:', {
+        'fullMetadata.name': fullMetadata.name,
+        'fullMetadata.title': fullMetadata.title,
+        'fullMetadata.subtitle': fullMetadata.subtitle,
+        'fullMetadata._source': (fullMetadata as any)._source
+      });
+
+      // Call parent's onSelect with full metadata
+      onSelect(fullMetadata as ScrapedMetadata);
+
+    } catch (error: any) {
+      console.error(`[APP-SELECTION-MODAL] ❌ IMPORT → Failed to fetch metadata:`, error);
+
+      // Fallback: use lightweight data if metadata fetch fails
+      console.warn(`[APP-SELECTION-MODAL] ⚠️ IMPORT → Using lightweight data as fallback`);
+      onSelect(app);
+    } finally {
+      setFetchingMetadata(false);
+    }
+  };
+
   const getButtonProps = (app: ScrapedMetadata): ButtonProps => {
     if (selectMode === 'single') {
       return {
-        text: buttonText,
-        onClick: () => onSelect(app),
+        text: fetchingMetadata ? 'Loading...' : buttonText,
+        onClick: () => handleSelectWithMetadata(app),
         variant: 'default',
+        disabled: fetchingMetadata,
       };
     }
     const isSelected = internalSelectedApps.some((a) => a.appId === app.appId);
@@ -150,8 +209,9 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
     }
     setSearching(true);
     try {
-      const app = await directItunesService.lookupById(m[1], { country: searchCountry.toLowerCase() });
-      setSearchResults([app]);
+      // MIGRATED: Now uses MetadataOrchestrator instead of DirectItunesService
+      const app = await metadataOrchestrator.lookupById(m[1], { country: searchCountry.toLowerCase() });
+      setSearchResults([app as ScrapedMetadata]);
     } catch (e) {
       console.error('Lookup failed', e);
     } finally {
@@ -235,27 +295,13 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
                         by {app.developer || 'Unknown Developer'}
                       </p>
 
-                      <div className="flex items-center gap-4 mb-2">
-                        {app.rating && (
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm text-zinc-300">{app.rating}</span>
-                          </div>
-                        )}
-                        {app.applicationCategory && (
-                          <Badge
-                            variant="outline"
-                            className="text-zinc-400 border-zinc-600"
-                          >
-                            {app.applicationCategory}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {app.description && (
-                        <p className="text-sm text-zinc-400 line-clamp-2">
-                          {app.description}
-                        </p>
+                      {app.applicationCategory && (
+                        <Badge
+                          variant="outline"
+                          className="text-zinc-400 border-zinc-600 text-xs"
+                        >
+                          {app.applicationCategory}
+                        </Badge>
                       )}
                     </div>
 

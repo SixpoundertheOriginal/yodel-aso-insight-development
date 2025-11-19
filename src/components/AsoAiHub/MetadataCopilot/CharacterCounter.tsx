@@ -31,6 +31,44 @@ export const CharacterCounter: React.FC<CharacterCounterProps> = ({
     return 'bg-green-500';
   };
 
+  const getOptimizationMessage = () => {
+    const remaining = limit - current;
+
+    if (isError) {
+      return (
+        <p className="text-xs text-red-400">
+          ❌ Exceeds limit by {Math.abs(remaining)} character{Math.abs(remaining) > 1 ? 's' : ''}
+        </p>
+      );
+    }
+
+    if (current === limit) {
+      return (
+        <p className="text-xs text-green-400">
+          ✅ Perfect! All {limit} characters used for maximum indexing
+        </p>
+      );
+    }
+
+    if (remaining <= 3 && remaining > 0) {
+      return (
+        <p className="text-xs text-blue-400">
+          💡 Add {remaining} more character{remaining > 1 ? 's' : ''} to maximize App Store indexing
+        </p>
+      );
+    }
+
+    if (remaining > 3) {
+      return (
+        <p className="text-xs text-zinc-400">
+          {remaining} character{remaining > 1 ? 's' : ''} remaining - add more keywords for better indexing
+        </p>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className={`space-y-2 ${className}`}>
       <div className="flex justify-between items-center">
@@ -39,28 +77,19 @@ export const CharacterCounter: React.FC<CharacterCounterProps> = ({
           {current}/{limit}
         </span>
       </div>
-      
+
       <div className="relative">
-        <Progress 
-          value={Math.min(percentage, 100)} 
+        <Progress
+          value={Math.min(percentage, 100)}
           className="h-2 bg-zinc-700"
         />
-        <div 
+        <div
           className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${getProgressColor()}`}
           style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
-      
-      {isError && (
-        <p className="text-xs text-red-400">
-          Exceeds limit by {current - limit} character{current - limit > 1 ? 's' : ''}
-        </p>
-      )}
-      {isWarning && !isError && (
-        <p className="text-xs text-yellow-400">
-          Close to limit ({limit - current} remaining)
-        </p>
-      )}
+
+      {getOptimizationMessage()}
     </div>
   );
 };

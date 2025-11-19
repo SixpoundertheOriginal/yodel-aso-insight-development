@@ -1,16 +1,14 @@
 
 import React, { useState } from 'react';
 import { CurrentMetadataPanel } from './CurrentMetadataPanel';
-import { SuggestedMetadataPanel } from './SuggestedMetadataPanel';
-import { ManualMetadataEditor } from './ManualMetadataEditor';
+import { UnifiedMetadataEditor } from './UnifiedMetadataEditor';
 import { CompetitiveAnalysisPanel } from './CompetitiveAnalysisPanel';
 import { LongDescriptionPanel } from './LongDescriptionPanel';
-import { ModeToggle, WorkspaceMode } from './ModeToggle';
+import { MetadataOptimizationHints } from './MetadataOptimizationHints';
 import { DataIntegrityChecker } from './DataIntegrityChecker';
-import { ScrapedMetadata, MetadataField, MetadataScore } from '@/types/aso';
-import { useCopilotChat } from '@/hooks/useCopilotChat';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Users, FileText } from 'lucide-react';
+import { ScrapedMetadata } from '@/types/aso';
 
 interface MetadataWorkspaceProps {
   initialData: ScrapedMetadata;
@@ -18,11 +16,7 @@ interface MetadataWorkspaceProps {
 }
 
 export const MetadataWorkspace: React.FC<MetadataWorkspaceProps> = React.memo(({ initialData, organizationId }) => {
-  const [mode, setMode] = useState<WorkspaceMode>('ai-generation');
-  const [generatedMetadata, setGeneratedMetadata] = useState<MetadataField | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const { sendMessage } = useCopilotChat();
-  const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<'editor' | 'competitors' | 'description'>('editor');
 
   // Memoize debug data to prevent JSON.stringify on every render
   const debugData = React.useMemo(() => {
@@ -31,93 +25,13 @@ export const MetadataWorkspace: React.FC<MetadataWorkspaceProps> = React.memo(({
       name: initialData.name,
       hasDescription: !!initialData.description,
       organizationId,
-      mode
+      viewMode
     };
-  }, [initialData.appId, initialData.name, initialData.description, organizationId, mode]);
-  
+  }, [initialData.appId, initialData.name, initialData.description, organizationId, viewMode]);
+
   React.useEffect(() => {
-    console.log('🏗️ [WORKSPACE] Hybrid workspace initialized:', debugData);
+    console.log('🏗️ [WORKSPACE] Unified workspace initialized:', debugData);
   }, [debugData]);
-
-  const handleSaveMetadata = async (metadata: MetadataField, score: MetadataScore) => {
-    setIsSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error } = await supabase
-        .from('metadata_versions')
-        .insert({
-          app_id: initialData.appId,
-          organization_id: organizationId,
-          title: metadata.title,
-          subtitle: metadata.subtitle,
-          keywords: metadata.keywords,
-          platform: 'ios',
-          version_number: 1
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Metadata Saved!",
-        description: "Your metadata has been saved successfully.",
-      });
-
-    } catch (error: any) {
-      console.error('Error saving metadata:', error);
-      toast({
-        title: "Save Error",
-        description: error.message || "Failed to save metadata. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAiSuggestion = async (field: keyof MetadataField, currentValue: string) => {
-    const prompt = `Suggest an optimized ${field} for this app:
-
-App Name: ${initialData.title}
-Current ${field}: ${currentValue || 'None'}
-Category: ${initialData.applicationCategory}
-Locale: ${initialData.locale}
-
-Requirements:
-- ${field === 'title' ? 'Maximum 30 characters' : field === 'subtitle' ? 'Maximum 30 characters' : 'Maximum 100 characters, comma-separated'}
-- App Store optimized
-- Use compelling, search-friendly language
-
-Respond with ONLY the suggested ${field}, no formatting or explanation.`;
-
-    try {
-      const response = await sendMessage(prompt, 'metadata-copilot-suggestion');
-      if (response) {
-        toast({
-          title: "AI Suggestion Ready",
-          description: `AI has suggested a new ${field}. Check the chat for details.`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Suggestion Failed",
-        description: "Could not generate AI suggestion. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleGenerationSuccess = (metadata: MetadataField) => {
-    setGeneratedMetadata(metadata);
-    // Auto-switch to manual mode when user wants to edit AI results
-  };
-
-  const switchToManualMode = () => {
-    setMode('manual-editor');
-  };
   
   return (
     <div className="space-y-6">
@@ -126,36 +40,53 @@ Respond with ONLY the suggested ${field}, no formatting or explanation.`;
         <DataIntegrityChecker metadata={initialData} />
       )}
 
-      {/* Mode Toggle */}
-      <div className="flex justify-center">
-        <ModeToggle 
-          mode={mode} 
-          onModeChange={setMode}
-          disabled={isSaving}
-        />
+      {/* App Store Optimization Rules */}
+      <MetadataOptimizationHints />
+
+      {/* Optional View Selector */}
+      <div className="flex justify-center gap-2 bg-zinc-800 rounded-lg p-1 w-fit mx-auto">
+        <Button
+          variant={viewMode === 'editor' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('editor')}
+          className={viewMode === 'editor' ? 'bg-yodel-orange hover:bg-yodel-orange/90' : ''}
+        >
+          Metadata Editor
+        </Button>
+        <Button
+          variant={viewMode === 'competitors' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('competitors')}
+          className={viewMode === 'competitors' ? 'bg-yodel-orange hover:bg-yodel-orange/90' : ''}
+        >
+          <Users className="w-4 h-4 mr-1" />
+          Competitors
+        </Button>
+        <Button
+          variant={viewMode === 'description' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('description')}
+          className={viewMode === 'description' ? 'bg-yodel-orange hover:bg-yodel-orange/90' : ''}
+        >
+          <FileText className="w-4 h-4 mr-1" />
+          Long Description
+        </Button>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column: Current Metadata */}
         <div>
           <CurrentMetadataPanel metadata={initialData} />
         </div>
+
+        {/* Right Column: Unified Editor or Other Views */}
         <div>
-          {mode === 'ai-generation' ? (
-            <SuggestedMetadataPanel 
-              initialData={initialData} 
+          {viewMode === 'editor' ? (
+            <UnifiedMetadataEditor
+              initialData={initialData}
               organizationId={organizationId}
-              onEditResults={switchToManualMode}
-              onGenerationSuccess={handleGenerationSuccess}
             />
-          ) : mode === 'manual-editor' ? (
-            <ManualMetadataEditor
-              initialData={generatedMetadata || undefined}
-              onSave={handleSaveMetadata}
-              onRequestAiSuggestion={handleAiSuggestion}
-              appName={initialData.name}
-              isSaving={isSaving}
-            />
-          ) : mode === 'long-description' ? (
+          ) : viewMode === 'description' ? (
             <LongDescriptionPanel
               initialData={initialData}
               organizationId={organizationId}
@@ -165,7 +96,6 @@ Respond with ONLY the suggested ${field}, no formatting or explanation.`;
               initialData={initialData}
               organizationId={organizationId}
               onApplyInsight={(insight, field) => {
-                // TODO: Apply competitive insights to metadata fields
                 console.log('Apply insight:', insight, 'to field:', field);
               }}
             />

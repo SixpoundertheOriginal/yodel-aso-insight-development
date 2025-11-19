@@ -33,8 +33,9 @@ export const CreativeAnalysisPanel: React.FC<CreativeAnalysisPanelProps> = ({
 
   // Mock creative analysis data (will be enhanced with real AI analysis)
   const creativeScore = 75;
+  // FIX: Use metadata.screenshots directly (string array from adapters)
+  const screenshots = metadata.screenshots || [];
   const screenshotAnalysis = metadata.screenshotAnalysis || [];
-  const screenshots = screenshotAnalysis.map(s => s.url) || [];
   
   const visualTheme = {
     primaryColors: ['#007AFF', '#34C759', '#FF3B30'],

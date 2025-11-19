@@ -8,10 +8,10 @@ import { Separator } from '@/components/ui/separator';
 import { Brain, Target, TrendingUp, Database, RefreshCw, Zap } from 'lucide-react';
 import { useEnhancedKeywordAnalytics } from '@/hooks/useEnhancedKeywordAnalytics';
 import { useAdvancedKeywordIntelligence } from '@/hooks/useAdvancedKeywordIntelligence';
-import { RankDistributionChart } from './RankDistributionChart';
-import { KeywordTrendsTable } from './KeywordTrendsTable';
+// DELETED (2025-01-18): import { RankDistributionChart } from './RankDistributionChart';
+// DELETED (2025-01-18): import { KeywordTrendsTable } from './KeywordTrendsTable';
 import { UsageTrackingPanel } from './UsageTrackingPanel';
-import { KeywordClustersPanel } from './KeywordClustersPanel';
+// DELETED (2025-01-18): import { KeywordClustersPanel } from './KeywordClustersPanel';
 import { toast } from 'sonner';
 
 interface EnhancedKeywordIntelligenceProps {

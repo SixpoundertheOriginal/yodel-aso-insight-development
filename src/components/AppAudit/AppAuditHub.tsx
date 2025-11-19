@@ -5,23 +5,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isDebugTarget } from '@/lib/debugTargets';
-import { Brain, Target, TrendingUp, FileText, RefreshCw, Download, AlertTriangle, Users, Palette, FileSpreadsheet, Shield, Sparkles } from 'lucide-react';
+import { Brain, Target, TrendingUp, FileText, Palette, RefreshCw, Download, FileSpreadsheet, Sparkles } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
 import { MetadataWorkspace } from '../AsoAiHub/MetadataCopilot/MetadataWorkspace';
-import { KeywordClustersPanel } from '../KeywordIntelligence/KeywordClustersPanel';
-import { RankDistributionChart } from '../KeywordIntelligence/RankDistributionChart';
-import { KeywordTrendsTable } from '../KeywordIntelligence/KeywordTrendsTable';
 import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
 import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
-import { SearchDominationTab } from '../AsoAiHub/SearchDominationTab';
 import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
-import { ExecutiveSummaryPanel, KeywordStrategyPanel, RiskAssessmentPanel } from './NarrativeModules';
+import { ExecutiveSummaryPanel, RiskAssessmentPanel } from './NarrativeModules';
 import { SlideViewPanel } from './SlideView';
+import { KeywordDisabledPlaceholder } from './KeywordDisabledPlaceholder';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
+import { AUDIT_KEYWORDS_ENABLED, isTabVisible } from '@/config/auditFeatureFlags';
+import { getScoreLabel } from '@/lib/scoringUtils';
 
 interface AppAuditHubProps {
   organizationId: string;
@@ -50,6 +49,18 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
   const handleMetadataImport = (metadata: ScrapedMetadata, orgId: string) => {
     const debug = isDebugTarget(metadata);
     console.log('🎯 [APP-AUDIT] App imported:', metadata.name, debug ? '(debug target)' : '');
+
+    // DIAGNOSTIC: Log name/title/subtitle WHEN metadata received
+    console.log('[DIAGNOSTIC-IMPORT-AppAuditHub] WHEN metadata received:', {
+      'metadata.name': metadata.name,
+      'metadata.title': metadata.title,
+      'metadata.subtitle': metadata.subtitle,
+      'metadata._source': (metadata as any)._source
+    });
+
+    // Phase E: Force clean state by resetting to null BEFORE setting new metadata
+    // This prevents Zustand from merging old and new metadata fields
+    setImportedMetadata(null);
     setImportedMetadata(metadata);
     setActiveTab('slide-view'); // Show comprehensive deck-ready slide view first
     toast.success(`Started comprehensive audit for ${metadata.name}`);
@@ -325,6 +336,11 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
                 <Badge variant="outline" className="text-xs border-yodel-orange text-yodel-orange">Debug</Badge>
               )}
             </h1>
+            {importedMetadata.subtitle && (
+              <p className="text-zinc-300 text-sm font-medium">
+                {importedMetadata.subtitle}
+              </p>
+            )}
             <p className="text-zinc-400">
               {importedMetadata.applicationCategory} • {importedMetadata.locale}
               {lastUpdated && (
@@ -367,124 +383,30 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
         </div>
       </div>
 
-      {/* Enhanced Audit Score Overview */}
-      {auditData && (
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-yodel-orange" />
-                <span className="text-sm text-zinc-400">Overall Score</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {auditData.overallScore}/100
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                {auditData.overallScore >= 80 ? 'Excellent' : 
-                 auditData.overallScore >= 60 ? 'Good' : 
-                 auditData.overallScore >= 40 ? 'Fair' : 'Needs Work'}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-zinc-400">Metadata</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {auditData.metadataScore}/100
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Title, Subtitle, Keywords
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-blue-400" />
-                <span className="text-sm text-zinc-400">Keywords</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {auditData.keywordScore}/100
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Rankings & Visibility
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Palette className="h-4 w-4 text-pink-400" />
-                <span className="text-sm text-zinc-400">Creative</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                75/100
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Visual Assets
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-400" />
-                <span className="text-sm text-zinc-400">Competitive</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {auditData.competitorScore}/100
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Market Position
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-zinc-400">Opportunities</span>
-              </div>
-              <div className="text-2xl font-bold text-green-400">
-                {auditData.opportunityCount}
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Action Items
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-11 bg-zinc-900 border-zinc-800">
-          <TabsTrigger value="slide-view" className="flex items-center space-x-1">
-            <FileSpreadsheet className="h-4 w-4" />
-            <span>Slide View</span>
-          </TabsTrigger>
-          <TabsTrigger value="executive-summary" className="flex items-center space-x-1">
-            <Sparkles className="h-4 w-4" />
-            <span>Summary</span>
-          </TabsTrigger>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="search-domination">Search Domination</TabsTrigger>
-          <TabsTrigger value="keyword-strategy" className="flex items-center space-x-1">
-            <Target className="h-4 w-4" />
-            <span>Strategy</span>
-          </TabsTrigger>
-          <TabsTrigger value="metadata">Metadata</TabsTrigger>
-          <TabsTrigger value="keywords">Keywords</TabsTrigger>
-          <TabsTrigger value="creative">Creative</TabsTrigger>
-          <TabsTrigger value="competitors">Competitors</TabsTrigger>
-          <TabsTrigger value="risk-assessment" className="flex items-center space-x-1">
-            <Shield className="h-4 w-4" />
-            <span>Risk</span>
-          </TabsTrigger>
-          <TabsTrigger value="recommendations">Actions</TabsTrigger>
+        <TabsList className={`grid w-full ${AUDIT_KEYWORDS_ENABLED ? 'grid-cols-11' : 'grid-cols-4'} bg-zinc-900 border-zinc-800`}>
+          {isTabVisible('slide-view') && (
+            <TabsTrigger value="slide-view" className="flex items-center space-x-1">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Slide View</span>
+            </TabsTrigger>
+          )}
+          {isTabVisible('executive-summary') && (
+            <TabsTrigger value="executive-summary" className="flex items-center space-x-1">
+              <Sparkles className="h-4 w-4" />
+              <span>Summary</span>
+            </TabsTrigger>
+          )}
+          {isTabVisible('overview') && (
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+          )}
+          {isTabVisible('metadata') && (
+            <TabsTrigger value="metadata">Metadata</TabsTrigger>
+          )}
+          {isTabVisible('creative') && (
+            <TabsTrigger value="creative">Creative</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="slide-view" className="space-y-6">
@@ -512,42 +434,10 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           />
         </TabsContent>
 
-        <TabsContent value="keyword-strategy" className="space-y-6">
-          <KeywordStrategyPanel
-            narrative={auditData?.narratives?.keywordStrategy || null}
-            brandRisk={auditData?.brandRisk || null}
-            keywordScore={auditData?.keywordScore || 0}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="risk-assessment" className="space-y-6">
-          <RiskAssessmentPanel
-            narrative={auditData?.narratives?.riskAssessment || null}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="search-domination" className="space-y-6">
-          <SearchDominationTab
-            scrapedAppData={importedMetadata}
-            organizationId={organizationId}
-          />
-        </TabsContent>
-
         <TabsContent value="metadata" className="space-y-6">
-          <MetadataWorkspace 
-            initialData={importedMetadata} 
+          <MetadataWorkspace
+            initialData={importedMetadata}
             organizationId={organizationId}
-          />
-        </TabsContent>
-
-        <TabsContent value="keywords" className="space-y-6">
-          <KeywordTrendsTable
-            trends={auditData?.keywordTrends || []}
-            isLoading={isLoading}
-            onTimeframeChange={() => {}}
-            selectedTimeframe={30}
           />
         </TabsContent>
 
@@ -559,60 +449,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           />
         </TabsContent>
 
-        <TabsContent value="competitors" className="space-y-6">
-          <CompetitiveKeywordAnalysis
-            competitorData={auditData?.competitorAnalysis || []}
-            userKeywords={auditData?.currentKeywords || []}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="recommendations" className="space-y-6">
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-yodel-orange" />
-                <span>Priority Recommendations</span>
-              </CardTitle>
-              <CardDescription>
-                AI-powered optimization suggestions based on comprehensive analysis
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {auditData?.recommendations?.map((rec, index) => (
-                <div key={index} className="flex items-start space-x-3 p-4 bg-zinc-800/50 rounded-lg mb-3">
-                  <Badge className={`mt-1 ${
-                    rec.priority === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                    rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                    'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                  }`}>
-                    {rec.priority}
-                  </Badge>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-foreground">{rec.title}</h4>
-                      <Badge variant="outline" className="text-zinc-400 border-zinc-600">
-                        {rec.category}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-zinc-400 mt-1">{rec.description}</p>
-                    {'impact' in rec && (
-                      <div className="mt-2">
-                        <div className="text-xs text-zinc-500">Expected Impact: {rec.impact}%</div>
-                        <div className="w-full bg-zinc-700 rounded-full h-1.5 mt-1">
-                          <div 
-                            className="bg-yodel-orange h-1.5 rounded-full" 
-                            style={{ width: `${rec.impact}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* DELETED (2025-01-18): Competitors, Risk Assessment, Recommendations tabs - keyword intelligence cleanup */}
       </Tabs>
     </div>
   );

@@ -46,6 +46,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         
         <div>
           <h1 className="text-2xl font-bold text-foreground">{app.name}</h1>
+          {app.subtitle && (
+            <p className="text-zinc-300 text-sm font-medium -mt-1 mb-1">
+              {app.subtitle}
+            </p>
+          )}
           <p className="text-zinc-400">
             {app.applicationCategory} • {app.locale}
             {lastUpdated && (

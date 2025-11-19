@@ -36,6 +36,8 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+// Import Phase A adapters for modern metadata ingestion
+import { metadataOrchestrator } from '@/services/metadata-adapters';
 
 export interface AppSearchResultDto {
   name: string;
@@ -258,62 +260,34 @@ async function searchViaEdgeFunction(params: {
 }): Promise<AppSearchResultDto[]> {
   const { term, country = 'us', limit = 5 } = params;
   
-  // Try Supabase client method first
+  // Use Phase A adapters for modern metadata ingestion
   try {
-    console.log('[searchApps] Trying supabase.functions.invoke()');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT);
-    
-    const { data, error } = await supabase.functions.invoke('app-store-scraper', {
-      body: { 
-        op: 'search',
-        searchTerm: term, 
-        country, 
-        limit,
-        searchType: 'keyword'
-      },
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (error) {
-      console.warn('[searchApps] Supabase invoke error, trying direct HTTP:', error.message);
-      throw new EdgeFunctionError(error.message || 'Edge function search failed');
-    }
-    
-    // Handle response data
-    const normalize = (item: any): AppSearchResultDto => {
-      let appId: string | undefined = item.appId;
-      if (!appId && typeof item.url === 'string') {
-        const m = item.url.match(/id(\d+)/);
-        if (m) appId = m[1];
-      }
-      if (!appId && item.trackId) {
-        appId = String(item.trackId);
-      }
+    console.log('[searchApps-V2] Using Phase A adapters for app search:', term);
 
-      return {
-        name: item.name || item.trackName || 'Unknown App',
-        appId: appId || '',
-        developer: item.developer || item.artistName || 'Unknown Developer',
-        rating: typeof item.rating === 'number' ? item.rating : (item.averageUserRating || 0),
-        reviews: typeof item.reviews === 'number' ? item.reviews : (item.userRatingCount || 0),
-        icon: item.icon || item.artworkUrl512 || item.artworkUrl100 || '',
-        applicationCategory: item.applicationCategory || item.primaryGenreName || 'App',
-      };
+    const metadata = await metadataOrchestrator.fetchMetadata(term, {
+      country,
+      timeout: CONNECTION_TIMEOUT,
+      retries: 2
+    });
+
+    console.log('[searchApps-V2] Metadata fetched successfully:', metadata.name);
+
+    // Transform to AppSearchResultDto format
+    const result: AppSearchResultDto = {
+      name: metadata.name,
+      appId: metadata.appId,
+      developer: metadata.developer || '',
+      rating: metadata.rating || 0,
+      reviews: metadata.reviews || 0,
+      icon: metadata.icon || '',
+      applicationCategory: metadata.applicationCategory || ''
     };
 
-    if (data?.results && Array.isArray(data.results)) {
-      return data.results.slice(0, limit).map(normalize);
-    } else if (data && !data.results) {
-      return [normalize(data)];
-    }
-    
-    return [];
-    
+    return [result];
+
   } catch (error: any) {
-    console.warn('[searchApps] Supabase invoke failed, trying direct HTTP:', error.message);
-    
+    console.error('[searchApps-V2] Phase A adapter failed, falling back:', error.message);
+
     // Fallback to direct HTTP call
     return await searchViaDirectHTTP(params);
   }

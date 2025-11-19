@@ -1,6 +1,44 @@
 /**
  * Direct iTunes API Service
- * Bypass service for direct iTunes Search API calls
+ *
+ * ⚠️ DEPRECATION NOTICE - Phase Out in Progress ⚠️
+ *
+ * This service is being phased out in favor of the MetadataOrchestrator + adapter architecture.
+ *
+ * AUDIT SUMMARY (Current Usage):
+ *
+ * Methods Exposed:
+ * 1. searchWithAmbiguityDetection(term, config) → SearchResultsResponse
+ *    - Returns list of candidate apps for ambiguity detection modal
+ *    - Used by: aso-search.service.ts (3 call sites)
+ *      a) executeDirectApiSearch() - line 266
+ *      b) executeBypassSearch() - line 303
+ *      c) searchApps() - line 534
+ *
+ * 2. lookupById(id, config) → ScrapedMetadata
+ *    - Direct lookup by App Store ID
+ *    - Used by: AppSelectionModal.tsx - line 153
+ *      - When user pastes an App Store URL
+ *
+ * 3. searchDirect(term, config) → ScrapedMetadata
+ *    - Single app direct search
+ *    - Currently unused (legacy method)
+ *
+ * PROBLEM:
+ * All methods use transformItunesResult() which:
+ * - Does NOT parse subtitle correctly (assigns trackCensoredName directly)
+ * - Does NOT normalize metadata through MetadataNormalizer
+ * - Bypasses the adapter architecture entirely
+ *
+ * This causes:
+ * - Subtitle duplication bugs (e.g., "Pimsleur | Language Learning" instead of "Language Learning")
+ * - Screenshot inconsistencies
+ * - Non-normalized data entering the database
+ *
+ * MIGRATION PLAN:
+ * Task 2: Replace ambiguity detection with MetadataOrchestrator.searchByTerm()
+ * Task 3: Replace lookupById with MetadataOrchestrator.fetchMetadataById()
+ * Task 4: Remove this service entirely once all call sites migrated
  */
 
 import { ScrapedMetadata } from '@/types/aso';
@@ -24,8 +62,13 @@ class DirectItunesService {
 
   /**
    * Direct iTunes API search - bypasses all complex validation
+   *
+   * @deprecated Use metadataOrchestrator.fetchMetadata() instead
+   * This method does not normalize subtitle parsing and bypasses the adapter architecture.
    */
   async searchDirect(term: string, config: DirectSearchConfig): Promise<ScrapedMetadata> {
+    console.warn('[DEPRECATED] DirectItunesService.searchDirect() is deprecated. Use metadataOrchestrator.fetchMetadata() instead.');
+
     const correlationId = correlationTracker.getContext()?.id || 'direct-search';
     
     correlationTracker.log('info', `Direct iTunes search initiated`, {
@@ -76,8 +119,13 @@ class DirectItunesService {
 
   /**
    * Enhanced search with ambiguity detection
+   *
+   * @deprecated Use metadataOrchestrator.searchApps() instead
+   * This method does not normalize subtitle parsing and bypasses the adapter architecture.
    */
   async searchWithAmbiguityDetection(term: string, config: DirectSearchConfig): Promise<SearchResultsResponse> {
+    console.warn('[DEPRECATED] DirectItunesService.searchWithAmbiguityDetection() is deprecated. Use metadataOrchestrator.searchApps() instead.');
+
     const correlationId = correlationTracker.getContext()?.id || 'ambiguity-search';
     
     correlationTracker.log('info', `Ambiguity detection search initiated`, {
@@ -165,8 +213,12 @@ class DirectItunesService {
 
   /**
    * Direct lookup by App Store id (adamId)
+   *
+   * @deprecated Use metadataOrchestrator.lookupById() instead
+   * This method does not normalize subtitle parsing and bypasses the adapter architecture.
    */
   async lookupById(id: string, config: { country?: string }): Promise<ScrapedMetadata> {
+    console.warn('[DEPRECATED] DirectItunesService.lookupById() is deprecated. Use metadataOrchestrator.lookupById() instead.');
     const url = `https://itunes.apple.com/lookup?id=${id}&country=${(config.country || 'us').toLowerCase()}`;
     const res = await fetch(url, { headers: { 'User-Agent': 'ASO-Insights-Platform/Lookup' } });
     if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
@@ -180,6 +232,9 @@ class DirectItunesService {
       name: app.trackName || 'Unknown App',
       appId: app.trackId?.toString() || `direct-${Date.now()}`,
       title: app.trackName || 'Unknown App',
+      // FIX #1: Remove raw trackCensoredName assignment - let normalizer handle subtitle extraction
+      // iTunes API bug: trackCensoredName === trackName (both contain "App - Subtitle")
+      // The normalizer will parse subtitle from title if needed
       subtitle: app.trackCensoredName || '',
       description: app.description || '',
       url: app.trackViewUrl || '',
@@ -188,7 +243,12 @@ class DirectItunesService {
       reviews: app.userRatingCount || 0,
       developer: app.artistName || 'Unknown Developer',
       applicationCategory: app.primaryGenreName || 'Unknown',
-      locale: 'en-US'
+      locale: 'en-US',
+      // FIX #2: Add screenshots field mapping (was missing - caused screenshot loss)
+      // iTunes API provides screenshotUrls array
+      screenshots: Array.isArray(app.screenshotUrls)
+        ? app.screenshotUrls.filter((url: string) => url && typeof url === 'string' && url.trim().length > 0)
+        : []
     };
   }
 }

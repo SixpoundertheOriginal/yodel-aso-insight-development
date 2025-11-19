@@ -7,6 +7,7 @@ import { semanticClusteringService } from '@/services/semantic-clustering.servic
 import { metadataScoringService } from '@/services/metadata-scoring.service';
 import { narrativeEngineService } from '@/services/narrative-engine.service';
 import { brandRiskAnalysisService, type BrandRiskAnalysis } from '@/services/brand-risk-analysis.service';
+import { auditScoringEngine } from '@/services/audit-scoring-engine.service';
 import type {
   ExecutiveSummaryNarrative,
   KeywordStrategyNarrative,
@@ -15,12 +16,14 @@ import type {
 } from '@/services/narrative-engine.service';
 import { ScrapedMetadata } from '@/types/aso';
 import { supabase } from '@/integrations/supabase/client';
+import { AUDIT_KEYWORDS_ENABLED } from '@/config/auditFeatureFlags';
 
 interface EnhancedAuditData {
   overallScore: number;
   metadataScore: number;
   keywordScore: number;
   competitorScore: number;
+  creativeScore: number; // NEW: Phase 2.6 - Creative score from scoring engine
   opportunityCount: number;
   rankDistribution: any;
   keywordClusters: any[];
@@ -71,17 +74,18 @@ export const useEnhancedAppAudit = ({
   const auditCooldown = 3000; // 3 second cooldown between audits
 
   // Use existing intelligence hooks (pass scraped metadata to skip database queries)
+  // SKIP keyword hooks when AUDIT_KEYWORDS_ENABLED is false
   const advancedKI = useAdvancedKeywordIntelligence({
     organizationId,
     targetAppId: appId,
-    enabled: enabled && !!appId,
+    enabled: AUDIT_KEYWORDS_ENABLED && enabled && !!appId,
     scrapedMetadata: metadata // NEW: Pass scraped metadata to skip database queries
   });
 
   const enhancedAnalytics = useEnhancedKeywordAnalytics({
     organizationId,
     appId,
-    enabled: enabled && !!appId
+    enabled: AUDIT_KEYWORDS_ENABLED && enabled && !!appId
   });
 
   // Get competitor data (SKIP for scraped metadata - no database)
@@ -113,11 +117,18 @@ export const useEnhancedAppAudit = ({
     return {
       hasValidData: !!metadata && !!appId && !!organizationId,
       metadataSignature: currentMetadataSignature,
-      keywordDataReady: advancedKI.keywordData.length > 0 && !advancedKI.isLoading,
-      // Skip analytics check if using scraped metadata (no database)
-      analyticsReady: usingScrapedMetadata ? true : (!!enhancedAnalytics.rankDistribution && !enhancedAnalytics.isLoading),
-      // Skip competitor check if using scraped metadata (no database)
-      competitorDataReady: usingScrapedMetadata ? true : !!competitorData,
+      // When keywords disabled, always mark as ready (don't wait for keyword data)
+      keywordDataReady: AUDIT_KEYWORDS_ENABLED
+        ? (advancedKI.keywordData.length > 0 && !advancedKI.isLoading)
+        : true,
+      // Skip analytics check if using scraped metadata (no database) OR keywords disabled
+      analyticsReady: (!AUDIT_KEYWORDS_ENABLED || usingScrapedMetadata)
+        ? true
+        : (!!enhancedAnalytics.rankDistribution && !enhancedAnalytics.isLoading),
+      // Skip competitor check if using scraped metadata (no database) OR keywords disabled
+      competitorDataReady: (!AUDIT_KEYWORDS_ENABLED || usingScrapedMetadata)
+        ? true
+        : !!competitorData,
       lastSignature: lastAuditMetadataRef.current,
       usingScrapedMetadata
     };
@@ -171,38 +182,44 @@ export const useEnhancedAppAudit = ({
     lastAuditMetadataRef.current = stableDependencies.metadataSignature;
 
     try {
-      console.log('🔍 [ENHANCED-AUDIT] Starting audit for', metadata?.name);
+      console.log('🔍 [ENHANCED-AUDIT] Starting audit for', metadata?.name,
+        AUDIT_KEYWORDS_ENABLED ? '(full mode)' : '(metadata-only mode)');
 
-      // Generate semantic clusters from real keyword data
-      const clusteringResult = await semanticClusteringService.generateClusters(
-        advancedKI.keywordData,
-        organizationId
-      );
+      // Generate semantic clusters from real keyword data (SKIP if keywords disabled)
+      const clusteringResult = AUDIT_KEYWORDS_ENABLED
+        ? await semanticClusteringService.generateClusters(advancedKI.keywordData, organizationId)
+        : { clusters: [], totalKeywords: 0 };
 
-      // Analyze metadata quality
+      // Analyze metadata quality (use empty keyword list if keywords disabled)
       const metadataAnalysis = await metadataScoringService.analyzeMetadata(
         metadata!,
         metadata?.competitorData || [],
-        advancedKI.keywordData.map(k => k.keyword)
+        AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData.map(k => k.keyword) : []
       );
 
-      // Calculate enhanced scores
-      const keywordScore = enhancedAnalytics.rankDistribution?.visibility_score || 
-        (advancedKI.keywordData.length > 0 ? 
-          Math.round(advancedKI.keywordData.reduce((sum, k) => sum + (k.rank <= 10 ? 10 : k.rank <= 50 ? 5 : 1), 0) / advancedKI.keywordData.length * 10) : 0);
-      
+      // Calculate enhanced scores using centralized scoring engine
       const metadataScore = metadataAnalysis.scores.overall;
-      const competitorScore = Math.round((competitorData?.length || 0) > 0 ? 65 : 45);
-      const overallScore = Math.round((keywordScore * 0.4 + metadataScore * 0.35 + competitorScore * 0.25));
 
-      // Calculate opportunities
-      const highOpportunityKeywords = advancedKI.keywordData.filter(k => k.opportunity === 'high').length;
+      const scores = auditScoringEngine.calculateAllScores({
+        metadata: metadata!,
+        metadataScore,
+        keywordData: AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData : [],
+        analyticsData: AUDIT_KEYWORDS_ENABLED ? enhancedAnalytics.rankDistribution : undefined,
+        competitorData: AUDIT_KEYWORDS_ENABLED ? competitorData : [],
+      });
+
+      const { overall: overallScore, keyword: keywordScore, competitor: competitorScore, creative: creativeScore } = scores;
+
+      // Calculate opportunities (keywords-aware)
+      const highOpportunityKeywords = AUDIT_KEYWORDS_ENABLED
+        ? advancedKI.keywordData.filter(k => k.opportunity === 'high').length
+        : 0;
       const metadataOpportunities = metadataAnalysis.recommendations.filter(r => r.priority === 'high').length;
       const opportunityCount = highOpportunityKeywords + metadataOpportunities;
 
-      // Generate comprehensive recommendations
+      // Generate comprehensive recommendations (skip keyword recommendations if disabled)
       const recommendations = [
-        // Metadata recommendations
+        // Metadata recommendations (always included)
         ...metadataAnalysis.recommendations.map(rec => ({
           priority: rec.priority,
           title: rec.issue,
@@ -210,16 +227,16 @@ export const useEnhancedAppAudit = ({
           category: 'metadata' as const,
           impact: rec.impact
         })),
-        // Keyword recommendations
-        ...(highOpportunityKeywords > 0 ? [{
+        // Keyword recommendations (SKIP if keywords disabled)
+        ...(AUDIT_KEYWORDS_ENABLED && highOpportunityKeywords > 0 ? [{
           priority: 'high' as const,
           title: 'High-Opportunity Keywords Available',
           description: `${highOpportunityKeywords} keywords identified with high ranking potential`,
           category: 'keywords' as const,
           impact: 90
         }] : []),
-        // Competitor recommendations
-        ...(competitorData && competitorData.length > 5 ? [{
+        // Competitor recommendations (SKIP if keywords disabled)
+        ...(AUDIT_KEYWORDS_ENABLED && competitorData && competitorData.length > 5 ? [{
           priority: 'medium' as const,
           title: 'Competitive Keyword Gaps',
           description: `Analyze ${competitorData.length} competitor keywords for opportunities`,
@@ -228,17 +245,25 @@ export const useEnhancedAppAudit = ({
         }] : [])
       ].sort((a, b) => b.impact - a.impact);
 
-      // NEW: Analyze brand risk
-      console.log('🔍 [ENHANCED-AUDIT] Analyzing brand risk...');
-      const brandRisk = brandRiskAnalysisService.analyzeBrandDependency(
-        advancedKI.keywordData.map(k => k.keyword),
-        metadata!.name,
-        metadata!.title
-      );
+      // NEW: Analyze brand risk (SKIP if keywords disabled)
+      const brandRisk = AUDIT_KEYWORDS_ENABLED
+        ? (() => {
+            console.log('🔍 [ENHANCED-AUDIT] Analyzing brand risk...');
+            return brandRiskAnalysisService.analyzeBrandDependency(
+              advancedKI.keywordData.map(k => k.keyword),
+              metadata!.name,
+              metadata!.title
+            );
+          })()
+        : undefined;
 
       // NEW: Generate AI narratives (async - run in parallel)
-      console.log('📝 [ENHANCED-AUDIT] Generating AI narratives...');
+      // SKIP keyword-dependent narratives when keywords disabled
+      console.log('📝 [ENHANCED-AUDIT] Generating AI narratives...',
+        AUDIT_KEYWORDS_ENABLED ? '(all narratives)' : '(metadata-only narratives)');
+
       const narrativePromises = {
+        // Executive summary (always generated, uses metadata-only data when keywords disabled)
         executiveSummary: narrativeEngineService.generateExecutiveSummary(
           metadata!,
           { overall: overallScore, metadata: metadataScore, keyword: keywordScore, competitor: competitorScore },
@@ -249,39 +274,48 @@ export const useEnhancedAppAudit = ({
           return null;
         }),
 
-        keywordStrategy: narrativeEngineService.generateKeywordStrategy(
-          metadata!,
-          clusteringResult.clusters.slice(0, 5),
-          brandRisk.brandDependencyRatio,
-          enhancedAnalytics.rankDistribution?.visibility_score || keywordScore,
-          advancedKI.keywordData.filter(k => k.rank <= 10).map(k => k.keyword)
-        ).catch(err => {
-          console.error('Failed to generate keyword strategy:', err);
-          return null;
-        }),
+        // Keyword strategy (SKIP if keywords disabled)
+        keywordStrategy: AUDIT_KEYWORDS_ENABLED && brandRisk
+          ? narrativeEngineService.generateKeywordStrategy(
+              metadata!,
+              clusteringResult.clusters.slice(0, 5),
+              brandRisk.brandDependencyRatio,
+              enhancedAnalytics.rankDistribution?.visibility_score || keywordScore,
+              advancedKI.keywordData.filter(k => k.rank <= 10).map(k => k.keyword)
+            ).catch(err => {
+              console.error('Failed to generate keyword strategy:', err);
+              return null;
+            })
+          : Promise.resolve(null),
 
-        riskAssessment: narrativeEngineService.generateRiskAssessment(
-          metadata!,
-          brandRisk.brandDependencyRatio,
-          advancedKI.keywordData.length,
-          metadataScore,
-          competitorScore
-        ).catch(err => {
-          console.error('Failed to generate risk assessment:', err);
-          return null;
-        }),
+        // Risk assessment (SKIP if keywords disabled - requires brand risk)
+        riskAssessment: AUDIT_KEYWORDS_ENABLED && brandRisk
+          ? narrativeEngineService.generateRiskAssessment(
+              metadata!,
+              brandRisk.brandDependencyRatio,
+              advancedKI.keywordData.length,
+              metadataScore,
+              competitorScore
+            ).catch(err => {
+              console.error('Failed to generate risk assessment:', err);
+              return null;
+            })
+          : Promise.resolve(null),
 
-        competitorStory: narrativeEngineService.generateCompetitorStory(
-          metadata!,
-          competitorData?.length || 0,
-          advancedKI.keywordData.length,
-          competitorScore,
-          [], // TODO: Calculate shared keywords
-          []  // TODO: Calculate unique opportunities
-        ).catch(err => {
-          console.error('Failed to generate competitor story:', err);
-          return null;
-        })
+        // Competitor story (SKIP if keywords disabled)
+        competitorStory: AUDIT_KEYWORDS_ENABLED
+          ? narrativeEngineService.generateCompetitorStory(
+              metadata!,
+              competitorData?.length || 0,
+              advancedKI.keywordData.length,
+              competitorScore,
+              [], // TODO: Calculate shared keywords
+              []  // TODO: Calculate unique opportunities
+            ).catch(err => {
+              console.error('Failed to generate competitor story:', err);
+              return null;
+            })
+          : Promise.resolve(null)
       };
 
       const narratives = {
@@ -303,12 +337,14 @@ export const useEnhancedAppAudit = ({
         metadataScore,
         keywordScore,
         competitorScore,
+        creativeScore, // NEW: Phase 2.6 - From scoring engine
         opportunityCount,
-        rankDistribution: enhancedAnalytics.rankDistribution,
+        // Use safe defaults when keywords disabled
+        rankDistribution: AUDIT_KEYWORDS_ENABLED ? enhancedAnalytics.rankDistribution : null,
         keywordClusters: clusteringResult.clusters,
-        keywordTrends: enhancedAnalytics.keywordTrends,
-        competitorAnalysis: competitorData || [],
-        currentKeywords: advancedKI.keywordData.map(k => k.keyword),
+        keywordTrends: AUDIT_KEYWORDS_ENABLED ? enhancedAnalytics.keywordTrends : [],
+        competitorAnalysis: AUDIT_KEYWORDS_ENABLED ? (competitorData || []) : [],
+        currentKeywords: AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData.map(k => k.keyword) : [],
         metadataAnalysis,
         recommendations,
         // NEW: Add narratives and brand risk

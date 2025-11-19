@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { ScrapedMetadata } from '@/types/aso';
@@ -33,17 +34,17 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
   const [lastError, setLastError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'auto' | 'keyword' | 'brand' | 'url'>('auto');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  
+
   // Enhanced competitive intelligence options
   const [enableCompetitorDiscovery, setEnableCompetitorDiscovery] = useState(true);
   const [competitorLimit, setCompetitorLimit] = useState(5);
   const [includeKeywordAnalysis, setIncludeKeywordAnalysis] = useState(true);
-  
+
   // App selection modal state
   const [showAppSelection, setShowAppSelection] = useState(false);
   const [appCandidates, setAppCandidates] = useState<ScrapedMetadata[]>([]);
   const [pendingSearchTerm, setPendingSearchTerm] = useState<string>('');
-  
+
   // Bulletproof error handling state
   const [loadingState, setLoadingState] = useState<LoadingState>({
     isLoading: false,
@@ -52,11 +53,12 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
     progress: 0,
     showRetry: false
   });
-  
+
   const [systemHealth, setSystemHealth] = useState<any>(null);
   const [showDebugInfo, setShowDebugInfo] = useState(process.env.NODE_ENV === 'development');
-  
+
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // Phase E: React Query cache management
 
   // ENHANCED: Use debounced search hook for bulletproof search operations
   const { debouncedSearch, isSearching, cancelSearch } = useDebouncedSearch({
@@ -153,6 +155,10 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
     setLastError(null);
     setPendingSearchTerm(input);
 
+    // Phase E: Clear any cached metadata BEFORE fetching new data
+    console.log('[PHASE E] Removing stale metadata from React Query cache');
+    queryClient.removeQueries({ queryKey: ['metadata'] });
+
     // Add to search history
     setSearchHistory(prev => {
       const newHistory = [input, ...prev.filter(item => item !== input)].slice(0, 5);
@@ -161,7 +167,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
 
     try {
       console.log('📤 [METADATA-IMPORTER] Calling bulletproof asoSearchService.search...');
-      
+
       const searchResult = await asoSearchService.search(input, {
         organizationId,
         includeIntelligence: true,
@@ -218,7 +224,17 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         }, 2000);
       }
 
+      // Phase E: Add diagnostic log for fresh metadata
+      console.log('[PHASE E CONFIRM] Using fresh metadata:', {
+        name: searchResult.targetApp.name,
+        subtitle: searchResult.targetApp.subtitle,
+        source: (searchResult.targetApp as any)._source
+      });
+
       onImportSuccess(searchResult.targetApp, organizationId);
+
+      // Phase E: Invalidate queries after successful import to force fresh data
+      queryClient.invalidateQueries({ queryKey: ['metadata', searchResult.targetApp.appId] });
 
     } catch (error: any) {
       console.error('❌ [METADATA-IMPORTER] Bulletproof search failed:', error);
@@ -278,17 +294,35 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
   // Handle app selection from modal
   const handleAppSelection = async (selectedApp: ScrapedMetadata) => {
     setShowAppSelection(false);
-    
+
     try {
       console.log('✅ [METADATA-IMPORTER] User selected app:', selectedApp.name);
-      
+
+      // DIAGNOSTIC: Log name/title/subtitle BEFORE calling onImportSuccess
+      console.log('[DIAGNOSTIC-IMPORT-MetadataImporter] BEFORE onImportSuccess:', {
+        'selectedApp.name': selectedApp.name,
+        'selectedApp.title': selectedApp.title,
+        'selectedApp.subtitle': selectedApp.subtitle,
+        'selectedApp._source': (selectedApp as any)._source
+      });
+
+      // Phase E: Add diagnostic log for fresh metadata
+      console.log('[PHASE E CONFIRM] Using fresh metadata from modal selection:', {
+        name: selectedApp.name,
+        subtitle: selectedApp.subtitle,
+        source: (selectedApp as any)._source
+      });
+
       toast({
         title: 'App Selected! 🎉',
         description: `Successfully imported ${selectedApp.name}`,
       });
 
       onImportSuccess(selectedApp, organizationId!);
-      
+
+      // Phase E: Invalidate queries after manual app selection
+      queryClient.invalidateQueries({ queryKey: ['metadata', selectedApp.appId] });
+
     } catch (error: any) {
       console.error('❌ [METADATA-IMPORTER] App selection processing failed:', error);
       toast({

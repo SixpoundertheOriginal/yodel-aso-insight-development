@@ -159,7 +159,34 @@ serve(async (req) => {
     // Handle public search operation (no auth required)
     if (operation === 'search' || (requestData.searchTerm && !requestData.targetApp && !requestData.organizationId)) {
       console.log(`🔍 [${requestId}] ROUTING TO: Public App Search Handler`);
-      
+
+      // ⚠️ DEPRECATION WARNING - Phase A.3
+      console.warn(`⚠️ [${requestId}] DEPRECATION WARNING: op='search' is deprecated as of Phase A.3 (2025-01-17)`);
+      console.warn(`   → Migrate to Phase A metadata adapters: metadataOrchestrator.fetchMetadata()`);
+      console.warn(`   → Migration guide: /docs/PHASE_A_COMPLETION_REPORT.md`);
+      console.warn(`   → This operation will be removed in Phase B (Q2 2025)`);
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'DEPRECATED: This operation is deprecated',
+        deprecationNotice: {
+          message: 'op="search" and searchTerm-based searches are deprecated as of Phase A.3 (2025-01-17)',
+          reason: 'Replaced by Phase A metadata adapters for better reliability and maintainability',
+          migrationGuide: '/docs/PHASE_A_COMPLETION_REPORT.md',
+          replacement: 'Use metadataOrchestrator.fetchMetadata() from @/services/metadata-adapters',
+          removalDate: '2025-Q2',
+          services: {
+            'aso-search.service.ts': 'Migrated in Phase A.2',
+            'appstore-integration.service.ts': 'Migrated in Phase A.2',
+            'itunesReviews.ts': 'Migrated in Phase A.2'
+          }
+        }
+      }), {
+        status: 410, // Gone - indicates resource permanently removed
+        headers: corsHeaders
+      });
+
+      // Code below is unreachable but kept for reference/rollback if needed
       if (!requestData.searchTerm) {
         console.error(`❌ [${requestId}] Missing searchTerm for search operation`);
         return responseBuilder.error('Missing required field: searchTerm', 400);

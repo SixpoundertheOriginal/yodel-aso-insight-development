@@ -72,7 +72,7 @@ export const UnifiedNameTitleAnalysisCard: React.FC<UnifiedNameTitleAnalysisCard
           {/* Name/Title Display */}
           <div className="p-3 bg-zinc-800/50 rounded-lg">
             <div className="text-sm text-zinc-400 mb-1">App Name & Title</div>
-            <div className="text-lg font-semibold text-foreground">{title}</div>
+            <div className="text-lg font-semibold text-foreground">{appName}</div>
             <div className="text-xs text-zinc-500 mt-1">
               <span className={getCharacterUsageColor()}>
                 {titleAnalysis.characterUsage}/{titleAnalysis.maxCharacters} characters

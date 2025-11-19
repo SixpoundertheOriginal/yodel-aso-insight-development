@@ -28,7 +28,20 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
   useEffect(() => {
     const performAnalysis = async () => {
       if (!metadata) return;
-      
+
+      // PHASE E AUDIT: Log what metadata we're receiving
+      console.log('[ENHANCED-OVERVIEW-TAB] 🔍 Metadata received for analysis:', {
+        'metadata.name': metadata.name,
+        'metadata.title': metadata.title,
+        'metadata.subtitle': metadata.subtitle,
+        'metadata.appStoreName': (metadata as any).appStoreName,
+        'metadata.appStoreSubtitle': (metadata as any).appStoreSubtitle,
+        'metadata.fallbackName': (metadata as any).fallbackName,
+        'metadata.fallbackSubtitle': (metadata as any).fallbackSubtitle,
+        'metadata._htmlExtraction': (metadata as any)._htmlExtraction,
+        'metadata._source': (metadata as any)._source
+      });
+
       setAnalyzing(true);
       try {
         const result = await AppElementAnalysisService.analyzeAllElements(metadata, competitorData);
@@ -119,12 +132,9 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
           analysis={analysis.description} 
           description={metadata.description || ''} 
         />
-        <ScreenshotAnalysisCard 
-          analysis={analysis.screenshots} 
-          screenshotUrls={
-            metadata.screenshots || 
-            (Array.isArray(metadata.screenshot) ? metadata.screenshot : metadata.screenshot ? [metadata.screenshot] : [])
-          } 
+        <ScreenshotAnalysisCard
+          analysis={analysis.screenshots}
+          screenshotUrls={metadata.screenshots || []}
         />
         <IconAnalysisCard 
           analysis={analysis.icon} 

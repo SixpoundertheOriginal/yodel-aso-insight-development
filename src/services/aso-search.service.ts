@@ -2,7 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { inputDetectionService, SearchParameters } from './input-detection.service';
 import { bypassPatternsService } from './bypass-patterns.service';
 import { correlationTracker } from './correlation-tracker.service';
-import { directItunesService, SearchResultsResponse } from './direct-itunes.service';
 import { requestTransmissionService } from './request-transmission.service';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { ScrapedMetadata } from '@/types/aso';
@@ -14,6 +13,10 @@ import { multiLevelCircuitBreakerService } from './multi-level-circuit-breaker.s
 import { cacheFallbackService } from './cache-fallback.service';
 import { userExperienceShieldService, LoadingState, UserFriendlyError } from './user-experience-shield.service';
 import { failureAnalyticsService } from './failure-analytics.service';
+
+// Import Phase A adapters for modern metadata ingestion
+import { metadataOrchestrator } from './metadata-adapters';
+import { metadataNormalizer } from './metadata-adapters/normalizer';
 
 export interface SearchResult {
   targetApp: ScrapedMetadata;
@@ -45,6 +48,46 @@ export interface SearchConfig {
   country?: string;
 }
 
+/**
+ * Query type classification for determining auto-import vs. picker behavior
+ */
+export type QueryType = 'name' | 'url' | 'appId';
+
+/**
+ * Helper: Detect if query is an App Store URL
+ */
+function isAppStoreUrl(query: string): boolean {
+  return query.includes('apps.apple.com') || query.includes('itunes.apple.com');
+}
+
+/**
+ * Helper: Detect if query is a numeric App ID
+ */
+function isNumericAppId(query: string): boolean {
+  // Match pure numeric IDs (6-12 digits) or "id" prefix format
+  return /^(id)?\d{6,12}$/i.test(query.trim());
+}
+
+/**
+ * Classify query type to determine search behavior
+ *
+ * - URL/ID → auto-import (skip picker)
+ * - Name → always show picker (even for 1 result)
+ */
+function classifyQueryType(query: string): QueryType {
+  const trimmed = query.trim();
+
+  if (isAppStoreUrl(trimmed)) {
+    return 'url';
+  }
+
+  if (isNumericAppId(trimmed)) {
+    return 'appId';
+  }
+
+  return 'name';
+}
+
 class AsoSearchService {
   private maxRetries = 2;
   private baseDelay = 1000;
@@ -74,33 +117,13 @@ class AsoSearchService {
     correlationTracker.log('info', 'Bulletproof ASO search initiated', { input, config });
 
     try {
-      // Check cache first for instant results
-      const cachedResult = cacheFallbackService.retrieve(input, config.organizationId);
-      if (cachedResult) {
-        const result = this.wrapCachedResult(cachedResult, input, 'cache', config.country || 'us');
-        
-        const feedback = {
-          searchTerm: input,
-          resultSource: 'cache' as const,
-          responseTime: Date.now() - startTime,
-          userVisible: true,
-          backgroundRetries: 0
-        };
-        
-        const completeState = userExperienceShieldService.completeLoading(feedback);
-        config.onLoadingUpdate?.(completeState);
-        
-        console.groupEnd();
-        return result;
-      }
+      // Phase E: CACHING DISABLED - Always fetch fresh metadata from backend
+      // No cache retrieval, no stale data
 
-      // Execute bulletproof search chain
+      // Execute bulletproof search chain (always fresh)
       const result = await this.executeBulletproofSearchChain(input, config, startTime);
-      
-      // Cache successful result
-      if (config.cacheResults !== false) {
-        cacheFallbackService.store(input, result.targetApp, config.organizationId);
-      }
+
+      // Phase E: CACHING DISABLED - Do not store metadata in cache
 
       console.groupEnd();
       return result;
@@ -131,25 +154,7 @@ class AsoSearchService {
       });
       config.onLoadingUpdate?.(userExperienceShieldService.getCurrentState());
 
-      // Try one final fallback to similar cached results
-      const similarResults = cacheFallbackService.findSimilarResults(input, config.organizationId, 1);
-      if (similarResults.length > 0) {
-        console.log(`🔍 [ASO-SEARCH] Emergency fallback to similar cached result`);
-        
-        const result = this.wrapCachedResult(similarResults[0], input, 'similar', config.country || 'us');
-        const feedback = {
-          searchTerm: input,
-          resultSource: 'similar' as const,
-          responseTime: Date.now() - startTime,
-          userVisible: true,
-          backgroundRetries: 3
-        };
-        
-        const completeState = userExperienceShieldService.completeLoading(feedback);
-        config.onLoadingUpdate?.(completeState);
-        
-        return result;
-      }
+      // Phase E: NO CACHE FALLBACK - Always fail cleanly instead of returning stale data
 
       throw new Error(userError.message);
     }
@@ -254,35 +259,56 @@ class AsoSearchService {
 
   /**
    * Enhanced direct API search with retry logic
+   * MIGRATED: Now uses MetadataOrchestrator instead of DirectItunesService
+   *
+   * UX BEHAVIOR (Post-Fall 2025):
+   * - Name searches: ALWAYS show picker (even for 1 result)
+   * - URL/ID searches: Auto-import (skip picker)
    */
   private async executeDirectApiSearch(input: string, config: SearchConfig): Promise<SearchResult> {
-    correlationTracker.log('info', 'Executing bulletproof direct API search');
-    
+    correlationTracker.log('info', 'Executing bulletproof direct API search via orchestrator');
+
+    // Classify query type for picker vs. auto-import behavior
+    const queryType = classifyQueryType(input);
+    console.log(`[DIRECT-API] 🔍 Query type: ${queryType} → input="${input}"`);
+
     try {
-      const ambiguityResult: SearchResultsResponse = await directItunesService.searchWithAmbiguityDetection(input, {
-        organizationId: config.organizationId,
+      // Use orchestrator for normalized, properly parsed metadata
+      const normalizedResults = await metadataOrchestrator.searchApps(input, {
         country: config.country || 'us',
         limit: 15,
-        bypassReason: 'bulletproof-fallback-direct-api'
       });
 
-      // Handle ambiguous results properly
-      if (ambiguityResult.isAmbiguous && ambiguityResult.results.length > 1) {
-        console.log(`🎯 [DIRECT-API] Found ${ambiguityResult.results.length} ambiguous results`);
-        throw new AmbiguousSearchError(ambiguityResult.results, ambiguityResult.searchTerm);
-      }
-
-      if (ambiguityResult.results.length === 0) {
+      if (normalizedResults.length === 0) {
         throw new Error(`No apps found for "${input}". Try different keywords or check the spelling.`);
       }
 
-      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-direct-api', config.country || 'us');
+      // QUERY-TYPE-BASED PICKER LOGIC:
+      // - Name searches: ALWAYS show picker (even 1 result)
+      // - URL/ID searches: Auto-import (skip picker)
+      const shouldShowPicker = queryType === 'name' || normalizedResults.length > 1;
+
+      if (shouldShowPicker) {
+        if (queryType === 'name') {
+          console.log(`🎯 [DIRECT-API] Query type: name → showing picker (${normalizedResults.length} results)`);
+        } else {
+          console.log(`🎯 [DIRECT-API] Multiple results (${normalizedResults.length}) → showing picker`);
+        }
+
+        // Return all results for user selection (up to 10)
+        const candidates = normalizedResults.slice(0, 10);
+        throw new AmbiguousSearchError(candidates as ScrapedMetadata[], input);
+      }
+
+      // URL/ID with single result - auto-import
+      console.log(`✅ [DIRECT-API] Query type: ${queryType} → auto-import (1 result)`);
+      return this.wrapDirectResult(normalizedResults[0] as ScrapedMetadata, input, 'bulletproof-direct-api', config.country || 'us');
 
     } catch (error: any) {
       if (error instanceof AmbiguousSearchError) {
         throw error;
       }
-      
+
       correlationTracker.log('error', 'Bulletproof direct API search failed', { error: error.message });
       throw new Error(`Direct API search failed: ${error.message}`);
     }
@@ -290,95 +316,131 @@ class AsoSearchService {
 
   /**
    * Enhanced bypass search with retry logic
+   * MIGRATED: Now uses MetadataOrchestrator instead of DirectItunesService
+   *
+   * UX BEHAVIOR (Post-Fall 2025):
+   * - Name searches: ALWAYS show picker (even for 1 result)
+   * - URL/ID searches: Auto-import (skip picker)
    */
   private async executeBypassSearch(input: string, config: SearchConfig): Promise<SearchResult> {
     const bypassAnalysis = bypassPatternsService.analyzeForBypass(input);
-    correlationTracker.log('info', 'Executing bulletproof bypass search', bypassAnalysis);
-    
+    correlationTracker.log('info', 'Executing bulletproof bypass search via orchestrator', bypassAnalysis);
+
+    // Classify query type for picker vs. auto-import behavior
+    const queryType = classifyQueryType(input);
+    console.log(`[BYPASS-SEARCH] 🔍 Query type: ${queryType} → input="${input}"`);
+
     try {
-      const ambiguityResult: SearchResultsResponse = await directItunesService.searchWithAmbiguityDetection(input, {
-        organizationId: config.organizationId,
+      // Use orchestrator for normalized, properly parsed metadata
+      const normalizedResults = await metadataOrchestrator.searchApps(input, {
         country: config.country || 'us',
         limit: 25,
-        bypassReason: 'bulletproof-bypass-search'
       });
 
-      // Handle ambiguous results properly
-      if (ambiguityResult.isAmbiguous && ambiguityResult.results.length > 1) {
-        console.log(`🎯 [BYPASS-SEARCH] Found ${ambiguityResult.results.length} ambiguous results`);
-        throw new AmbiguousSearchError(ambiguityResult.results, ambiguityResult.searchTerm);
-      }
-
-      if (ambiguityResult.results.length === 0) {
+      if (normalizedResults.length === 0) {
         throw new Error(`No apps found for "${input}". Try different keywords or check the spelling.`);
       }
 
-      return this.wrapDirectResult(ambiguityResult.results[0], input, 'bulletproof-bypass', config.country || 'us');
+      // QUERY-TYPE-BASED PICKER LOGIC:
+      // - Name searches: ALWAYS show picker (even 1 result)
+      // - URL/ID searches: Auto-import (skip picker)
+      const shouldShowPicker = queryType === 'name' || normalizedResults.length > 1;
+
+      if (shouldShowPicker) {
+        if (queryType === 'name') {
+          console.log(`🎯 [BYPASS-SEARCH] Query type: name → showing picker (${normalizedResults.length} results)`);
+        } else {
+          console.log(`🎯 [BYPASS-SEARCH] Multiple results (${normalizedResults.length}) → showing picker`);
+        }
+
+        // Return all results for user selection (up to 10)
+        const candidates = normalizedResults.slice(0, 10);
+        throw new AmbiguousSearchError(candidates as ScrapedMetadata[], input);
+      }
+
+      // URL/ID with single result - auto-import
+      console.log(`✅ [BYPASS-SEARCH] Query type: ${queryType} → auto-import (1 result)`);
+      return this.wrapDirectResult(normalizedResults[0] as ScrapedMetadata, input, 'bulletproof-bypass', config.country || 'us');
 
     } catch (error: any) {
       if (error instanceof AmbiguousSearchError) {
         throw error;
       }
-      
+
       throw error;
     }
   }
 
   /**
-   * FIXED: Enhanced edge function search with proper ambiguity handling
+   * Phase A.2: Enhanced metadata search using Phase A adapters
+   * MIGRATED from Edge Function to adapter-based architecture
    */
   private async executeEnhancedEdgeFunctionSearch(input: string, config: SearchConfig): Promise<SearchResult> {
-    // Detect input type using the input detection service
-    const inputAnalysis = inputDetectionService.analyzeInput(input.trim());
-    const searchType = inputAnalysis.success ? inputAnalysis.data.type : 'keyword';
-    
-    console.log('🔍 [BULLETPROOF-EDGE] Detected search type:', searchType, 'for input:', input);
-    
-    const requestPayload = {
-      searchTerm: input.trim(),
-      searchType: searchType,
-      organizationId: config.organizationId,
-      includeCompetitorAnalysis: true,
-      searchParameters: {
+    console.log('🔍 [PHASE-A-ADAPTER] Using Phase A metadata adapters for search');
+    console.log('📡 [PHASE-A-ADAPTER] Input:', input, 'Country:', config.country || 'us');
+
+    try {
+      // Use Phase A adapter orchestrator for metadata fetching
+      const metadata = await metadataOrchestrator.fetchMetadata(input, {
         country: config.country || 'us',
-        limit: 25
-      }
-    };
+        timeout: 30000,
+        retries: 2
+      });
 
-    console.log('📡 [BULLETPROOF-EDGE] Starting enhanced transmission with debugging');
+      console.log('✅ [PHASE-A-ADAPTER] Metadata fetched successfully:', {
+        name: metadata.name,
+        appId: metadata.appId,
+        hasScreenshots: !!metadata.screenshots?.length,
+        hasSubtitle: !!metadata.subtitle,
+        source: metadata._source
+      });
 
-    const transmissionResult = await requestTransmissionService.transmitRequest(
-      'app-store-scraper',
-      requestPayload,
-      correlationTracker.getContext()?.id || crypto.randomUUID()
-    );
+      // Transform Phase A adapter result to SearchResult format
+      return {
+        targetApp: {
+          ...metadata,
+          // Ensure all required ScrapedMetadata fields are present
+          name: metadata.name,
+          appId: metadata.appId,
+          title: metadata.title,
+          subtitle: metadata.subtitle || '',
+          description: metadata.description || '',
+          url: metadata.url || '',
+          icon: metadata.icon || '',
+          rating: metadata.rating || 0,
+          reviews: metadata.reviews || 0,
+          developer: metadata.developer || '',
+          applicationCategory: metadata.applicationCategory || 'Unknown',
+          locale: metadata.locale,
+          screenshots: metadata.screenshots || []
+        },
+        competitors: [], // Phase A adapters don't fetch competitors (handled separately)
+        searchContext: {
+          query: input,
+          type: 'keyword' as const,
+          totalResults: 1,
+          category: metadata.applicationCategory || 'Unknown',
+          country: config.country || 'us',
+          source: 'primary',
+          responseTime: 0, // Will be set by caller
+          backgroundRetries: 0 // Will be set by caller
+        },
+        intelligence: {
+          opportunities: [
+            'Metadata fetched using Phase A adapters with enhanced reliability',
+            metadata.screenshots?.length ? `Found ${metadata.screenshots.length} screenshots` : 'No screenshots available',
+            metadata.subtitle ? 'Subtitle extracted and normalized' : 'No subtitle available'
+          ]
+        }
+      };
 
-    if (!transmissionResult.success) {
-      console.error('❌ [BULLETPROOF-EDGE] All transmission methods failed:', transmissionResult.error);
-      throw new Error(`Transmission failed: ${transmissionResult.error}`);
+    } catch (error: any) {
+      console.error('❌ [PHASE-A-ADAPTER] Adapter fetch failed:', error);
+
+      // Phase A.3: No fallback - adapters are proven stable
+      // Throw error with helpful message for debugging
+      throw new Error(`Failed to fetch app metadata: ${error.message || 'Unknown error'}. Please verify the app name or ID and try again.`);
     }
-
-    console.log('✅ [BULLETPROOF-EDGE] Success via method:', transmissionResult.method);
-
-    const data = transmissionResult.data;
-    if (!data || !data.success) {
-      throw new Error(data?.error || 'Edge function returned unsuccessful response');
-    }
-
-    // FIXED: Handle ambiguous search responses properly - treat as SUCCESS with multiple candidates
-    if (data.isAmbiguous) {
-      console.log('🎯 [BULLETPROOF-EDGE] Ambiguous search detected - handling gracefully');
-      
-      const candidates = data.data.results || [];
-      if (candidates.length === 0) {
-        throw new Error('No candidates returned from ambiguous search');
-      }
-      
-      console.log(`📋 [BULLETPROOF-EDGE] Throwing AmbiguousSearchError with ${candidates.length} candidates for user selection`);
-      throw new AmbiguousSearchError(candidates, data.data.searchTerm || input);
-    }
-
-    return this.transformEdgeFunctionResult(data, input, config.country || 'us');
   }
 
   /**
@@ -430,7 +492,9 @@ class AsoSearchService {
       reviews: responseData.reviews || 0,
       developer: responseData.developer || '',
       applicationCategory: responseData.applicationCategory || 'Unknown',
-      locale: responseData.locale || 'en-US'
+      locale: responseData.locale || 'en-US',
+      // FIX: Add screenshots field (was missing - caused screenshot loss)
+      screenshots: responseData.screenshots || responseData.screenshotUrls || []
     } as ScrapedMetadata;
 
     return {
@@ -456,6 +520,11 @@ class AsoSearchService {
 
   /**
    * Wrap direct iTunes result
+   *
+   * FIX #3 (Phase A.4): Normalize metadata before returning to ensure:
+   * - Subtitle duplication is fixed (trackCensoredName contains full title)
+   * - Screenshots are preserved
+   * - All metadata conforms to Phase A schema
    */
   private wrapDirectResult(
     app: ScrapedMetadata,
@@ -468,14 +537,24 @@ class AsoSearchService {
       pattern
     });
 
+    // FIX: Normalize metadata through Phase A normalizer
+    // This fixes subtitle duplication and ensures consistent schema
+    const normalized = metadataNormalizer.normalize(app, 'direct-itunes-fallback');
+
+    correlationTracker.log('info', 'Normalized fallback metadata', {
+      originalSubtitle: app.subtitle,
+      normalizedSubtitle: normalized.subtitle,
+      screenshotsCount: normalized.screenshots?.length || 0
+    });
+
     return {
-      targetApp: app,
+      targetApp: normalized,  // ← Changed from raw 'app' to 'normalized'
       competitors: [],
       searchContext: {
         query: input,
         type: pattern.includes('brand') ? 'brand' : 'keyword',
         totalResults: 1,
-        category: app.applicationCategory || 'Unknown',
+        category: normalized.applicationCategory || 'Unknown',
         country,
         source: 'fallback',
         responseTime: 0,
@@ -483,8 +562,8 @@ class AsoSearchService {
       },
       intelligence: {
         opportunities: [
-          pattern.includes('fallback') ? 
-            `Fallback match found for "${input}"` : 
+          pattern.includes('fallback') ?
+            `Fallback match found for "${input}"` :
             `Direct match found for "${input}"`
         ]
       }
@@ -493,15 +572,32 @@ class AsoSearchService {
 
   /**
    * Lightweight search helper for the app selection modal
+   *
+   * ⚡ LIGHTWEIGHT SEARCH - Returns minimal metadata for fast search results
+   *
+   * Returns ONLY:
+   * - appId
+   * - name
+   * - developer
+   * - icon
+   * - applicationCategory
+   *
+   * ❌ Does NOT return: subtitle, screenshots, description, reviews, rating
+   *
+   * MIGRATED: Now uses MetadataOrchestrator instead of DirectItunesService
    */
   async searchApps(query: string, country: string = 'US'): Promise<ScrapedMetadata[]> {
-    const search = await directItunesService.searchWithAmbiguityDetection(query, {
-      organizationId: 'global',
+    console.log(`[ASO-SEARCH] 🔍 LIGHTWEIGHT SEARCH → "${query}" (country: ${country})`);
+
+    const normalizedResults = await metadataOrchestrator.searchApps(query, {
       country,
       limit: 10,
-      bypassReason: 'app-selection-modal'
     });
-    return search.results.slice(0, 10);
+
+    console.log(`[ASO-SEARCH] ✅ SEARCH → Returning ${normalizedResults.length} lightweight candidates`);
+
+    // Cast to ScrapedMetadata[] - they're compatible (NormalizedMetadata extends ScrapedMetadata)
+    return normalizedResults.slice(0, 10) as ScrapedMetadata[];
   }
 
   searchByKeyword(keyword: string, country?: string) {
