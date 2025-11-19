@@ -37,9 +37,6 @@ export const DEFAULT_ORG_USER_ROUTES = [
 
   // Account Management
   '/profile',                               // User Profile
-
-  // Legacy/Additional Dashboards
-  '/dashboard',                             // Legacy Dashboard (if still needed)
 ] as const;
 
 /**

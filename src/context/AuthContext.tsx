@@ -109,8 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-      // Restore navigation intent if present
-      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
+      // Restore navigation intent if present, default to Performance Dashboard
+      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard-v2';
       navigate(redirectPath);
       sessionStorage.removeItem('postLoginRedirect');
       return data;
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithOAuth = async ({ provider }: { provider: 'google' | 'github' | 'twitter' }) => {
     try {
-      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard';
+      const redirectPath = sessionStorage.getItem('postLoginRedirect') || '/dashboard-v2';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
