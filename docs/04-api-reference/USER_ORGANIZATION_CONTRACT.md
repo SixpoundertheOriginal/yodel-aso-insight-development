@@ -1,8 +1,15 @@
-# User-Organization API Contract Specification
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: User-Organization API contract specification (357 lines)
+Canonical: true
+Accuracy: 9/10 (Clean API contract specification, production-ready)
+See Also: docs/02-architecture/ARCHITECTURE_V1.md, ORGANIZATION_ROLES_SYSTEM.md
+Audience: Developers, API Consumers
+---
 
-**Version:** 1.0  
-**Status:** Production  
-**Migration Period:** 30 days from implementation  
+# User-Organization API Contract Specification  
 
 ## Core Principles
 

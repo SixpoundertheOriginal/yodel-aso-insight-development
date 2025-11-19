@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Quick reference for BigQuery data pipeline architecture
+⚠️ Note: Contains critical BigQuery path errors - HIGH priority fix required
+See Also: docs/02-architecture/ARCHITECTURE_V1.md, DATA_PIPELINE_AUDIT.md
+Audience: Developers, Data Engineers
+---
+
 # BigQuery Data Pipeline - Quick Reference
 
 ## Data Flow Diagram

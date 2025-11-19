@@ -1,8 +1,14 @@
-# Organization Roles and Relationships System Documentation
+---
+Status: ACTIVE
+Version: v2.0
+Last Updated: 2025-01-19
+Purpose: Comprehensive organization roles, permissions, and relationships
+Canonical: false
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (system-wide architecture)
+Audience: Developers, Architects
+---
 
-**Version:** 2.0
-**Last Updated:** 2025-12-21
-**Status:** Production
+# Organization Roles and Relationships System Documentation
 
 ---
 

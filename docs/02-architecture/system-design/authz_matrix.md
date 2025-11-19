@@ -1,3 +1,12 @@
+---
+Status: DEPRECATED
+Version: v1.0
+Last Updated: 2025-01-19
+Reason: Documents unused 'authorize' Edge Function (not actively used)
+Superseded By: docs/02-architecture/ARCHITECTURE_V1.md (current V1 authorization)
+Audience: Historical reference only
+---
+
 ## /api/authorize Policy Matrix (Supabase Edge: authorize)
 
 Path: `${SUPABASE_URL}/functions/v1/authorize`

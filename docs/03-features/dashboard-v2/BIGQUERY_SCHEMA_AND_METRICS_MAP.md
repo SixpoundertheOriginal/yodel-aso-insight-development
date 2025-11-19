@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Comprehensive BigQuery schema and metrics reference (767 lines)
+⚠️ Note: Contains critical BigQuery path errors throughout - HIGH priority fix required
+See Also: docs/02-architecture/ARCHITECTURE_V1.md, DATA_PIPELINE_AUDIT.md
+Audience: Developers, Data Engineers, Product Managers
+---
+
 # BigQuery Data Schema & Metrics Map
 
 ## 1. BigQuery TABLE STRUCTURE

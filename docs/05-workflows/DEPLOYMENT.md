@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Deployment procedures for ASO Tool platform
+⚠️ Note: Missing production-specific configuration - MEDIUM priority update
+See Also: docs/02-architecture/ARCHITECTURE_V1.md
+Audience: DevOps, Developers
+---
+
 # ASO Tool - Deployment Guide
 
 ## Overview

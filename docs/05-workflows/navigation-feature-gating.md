@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Navigation visibility and feature gating overview
+⚠️ Note: INCOMPLETE - Only 12 lines, needs major expansion
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (role-based access control)
+Audience: Developers
+---
+
 # Navigation Feature Gating
 
 Navigation visibility is determined before rendering using the `filterNavigationByRoutes` utility.

@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Authorization and RBAC system overview
+⚠️ Note: MAJOR REWRITE REQUIRED - Describes deprecated patterns
+Superseded By: docs/02-architecture/ARCHITECTURE_V1.md (canonical reference)
+Audience: Developers
+---
+
 # Auth/RBAC/Demo-Mode Map
 
 Auth provider → JWT → DB → RLS → API → Frontend

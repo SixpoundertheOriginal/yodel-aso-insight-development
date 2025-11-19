@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Unified feature permission system documentation
+⚠️ Note: Implementation status unclear - may describe planned V2/V3 vs current V1
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (current V1 feature flags: None)
+Audience: Developers, Product Managers
+---
+
 # Unified Feature Permission System
 
 ## Table of Contents

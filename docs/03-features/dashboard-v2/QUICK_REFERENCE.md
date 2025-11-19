@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Quick reference for Dashboard V2 components and features
+⚠️ Note: Outdated limitations section - MEDIUM priority update
+See Also: DATA_PIPELINE_AUDIT.md, docs/02-architecture/ARCHITECTURE_V1.md
+Audience: Developers, Product Managers
+---
+
 # Dashboard V2: Quick Reference Guide
 
 ## Component Hierarchy

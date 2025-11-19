@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Database and RLS policy integrity report
+⚠️ Note: MAJOR REWRITE REQUIRED - Describes deprecated RLS patterns
+Superseded By: docs/02-architecture/ARCHITECTURE_V1.md (current V1 RLS policies)
+Audience: Developers, Database Administrators
+---
+
 ## DB & RLS Integrity Report
 
 Tables (expected)

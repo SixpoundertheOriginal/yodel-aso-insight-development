@@ -1,3 +1,11 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: SOC 2/ISO 27001/GDPR compliance documentation
+Audience: Compliance auditors, Security team, Developers
+---
+
 # Encryption Status Report
 
 **Date:** November 9, 2025

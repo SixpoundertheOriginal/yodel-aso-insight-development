@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: admin-whoami Edge Function API contract
+⚠️ Note: Verify production status - endpoint may be deprecated
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (authorization: usePermissions() hook)
+Audience: Developers
+---
+
 ## /api/whoami Contract (Supabase Edge: admin-whoami)
 
 Path: `${SUPABASE_URL}/functions/v1/admin-whoami`

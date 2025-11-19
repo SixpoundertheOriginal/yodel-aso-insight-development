@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: Index of BigQuery data schema documentation
+⚠️ Note: Contains BigQuery path errors - MEDIUM priority fix required
+See Also: BIGQUERY_SCHEMA_AND_METRICS_MAP.md, DATA_PIPELINE_AUDIT.md
+Audience: Developers, Data Engineers
+---
+
 # BigQuery Data Schema Research - Complete Index
 
 ## Overview

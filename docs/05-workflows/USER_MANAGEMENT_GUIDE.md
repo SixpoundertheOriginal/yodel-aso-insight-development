@@ -1,8 +1,15 @@
-# User Management Guide - Phase 1 (SQL Functions)
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: User management guide using SQL helper functions (619 lines)
+Canonical: true
+Accuracy: 8/10 (Comprehensive guide, minor MFA/audit additions needed)
+See Also: docs/02-architecture/ARCHITECTURE_V1.md, ORGANIZATION_ROLES_SYSTEM.md
+Audience: Administrators, Developers
+---
 
-**Date:** November 12, 2025
-**Version:** 1.0 (Phase 1 - SQL Helper Functions)
-**Next Phase:** Admin UI (4 weeks)
+# User Management Guide - Phase 1 (SQL Functions)
 
 ---
 

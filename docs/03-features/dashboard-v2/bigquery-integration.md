@@ -1,3 +1,13 @@
+---
+Status: ACTIVE
+Version: v1.0
+Last Updated: 2025-01-19
+Purpose: BigQuery integration implementation guide
+⚠️ Note: Missing security details (RLS, MFA, audit logging) - MEDIUM priority update
+See Also: docs/02-architecture/ARCHITECTURE_V1.md, DATA_PIPELINE_AUDIT.md
+Audience: Developers
+---
+
 # BigQuery Integration Guide
 
 ## Overview
