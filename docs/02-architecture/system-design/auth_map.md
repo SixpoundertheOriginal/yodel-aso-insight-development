@@ -1,14 +1,30 @@
 ---
-Status: ACTIVE
+Status: DEPRECATED
 Version: v1.0
-Last Updated: 2025-01-19
-Purpose: Authorization and RBAC system overview
-⚠️ Note: MAJOR REWRITE REQUIRED - Describes deprecated patterns
-Superseded By: docs/02-architecture/ARCHITECTURE_V1.md (canonical reference)
-Audience: Developers
+Last Updated: 2025-01-20
+Archive Date: 2025-01-20
+Reason: Describes deprecated authorization patterns (authorize Edge Function, profiles table)
+Superseded By: docs/02-architecture/system-design/authorization-v1.md (V1 authorization canonical)
+Audience: Historical reference only
 ---
 
-# Auth/RBAC/Demo-Mode Map
+> **⚠️ DEPRECATED:** This document describes deprecated authorization patterns that are no longer used in production.
+>
+> **For Current V1 Authorization:**
+> - **Primary:** [authorization-v1.md](./authorization-v1.md) - Complete V1 authorization guide
+> - **Overview:** [ARCHITECTURE_V1.md](../ARCHITECTURE_V1.md) - V1 production architecture
+>
+> **What Changed:**
+> - ❌ **OLD:** `authorize` Edge Function (deprecated, not actively used)
+> - ✅ **NEW:** `usePermissions()` hook (faster, direct database queries)
+> - ❌ **OLD:** `profiles` table (deprecated)
+> - ✅ **NEW:** `user_roles` table (single source of truth)
+>
+> **Do not implement patterns from this document.** See [authorization-v1.md](./authorization-v1.md) for current implementation.
+
+---
+
+# Auth/RBAC/Demo-Mode Map (Historical)
 
 Auth provider → JWT → DB → RLS → API → Frontend
 
