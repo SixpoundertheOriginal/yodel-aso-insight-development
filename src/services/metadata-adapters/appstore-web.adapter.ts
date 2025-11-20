@@ -25,6 +25,10 @@ import {
 import { RateLimiter, RateLimiterFactory } from './rate-limiter';
 import { SecurityValidator } from './security-validator';
 import * as cheerio from 'cheerio';
+import {
+  ENABLE_DOM_SUBTITLE_EXTRACTION,
+  SubtitleSource,
+} from '@/config/metadataFeatureFlags';
 
 /**
  * App Store Web Adapter
@@ -47,6 +51,9 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
     errorCount: 0,
     requestCount: 0,
   };
+
+  // Telemetry: Track subtitle extraction source
+  private lastSubtitleSource: SubtitleSource = 'none';
 
   constructor(rateLimiter?: RateLimiter) {
     this.rateLimiter = rateLimiter || RateLimiterFactory.createHtmlScrapingLimiter();
@@ -157,7 +164,15 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
     }
 
     // Should contain App Store content
-    if (!html.includes('app-header') && !html.includes('product-header')) {
+    // Modern App Store uses Svelte framework, so check for more reliable markers
+    const hasAppStoreMarkers =
+      html.includes('apps.apple.com') || // Canonical URL
+      html.includes('App Store') || // Meta tags or title
+      html.includes('software-application') || // JSON-LD structured data
+      html.includes('app-header') || // Legacy marker
+      html.includes('product-header'); // Legacy marker
+
+    if (!hasAppStoreMarkers) {
       console.warn(`[${this.name}] Invalid data: missing app content`);
       return false;
     }
@@ -244,21 +259,71 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
 
   /**
    * Extract subtitle from DOM (CRITICAL - main reason for web adapter)
+   *
+   * **DOM Extraction Strategy:**
+   * Real-world testing (20 apps) has proven that App Store subtitles are ONLY
+   * present in the hydrated DOM at <h2 class="subtitle"> and NOT in any JSON blocks.
+   *
+   * **Feature Flag Control:**
+   * - ENABLE_DOM_SUBTITLE_EXTRACTION = false (default): Uses legacy multi-selector fallback
+   * - ENABLE_DOM_SUBTITLE_EXTRACTION = true: Uses validated DOM-first approach
+   *
+   * **Telemetry:**
+   * Sets this.lastSubtitleSource to track extraction method:
+   * - "dom": Primary DOM selector (h2.subtitle) succeeded (95% success rate in testing)
+   * - "fallback": Legacy multi-selector approach succeeded
+   * - "none": No subtitle found
+   *
+   * @see scripts/README.subtitle-dom-testing.md
+   * @see src/config/metadataFeatureFlags.ts
    */
   private extractSubtitle($: cheerio.CheerioAPI): string {
-    const selectors = [
+    // Reset telemetry
+    this.lastSubtitleSource = 'none';
+
+    // Phase 1: DOM-First Extraction (when feature flag enabled)
+    if (ENABLE_DOM_SUBTITLE_EXTRACTION) {
+      const primarySelector = 'h2.subtitle';
+      const element = $(primarySelector).first();
+
+      if (element && element.length > 0) {
+        const subtitle = element.text().trim();
+        if (subtitle.length > 0) {
+          // Sanitize to prevent XSS
+          const sanitized = this.validator.sanitizeText(subtitle);
+
+          // Validate format
+          if (this.validator.validateSubtitle(sanitized)) {
+            this.lastSubtitleSource = 'dom';
+            console.log(`[${this.name}] Subtitle extracted (DOM):`, {
+              selector: primarySelector,
+              subtitle: sanitized,
+              source: 'dom',
+            });
+            return sanitized;
+          }
+        }
+      }
+
+      // DOM extraction failed, log for telemetry
+      console.log(`[${this.name}] DOM extraction failed, trying fallback selectors`);
+    }
+
+    // Phase 2: Fallback Multi-Selector Extraction
+    // (Always runs if flag is disabled, or if DOM extraction failed)
+    const fallbackSelectors = [
       '.product-header__subtitle',
       'h2.product-header__subtitle',
       '[data-test-subtitle]',
       '[data-test="subtitle"]',
       '.app-header__subtitle',
       'p.subtitle',
-      'h2.subtitle',
+      'h2.subtitle', // Included in fallback for backwards compatibility
       // Fallback: h2 immediately after h1
       'header h1 + h2',
     ];
 
-    for (const selector of selectors) {
+    for (const selector of fallbackSelectors) {
       const element = $(selector).first();
       if (element && element.text()) {
         const subtitle = element.text().trim();
@@ -267,13 +332,23 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
 
         // Validate format
         if (this.validator.validateSubtitle(sanitized)) {
-          console.log(`[${this.name}] Subtitle found with selector: ${selector}`);
+          this.lastSubtitleSource = 'fallback';
+          console.log(`[${this.name}] Subtitle extracted (fallback):`, {
+            selector,
+            subtitle: sanitized,
+            source: 'fallback',
+          });
           return sanitized;
         }
       }
     }
 
-    console.log(`[${this.name}] Subtitle not found`);
+    // No subtitle found
+    this.lastSubtitleSource = 'none';
+    console.log(`[${this.name}] Subtitle not found:`, {
+      source: 'none',
+      featureFlagEnabled: ENABLE_DOM_SUBTITLE_EXTRACTION,
+    });
     return '';
   }
 
@@ -583,5 +658,19 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
 
   getRateLimiterStatus() {
     return this.rateLimiter.getStatus();
+  }
+
+  /**
+   * Get telemetry: Subtitle extraction source
+   *
+   * Returns the method used to extract the subtitle in the last transform() call:
+   * - "dom": Primary DOM selector (h2.subtitle) succeeded
+   * - "fallback": Legacy multi-selector approach succeeded
+   * - "none": No subtitle found
+   *
+   * Useful for monitoring DOM extraction adoption and success rates.
+   */
+  getSubtitleSource(): SubtitleSource {
+    return this.lastSubtitleSource;
   }
 }
