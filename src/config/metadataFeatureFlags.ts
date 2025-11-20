@@ -49,7 +49,7 @@
  * @see scripts/README.subtitle-dom-testing.md
  * @see docs/METADATA_EXTRACTION.md
  */
-export const ENABLE_DOM_SUBTITLE_EXTRACTION = false; // Safe default - Enable after staging validation
+export const ENABLE_DOM_SUBTITLE_EXTRACTION = true; // PRODUCTION - Enabled after successful staging validation (95% success rate)
 
 /**
  * Subtitle extraction telemetry
