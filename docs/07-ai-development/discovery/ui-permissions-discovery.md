@@ -1,3 +1,34 @@
+---
+Status: DISCOVERY
+Document Type: AI Code Exploration
+Date: 2025-09-09T15:14:38+02:00
+Purpose: Code pattern discovery for UI-level permissions (NOT official V1 authorization)
+See Also: docs/02-architecture/system-design/authorization-v1.md (V1 authorization - PRIMARY)
+See Also: docs/04-api-reference/whoami_contract.md (admin-whoami - SECONDARY)
+Audience: AI Assistants, Developers researching historical code patterns
+---
+
+> **ℹ️ DISCOVERY DOCUMENT - NOT OFFICIAL V1 DOCUMENTATION**
+>
+> This is an AI-generated code exploration from September 2025, cataloging UI permission code patterns.
+>
+> **V1 Production Authorization (Official):**
+> - **PRIMARY:** `usePermissions()` hook → `user_permissions_unified` view (role-based)
+> - **SECONDARY:** `admin-whoami` Edge Function (legacy support)
+> - **ROUTE-SPECIFIC:** `authorize` Edge Function (route protection)
+>
+> **This Document Covers:**
+> - `useUIPermissions` hook (parallel UI visibility system)
+> - `ui_permissions` table (UI element access control)
+> - UI permission keys (`ui.debug.show_test_buttons`, etc.)
+>
+> **⚠️ Important:**
+> - This is NOT the same as V1 role-based authorization
+> - This may be experimental/research code not documented in V1 architecture
+> - For official V1 authorization, see [authorization-v1.md](../../02-architecture/system-design/authorization-v1.md)
+
+---
+
 # UI Permissions — Step 0 Discovery
 **Date:** 2025-09-09T15:14:38+02:00
 ## Page & Components

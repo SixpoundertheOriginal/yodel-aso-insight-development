@@ -1,8 +1,24 @@
 # Yodel ASO Insight - Development Guide
 
-**Last Updated:** November 9, 2025
-**For:** Developers extending the platform
-**Prerequisites:** Read `CURRENT_ARCHITECTURE.md` first
+**Last Updated:** January 20, 2025
+**For:** Developers extending the platform (patterns, best practices, advanced topics)
+**Prerequisites:**
+- Complete [docs/01-getting-started/quickstart.md](./docs/01-getting-started/quickstart.md) first
+- Read [docs/02-architecture/ARCHITECTURE_V1.md](./docs/02-architecture/ARCHITECTURE_V1.md) for architecture
+
+> **📖 What This Guide Covers**
+>
+> This guide focuses on **development patterns and best practices** for extending the platform.
+>
+> **For getting started:**
+> - **Quick Start:** [docs/01-getting-started/quickstart.md](./docs/01-getting-started/quickstart.md)
+> - **Installation:** [docs/01-getting-started/installation.md](./docs/01-getting-started/installation.md)
+> - **Local Development:** [docs/01-getting-started/local-development.md](./docs/01-getting-started/local-development.md)
+>
+> **For architecture:**
+> - **V1 Architecture:** [docs/02-architecture/ARCHITECTURE_V1.md](./docs/02-architecture/ARCHITECTURE_V1.md)
+> - **Authorization:** [docs/02-architecture/system-design/authorization-v1.md](./docs/02-architecture/system-design/authorization-v1.md)
+> - **Database Schema:** [docs/02-architecture/database/schema-reference.md](./docs/02-architecture/database/schema-reference.md)
 
 ---
 
