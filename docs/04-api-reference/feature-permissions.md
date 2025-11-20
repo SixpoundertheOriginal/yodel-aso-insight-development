@@ -1,11 +1,41 @@
 ---
-Status: ACTIVE
-Version: v1.0
-Last Updated: 2025-01-19
-Purpose: Unified feature permission system documentation
-⚠️ Note: Implementation status unclear - may describe planned V2/V3 vs current V1
-See Also: docs/02-architecture/ARCHITECTURE_V1.md (current V1 feature flags: None)
+Status: PLANNED
+Implementation Status: V2 PLANNED (NOT in V1 Production)
+Version: v2.0-draft
+Last Updated: 2025-01-20
+Purpose: Unified feature permission system documentation (V2 planned feature)
+⚠️ Important: This document describes V2 PLANNED features, NOT current V1 production
+Conflict Resolution: V1 uses role-based access only (no feature flags). See below for details.
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (V1 production: Feature Flags = None, role-based only)
+See Also: docs/02-architecture/system-design/authorization-v1.md (V1 authorization: usePermissions() hook)
 Audience: Developers, Product Managers
+---
+
+> **🚨 V2 PLANNED FEATURE - NOT IN V1 PRODUCTION**
+>
+> This document describes an elaborate unified feature permission system planned for V2.
+>
+> **V1 Production Reality (as of January 2025):**
+> - ✅ **Role-based access control ONLY** (SUPER_ADMIN, ORG_ADMIN, ASO_MANAGER, ANALYST, VIEWER, CLIENT)
+> - ✅ **Authorization via `usePermissions()` hook** (queries `user_permissions_unified` view)
+> - ✅ **Organization-level entitlements:** App access via `org_app_access` table
+> - ❌ **NO feature flags system** (confirmed in ARCHITECTURE_V1.md)
+> - ❌ **NO `platform_features` table** (does not exist in V1 database)
+> - ❌ **NO `org_feature_entitlements` table** (does not exist in V1 database)
+> - ❌ **NO `user_feature_overrides` table** (does not exist in V1 database)
+> - ❌ **NO `feature_usage_logs` table** (does not exist in V1 database)
+>
+> **Why This Document Exists:**
+> This is a **design specification** for the V2 unified feature permission system.
+> Do NOT implement features from this document without first:
+> 1. Confirming V2 architecture approval
+> 2. Creating database migrations for new tables
+> 3. Implementing backend Edge Functions
+> 4. Updating ARCHITECTURE_V1.md to ARCHITECTURE_V2.md
+>
+> **For V1 Production Authorization:**
+> See [authorization-v1.md](../02-architecture/system-design/authorization-v1.md) for current implementation.
+
 ---
 
 # Unified Feature Permission System

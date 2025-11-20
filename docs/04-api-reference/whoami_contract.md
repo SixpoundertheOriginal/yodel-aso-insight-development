@@ -1,18 +1,50 @@
 ---
 Status: ACTIVE
+Implementation Status: V1 PRODUCTION (SECONDARY authorization method)
 Version: v1.0
-Last Updated: 2025-01-19
+Last Updated: 2025-01-20
 Purpose: admin-whoami Edge Function API contract
-⚠️ Note: Verify production status - endpoint may be deprecated
-See Also: docs/02-architecture/ARCHITECTURE_V1.md (authorization: usePermissions() hook)
+⚠️ Important: This is a SECONDARY authorization method. PRIMARY method is usePermissions() hook.
+See Also: docs/02-architecture/ARCHITECTURE_V1.md (Primary: usePermissions() hook)
+See Also: docs/02-architecture/system-design/authorization-v1.md (V1 authorization guide)
 Audience: Developers
+---
+
+> **ℹ️ V1 PRODUCTION (SECONDARY METHOD)**
+>
+> This Edge Function is in V1 production, but is **SECONDARY** to the primary authorization method.
+>
+> **V1 Authorization Methods (in order of priority):**
+> 1. **PRIMARY:** `usePermissions()` hook (src/hooks/usePermissions.ts)
+>    - Queries `user_permissions_unified` view directly
+>    - Used by most components (Dashboard, AppSidebar, etc.)
+>    - Faster (no Edge Function roundtrip)
+>    - Recommended for new features
+>
+> 2. **SECONDARY:** `admin-whoami` Edge Function (this endpoint)
+>    - Used by: ServerAuthContext, debug panels
+>    - Provides: org_id, is_demo, features (planned V2), roles
+>    - Legacy support for existing components
+>    - Consider migrating to usePermissions() for better performance
+>
+> 3. **ROUTE-SPECIFIC:** `authorize` Edge Function (authorizePath)
+>    - Used by: AppAuthGuard, ProtectedRoute
+>    - Path-based authorization checks
+>    - Complements usePermissions() for route protection
+>
+> **When to Use Each:**
+> - **New components:** Use `usePermissions()` hook
+> - **Server-side validation:** Use `admin-whoami` or `authorize` Edge Function
+> - **Route protection:** Use `authorizePath()` from authz.ts
+
 ---
 
 ## /api/whoami Contract (Supabase Edge: admin-whoami)
 
-Path: `${SUPABASE_URL}/functions/v1/admin-whoami`
-Method: GET
-Auth: Bearer JWT (Supabase)
+**Path:** `${SUPABASE_URL}/functions/v1/admin-whoami`
+**Method:** GET
+**Auth:** Bearer JWT (Supabase)
+**Status:** V1 Production (Secondary method)
 
 Example response
 ```
