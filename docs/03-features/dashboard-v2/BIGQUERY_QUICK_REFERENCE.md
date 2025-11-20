@@ -16,8 +16,8 @@ Audience: Developers, Data Engineers
 ┌──────────────────────────────────────────────────────────────────────┐
 │ Layer 1: BIGQUERY (Raw Data Source)                                  │
 ├──────────────────────────────────────────────────────────────────────┤
-│ Project: aso-reporting-1                                             │
-│ Dataset: client_reports                                              │
+│ Project: yodel-mobile-app                                            │
+│ Dataset: aso_reports                                                 │
 │ Table:   aso_all_apple (7 columns)                                   │
 │                                                                       │
 │ Columns: date | app_id | traffic_source | impressions | ppv |        │
@@ -434,7 +434,7 @@ SELECT
   product_page_views,
   downloads,
   SAFE_DIVIDE(downloads, NULLIF(product_page_views, 0)) as conversion_rate
-FROM `aso-reporting-1.client_reports.aso_all_apple`
+FROM `yodel-mobile-app.aso_reports.aso_all_apple`
 WHERE COALESCE(app_id, client) = 'Mixbook'
   AND date BETWEEN '2024-11-01' AND '2024-11-14'
 ORDER BY date DESC

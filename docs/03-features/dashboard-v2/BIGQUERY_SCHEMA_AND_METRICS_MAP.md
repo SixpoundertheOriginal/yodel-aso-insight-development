@@ -13,8 +13,8 @@ Audience: Developers, Data Engineers, Product Managers
 ## 1. BigQuery TABLE STRUCTURE
 
 ### Source Database
-- **Project**: `aso-reporting-1`
-- **Dataset**: `client_reports`
+- **Project**: `yodel-mobile-app`
+- **Dataset**: `aso_reports`
 - **Table**: `aso_all_apple`
 
 ### Table Schema (7 Columns)
@@ -119,7 +119,7 @@ SELECT
   product_page_views,
   downloads,
   SAFE_DIVIDE(downloads, NULLIF(product_page_views, 0)) as conversion_rate
-FROM `{projectId}.client_reports.aso_all_apple`
+FROM `{projectId}.aso_reports.aso_all_apple`
 WHERE COALESCE(app_id, client) IN UNNEST(@app_ids)
   AND date BETWEEN @start_date AND @end_date
 ORDER BY date DESC
@@ -128,7 +128,7 @@ ORDER BY date DESC
 Query 2: Available Traffic Sources Discovery
 ```sql
 SELECT DISTINCT traffic_source
-FROM `{projectId}.client_reports.aso_all_apple`
+FROM `{projectId}.aso_reports.aso_all_apple`
 WHERE COALESCE(app_id, client) IN UNNEST(@all_app_ids)
   AND date BETWEEN @start_date AND @end_date
   AND traffic_source IS NOT NULL
@@ -765,7 +765,7 @@ await supabaseClient.rpc('log_audit_event', {
 
 | Aspect | Details |
 |--------|---------|
-| **Data Source** | BigQuery: `aso-reporting-1.client_reports.aso_all_apple` |
+| **Data Source** | BigQuery: `yodel-mobile-app.aso_reports.aso_all_apple` |
 | **Schema** | 7 columns: date, app_id, traffic_source, impressions, ppv, downloads, cvr |
 | **Core Metrics** | Impressions, Downloads, Product Page Views, Conversion Rates |
 | **Available Dimensions** | Date, App, Traffic Source |

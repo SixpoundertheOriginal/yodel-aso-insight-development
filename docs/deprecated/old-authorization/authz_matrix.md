@@ -2,10 +2,14 @@
 Status: DEPRECATED
 Version: v1.0
 Last Updated: 2025-01-19
+Archive Date: 2025-01-19
 Reason: Documents unused 'authorize' Edge Function (not actively used)
 Superseded By: docs/02-architecture/ARCHITECTURE_V1.md (current V1 authorization)
 Audience: Historical reference only
 ---
+
+> **⚠️ DEPRECATED:** This document describes the unused `authorize` Edge Function.
+> See [ARCHITECTURE_V1.md](../../02-architecture/ARCHITECTURE_V1.md) for current V1 authorization (usePermissions() hook + RLS policies).
 
 ## /api/authorize Policy Matrix (Supabase Edge: authorize)
 

@@ -81,8 +81,8 @@ Original integration guide covering:
 
 ### BigQuery Table
 ```
-Project: aso-reporting-1
-Dataset: client_reports
+Project: yodel-mobile-app
+Dataset: aso_reports
 Table:   aso_all_apple
 Rows:    100k+ daily records
 Columns: 7 (date, app_id, traffic_source, impressions, ppv, downloads, conversion_rate)

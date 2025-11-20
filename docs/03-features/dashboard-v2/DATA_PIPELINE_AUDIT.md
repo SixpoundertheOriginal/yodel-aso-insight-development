@@ -46,8 +46,8 @@ This document provides a **complete, layer-by-layer audit** of how ASO data flow
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ LAYER 1: BigQuery (Raw Data Source)                                      │
-│ Project: aso-reporting-1                                                 │
-│ Dataset: client_reports                                                  │
+│ Project: yodel-mobile-app                                                │
+│ Dataset: aso_reports                                                     │
 │ Table:   aso_all_apple                                                   │
 └────────────────────────────┬─────────────────────────────────────────────┘
                              │ OAuth2 + Service Account
@@ -140,8 +140,8 @@ This document provides a **complete, layer-by-layer audit** of how ASO data flow
 ### Layer 1: BigQuery (Raw Data Source)
 
 **Location:** Google Cloud Platform
-**Project:** `aso-reporting-1`
-**Dataset:** `client_reports`
+**Project:** `yodel-mobile-app`
+**Dataset:** `aso_reports`
 **Table:** `aso_all_apple`
 
 #### Schema (7 Columns)
@@ -254,7 +254,7 @@ const query = `
     product_page_views,
     downloads,
     SAFE_DIVIDE(downloads, NULLIF(product_page_views, 0)) as conversion_rate
-  FROM \`${projectId}.client_reports.aso_all_apple\`
+  FROM \`${projectId}.aso_reports.aso_all_apple\`
   WHERE COALESCE(app_id, client) IN UNNEST(@app_ids)
     AND date BETWEEN @start_date AND @end_date
   ORDER BY date DESC
@@ -263,7 +263,7 @@ const query = `
 // 12. Query traffic source discovery (separate query)
 const trafficSourceQuery = `
   SELECT DISTINCT traffic_source
-  FROM \`${projectId}.client_reports.aso_all_apple\`
+  FROM \`${projectId}.aso_reports.aso_all_apple\`
   WHERE COALESCE(app_id, client) IN UNNEST(@app_ids)
     AND date BETWEEN @start_date AND @end_date
 `;

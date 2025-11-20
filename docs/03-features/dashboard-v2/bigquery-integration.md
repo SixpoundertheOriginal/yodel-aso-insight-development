@@ -17,8 +17,8 @@ The ASO platform integrates with BigQuery to provide real-time analytics data fo
 ## BigQuery Setup
 
 ### Data Source
-- **Project**: `aso-reporting-1`
-- **Dataset**: `client_reports`
+- **Project**: `yodel-mobile-app`
+- **Dataset**: `aso_reports`
 - **Table**: `aso_all_apple`
 
 ### Schema Structure
@@ -57,7 +57,7 @@ Data is filtered by organization context:
 // BigQuery query with organization filtering
 const query = `
   SELECT app_id, impressions, downloads, date
-  FROM \`aso-reporting-1.client_reports.aso_all_apple\`
+  FROM \`yodel-mobile-app.aso_reports.aso_all_apple\`
   WHERE client IN (${organizationApps.map(app => `'${app}'`).join(',')})
     AND date BETWEEN @startDate AND @endDate
 `;
@@ -65,13 +65,13 @@ const query = `
 
 ### App Discovery Query
 ```sql
-SELECT DISTINCT 
+SELECT DISTINCT
   app_id,
   client,
   COUNT(*) as record_count,
   MIN(date) as earliest_date,
   MAX(date) as latest_date
-FROM `aso-reporting-1.client_reports.aso_all_apple`
+FROM `yodel-mobile-app.aso_reports.aso_all_apple`
 GROUP BY app_id, client
 ORDER BY record_count DESC
 ```
@@ -169,12 +169,12 @@ Super admins can switch between organizations to view different app portfolios w
 ```sql
 -- Check data availability
 SELECT client, COUNT(*) as apps, MAX(date) as latest_data
-FROM `aso-reporting-1.client_reports.aso_all_apple`
+FROM `yodel-mobile-app.aso_reports.aso_all_apple`
 GROUP BY client;
 
 -- Verify app mappings
 SELECT app_id, COUNT(*) as records
-FROM `aso-reporting-1.client_reports.aso_all_apple`
+FROM `yodel-mobile-app.aso_reports.aso_all_apple`
 WHERE client = 'Client_One'
 GROUP BY app_id;
 ```

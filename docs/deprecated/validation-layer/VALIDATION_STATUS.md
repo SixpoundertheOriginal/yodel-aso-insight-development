@@ -2,10 +2,14 @@
 Status: DEPRECATED
 Version: v1.0
 Last Updated: 2025-01-19
+Archive Date: 2025-01-19
 Reason: Feature-specific validation not in current production architecture
 Superseded By: docs/02-architecture/ARCHITECTURE_V1.md
 Audience: Historical reference only
 ---
+
+> **⚠️ DEPRECATED:** This document describes systems no longer in use.
+> See [ARCHITECTURE_V1.md](../../02-architecture/ARCHITECTURE_V1.md) for current V1 production architecture.
 
 # ASO Intelligence Layer - Validation Status
 
