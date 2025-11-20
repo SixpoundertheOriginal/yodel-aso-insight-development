@@ -104,12 +104,69 @@ const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
 
 ## Security & Access Control
 
-1. **User Authentication:** Supabase auth required
-2. **Role Validation:** Checks is_super_admin RPC + user_roles table
-3. **Org Scope:** Users can only access their own organization
-4. **Agency Support:** Managers can access managed client orgs
-5. **App Access:** RLS on org_app_access table enforces allowed apps
-6. **Audit Logging:** All data access logged to audit_events table
+### Authentication & Authorization
+
+1. **User Authentication:** Supabase JWT-based auth required
+2. **Role Validation:** Checks `user_roles` table (SSOT for authorization)
+3. **Super Admin Check:** `sec.is_super_admin()` RPC function
+4. **Org Scope:** Users can only access their own organization
+5. **Agency Support:** Org admins can access managed client orgs via `agency_clients`
+6. **App Access:** RLS on `org_app_access` table enforces allowed apps
+
+### Session Security
+
+**Configuration:** SOC 2 Compliant
+
+- **Idle Timeout:** 15 minutes of inactivity → session expires
+- **Absolute Timeout:** 8 hours maximum session duration
+- **Session Extension:** Session extends on user activity
+- **Logout:** Clears all session data and JWT tokens
+
+### MFA Status
+
+**Admin Users (SUPER_ADMIN, ORG_ADMIN):**
+- ✅ MFA **required** (30-day grace period)
+- 🔐 TOTP-based authentication (Google Authenticator, Authy, 1Password)
+- ⏰ Grace period countdown displayed in user profile
+- 🚫 Access blocked after grace period expires
+
+**Regular Users (ASO_MANAGER, ANALYST, VIEWER, CLIENT):**
+- ❌ MFA optional (not enforced)
+
+### Audit Logging
+
+**Status:** PRODUCTION (SOC 2, ISO 27001, GDPR compliant)
+
+All Dashboard V2 access is logged to `audit_logs` table:
+
+```typescript
+// Logged action example
+{
+  action: 'view_dashboard_v2',
+  user_id: 'uuid',
+  organization_id: 'uuid',
+  user_email: 'user@example.com',
+  resource_type: 'dashboard',
+  details: {
+    filters: {
+      dateRange: { start: '2025-01-01', end: '2025-01-31' },
+      apps: ['Mixbook', 'ColorJoy'],
+      trafficSources: ['App Store Search']
+    }
+  },
+  ip_address: '192.168.1.1',
+  status: 'success',
+  created_at: '2025-01-20T10:30:00Z'
+}
+```
+
+**Logged Dashboard Events:**
+- `view_dashboard_v2` - Dashboard page access
+- `bigquery_query` - BigQuery data access
+- `export_data` - Data export actions
+- `filter_changed` - Filter modifications (optional)
+
+**Retention:** 7 years (compliance requirement)
 
 ## Known Limitations
 

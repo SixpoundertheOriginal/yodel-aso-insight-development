@@ -484,6 +484,255 @@ ORDER BY uma.created_at DESC;
 
 ---
 
+### MFA Enforcement
+
+**Status:** PRODUCTION (Required for admin users)
+**Grace Period:** 30 days
+**Authentication Method:** TOTP (Time-based One-Time Password)
+
+#### MFA Requirement by Role
+
+| Role | MFA Required | Grace Period | Enforcement |
+|------|--------------|--------------|-------------|
+| `SUPER_ADMIN` | ✅ Required | 30 days | Hard block after grace |
+| `ORG_ADMIN` | ✅ Required | 30 days | Hard block after grace |
+| `ASO_MANAGER` | ❌ Optional | N/A | Not enforced |
+| `ANALYST` | ❌ Optional | N/A | Not enforced |
+| `VIEWER` | ❌ Optional | N/A | Not enforced |
+| `CLIENT` | ❌ Optional | N/A | Not enforced |
+
+#### Automatic MFA Tracking
+
+When you assign an admin role (`SUPER_ADMIN` or `ORG_ADMIN`), the system **automatically**:
+
+1. Creates entry in `mfa_enforcement` table
+2. Sets `grace_period_ends_at` to 30 days from now
+3. Sets `mfa_required = true`
+4. Sends MFA setup reminder email
+
+**Example:**
+```sql
+-- Assign ORG_ADMIN role (MFA tracking created automatically)
+SELECT assign_user_role(
+  'user-uuid',
+  'org-uuid',
+  'ORG_ADMIN'
+);
+
+-- Check MFA status
+SELECT
+  u.email,
+  me.role,
+  me.grace_period_ends_at,
+  me.mfa_enabled_at,
+  CASE
+    WHEN me.mfa_enabled_at IS NOT NULL THEN '✅ MFA Enabled'
+    WHEN me.grace_period_ends_at > NOW() THEN '⏳ Grace Period Active'
+    WHEN me.grace_period_ends_at <= NOW() THEN '🚫 Grace Period Expired - Access Blocked'
+    ELSE '❓ Unknown'
+  END as mfa_status,
+  GREATEST(0, EXTRACT(DAY FROM (me.grace_period_ends_at - NOW())))::integer as days_remaining
+FROM mfa_enforcement me
+JOIN auth.users u ON u.id = me.user_id
+WHERE me.user_id = 'user-uuid';
+```
+
+#### MFA Setup Workflow
+
+```
+┌─────────────────────────────────────────────────────┐
+│ STEP 1: Admin Role Assigned                        │
+│ - Admin runs: assign_user_role(user, org, ADMIN)   │
+│ - System creates mfa_enforcement record            │
+│ - Grace period: 30 days from now                   │
+└─────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│ STEP 2: User Logs In (First Time)                  │
+│ - User sees "MFA Required" banner                  │
+│ - "Set up MFA now" or "Remind me later" options    │
+│ - Grace period countdown displayed                 │
+└─────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│ STEP 3A: User Sets Up MFA (Recommended)            │
+│ - User clicks "Set up MFA"                         │
+│ - Scans QR code with authenticator app             │
+│ - Enters 6-digit code to verify                    │
+│ - Downloads backup codes                           │
+│ - mfa_enabled_at = NOW()                           │
+│ - grace_period_ends_at = NULL                      │
+│ - ✅ MFA active, full access granted               │
+└─────────────────────────────────────────────────────┘
+                  OR
+┌─────────────────────────────────────────────────────┐
+│ STEP 3B: User Delays Setup                         │
+│ - User clicks "Remind me later"                    │
+│ - Reminders sent every 7 days                      │
+│ - Grace period countdown continues                 │
+│ - After 30 days → Access blocked until MFA setup   │
+└─────────────────────────────────────────────────────┘
+```
+
+#### Check MFA Status for All Admin Users
+
+```sql
+-- Get all admin users and their MFA status
+SELECT
+  u.email,
+  ur.role,
+  me.grace_period_ends_at,
+  me.mfa_enabled_at,
+  me.last_reminded_at,
+  CASE
+    WHEN me.mfa_enabled_at IS NOT NULL THEN '✅ Enabled'
+    WHEN me.grace_period_ends_at > NOW() THEN
+      '⏳ Grace Period (' ||
+      GREATEST(0, EXTRACT(DAY FROM (me.grace_period_ends_at - NOW())))::integer ||
+      ' days left)'
+    ELSE '🚫 Expired - Blocked'
+  END as mfa_status
+FROM user_roles ur
+JOIN auth.users u ON u.id = ur.user_id
+LEFT JOIN mfa_enforcement me ON me.user_id = ur.user_id
+WHERE ur.role IN ('SUPER_ADMIN', 'ORG_ADMIN')
+ORDER BY
+  CASE
+    WHEN me.mfa_enabled_at IS NOT NULL THEN 3
+    WHEN me.grace_period_ends_at > NOW() THEN 2
+    ELSE 1
+  END,
+  me.grace_period_ends_at ASC;
+```
+
+#### Manually Update MFA Status
+
+**Mark MFA as Enabled (if user completed setup):**
+```sql
+UPDATE mfa_enforcement
+SET mfa_enabled_at = NOW(),
+    grace_period_ends_at = NULL,
+    updated_at = NOW()
+WHERE user_id = 'user-uuid';
+```
+
+**Extend Grace Period (emergency only):**
+```sql
+-- Add 7 more days to grace period
+UPDATE mfa_enforcement
+SET grace_period_ends_at = grace_period_ends_at + INTERVAL '7 days',
+    updated_at = NOW()
+WHERE user_id = 'user-uuid';
+```
+
+**Send Reminder Manually:**
+```sql
+UPDATE mfa_enforcement
+SET last_reminded_at = NOW(),
+    updated_at = NOW()
+WHERE user_id = 'user-uuid';
+```
+
+#### MFA Enforcement Audit Logs
+
+All MFA-related events are logged to `audit_logs`:
+
+```sql
+-- View MFA setup events
+SELECT
+  user_email,
+  action,
+  status,
+  created_at
+FROM audit_logs
+WHERE action IN ('mfa_enabled', 'mfa_verified', 'mfa_setup_started')
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- Users who haven't set up MFA yet
+SELECT
+  u.email,
+  me.grace_period_ends_at,
+  GREATEST(0, EXTRACT(DAY FROM (me.grace_period_ends_at - NOW())))::integer as days_remaining
+FROM mfa_enforcement me
+JOIN auth.users u ON u.id = me.user_id
+WHERE me.mfa_enabled_at IS NULL
+  AND me.grace_period_ends_at > NOW()
+ORDER BY days_remaining ASC;
+```
+
+#### MFA Best Practices
+
+✅ **DO:**
+- Set up MFA immediately after becoming an admin
+- Use Google Authenticator, Authy, or 1Password for TOTP
+- Download and securely store backup codes
+- Test MFA login before your grace period expires
+- Keep your authenticator app synced with correct time
+
+❌ **DON'T:**
+- Share your MFA codes or backup codes
+- Screenshot QR codes and save to cloud storage
+- Use SMS-based 2FA (not supported, TOTP only)
+- Ignore grace period reminders
+- Delete your authenticator app without disabling MFA first
+
+#### Troubleshooting MFA
+
+**User says they can't log in after grace period:**
+```sql
+-- Check their MFA status
+SELECT
+  u.email,
+  me.mfa_enabled_at,
+  me.grace_period_ends_at
+FROM mfa_enforcement me
+JOIN auth.users u ON u.id = me.user_id
+WHERE u.email = 'user@example.com';
+
+-- If grace period expired but they should have access:
+-- Option 1: Extend grace period (emergency only)
+UPDATE mfa_enforcement
+SET grace_period_ends_at = NOW() + INTERVAL '7 days'
+WHERE user_id = (SELECT id FROM auth.users WHERE email = 'user@example.com');
+
+-- Option 2: Mark MFA as enabled (if they already set it up)
+UPDATE mfa_enforcement
+SET mfa_enabled_at = NOW(),
+    grace_period_ends_at = NULL
+WHERE user_id = (SELECT id FROM auth.users WHERE email = 'user@example.com');
+```
+
+**User lost access to authenticator app:**
+1. User should use backup codes to log in
+2. User disables MFA in profile settings
+3. User sets up MFA again with new device
+4. New backup codes generated
+
+**Admin needs to bypass MFA (emergency):**
+```sql
+-- ⚠️ EMERGENCY ONLY: Reset MFA requirement
+-- This should be logged and reported to security team
+UPDATE mfa_enforcement
+SET mfa_enabled_at = NOW(),  -- Mark as "enabled" to bypass check
+    grace_period_ends_at = NULL,
+    updated_at = NOW()
+WHERE user_id = 'user-uuid';
+
+-- Log the bypass action
+INSERT INTO audit_logs (user_id, organization_id, user_email, action, details, status)
+VALUES (
+  'admin-user-uuid',
+  NULL,
+  'admin@example.com',
+  'mfa_bypass_emergency',
+  jsonb_build_object('target_user', 'user-uuid', 'reason', 'Lost authenticator device'),
+  'success'
+);
+```
+
+---
+
 ### Security Features
 
 ✅ **Email validation** - Invalid emails rejected
@@ -493,6 +742,8 @@ ORDER BY uma.created_at DESC;
 ✅ **SUPER_ADMIN protection** - Cannot create SUPER_ADMIN via functions
 ✅ **Automatic audit trails** - All actions logged
 ✅ **Trigger-based logging** - Cannot bypass audit logs
+✅ **MFA enforcement** - Admin users require MFA (30-day grace period)
+✅ **Session security** - 15-minute idle timeout, 8-hour absolute timeout
 
 ---
 
