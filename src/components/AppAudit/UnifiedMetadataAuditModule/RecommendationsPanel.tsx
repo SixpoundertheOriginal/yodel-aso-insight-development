@@ -101,11 +101,13 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="relative bg-zinc-900 border-zinc-800 overflow-hidden before:absolute before:inset-0 before:bg-[var(--grid-overlay)] before:opacity-5 before:pointer-events-none" style={{ backgroundSize: '30px 30px' }}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-orange-400" />
-          {title || defaultTitle}
+          <AlertCircle className="h-5 w-5 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.6)]" />
+          <span className="bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">
+            {title || defaultTitle}
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -116,9 +118,14 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
           {allRecommendations.map((rec, index) => (
             <div
               key={index}
-              className="flex items-start gap-3 p-3 bg-zinc-800/30 rounded-lg border border-zinc-800"
+              className="group flex items-start gap-3 p-3 bg-zinc-800/30 rounded-lg border border-zinc-800 transition-all duration-300 hover:border-orange-500/30 hover:bg-zinc-800/50 hover:shadow-[0_0_15px_rgba(251,146,60,0.1)] animate-slide-in-left"
+              style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
             >
-              <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-orange-400/20 text-orange-400 text-sm font-bold">
+              {/* Corner accents */}
+              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-orange-400/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute bottom-0 left-8 w-2 h-2 border-b border-l border-orange-400/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-orange-400/20 text-orange-400 text-sm font-bold font-mono transition-all duration-300 group-hover:bg-orange-400/30 group-hover:scale-110 group-hover:shadow-[0_0_10px_rgba(251,146,60,0.4)]">
                 {index + 1}
               </div>
               <div className="flex-1">
