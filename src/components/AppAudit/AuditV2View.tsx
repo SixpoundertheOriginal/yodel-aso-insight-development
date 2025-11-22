@@ -16,7 +16,7 @@ import { ScrapedMetadata } from '@/types/aso';
 
 interface AuditV2ViewProps {
   metadata: ScrapedMetadata;
-  monitored_app_id?: number;
+  monitored_app_id?: number | string;
   mode?: 'live' | 'monitored';
 }
 

@@ -103,7 +103,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
       persistAudit({
         organizationId,
         app_id: importedMetadata.appId,
-        platform: importedMetadata.platform || 'ios',
+        platform: (importedMetadata.platform as 'ios' | 'android') || 'ios',
         locale: importedMetadata.locale || 'us',
         metadata: importedMetadata,
         auditData,
@@ -378,8 +378,10 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
       url: `https://apps.apple.com/app/id${monitoredApp.app_id}`,
       developer: metadataCache?.developer_name || monitoredApp.developer_name || '',
       screenshots: metadataCache?.screenshots || [],
-      subtitleSource: 'cache'
-    };
+      subtitleSource: 'cache' as const,
+      platform: (monitoredApp.platform as 'ios' | 'android') || 'ios',
+      sellerName: metadataCache?.developer_name || monitoredApp.developer_name || ''
+    } as ScrapedMetadata;
 
     // Use cached metadata for importedMetadata to render the audit view
     // This bypasses the importer and shows the cached audit
@@ -401,7 +403,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
   }
 
   // Determine which metadata to use for rendering
-  const displayMetadata = mode === 'monitored' && monitoredAuditData
+  const displayMetadata: ScrapedMetadata = mode === 'monitored' && monitoredAuditData
     ? (() => {
         const { monitoredApp, metadataCache } = monitoredAuditData;
         return {

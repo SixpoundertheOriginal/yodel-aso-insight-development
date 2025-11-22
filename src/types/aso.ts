@@ -10,8 +10,10 @@ export interface ScrapedMetadata {
   applicationCategory?: string;
   locale: string;
   icon?: string;
-  [key: string]: unknown;
   developer?: string;
+  sellerName?: string;
+  platform?: 'ios' | 'android';
+  [key: string]: unknown;
   rating?: number;
   reviews?: number;
   price?: string;
@@ -24,7 +26,7 @@ export interface ScrapedMetadata {
   _htmlExtraction?: boolean;    // True if data came from HTML scraping
 
   // Subtitle extraction telemetry (Phase C: DOM extraction)
-  subtitleSource?: 'dom' | 'fallback' | 'none' | null;  // Method used to extract subtitle
+  subtitleSource?: 'dom' | 'fallback' | 'none' | 'cache' | null;  // Method used to extract subtitle
 
   // Creative assets
   screenshots?: string[]; // Primary field - array of screenshot URLs
