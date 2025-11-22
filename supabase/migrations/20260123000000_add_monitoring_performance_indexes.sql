@@ -17,11 +17,11 @@
 CREATE INDEX IF NOT EXISTS idx_metadata_cache_org_app_platform_locale
   ON public.app_metadata_cache(organization_id, app_id, platform, locale);
 
--- Partial index for stale cache detection (> 24 hours old)
+-- Index for stale cache detection (> 24 hours old)
 -- Used by edge function to detect when cache needs refresh
-CREATE INDEX IF NOT EXISTS idx_metadata_cache_stale
-  ON public.app_metadata_cache(organization_id, fetched_at)
-  WHERE (EXTRACT(EPOCH FROM (now() - fetched_at)) > 86400);
+-- Note: Cannot use partial index with now() - using regular index instead
+CREATE INDEX IF NOT EXISTS idx_metadata_cache_fetched_at_org
+  ON public.app_metadata_cache(organization_id, fetched_at DESC);
 
 -- Index for version hash lookups (change detection)
 -- Used for comparing current vs cached metadata versions
@@ -71,8 +71,8 @@ CREATE INDEX IF NOT EXISTS idx_monitored_apps_stale_metadata
 COMMENT ON INDEX public.idx_metadata_cache_org_app_platform_locale IS
   'Composite index for fast metadata cache lookups in monitored app workflow. Optimizes useMonitoredAudit queries.';
 
-COMMENT ON INDEX public.idx_metadata_cache_stale IS
-  'Partial index for detecting stale cache (>24h old). Used by edge function for cache TTL checks.';
+COMMENT ON INDEX public.idx_metadata_cache_fetched_at_org IS
+  'Index for detecting stale cache and sorting by freshness. Used by edge function for cache TTL checks.';
 
 COMMENT ON INDEX public.idx_audit_snapshots_org_app_platform_latest IS
   'Composite index for fetching latest audit snapshot for a monitored app. Optimizes workspace audit loading.';
