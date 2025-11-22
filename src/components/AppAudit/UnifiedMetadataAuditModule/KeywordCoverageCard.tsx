@@ -22,15 +22,27 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
   const subtitleTopTokens = keywordCoverage.subtitleNewKeywords.slice(0, 7);
   const descriptionTopTokens = keywordCoverage.descriptionNewKeywords.slice(0, 5);
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed hover:border-orange-500/40 transition-all duration-300">
+      {/* L-bracket corners */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-blue-400/60" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-blue-400/60" />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-blue-400/60" />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-blue-400/60" />
+      
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base font-normal tracking-wide uppercase text-zinc-300">
             <Search className="h-5 w-5 text-blue-400" />
-            Keyword Coverage
+            KEYWORD COVERAGE
           </CardTitle>
-          <Badge variant="outline" className="text-lg px-4 py-1 border-blue-400/30 text-blue-400">
-            {keywordCoverage.totalUniqueKeywords} total
+          <Badge 
+            variant="outline" 
+            className="text-xl font-mono font-normal px-4 py-1 border-blue-400/30 text-blue-400"
+            style={{
+              clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+            }}
+          >
+            {keywordCoverage.totalUniqueKeywords}
           </Badge>
         </div>
       </CardHeader>
@@ -53,7 +65,10 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
               <Badge
                 key={idx}
                 variant="outline"
-                className="text-xs border-purple-400/30 text-purple-400"
+                className="text-[11px] font-mono tracking-wide uppercase bg-purple-400/10 border border-purple-400/40 backdrop-blur-sm px-3 py-1.5"
+                style={{
+                  clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+                }}
               >
                 {keyword}
               </Badge>
@@ -84,7 +99,10 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
               <Badge
                 key={idx}
                 variant="outline"
-                className="text-xs border-emerald-400/30 text-emerald-400"
+                className="text-[11px] font-mono tracking-wide uppercase bg-emerald-400/10 border border-emerald-400/40 backdrop-blur-sm px-3 py-1.5"
+                style={{
+                  clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+                }}
               >
                 {keyword}
               </Badge>

@@ -84,10 +84,17 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
       : null;
 
   return (
-    <Card className="group relative bg-zinc-900 border-zinc-800 transition-all duration-300 hover:border-zinc-700 hover:shadow-[0_0_20px_rgba(249,115,22,0.1)]">
-      {/* Subtle corner accents */}
-      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-zinc-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-zinc-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <Card 
+      className="group relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed transition-all duration-300 hover:border-orange-500/40 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]"
+      style={{
+        clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+      }}
+    >
+      {/* L-bracket corners */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-orange-500/60 opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-orange-500/60 opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-orange-500/60 opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-orange-500/60 opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
       
       <CardHeader
         className="cursor-pointer hover:bg-zinc-800/30 transition-all duration-300"
@@ -95,7 +102,7 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-lg">{elementDisplayName}</CardTitle>
+            <CardTitle className="text-base font-normal tracking-wide uppercase text-zinc-300">{elementDisplayName}</CardTitle>
             {isExpanded ? (
               <ChevronUp className="h-5 w-5 text-zinc-400" />
             ) : (
@@ -103,11 +110,17 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-zinc-400">
-              {elementMetadata.characterUsage}/{elementMetadata.maxCharacters} chars ({charUsagePercent}%)
+            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
+              {elementMetadata.characterUsage}/{elementMetadata.maxCharacters} CHARS • {charUsagePercent}%
             </div>
-            <Badge variant="outline" className={`text-lg px-4 py-1 ${scoreColor}`}>
-              {score}/100
+            <Badge 
+              variant="outline" 
+              className={`text-xl font-mono font-normal px-4 py-1 ${scoreColor}`}
+              style={{
+                clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+              }}
+            >
+              {score}
             </Badge>
           </div>
         </div>
@@ -123,10 +136,10 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             <div className="space-y-3">
               {/* Element Text */}
               <div>
-                <div className="text-xs text-zinc-500 uppercase mb-1.5">
+                <div className="text-[10px] text-zinc-500 uppercase mb-1.5 tracking-[0.25em] font-medium">
                   {element === 'description' ? 'Description Preview' : `Full ${elementDisplayName}`}
                 </div>
-                <div className="text-sm text-zinc-200 font-medium">
+                <div className="text-sm text-zinc-200 font-light leading-relaxed">
                   {element === 'description'
                     ? (elementText && elementText.length > 200
                         ? `${elementText.slice(0, 200)}...`
@@ -136,24 +149,24 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
               </div>
 
               {/* Metadata Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
-                <div>
-                  <div className="text-xs text-zinc-500 uppercase">Characters</div>
-                  <div className="text-sm text-zinc-300">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Characters</div>
+                  <div className="text-sm text-zinc-300 font-mono">
                     {elementMetadata.characterUsage} / {elementMetadata.maxCharacters}
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-zinc-500 uppercase">Developer</div>
-                  <div className="text-sm text-zinc-300">{rawMetadata.developer || 'Not available'}</div>
+                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Developer</div>
+                  <div className="text-sm text-zinc-300 font-light">{rawMetadata.developer || 'Not available'}</div>
                 </div>
-                <div>
-                  <div className="text-xs text-zinc-500 uppercase">Category</div>
-                  <div className="text-sm text-zinc-300">{rawMetadata.applicationCategory || 'Not available'}</div>
+                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Category</div>
+                  <div className="text-sm text-zinc-300 font-light">{rawMetadata.applicationCategory || 'Not available'}</div>
                 </div>
-                <div>
-                  <div className="text-xs text-zinc-500 uppercase">Platform</div>
-                  <div className="text-sm text-zinc-300">{platformLocale}</div>
+                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Platform</div>
+                  <div className="text-sm text-zinc-300 font-mono">{platformLocale}</div>
                 </div>
               </div>
             </div>
@@ -248,15 +261,18 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {elementMetadata.keywords.map((keyword, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="outline"
-                            className="text-xs border-blue-400/30 text-blue-400"
-                          >
-                            {keyword}
-                          </Badge>
-                        ))}
+                {elementMetadata.keywords.map((keyword, idx) => (
+                  <Badge
+                    key={idx}
+                    variant="outline"
+                    className="text-[11px] font-mono tracking-wide uppercase bg-blue-400/10 border border-blue-400/40 backdrop-blur-sm px-3 py-1.5"
+                    style={{
+                      clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+                    }}
+                  >
+                    {keyword}
+                  </Badge>
+                ))}
                       </div>
                     </div>
                   )}

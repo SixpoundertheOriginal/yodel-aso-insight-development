@@ -117,7 +117,11 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
       {/* ASO Ranking Recommendations (title + subtitle) */}
       <div>
-        <h3 className="text-lg font-semibold text-zinc-300 mb-3">🎯 ASO Ranking Recommendations</h3>
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          🎯 ASO RANKING RECOMMENDATIONS
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
         <RecommendationsPanel
           recommendations={auditResult.topRecommendations}
           type="ranking"
@@ -128,8 +132,12 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
       {/* Element Detail Cards */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-zinc-300">ASO Ranking Elements</h3>
-        <p className="text-sm text-zinc-400 -mt-2 mb-3">
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          ASO RANKING ELEMENTS
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
           These elements directly influence App Store search ranking
         </p>
 
@@ -148,9 +156,13 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
       {/* Conversion Intelligence Section */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-zinc-300">💰 Conversion Intelligence</h3>
-        <p className="text-sm text-zinc-400 -mt-2 mb-3">
-          Description does NOT influence App Store ranking. Evaluated for conversion quality only.
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          💰 CONVERSION INTELLIGENCE
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
+          Description does NOT influence App Store ranking • Evaluated for conversion quality only
         </p>
 
         <ElementDetailCard
@@ -168,7 +180,11 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
       {/* Keyword & Combo Coverage - Side by Side */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-zinc-300">Coverage Analysis</h3>
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          COVERAGE ANALYSIS
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <KeywordCoverageCard keywordCoverage={auditResult.keywordCoverage} />

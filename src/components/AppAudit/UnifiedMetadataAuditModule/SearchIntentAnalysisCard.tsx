@@ -120,16 +120,22 @@ export const SearchIntentAnalysisCard: React.FC<SearchIntentAnalysisCardProps> =
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed hover:border-orange-500/40 transition-all duration-300">
+      {/* L-bracket corners */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-blue-400/60" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-blue-400/60" />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-blue-400/60" />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-blue-400/60" />
+      
       <CardHeader
         className="cursor-pointer hover:bg-zinc-800/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
               <Search className="h-5 w-5 text-blue-400" />
-              Search Intent Analysis
+              SEARCH INTENT INTELLIGENCE
             </CardTitle>
             {isExpanded ? (
               <ChevronUp className="h-5 w-5 text-zinc-400" />
