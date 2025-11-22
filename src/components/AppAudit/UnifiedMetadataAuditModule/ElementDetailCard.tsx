@@ -84,9 +84,13 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
       : null;
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="group relative bg-zinc-900 border-zinc-800 transition-all duration-300 hover:border-zinc-700 hover:shadow-[0_0_20px_rgba(249,115,22,0.1)]">
+      {/* Subtle corner accents */}
+      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-zinc-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-zinc-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
       <CardHeader
-        className="cursor-pointer hover:bg-zinc-800/30 transition-colors"
+        className="cursor-pointer hover:bg-zinc-800/30 transition-all duration-300"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">

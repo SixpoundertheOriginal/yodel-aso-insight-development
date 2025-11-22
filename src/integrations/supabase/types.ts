@@ -152,6 +152,153 @@ export type Database = {
           },
         ]
       }
+      app_metadata_cache: {
+        Row: {
+          app_icon_url: string | null
+          app_id: string
+          app_json: Json | null
+          created_at: string
+          description: string | null
+          developer_name: string | null
+          feature_cards: Json | null
+          fetched_at: string
+          id: string
+          locale: string
+          organization_id: string
+          platform: string
+          preview_analysis: Json | null
+          screenshot_captions: Json | null
+          screenshots: Json | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+          version_hash: string
+        }
+        Insert: {
+          app_icon_url?: string | null
+          app_id: string
+          app_json?: Json | null
+          created_at?: string
+          description?: string | null
+          developer_name?: string | null
+          feature_cards?: Json | null
+          fetched_at?: string
+          id?: string
+          locale?: string
+          organization_id: string
+          platform?: string
+          preview_analysis?: Json | null
+          screenshot_captions?: Json | null
+          screenshots?: Json | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          version_hash: string
+        }
+        Update: {
+          app_icon_url?: string | null
+          app_id?: string
+          app_json?: Json | null
+          created_at?: string
+          description?: string | null
+          developer_name?: string | null
+          feature_cards?: Json | null
+          fetched_at?: string
+          id?: string
+          locale?: string
+          organization_id?: string
+          platform?: string
+          preview_analysis?: Json | null
+          screenshot_captions?: Json | null
+          screenshots?: Json | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          version_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_metadata_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "app_metadata_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_metadata_kpi_snapshots: {
+        Row: {
+          app_id: string
+          bundle_id: string | null
+          created_at: string
+          id: string
+          kpi_json: Json
+          kpi_vector: number[]
+          market: string
+          metadata_version: string
+          organization_id: string
+          platform: string
+          score_families: Json
+          score_overall: number
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          app_id: string
+          bundle_id?: string | null
+          created_at?: string
+          id?: string
+          kpi_json: Json
+          kpi_vector: number[]
+          market?: string
+          metadata_version: string
+          organization_id: string
+          platform: string
+          score_families: Json
+          score_overall: number
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          app_id?: string
+          bundle_id?: string | null
+          created_at?: string
+          id?: string
+          kpi_json?: Json
+          kpi_vector?: number[]
+          market?: string
+          metadata_version?: string
+          organization_id?: string
+          platform?: string
+          score_families?: Json
+          score_overall?: number
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_metadata_kpi_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "app_metadata_kpi_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apps: {
         Row: {
           app_description: string | null
@@ -484,6 +631,286 @@ export type Database = {
           },
           {
             foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_snapshots: {
+        Row: {
+          app_id: string
+          audit_score: number | null
+          combinations: Json | null
+          competitor_overlap: Json | null
+          created_at: string
+          id: string
+          insights: Json | null
+          locale: string
+          metadata_health: Json | null
+          metadata_source: string | null
+          metadata_version: string | null
+          metadata_version_hash: string
+          metrics: Json | null
+          organization_id: string
+          platform: string
+          subtitle: string | null
+          title: string | null
+        }
+        Insert: {
+          app_id: string
+          audit_score?: number | null
+          combinations?: Json | null
+          competitor_overlap?: Json | null
+          created_at?: string
+          id?: string
+          insights?: Json | null
+          locale?: string
+          metadata_health?: Json | null
+          metadata_source?: string | null
+          metadata_version?: string | null
+          metadata_version_hash: string
+          metrics?: Json | null
+          organization_id: string
+          platform?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Update: {
+          app_id?: string
+          audit_score?: number | null
+          combinations?: Json | null
+          competitor_overlap?: Json | null
+          created_at?: string
+          id?: string
+          insights?: Json | null
+          locale?: string
+          metadata_health?: Json | null
+          metadata_source?: string | null
+          metadata_version?: string | null
+          metadata_version_hash?: string
+          metrics?: Json | null
+          organization_id?: string
+          platform?: string
+          subtitle?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      autocomplete_intelligence_cache: {
+        Row: {
+          api_status: string | null
+          cached_at: string | null
+          created_at: string | null
+          error_message: string | null
+          expires_at: string
+          id: string
+          platform: string
+          query: string
+          raw_response: Json
+          region: string
+          request_source: string | null
+          suggestions_count: number | null
+        }
+        Insert: {
+          api_status?: string | null
+          cached_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at: string
+          id?: string
+          platform: string
+          query: string
+          raw_response: Json
+          region?: string
+          request_source?: string | null
+          suggestions_count?: number | null
+        }
+        Update: {
+          api_status?: string | null
+          cached_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          platform?: string
+          query?: string
+          raw_response?: Json
+          region?: string
+          request_source?: string | null
+          suggestions_count?: number | null
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content_encrypted: string
+          created_at: string
+          encryption_version: number
+          id: string
+          model: string | null
+          organization_id: string
+          role: string
+          session_id: string
+          token_count: number | null
+        }
+        Insert: {
+          content_encrypted: string
+          created_at?: string
+          encryption_version?: number
+          id?: string
+          model?: string | null
+          organization_id: string
+          role: string
+          session_id: string
+          token_count?: number | null
+        }
+        Update: {
+          content_encrypted?: string
+          created_at?: string
+          encryption_version?: number
+          id?: string
+          model?: string | null
+          organization_id?: string
+          role?: string
+          session_id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          max_active_sessions_per_user: number
+          messages_per_user_per_day: number
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_active_sessions_per_user?: number
+          messages_per_user_per_day?: number
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_active_sessions_per_user?: number
+          messages_per_user_per_day?: number
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_rate_limits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chat_rate_limits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          context_snapshot: Json | null
+          context_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          is_pinned: boolean
+          organization_id: string
+          pinned_at: string | null
+          pinned_by: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context_snapshot?: Json | null
+          context_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_pinned?: boolean
+          organization_id: string
+          pinned_at?: string | null
+          pinned_by?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context_snapshot?: Json | null
+          context_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_pinned?: boolean
+          organization_id?: string
+          pinned_at?: string | null
+          pinned_by?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1719,10 +2146,13 @@ export type Database = {
       monitored_app_reviews: {
         Row: {
           app_store_id: string
+          app_version_name: string | null
           author: string | null
           business_impact: string | null
           country: string
           created_at: string
+          developer_reply: string | null
+          developer_reply_date: string | null
           enhanced_sentiment: Json | null
           extracted_themes: string[] | null
           fetched_at: string
@@ -1731,22 +2161,28 @@ export type Database = {
           mentioned_features: string[] | null
           monitored_app_id: string
           organization_id: string
+          platform: string
           processed_at: string
           processing_version: string | null
           rating: number
           review_date: string
           review_id: string
+          reviewer_language: string | null
           text: string
+          thumbs_up_count: number | null
           title: string | null
           updated_at: string
           version: string | null
         }
         Insert: {
           app_store_id: string
+          app_version_name?: string | null
           author?: string | null
           business_impact?: string | null
           country: string
           created_at?: string
+          developer_reply?: string | null
+          developer_reply_date?: string | null
           enhanced_sentiment?: Json | null
           extracted_themes?: string[] | null
           fetched_at?: string
@@ -1755,22 +2191,28 @@ export type Database = {
           mentioned_features?: string[] | null
           monitored_app_id: string
           organization_id: string
+          platform?: string
           processed_at?: string
           processing_version?: string | null
           rating: number
           review_date: string
           review_id: string
+          reviewer_language?: string | null
           text: string
+          thumbs_up_count?: number | null
           title?: string | null
           updated_at?: string
           version?: string | null
         }
         Update: {
           app_store_id?: string
+          app_version_name?: string | null
           author?: string | null
           business_impact?: string | null
           country?: string
           created_at?: string
+          developer_reply?: string | null
+          developer_reply_date?: string | null
           enhanced_sentiment?: Json | null
           extracted_themes?: string[] | null
           fetched_at?: string
@@ -1779,12 +2221,15 @@ export type Database = {
           mentioned_features?: string[] | null
           monitored_app_id?: string
           organization_id?: string
+          platform?: string
           processed_at?: string
           processing_version?: string | null
           rating?: number
           review_date?: string
           review_id?: string
+          reviewer_language?: string | null
           text?: string
+          thumbs_up_count?: number | null
           title?: string | null
           updated_at?: string
           version?: string | null
@@ -1816,8 +2261,9 @@ export type Database = {
       monitored_apps: {
         Row: {
           app_icon_url: string | null
+          app_id: string
           app_name: string
-          app_store_id: string
+          audit_enabled: boolean | null
           bundle_id: string | null
           category: string | null
           created_at: string
@@ -1825,20 +2271,31 @@ export type Database = {
           developer_name: string | null
           id: string
           last_checked_at: string | null
+          latest_audit_at: string | null
+          latest_audit_score: number | null
+          locale: string
+          metadata_last_refreshed_at: string | null
           monitor_type: string
           notes: string | null
           organization_id: string
+          platform: string
+          play_store_package_id: string | null
+          play_store_url: string | null
           primary_country: string
           snapshot_rating: number | null
           snapshot_review_count: number | null
           snapshot_taken_at: string | null
           tags: string[] | null
           updated_at: string
+          validated_at: string | null
+          validated_state: Database["public"]["Enums"]["monitored_app_validated_state"]
+          validation_error: string | null
         }
         Insert: {
           app_icon_url?: string | null
+          app_id: string
           app_name: string
-          app_store_id: string
+          audit_enabled?: boolean | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
@@ -1846,20 +2303,31 @@ export type Database = {
           developer_name?: string | null
           id?: string
           last_checked_at?: string | null
+          latest_audit_at?: string | null
+          latest_audit_score?: number | null
+          locale?: string
+          metadata_last_refreshed_at?: string | null
           monitor_type?: string
           notes?: string | null
           organization_id: string
+          platform?: string
+          play_store_package_id?: string | null
+          play_store_url?: string | null
           primary_country: string
           snapshot_rating?: number | null
           snapshot_review_count?: number | null
           snapshot_taken_at?: string | null
           tags?: string[] | null
           updated_at?: string
+          validated_at?: string | null
+          validated_state?: Database["public"]["Enums"]["monitored_app_validated_state"]
+          validation_error?: string | null
         }
         Update: {
           app_icon_url?: string | null
+          app_id?: string
           app_name?: string
-          app_store_id?: string
+          audit_enabled?: boolean | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
@@ -1867,15 +2335,25 @@ export type Database = {
           developer_name?: string | null
           id?: string
           last_checked_at?: string | null
+          latest_audit_at?: string | null
+          latest_audit_score?: number | null
+          locale?: string
+          metadata_last_refreshed_at?: string | null
           monitor_type?: string
           notes?: string | null
           organization_id?: string
+          platform?: string
+          play_store_package_id?: string | null
+          play_store_url?: string | null
           primary_country?: string
           snapshot_rating?: number | null
           snapshot_review_count?: number | null
           snapshot_taken_at?: string | null
           tags?: string[] | null
           updated_at?: string
+          validated_at?: string | null
+          validated_state?: Database["public"]["Enums"]["monitored_app_validated_state"]
+          validation_error?: string | null
         }
         Relationships: [
           {
@@ -2256,6 +2734,7 @@ export type Database = {
           itunes_api_status: number | null
           monitored_app_id: string
           organization_id: string
+          platform: string
           reviews_fetched: number | null
           reviews_updated: number | null
           user_agent: string | null
@@ -2273,6 +2752,7 @@ export type Database = {
           itunes_api_status?: number | null
           monitored_app_id: string
           organization_id: string
+          platform?: string
           reviews_fetched?: number | null
           reviews_updated?: number | null
           user_agent?: string | null
@@ -2290,6 +2770,7 @@ export type Database = {
           itunes_api_status?: number | null
           monitored_app_id?: string
           organization_id?: string
+          platform?: string
           reviews_fetched?: number | null
           reviews_updated?: number | null
           user_agent?: string | null
@@ -2331,6 +2812,7 @@ export type Database = {
           intelligence_version: string | null
           monitored_app_id: string
           organization_id: string
+          platform: string
           reviews_analyzed: number
           sentiment_distribution: Json | null
           snapshot_date: string
@@ -2347,6 +2829,7 @@ export type Database = {
           intelligence_version?: string | null
           monitored_app_id: string
           organization_id: string
+          platform?: string
           reviews_analyzed: number
           sentiment_distribution?: Json | null
           snapshot_date?: string
@@ -2363,6 +2846,7 @@ export type Database = {
           intelligence_version?: string | null
           monitored_app_id?: string
           organization_id?: string
+          platform?: string
           reviews_analyzed?: number
           sentiment_distribution?: Json | null
           snapshot_date?: string
@@ -2439,6 +2923,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      search_intent_registry: {
+        Row: {
+          autocomplete_rank: number | null
+          autocomplete_suggestions: Json | null
+          autocomplete_volume_estimate: number | null
+          created_at: string | null
+          data_source: string | null
+          id: string
+          intent_confidence: number | null
+          intent_type: string
+          keyword: string
+          last_refreshed_at: string | null
+          platform: string
+          region: string
+          updated_at: string | null
+        }
+        Insert: {
+          autocomplete_rank?: number | null
+          autocomplete_suggestions?: Json | null
+          autocomplete_volume_estimate?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          intent_confidence?: number | null
+          intent_type: string
+          keyword: string
+          last_refreshed_at?: string | null
+          platform: string
+          region?: string
+          updated_at?: string | null
+        }
+        Update: {
+          autocomplete_rank?: number | null
+          autocomplete_suggestions?: Json | null
+          autocomplete_volume_estimate?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          intent_confidence?: number | null
+          intent_type?: string
+          keyword?: string
+          last_refreshed_at?: string | null
+          platform?: string
+          region?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       semantic_insights: {
         Row: {
@@ -3318,6 +3850,10 @@ export type Database = {
           priority: number
         }[]
       }
+      get_user_active_session_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       get_user_highest_privilege: {
         Args: { input_user_id?: string }
         Returns: {
@@ -3328,6 +3864,10 @@ export type Database = {
           total_orgs_access: number
           user_id: string
         }[]
+      }
+      get_user_message_count_today: {
+        Args: { p_user_id: string }
+        Returns: number
       }
       grant_org_app_access: {
         Args: {
@@ -3448,6 +3988,7 @@ export type Database = {
         | "VIEWER"
         | "super_admin"
         | "org_admin"
+      monitored_app_validated_state: "valid" | "stale" | "invalid" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3584,6 +4125,7 @@ export const Constants = {
         "super_admin",
         "org_admin",
       ],
+      monitored_app_validated_state: ["valid", "stale", "invalid", "unknown"],
     },
   },
 } as const

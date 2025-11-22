@@ -271,6 +271,51 @@ export default {
             transform: "translateY(-20px) scale(1.1)",
             opacity: "1"
           }
+        },
+        "cyber-pulse": {
+          "0%, 100%": { 
+            boxShadow: "0 0 15px rgba(249, 115, 22, 0.4)",
+            opacity: "1"
+          },
+          "50%": { 
+            boxShadow: "0 0 25px rgba(249, 115, 22, 0.6), 0 0 40px rgba(249, 115, 22, 0.3)",
+            opacity: "0.95"
+          }
+        },
+        "border-glow-rotate": {
+          "0%": { 
+            borderColor: "rgba(249, 115, 22, 0.5)"
+          },
+          "33%": { 
+            borderColor: "rgba(59, 130, 246, 0.5)"
+          },
+          "66%": { 
+            borderColor: "rgba(168, 85, 247, 0.5)"
+          },
+          "100%": { 
+            borderColor: "rgba(249, 115, 22, 0.5)"
+          }
+        },
+        "scanline-move": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "0 100px" }
+        },
+        "hologram-shift": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" }
+        },
+        "data-stream": {
+          "0%": { transform: "translateY(-100%)", opacity: "0" },
+          "50%": { opacity: "1" },
+          "100%": { transform: "translateY(100%)", opacity: "0" }
+        },
+        "badge-glow": {
+          "0%, 100%": { 
+            boxShadow: "0 0 10px rgba(249, 115, 22, 0.3)"
+          },
+          "50%": { 
+            boxShadow: "0 0 20px rgba(249, 115, 22, 0.5)"
+          }
         }
       },
       animation: {
@@ -288,7 +333,13 @@ export default {
         "counter-up": "counter-up 0.5s ease-out",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
-        "particle-float": "particle-float 4s ease-in-out infinite"
+        "particle-float": "particle-float 4s ease-in-out infinite",
+        "cyber-pulse": "cyber-pulse 3s ease-in-out infinite",
+        "border-glow-rotate": "border-glow-rotate 6s linear infinite",
+        "scanline-move": "scanline-move 10s linear infinite",
+        "hologram-shift": "hologram-shift 8s ease-in-out infinite",
+        "data-stream": "data-stream 2s ease-in-out",
+        "badge-glow": "badge-glow 2s ease-in-out infinite"
       },
       zIndex: {
         '60': '60',
