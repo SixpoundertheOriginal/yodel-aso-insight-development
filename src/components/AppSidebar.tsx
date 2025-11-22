@@ -17,9 +17,11 @@ import {
   FileEdit,
   Star,
   Palette,
+  WandSparkles,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { debug } from '@/lib/logging';
 import {
   Sidebar,
   SidebarContent,
@@ -114,6 +116,12 @@ const aiCopilotsItems: NavigationItem[] = [
     featureKey: PLATFORM_FEATURES.CREATIVE_REVIEW,
   },
   {
+    title: "Creative Intelligence",
+    url: "/creative-intelligence",
+    icon: WandSparkles,
+    featureKey: PLATFORM_FEATURES.CREATIVE_REVIEW,
+  },
+  {
     title: "Web Rank (Apps)",
     url: "/growth/web-rank-apps",
     icon: Search,
@@ -163,18 +171,17 @@ export function AppSidebar() {
   // Simplified: No UI permissions check needed
   const { whoami } = useServerAuth();
 
-  // DEBUG: Log isOrganizationAdmin value
+  // Debug-gated permissions log
   React.useEffect(() => {
     if (!permissionsLoading) {
-      console.log('🔍 [AppSidebar] DEBUG Permissions:', {
+      debug('SIDEBAR', 'Permissions updated', {
         isSuperAdmin,
         isOrganizationAdmin,
         roles,
-        user: user?.email,
-        shouldShowUserManagement: !isSuperAdmin && isOrganizationAdmin
+        userEmail: user?.email
       });
     }
-  }, [isSuperAdmin, isOrganizationAdmin, permissionsLoading, user?.email]);
+  }, [isSuperAdmin, isOrganizationAdmin, permissionsLoading, user?.email, roles]);
 
   // Define navigation items first, before filtering
   const controlCenterItems: NavigationItem[] = [
@@ -193,21 +200,21 @@ export function AppSidebar() {
 
   // Add admin items based on role
   if (isSuperAdmin) {
-    console.log('🎯 [AppSidebar] Adding System Control (SUPER_ADMIN)');
+    debug('SIDEBAR', 'Adding System Control');
     controlCenterItems.push({
       title: "System Control",
       url: "/admin",
       icon: Shield,
     });
   } else if (isOrganizationAdmin) {
-    console.log('🎯 [AppSidebar] Adding User Management (ORG_ADMIN)');
+    debug('SIDEBAR', 'Adding User Management');
     controlCenterItems.push({
       title: "User Management",
       url: "/admin/users",
       icon: Users,
     });
   } else {
-    console.log('⚠️ [AppSidebar] NOT adding admin items - isSuperAdmin:', isSuperAdmin, 'isOrganizationAdmin:', isOrganizationAdmin);
+    debug('SIDEBAR', 'Not adding admin items', { isSuperAdmin, isOrganizationAdmin });
   }
 
   // Coordinate loading states to prevent race condition UI flicker
@@ -216,16 +223,12 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
     (roles[0]?.toUpperCase().replace('ORG_', 'ORGANIZATION_') as Role) || 'VIEWER';
   const routes = getAllowedRoutes({ isDemoOrg, role, organizationId, orgAccessLevel, isSuperAdmin });
 
-  // DEBUG: Log routes and filtering
-  console.log('🛣️ [AppSidebar] Routes and Filtering:', {
+  // Debug-gated routes filtering log
+  debug('SIDEBAR', 'Routes filtered', {
     isDemoOrg,
-    orgSlug: org?.slug,
-    orgDemoMode: org?.settings?.demo_mode,
     role,
     routesCount: routes.length,
-    hasAdminUsersRoute: routes.includes('/admin/users'),
-    controlCenterItemsBeforeFilter: controlCenterItems.map(i => i.url),
-    sampleRoutes: routes.slice(0, 5)
+    hasAdminUsersRoute: routes.includes('/admin/users')
   });
   const isIgor = isSuperAdmin && user?.email === 'igor@yodelmobile.com';
   const accountItems = isIgor ? userItems : userItems.filter(item => item.title !== 'Preferences');
@@ -349,7 +352,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
     );
 
     return (
-      <React.Fragment key={item.title}>
+      <div key={item.title} className="contents">
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
@@ -376,7 +379,7 @@ const allPermissionsLoaded = !permissionsLoading && !featuresLoading && !orgLoad
           </SidebarMenuButton>
         </SidebarMenuItem>
         {item.children && item.children.map(child => renderNavItem(child, true))}
-      </React.Fragment>
+      </div>
     );
   };
 

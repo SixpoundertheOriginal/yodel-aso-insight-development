@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => {
   const supabaseUrl = env.VITE_SUPABASE_URL || 'https://bkbcqocpjahewqjmlgvf.supabase.co';
   
   return {
+  build: {
+    rollupOptions: {
+      external: [
+        'playwright', // Phase D: Externalize Playwright (Node.js only, not for browser)
+      ],
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 8080,

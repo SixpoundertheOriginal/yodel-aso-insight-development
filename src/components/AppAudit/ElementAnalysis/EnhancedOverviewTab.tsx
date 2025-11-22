@@ -4,12 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
 import { BrandedLoadingSpinner } from '@/components/ui/LoadingSkeleton';
 import { ScrapedMetadata } from '@/types/aso';
+import { debug, metadataDigest } from '@/lib/logging';
 import { AppElementAnalysisService, ComprehensiveElementAnalysis } from '@/services/app-element-analysis.service';
 import { UnifiedNameTitleAnalysisCard } from './UnifiedNameTitleAnalysisCard';
 import { SubtitleAnalysisCard } from './SubtitleAnalysisCard';
 import { DescriptionAnalysisCard } from './DescriptionAnalysisCard';
-import { ScreenshotAnalysisCard } from './ScreenshotAnalysisCard';
-import { IconAnalysisCard } from './IconAnalysisCard';
+import { MetadataScoringPanel } from '../MetadataScoringPanel';
+// IconAnalysisCard removed - icons are visual assets, not text metadata
 
 interface EnhancedOverviewTabProps {
   metadata: ScrapedMetadata;
@@ -29,18 +30,8 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
     const performAnalysis = async () => {
       if (!metadata) return;
 
-      // PHASE E AUDIT: Log what metadata we're receiving
-      console.log('[ENHANCED-OVERVIEW-TAB] 🔍 Metadata received for analysis:', {
-        'metadata.name': metadata.name,
-        'metadata.title': metadata.title,
-        'metadata.subtitle': metadata.subtitle,
-        'metadata.appStoreName': (metadata as any).appStoreName,
-        'metadata.appStoreSubtitle': (metadata as any).appStoreSubtitle,
-        'metadata.fallbackName': (metadata as any).fallbackName,
-        'metadata.fallbackSubtitle': (metadata as any).fallbackSubtitle,
-        'metadata._htmlExtraction': (metadata as any)._htmlExtraction,
-        'metadata._source': (metadata as any)._source
-      });
+      // Debug-gated log with privacy-safe digest
+      debug('ELEMENT-ANALYSIS', 'Metadata received for analysis', metadataDigest(metadata));
 
       setAnalyzing(true);
       try {
@@ -87,7 +78,7 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400">{analysis.appName.score}</div>
               <div className="text-sm text-muted-foreground">App Name</div>
@@ -104,44 +95,37 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
               <div className="text-2xl font-bold text-orange-400">{analysis.description.score}</div>
               <div className="text-sm text-muted-foreground">Description</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-pink-400">{analysis.screenshots.score}</div>
-              <div className="text-sm text-muted-foreground">Screenshots</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-cyan-400">{analysis.icon.score}</div>
-              <div className="text-sm text-muted-foreground">Icon</div>
-            </div>
+            {/* Icon score removed - icons are visual assets, use Creative Intelligence for icon analysis */}
           </div>
         </CardContent>
       </Card>
 
-      {/* Element Analysis Grid */}
+      {/* Element Analysis Grid - Text Metadata Only */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <UnifiedNameTitleAnalysisCard 
+        <UnifiedNameTitleAnalysisCard
           appNameAnalysis={analysis.appName}
           titleAnalysis={analysis.title}
-          appName={metadata.name} 
+          appName={metadata.name}
           title={metadata.title}
         />
-        <SubtitleAnalysisCard 
-          analysis={analysis.subtitle} 
-          subtitle={metadata.subtitle || ''} 
+        <SubtitleAnalysisCard
+          analysis={analysis.subtitle}
+          subtitle={metadata.subtitle || ''}
         />
-        <DescriptionAnalysisCard 
-          analysis={analysis.description} 
-          description={metadata.description || ''} 
+        <DescriptionAnalysisCard
+          analysis={analysis.description}
+          description={metadata.description || ''}
         />
-        <ScreenshotAnalysisCard
-          analysis={analysis.screenshots}
-          screenshotUrls={metadata.screenshots || []}
-        />
-        <IconAnalysisCard 
-          analysis={analysis.icon} 
-          iconUrl={metadata.icon}
-          appName={metadata.name} 
-        />
+        {/* Icon analysis removed - icons are visual assets, use Creative Intelligence module */}
       </div>
+
+      {/* Metadata Scoring Panel - Deterministic Title + Subtitle Analysis */}
+      <MetadataScoringPanel
+        title={metadata.title}
+        subtitle={metadata.subtitle || ''}
+      />
+
+      {/* Visual analysis removed - use Creative Intelligence module for screenshots and icons */}
     </div>
   );
 };

@@ -35,6 +35,7 @@ export * from './types';
 export { ItunesSearchAdapter } from './itunes-search.adapter';
 export { ItunesLookupAdapter } from './itunes-lookup.adapter';
 export { AppStoreWebAdapter } from './appstore-web.adapter';
+export { AppStoreHtmlAdapter } from './appstore-html.adapter';
 
 // ========================================
 // Core Services

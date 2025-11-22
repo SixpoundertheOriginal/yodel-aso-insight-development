@@ -84,8 +84,10 @@ export class AppElementAnalysisService {
       this.analyzeIcon(metadata, competitorData)
     ]);
 
+    // Overall score: TEXT METADATA ONLY (name, title, subtitle, description)
+    // Excludes visual assets (screenshots, icons) - use Creative Intelligence for those
     const overallScore = Math.round(
-      (appName.score + title.score + subtitle.score + description.score + screenshots.score + icon.score) / 6
+      (appName.score + title.score + subtitle.score + description.score) / 4
     );
 
     // Phase B: Overall benchmark comparison
@@ -94,13 +96,13 @@ export class AppElementAnalysisService {
       ? BenchmarkRegistryService.compareToCategory(category, 'overall', overallScore)
       : undefined;
 
+    // Top recommendations: TEXT METADATA ONLY
+    // Excludes visual assets (screenshots, icons) - use Creative Intelligence for those
     const topRecommendations = [
       ...appName.recommendations.slice(0, 1),
       ...title.recommendations.slice(0, 1),
       ...subtitle.recommendations.slice(0, 1),
-      ...description.recommendations.slice(0, 1),
-      ...screenshots.recommendations.slice(0, 1),
-      ...icon.recommendations.slice(0, 1)
+      ...description.recommendations.slice(0, 1)
     ].filter(Boolean);
 
     // Add overall benchmark recommendation if significantly underperforming

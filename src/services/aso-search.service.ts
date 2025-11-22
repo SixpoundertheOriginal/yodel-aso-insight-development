@@ -395,8 +395,18 @@ class AsoSearchService {
         source: metadata._source
       });
 
+      // [DIAGNOSTIC] Frontend fetch layer - subtitle flow trace
+      if (import.meta.env.DEV) {
+        console.log('[DIAGNOSTIC-FRONTEND-FETCH] Metadata received from orchestrator:', {
+          'metadata.subtitle': metadata.subtitle,
+          'metadata.subtitleSource': (metadata as any).subtitleSource,
+          'metadata.name': metadata.name,
+          'metadata._source': metadata._source
+        });
+      }
+
       // Transform Phase A adapter result to SearchResult format
-      return {
+      const searchResult = {
         targetApp: {
           ...metadata,
           // Ensure all required ScrapedMetadata fields are present
@@ -404,6 +414,7 @@ class AsoSearchService {
           appId: metadata.appId,
           title: metadata.title,
           subtitle: metadata.subtitle || '',
+          subtitleSource: metadata.subtitleSource ?? null,
           description: metadata.description || '',
           url: metadata.url || '',
           icon: metadata.icon || '',
@@ -433,6 +444,17 @@ class AsoSearchService {
           ]
         }
       };
+
+      // [DIAGNOSTIC] Frontend fetch layer - after transformation
+      if (import.meta.env.DEV) {
+        console.log('[DIAGNOSTIC-FRONTEND-FETCH] After transformation to SearchResult:', {
+          'searchResult.targetApp.subtitle': searchResult.targetApp.subtitle,
+          'searchResult.targetApp.subtitleSource': searchResult.targetApp.subtitleSource,
+          'searchResult.targetApp.name': searchResult.targetApp.name
+        });
+      }
+
+      return searchResult;
 
     } catch (error: any) {
       console.error('❌ [PHASE-A-ADAPTER] Adapter fetch failed:', error);

@@ -37,15 +37,18 @@ export const AUDIT_MODE: 'metadata-only' | 'full' = 'metadata-only';
  *
  * CLEANUP (2025-01-18):
  * - DELETED: 'search-domination', 'keyword-strategy', 'keywords' - Keyword intelligence not implemented
- * - 'creative' marked as true (hidden) - contains mock data only, no real AI analysis yet
  * - See docs/AUDIT_SECTIONS_CLEANUP.md for details on hidden sections
+ *
+ * CLEANUP (2025-11-21):
+ * - DELETED: 'creative' tab - Creative analysis moved to dedicated Creative Intelligence module
+ * - Creative Intelligence is a standalone module at /creative-intelligence
  */
 export const TAB_KEYWORD_DEPENDENCIES = {
   'slide-view': false,              // ✅ VISIBLE - Metadata-dominated (shows placeholders for keyword sections)
   'executive-summary': false,       // ✅ VISIBLE - Metadata-only narratives
   'overview': false,                // ✅ VISIBLE - Metadata-only
   'metadata': false,                // ✅ VISIBLE - Metadata-only
-  'creative': true,                 // ❌ HIDDEN - Mock data only, no real AI analysis (2025-01-18 cleanup)
+  // 'creative': DELETED (2025-11-21) - Use Creative Intelligence module instead
   'competitors': true,              // ❌ HIDDEN - REQUIRES keywords (keyword overlap analysis)
   'risk-assessment': true,          // ❌ HIDDEN - REQUIRES keywords (brand risk needs keyword data)
   'recommendations': true,          // ❌ HIDDEN - REQUIRES keywords (opportunities derived from keyword gaps)

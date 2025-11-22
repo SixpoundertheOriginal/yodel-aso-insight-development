@@ -3,6 +3,8 @@
  * Implements cascading circuit breakers for different components
  */
 
+import { debug } from '@/lib/logging';
+
 export interface CircuitBreakerState {
   isOpen: boolean;
   failures: number;
@@ -70,7 +72,7 @@ class MultiLevelCircuitBreakerService {
       this.configs.set(name, { ...this.defaultConfig, ...config });
     });
 
-    console.log('🔧 [CIRCUIT-BREAKER] Initialized breakers for components:', Array.from(this.breakers.keys()));
+    debug('CIRCUIT-BREAKER', 'Initialized breakers', { components: Array.from(this.breakers.keys()) });
   }
 
   /**

@@ -4,7 +4,6 @@ import { MainLayout } from '@/layouts';
 import { AsoAiHubProvider } from '@/context/AsoAiHubContext';
 import { WorkflowProvider } from '@/context/WorkflowContext';
 import { AppAuditHub } from '@/components/AppAudit/AppAuditHub';
-import { HeroSection } from '@/components/ui/design-system';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
@@ -14,8 +13,14 @@ import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizat
 import { Brain } from 'lucide-react';
 import { featureEnabledForRole, PLATFORM_FEATURES, type UserRole } from '@/constants/features';
 import { NotAuthorized } from '@/components/NotAuthorized';
+import { useParams } from 'react-router-dom';
 
-const AsoAiHubPage: React.FC = () => {
+export interface AsoAiHubPageProps {
+  mode?: 'live' | 'monitored';
+}
+
+const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
+  const { monitoredAppId } = useParams<{ monitoredAppId: string }>();
   const dataContext = useDataAccess();
   const { isSuperAdmin, isOrganizationAdmin, roles } = usePermissions();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
@@ -74,18 +79,10 @@ const AsoAiHubPage: React.FC = () => {
                 <h1 className="text-4xl font-bold text-foreground">ASO AI Audit</h1>
               </div>
               <p className="text-zinc-400 text-lg max-w-4xl mx-auto leading-relaxed">
-                Comprehensive ASO analysis in minutes. Import your app to get actionable insights, 
-                competitor analysis, and optimization recommendations.
+                Run a complete ASO audit using real Store data, metadata intelligence, and competitor signals.
               </p>
             </div>
-            
-            {/* Hero Section */}
-            <HeroSection
-              title="Comprehensive App Audit"
-              subtitle="Complete ASO analysis in minutes"
-              description="Import your app to get actionable insights, competitor analysis, and optimization recommendations. Perfect for getting started or quick health checks."
-            />
-            
+
             {/* Super Admin Organization Selector */}
             {dataContext.canAccessAllOrgs && (
               <SuperAdminOrganizationSelector
@@ -97,7 +94,11 @@ const AsoAiHubPage: React.FC = () => {
             
             {/* Main Audit Hub */}
             {(selectedOrgId || dataContext.organizationId) ? (
-              <AppAuditHub organizationId={(selectedOrgId || dataContext.organizationId) as string} />
+              <AppAuditHub
+                organizationId={(selectedOrgId || dataContext.organizationId) as string}
+                mode={mode}
+                monitoredAppId={monitoredAppId}
+              />
             ) : dataContext.canAccessAllOrgs ? (
               <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">
                 <Brain className="h-16 w-16 text-zinc-600 mx-auto mb-4" />

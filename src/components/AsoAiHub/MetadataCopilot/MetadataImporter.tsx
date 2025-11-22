@@ -4,12 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
 import { ScrapedMetadata } from '@/types/aso';
+import { debug, metadataDigest } from '@/lib/logging';
 import { AmbiguousSearchError } from '@/types/search-errors';
 import { DataImporter } from '@/components/shared/DataImporter';
 import { AppSelectionModal } from '@/components/shared/AsoShared/AppSelectionModal';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, AlertCircle, Search, Zap, Loader2, Users, Target, Settings, Shield, Activity } from 'lucide-react';
+import { Sparkles, AlertCircle, Search, Zap, Loader2, Target, Settings, Shield, Activity, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -21,6 +22,7 @@ import { strategicKeywordResearchService, StrategicKeywordResult } from '@/servi
 import { userExperienceShieldService, LoadingState } from '@/services/user-experience-shield.service';
 import { asoSearchService } from '@/services/aso-search.service';
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface MetadataImporterProps {
   onImportSuccess: (data: ScrapedMetadata, organizationId: string) => void;
@@ -31,14 +33,14 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
   const [mode, setMode] = useState<'selector' | 'existing' | 'pre-launch'>('selector');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const { isSuperAdmin, selectedOrganizationId } = useSuperAdmin();
+  const { isSuperAdmin: isSuperAdminFromPermissions } = usePermissions();
+
+  // Debug panel visibility: only super admins can see internal diagnostics
+  const showDebugPanels = isSuperAdmin || isSuperAdminFromPermissions;
+
   const [lastError, setLastError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'auto' | 'keyword' | 'brand' | 'url'>('auto');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-
-  // Enhanced competitive intelligence options
-  const [enableCompetitorDiscovery, setEnableCompetitorDiscovery] = useState(true);
-  const [competitorLimit, setCompetitorLimit] = useState(5);
-  const [includeKeywordAnalysis, setIncludeKeywordAnalysis] = useState(true);
 
   // App selection modal state
   const [showAppSelection, setShowAppSelection] = useState(false);
@@ -72,7 +74,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
   useEffect(() => {
     const fetchOrgId = async () => {
       try {
-        console.log('🔍 [METADATA-IMPORTER] Fetching user organization...');
+        debug('METADATA-IMPORTER', 'Fetching user organization');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           if (isSuperAdmin) {
@@ -80,9 +82,9 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
             const effectiveOrg = selectedOrganizationId || '__platform__';
             setOrganizationId(effectiveOrg);
             if (selectedOrganizationId) {
-              console.log('✅ [METADATA-IMPORTER] Super admin organization context:', selectedOrganizationId);
+              debug('METADATA-IMPORTER', 'Super admin context', { organizationId: selectedOrganizationId });
             } else {
-              console.warn('⚠️ [METADATA-IMPORTER] Super admin has no organization selected. Using platform scope.');
+              debug('METADATA-IMPORTER', 'Super admin using platform scope');
             }
           } else {
             const { data: profile, error } = await supabase
@@ -98,7 +100,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
 
             if (profile?.organization_id) {
               setOrganizationId(profile.organization_id);
-              console.log('✅ [METADATA-IMPORTER] Organization ID found:', profile.organization_id);
+              debug('METADATA-IMPORTER', 'Organization ID found', { organizationId: profile.organization_id });
             } else {
               console.warn('⚠️ [METADATA-IMPORTER] User has no organization_id.');
               toast({
@@ -204,16 +206,6 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         description: successMessage,
       });
 
-      // Show competitive intelligence notification
-      if (enableCompetitorDiscovery && searchResult.competitors.length > 0) {
-        setTimeout(() => {
-          toast({
-            title: 'Competitive Intelligence Generated',
-            description: `Analyzed ${searchResult.competitors.length} competitors for strategic insights`,
-          });
-        }, 1500);
-      }
-
       // Show performance notification for fast results
       if (searchContext.responseTime < 1000) {
         setTimeout(() => {
@@ -224,12 +216,8 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         }, 2000);
       }
 
-      // Phase E: Add diagnostic log for fresh metadata
-      console.log('[PHASE E CONFIRM] Using fresh metadata:', {
-        name: searchResult.targetApp.name,
-        subtitle: searchResult.targetApp.subtitle,
-        source: (searchResult.targetApp as any)._source
-      });
+      // Debug-gated log for fresh metadata with privacy-safe digest
+      debug('METADATA-IMPORT', 'Using fresh metadata', metadataDigest(searchResult.targetApp));
 
       onImportSuccess(searchResult.targetApp, organizationId);
 
@@ -485,11 +473,12 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       {mode === 'pre-launch' && (
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <button 
+            <button
               onClick={handleBackToSelector}
-              className="text-sm text-zinc-400 hover:text-foreground"
+              className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
-              ← Back to mode selection
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to mode selection</span>
             </button>
           </div>
           
@@ -506,53 +495,67 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       {mode === 'existing' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <button 
+            <button
               onClick={handleBackToSelector}
-              className="text-sm text-zinc-400 hover:text-foreground"
+              className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
-              ← Back to mode selection
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to mode selection</span>
             </button>
             <Badge variant="outline" className="text-xs">Existing App Mode</Badge>
           </div>
 
-          {/* Enhanced Loading State Display */}
+          {/* Loading State Display */}
           {(loadingState.isLoading || isSearching) && (
-            <Card className="bg-zinc-900/70 border-zinc-700">
-              <CardContent className="pt-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Shield className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm font-medium text-foreground">
-                        {isSearching ? 'Debounced Search Active' : 'Bulletproof Search Active'}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {isSearching ? 'debouncing' : loadingState.stage}
-                    </Badge>
-                  </div>
-                  
-                  <Progress value={isSearching ? 25 : loadingState.progress} className="h-2" />
-                  
-                  <div className="flex items-center space-x-2 text-sm text-zinc-300">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>
-                      {isSearching ? 'Processing search request...' : loadingState.message}
-                    </span>
-                  </div>
-                  
-                  {loadingState.stage === 'fallback' && (
-                    <div className="text-xs text-zinc-400">
-                      Using intelligent fallback methods for best results...
-                    </div>
-                  )}
+            <>
+              {/* Normal user: Simple loading message */}
+              {!showDebugPanels && (
+                <div className="flex items-center space-x-2 text-sm text-zinc-300 py-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Searching for apps...</span>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+
+              {/* Super admin: Full debug panel */}
+              {showDebugPanels && (
+                <Card className="bg-zinc-900/70 border-zinc-700">
+                  <CardContent className="pt-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Shield className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm font-medium text-foreground">
+                            {isSearching ? 'Debounced Search Active' : 'Bulletproof Search Active'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {isSearching ? 'debouncing' : loadingState.stage}
+                        </Badge>
+                      </div>
+
+                      <Progress value={isSearching ? 25 : loadingState.progress} className="h-2" />
+
+                      <div className="flex items-center space-x-2 text-sm text-zinc-300">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>
+                          {isSearching ? 'Processing search request...' : loadingState.message}
+                        </span>
+                      </div>
+
+                      {loadingState.stage === 'fallback' && (
+                        <div className="text-xs text-zinc-400">
+                          Using intelligent fallback methods for best results...
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           {/* System Health Dashboard */}
-          {showDebugInfo && systemHealth && (
+          {showDebugPanels && systemHealth && (
             <Card className="bg-zinc-900/50 border-zinc-800">
               <CardHeader>
                 <CardTitle className="flex items-center text-lg">
@@ -600,69 +603,6 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
             </Card>
           )}
 
-          {/* Enhanced Competitive Intelligence Settings */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
-            <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <Users className="w-5 h-5 mr-2 text-blue-500" />
-                Competitive Intelligence
-              </CardTitle>
-              <p className="text-sm text-zinc-400">
-                Automatically discover and analyze competitors for strategic insights
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-foreground">Enable Competitor Discovery</div>
-                  <div className="text-xs text-zinc-400">
-                    Automatically find and analyze top competitors during import
-                  </div>
-                </div>
-                <Switch
-                  checked={enableCompetitorDiscovery}
-                  onCheckedChange={setEnableCompetitorDiscovery}
-                />
-              </div>
-              
-              {enableCompetitorDiscovery && (
-                <>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-foreground">Competitors to Analyze</div>
-                    <div className="flex space-x-2">
-                      {[3, 5, 8, 10].map((limit) => (
-                        <button
-                          key={limit}
-                          onClick={() => setCompetitorLimit(limit)}
-                          className={`px-3 py-1 rounded text-sm transition-colors ${
-                            competitorLimit === limit
-                              ? 'bg-blue-600 text-foreground'
-                              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                          }`}
-                        >
-                          {limit}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium text-foreground">Keyword Gap Analysis</div>
-                      <div className="text-xs text-zinc-400">
-                        Identify keyword opportunities from competitor analysis
-                      </div>
-                    </div>
-                    <Switch
-                      checked={includeKeywordAnalysis}
-                      onCheckedChange={setIncludeKeywordAnalysis}
-                    />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Search Type Selector */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -697,10 +637,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
           {/* Main Search Interface */}
           <DataImporter
             title="Bulletproof ASO Intelligence Search"
-            description={enableCompetitorDiscovery 
-              ? "Discover apps with bulletproof search, intelligent fallbacks, and competitive intelligence"
-              : "Discover apps with bulletproof search and intelligent fallbacks"
-            }
+            description="Discover apps with bulletproof search and intelligent fallbacks"
             placeholder={getPlaceholderText()}
             onImport={handleImport}
             isLoading={isImporting || !organizationId}
@@ -759,27 +696,19 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
               </p>
             </div>
             <div className="bg-zinc-800/30 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-foreground mb-2">
-                {enableCompetitorDiscovery ? '🧠 Competitive Intelligence' : '🧠 ASO Intelligence'}
-              </h4>
+              <h4 className="text-sm font-medium text-foreground mb-2">🧠 ASO Intelligence</h4>
               <p className="text-xs text-zinc-400">
-                {enableCompetitorDiscovery 
-                  ? 'Advanced market analysis with competitor discovery and keyword gap analysis'
-                  : 'Smart market insights and optimization opportunities'
-                }
+                Smart market insights and optimization opportunities
               </p>
             </div>
           </div>
           
           {/* Enhanced Development Debug Info */}
-          {process.env.NODE_ENV === 'development' && (
+          {showDebugPanels && (
             <div className="mt-4 bg-zinc-800/50 p-3 rounded text-xs text-zinc-300 space-y-1">
               <div><strong>ASO Intelligence Platform v8.1.0-debounced-search</strong></div>
               <div>Organization ID: {organizationId || 'Not loaded'}</div>
               <div>Search Type: {searchType}</div>
-              <div>Competitive Intelligence: {enableCompetitorDiscovery ? 'Enabled' : 'Disabled'}</div>
-              <div>Competitor Limit: {competitorLimit}</div>
-              <div>Keyword Analysis: {includeKeywordAnalysis ? 'Enabled' : 'Disabled'}</div>
               <div>Is Importing: {isImporting ? 'Yes' : 'No'}</div>
               <div>Is Searching (Debounced): {isSearching ? 'Yes' : 'No'}</div>
               <div>Loading Stage: {loadingState.stage}</div>

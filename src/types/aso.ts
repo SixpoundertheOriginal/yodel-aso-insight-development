@@ -23,6 +23,9 @@ export interface ScrapedMetadata {
   fallbackSubtitle?: string;    // From iTunes API trackName (parsed)
   _htmlExtraction?: boolean;    // True if data came from HTML scraping
 
+  // Subtitle extraction telemetry (Phase C: DOM extraction)
+  subtitleSource?: 'dom' | 'fallback' | 'none' | null;  // Method used to extract subtitle
+
   // Creative assets
   screenshots?: string[]; // Primary field - array of screenshot URLs
   /** @deprecated Use screenshots (plural) instead - kept for backward compatibility */

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { enhancedKeywordDataPipelineService } from '@/services/enhanced-keyword-data-pipeline.service';
 import { useEnhancedQueries } from './useEnhancedQueries';
+import { cooldownLog } from '@/lib/logging';
 
 export interface KeywordData {
   keyword: string;
@@ -83,19 +84,34 @@ export const useAdvancedKeywordIntelligence = ({
   // Generate enhanced keyword data when app changes
   useEffect(() => {
     if (!enabled || !targetAppId) {
-      console.log('🔄 [ADVANCED-KI] Disabled or no targetAppId');
+      cooldownLog(
+        'ADVANCED-KI-disabled',
+        '[ADVANCED-KI] Disabled or no targetAppId',
+        { enabled, targetAppId },
+        5000
+      );
       return;
     }
 
     // Skip if waiting for database query (only when not using scraped metadata)
     if (!scrapedMetadata && (!selectedApp || isLoadingApp)) {
-      console.log('🔄 [ADVANCED-KI] Waiting for app data from database');
+      cooldownLog(
+        'ADVANCED-KI-waiting',
+        '[ADVANCED-KI] Waiting for app data',
+        { hasScrapedMetadata: !!scrapedMetadata, hasSelectedApp: !!selectedApp, isLoadingApp },
+        5000
+      );
       return;
     }
 
     // Skip if no app data available at all
     if (!appData) {
-      console.log('🔄 [ADVANCED-KI] No app data available');
+      cooldownLog(
+        'ADVANCED-KI-no-data',
+        '[ADVANCED-KI] No app data available',
+        { targetAppId },
+        5000
+      );
       return;
     }
 

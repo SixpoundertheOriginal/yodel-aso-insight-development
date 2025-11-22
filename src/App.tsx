@@ -39,9 +39,14 @@ const FeaturingToolkit = lazy(() => import("./pages/featuring-toolkit"));
 const MetadataCopilot = lazy(() => import("./pages/metadata-copilot"));
 const GrowthGapCopilot = lazy(() => import("./pages/growth-gap-copilot"));
 const CreativeAnalysis = lazy(() => import("./pages/creative-analysis"));
+const CreativeIntelligence = lazy(() =>
+  import("./modules/creative-intelligence/pages/CreativeIntelligencePage")
+    .then(module => ({ default: module.CreativeIntelligencePage }))
+);
 const AsoKnowledgeEngine = lazy(() => import("./pages/aso-knowledge-engine"));
 const ASOUnified = lazy(() => import("./pages/aso-unified"));
 const Apps = lazy(() => import("./pages/apps"));
+const WorkspaceApps = lazy(() => import("./pages/workspace/apps"));
 const AppDiscovery = lazy(() => import("./pages/app-discovery"));
 const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
@@ -142,10 +147,23 @@ function App() {
                             element={<ProtectedRoute><Overview /></ProtectedRoute>}
                           />
 
-                          <Route
-                            path="/aso-ai-hub"
-                            element={<ProtectedRoute><AsoAiHub /></ProtectedRoute>}
-                          />
+                          {/* ASO AI Hub Routes */}
+                          <Route path="/aso-ai-hub">
+                            {/* Redirect base path to audit mode */}
+                            <Route index element={<Navigate to="/aso-ai-hub/audit" replace />} />
+
+                            {/* Live/ad-hoc auditing mode */}
+                            <Route
+                              path="audit"
+                              element={<ProtectedRoute><AsoAiHub mode="live" /></ProtectedRoute>}
+                            />
+
+                            {/* Monitored app audit mode (cached data) */}
+                            <Route
+                              path="monitored/:monitoredAppId"
+                              element={<ProtectedRoute><AsoAiHub mode="monitored" /></ProtectedRoute>}
+                            />
+                          </Route>
                           <Route
                             path="/chatgpt-visibility-audit"
                             element={<ProtectedRoute><ChatGPTVisibilityAudit /></ProtectedRoute>}
@@ -166,6 +184,10 @@ function App() {
                           <Route
                             path="/creative-analysis"
                             element={<ProtectedRoute><CreativeAnalysis /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/creative-intelligence"
+                            element={<ProtectedRoute><CreativeIntelligence /></ProtectedRoute>}
                           />
                           <Route
                             path="/aso-knowledge-engine"
@@ -200,6 +222,10 @@ function App() {
                           <Route
                             path="/apps"
                             element={<ProtectedRoute><Apps /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/workspace/apps"
+                            element={<ProtectedRoute><WorkspaceApps /></ProtectedRoute>}
                           />
                           <Route
                             path="/app-discovery"

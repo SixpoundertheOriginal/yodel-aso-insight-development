@@ -16,6 +16,7 @@ import { useIsAppMonitored, useSaveMonitoredApp, normalizeMetadata } from '@/hoo
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { formatDistanceToNow } from 'date-fns';
 import type { ScrapedMetadata } from '@/types/aso';
+import { normalizeMonitoringKey } from '@/utils/monitoringKeys';
 
 // Enhanced audit data structure (subset of useEnhancedAppAudit return type)
 interface EnhancedAuditData {
@@ -101,18 +102,29 @@ export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
       return;
     }
 
-    console.log('[MonitorAppButton] Monitoring app with audit data:', {
+    // CRITICAL: Normalize composite key to ensure cache hits
+    const normalizedKey = normalizeMonitoringKey({
+      organizationId,
+      appId: app_id,
+      platform,
+      locale
+    });
+
+    console.log('[MonitorAppButton] Monitoring app with normalized key:', {
+      app_id: normalizedKey.app_id,
+      platform: normalizedKey.platform,
+      locale: normalizedKey.locale,
       hasMetadata: !!metadata,
       hasAuditData: !!auditData,
       auditScore: auditData?.overallScore
     });
 
     saveApp({
-      organizationId,
-      app_id,
-      platform,
+      organizationId: normalizedKey.organization_id,
+      app_id: normalizedKey.app_id,
+      platform: normalizedKey.platform,
       app_name,
-      locale,
+      locale: normalizedKey.locale,
       bundle_id,
       app_icon_url,
       developer_name,

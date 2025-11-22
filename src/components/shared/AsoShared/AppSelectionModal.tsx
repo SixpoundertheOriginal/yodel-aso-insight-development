@@ -16,6 +16,7 @@ import { ScrapedMetadata } from '@/types/aso';
 import { isDebugTarget } from '@/lib/debugTargets';
 import { asoSearchService } from '@/services/aso-search.service';
 import { metadataOrchestrator } from '@/services/metadata-adapters';
+import { debug, info, cooldownLog } from '@/lib/logging';
 
 interface AppSelectionModalProps {
   isOpen: boolean;
@@ -91,21 +92,25 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
 
   useEffect(() => {
     if (selectMode === 'single') {
-      console.log(`[APP-SELECTION-MODAL] 📋 Candidates updated: ${candidates.length} apps`);
-      console.log(`[APP-SELECTION-MODAL] 👁️ Modal state: isOpen=${isOpen}, searchTerm="${searchTerm}"`);
+      if (candidates.length === 0) {
+        cooldownLog(
+          'APP-MODAL-no-candidates',
+          '[APP-MODAL] No candidates found',
+          { searchTerm },
+          5000
+        );
+      } else {
+        debug('APP-MODAL', 'Candidates updated', { count: candidates.length, searchTerm });
+      }
       setSearchResults(candidates);
     }
-  }, [candidates, selectMode]);
+  }, [candidates, selectMode, isOpen, searchTerm]);
 
   useEffect(() => {
     if (isOpen) {
-      console.log(`[APP-SELECTION-MODAL] 🎬 Modal OPENED for "${searchTerm}"`);
-      console.log(`[APP-SELECTION-MODAL] 📦 Rendering ${searchResults.length} apps`);
-      searchResults.forEach((app, i) => {
-        console.log(`[APP-SELECTION-MODAL]   ${i + 1}. ${app.name} (${app.appId}) - ${app.developer}`);
-      });
+      debug('APP-MODAL', 'Modal opened', { searchTerm, appCount: searchResults.length });
     } else {
-      console.log(`[APP-SELECTION-MODAL] 🚪 Modal CLOSED`);
+      debug('APP-MODAL', 'Modal closed');
     }
   }, [isOpen, searchTerm, searchResults]);
 
@@ -133,10 +138,10 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
    * We must fetch full metadata (subtitle, screenshots, description) before import.
    */
   const handleSelectWithMetadata = async (app: ScrapedMetadata) => {
-    console.log(`[APP-SELECTION-MODAL] 🎯 User selected: ${app.name} (${app.appId})`);
+    info(`User selected app for import: ${app.name} (${app.appId})`);
     setFetchingMetadata(true);
     try {
-      console.log(`[APP-SELECTION-MODAL] 🔍 IMPORT → Fetching full metadata for ${app.name} (${app.appId})`);
+      debug('APP-MODAL', 'Fetching full metadata', { appId: app.appId, name: app.name });
 
       // Fetch full metadata including subtitle, screenshots, description
       const fullMetadata = await metadataOrchestrator.fetchMetadata(app.appId, {
@@ -144,15 +149,10 @@ export const AppSelectionModal: React.FC<AppSelectionModalProps> = ({
       });
 
       // Phase E: Use fullMetadata.name (not app.name) to ensure we're using fresh data
-      console.log(`[APP-SELECTION-MODAL] ✅ IMPORT → Full metadata fetched for ${fullMetadata.name}`);
-      console.log(`[APP-SELECTION-MODAL] 📦 Metadata includes: subtitle="${fullMetadata.subtitle}", screenshots=${fullMetadata.screenshots?.length || 0}, description length=${fullMetadata.description?.length || 0}`);
-
-      // DIAGNOSTIC: Log name/title/subtitle BEFORE calling onSelect
-      console.log('[DIAGNOSTIC-IMPORT-AppSelectionModal] BEFORE onSelect:', {
-        'fullMetadata.name': fullMetadata.name,
-        'fullMetadata.title': fullMetadata.title,
-        'fullMetadata.subtitle': fullMetadata.subtitle,
-        'fullMetadata._source': (fullMetadata as any)._source
+      debug('APP-MODAL', 'Full metadata fetched', {
+        name: fullMetadata.name,
+        hasSubtitle: !!fullMetadata.subtitle,
+        screenshotCount: fullMetadata.screenshots?.length || 0
       });
 
       // Call parent's onSelect with full metadata

@@ -45,9 +45,9 @@ export interface MetadataSourceAdapter {
   /**
    * Transform raw source data to normalized ScrapedMetadata schema
    * @param raw - Raw metadata from source
-   * @returns Normalized metadata
+   * @returns Normalized metadata (sync or async for hydration support)
    */
-  transform(raw: RawMetadata): ScrapedMetadata;
+  transform(raw: RawMetadata): ScrapedMetadata | Promise<ScrapedMetadata>;
 
   /**
    * Get adapter health status

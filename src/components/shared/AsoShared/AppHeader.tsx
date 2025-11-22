@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Download, ArrowLeft } from 'lucide-react';
 import { ScrapedMetadata } from '@/types/aso';
+import { debug, metadataDigest } from '@/lib/logging';
 
 interface AppHeaderProps {
   app: ScrapedMetadata;
@@ -21,6 +22,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   isRefreshing = false,
   lastUpdated
 }) => {
+  // Debug-gated log with privacy-safe digest
+  debug('COMPONENT-PROPS', 'AppHeader received app prop', metadataDigest(app));
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-4">
@@ -46,11 +50,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         
         <div>
           <h1 className="text-2xl font-bold text-foreground">{app.name}</h1>
-          {app.subtitle && (
-            <p className="text-zinc-300 text-sm font-medium -mt-1 mb-1">
-              {app.subtitle}
-            </p>
-          )}
+          <div className="flex items-center gap-2 -mt-1 mb-1">
+            {app.subtitle ? (
+              <>
+                <p className="text-zinc-300 text-sm font-medium">
+                  {app.subtitle}
+                </p>
+                {app.subtitleSource && (
+                  <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">
+                    Source: {app.subtitleSource}
+                  </span>
+                )}
+              </>
+            ) : (
+              <p className="text-zinc-500 text-sm italic">No subtitle set</p>
+            )}
+          </div>
           <p className="text-zinc-400">
             {app.applicationCategory} • {app.locale}
             {lastUpdated && (

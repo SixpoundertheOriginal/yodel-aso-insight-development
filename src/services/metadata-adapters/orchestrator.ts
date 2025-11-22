@@ -17,7 +17,11 @@ import { MetadataNormalizer } from './normalizer';
 import { ItunesSearchAdapter } from './itunes-search.adapter';
 import { ItunesLookupAdapter } from './itunes-lookup.adapter';
 import { AppStoreWebAdapter } from './appstore-web.adapter';
+import { AppStoreHtmlAdapter } from './appstore-html.adapter';
 import { AppStoreEdgeAdapter } from './appstore-edge.adapter';
+import { ENABLE_WEB_ADAPTER_PRIORITY } from '@/config/metadataFeatureFlags';
+
+console.log("🔥 ORCHESTRATOR FILE LOADED: A");
 
 export interface OrchestrationOptions extends AdapterFetchOptions {
   skipNormalization?: boolean;
@@ -67,12 +71,36 @@ export class MetadataOrchestrator {
     // Use import.meta.env for Vite (browser-compatible)
     const enableWebAdapter = import.meta.env.VITE_ENABLE_WEB_ADAPTER === 'true';
 
+    // ========== DIAGNOSTIC: WEB ADAPTER REGISTRATION ==========
+    if (import.meta.env.DEV) {
+      console.log('[ORCHESTRATOR-DEBUG] 🔍 WEB ADAPTER REGISTRATION CHECK:');
+      console.log('[ORCHESTRATOR-DEBUG] VITE_ENABLE_WEB_ADAPTER env var:', import.meta.env.VITE_ENABLE_WEB_ADAPTER);
+      console.log('[ORCHESTRATOR-DEBUG] enableWebAdapter (parsed):', enableWebAdapter);
+      console.log('[ORCHESTRATOR-DEBUG] ENABLE_WEB_ADAPTER_PRIORITY flag:', ENABLE_WEB_ADAPTER_PRIORITY);
+    }
+    // ==========================================================
+
     if (enableWebAdapter) {
       const webAdapter = new AppStoreWebAdapter();
       this.registerAdapter(webAdapter);
       console.log('[ORCHESTRATOR] Web adapter enabled (priority 10) - browser fallback (CORS may block)');
     } else {
-      console.log('[ORCHESTRATOR] Web adapter disabled');
+      console.warn('[ORCHESTRATOR] Web adapter disabled - VITE_ENABLE_WEB_ADAPTER env var not set to "true"');
+      if (import.meta.env.DEV) {
+        console.warn('[ORCHESTRATOR-DEBUG] ⚠️ CRITICAL: Web adapter will NOT be registered!');
+        console.warn('[ORCHESTRATOR-DEBUG] ⚠️ To enable, set VITE_ENABLE_WEB_ADAPTER=true in .env file');
+      }
+    }
+
+    // Phase 2: App Store HTML Adapter (HTML Edge Function)
+    // Priority 2: Between web (1) and edge (5)
+    // Always register - it will disable itself if env vars missing
+    const htmlAdapter = new AppStoreHtmlAdapter();
+    this.registerAdapter(htmlAdapter);
+    if (htmlAdapter.enabled) {
+      console.log('[ORCHESTRATOR] HTML adapter enabled (priority 2)');
+    } else {
+      console.log('[ORCHESTRATOR] HTML adapter disabled - missing Supabase config');
     }
 
     // iTunes API adapters (always enabled)
@@ -92,10 +120,43 @@ export class MetadataOrchestrator {
    * Get all registered adapters sorted by priority
    */
   private getActiveAdapters(preferredSource?: string): MetadataSourceAdapter[] {
-    const adapters = Array.from(this.adapters.values())
+    // 🔍 DEBUG PROBE: Log preferredSource parameter
+    if (import.meta.env.DEV) {
+      console.log('[ORCHESTRATOR-PROBE] 🔍 getActiveAdapters() called');
+      console.log('[ORCHESTRATOR-PROBE] preferredSource parameter:', preferredSource);
+    }
+
+    // Filter to only enabled adapters
+    let adapters = Array.from(this.adapters.values())
       .filter(adapter => adapter.enabled);
 
-    // If preferred source specified and available, put it first
+    // FEATURE FLAG: Web Adapter Priority (Subtitle Extraction Mode)
+    // When enabled, web adapter ALWAYS runs first, overriding preferredSource
+    if (ENABLE_WEB_ADAPTER_PRIORITY) {
+      const webAdapter = adapters.find(a => a.name === 'appstore-web');
+
+      if (webAdapter) {
+        // Set web adapter priority to 1 (highest priority)
+        // Direct mutation to preserve class instance and methods
+        webAdapter.priority = 1;
+
+        // In subtitle extraction mode, ignore preferredSource unless it's the web adapter
+        if (preferredSource && preferredSource !== 'appstore-web') {
+          if (import.meta.env.DEV) {
+            console.log('[ORCHESTRATOR] 🎯 Web-Adapter priority enforced (subtitle mode)');
+            console.log(`[ORCHESTRATOR] ⚠️ Ignoring preferredSource="${preferredSource}" in favor of appstore-web`);
+          }
+          preferredSource = undefined; // Clear preferredSource to allow priority-based sorting
+        } else if (import.meta.env.DEV) {
+          console.log('[ORCHESTRATOR] 🎯 Web-Adapter priority enforced (subtitle mode)');
+        }
+      } else if (import.meta.env.DEV) {
+        console.warn('[ORCHESTRATOR] ⚠️ ENABLE_WEB_ADAPTER_PRIORITY=true but appstore-web not found in active adapters');
+      }
+    }
+
+    // If preferred source is still set (either feature flag is off, or preferredSource === 'appstore-web')
+    // and the adapter exists, put it first
     if (preferredSource) {
       const preferred = adapters.find(a => a.name === preferredSource);
       if (preferred) {
@@ -104,8 +165,17 @@ export class MetadataOrchestrator {
       }
     }
 
-    // Default: sort by priority
-    return adapters.sort((a, b) => a.priority - b.priority);
+    // Default: sort by priority (ascending - lower number = higher priority)
+    const sorted = adapters.sort((a, b) => a.priority - b.priority);
+
+    // Log final adapter chain in dev mode
+    if (import.meta.env.DEV) {
+      console.log('[ORCHESTRATOR] 📋 Adapter chain:', sorted.map((a, idx) =>
+        `${idx + 1}. ${a.name} (priority: ${a.priority})`
+      ).join(' → '));
+    }
+
+    return sorted;
   }
 
   /**
@@ -148,6 +218,18 @@ export class MetadataOrchestrator {
     const attemptedSources: string[] = [];
     const maxRetries = options?.maxRetries || 1;
 
+    // 🔍 DEBUG PROBE: Log incoming options to identify preferredSource injection point
+    if (import.meta.env.DEV) {
+      console.log('[ORCHESTRATOR-PROBE] 🔍 fetchMetadataWithResult() called');
+      console.log('[ORCHESTRATOR-PROBE] appIdentifier:', appIdentifier);
+      console.log('[ORCHESTRATOR-PROBE] options:', JSON.stringify(options, null, 2));
+      console.log('[ORCHESTRATOR-PROBE] options?.preferredSource:', options?.preferredSource);
+      console.log('[ORCHESTRATOR-PROBE] ENABLE_WEB_ADAPTER_PRIORITY:', ENABLE_WEB_ADAPTER_PRIORITY);
+      // Print call stack to identify caller
+      console.log('[ORCHESTRATOR-PROBE] Call stack:');
+      console.trace();
+    }
+
     const activeAdapters = this.getActiveAdapters(options?.preferredSource);
 
     if (activeAdapters.length === 0) {
@@ -177,7 +259,9 @@ export class MetadataOrchestrator {
     // ================================================
 
     // Try each adapter in priority order
-    for (const adapter of activeAdapters) {
+    for (let i = 0; i < activeAdapters.length; i++) {
+      const adapter = activeAdapters[i];
+
       attemptedSources.push(adapter.name);
 
       // Retry logic for current adapter
@@ -194,8 +278,8 @@ export class MetadataOrchestrator {
             break; // Move to next adapter (don't retry validation failures)
           }
 
-          // Transform to ScrapedMetadata
-          const metadata = adapter.transform(raw);
+          // Transform to ScrapedMetadata (may be async for hydration)
+          const metadata = await adapter.transform(raw);
 
           // Verify appId matches (safety check)
           if (metadata.appId && metadata.appId !== appIdentifier) {
@@ -256,6 +340,42 @@ export class MetadataOrchestrator {
             'source': adapter.name,
           });
 
+          // === FIELD-AWARE FALLBACK: HTML + Edge Screenshot Enrichment ===
+          // If HTML adapter succeeds but has no screenshots, enrich from Edge adapter
+          if (adapter.name === 'appstore-html') {
+            const hasScreenshots =
+              Array.isArray(normalized.screenshots) &&
+              normalized.screenshots.length > 0;
+
+            if (!hasScreenshots) {
+              console.log('[ORCHESTRATOR] 🖼️ HTML adapter missing screenshots → attempting screenshot enrichment via appstore-edge');
+
+              try {
+                const enrichedMetadata = await this.enrichScreenshotsFromEdge(
+                  appIdentifier,
+                  normalized,
+                  options
+                );
+
+                if (enrichedMetadata) {
+                  console.log('[ORCHESTRATOR] ✅ Screenshot enrichment successful via appstore-edge');
+                  return {
+                    success: true,
+                    metadata: enrichedMetadata,
+                    source: `${adapter.name}+edge`, // Indicate merged source
+                    latency: Date.now() - startTime,
+                    attemptedSources: [...attemptedSources, 'appstore-edge'],
+                  };
+                } else {
+                  console.log('[ORCHESTRATOR] ⚠️ Screenshot enrichment failed via appstore-edge, returning HTML-only metadata');
+                }
+              } catch (error: any) {
+                console.warn('[ORCHESTRATOR] ⚠️ Screenshot enrichment error:', error.message);
+              }
+            }
+          }
+          // ================================================================
+
           return {
             success: true,
             metadata: normalized,
@@ -276,10 +396,33 @@ export class MetadataOrchestrator {
           // Exponential backoff before retry
           const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
           console.log(`[ORCHESTRATOR] 🔄 Retrying ${adapter.name} in ${backoffMs}ms...`);
+
+          // ========== MAX DEBUG: RETRY BACKOFF ==========
+          if (import.meta.env.DEV) {
+            console.log(`[ORCHESTRATOR-MAX-DEBUG] 🔄 RETRY BACKOFF: waiting ${backoffMs}ms before retry`);
+          }
+          // ==============================================
+
           await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
       }
+
+      // ========== MAX DEBUG: AFTER RETRY LOOP ==========
+      if (import.meta.env.DEV) {
+        console.log(`[ORCHESTRATOR-MAX-DEBUG] 🔚 Retry loop ended for ${adapter.name}`);
+        console.log(`[ORCHESTRATOR-MAX-DEBUG] Moving to next adapter in fallback chain (if any)`);
+      }
+      // =================================================
     }
+
+    // ========== MAX DEBUG: ALL ADAPTERS FAILED ==========
+    if (import.meta.env.DEV) {
+      console.error(`[ORCHESTRATOR-MAX-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.error(`[ORCHESTRATOR-MAX-DEBUG] ❌ ALL ADAPTERS FAILED!`);
+      console.error(`[ORCHESTRATOR-MAX-DEBUG] Attempted sources:`, attemptedSources);
+      console.error(`[ORCHESTRATOR-MAX-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    }
+    // ====================================================
 
     // All adapters failed - NO NAME-BASED FALLBACK
     const latency = Date.now() - startTime;
@@ -518,6 +661,150 @@ export class MetadataOrchestrator {
    */
   getAdapterNames(): string[] {
     return Array.from(this.adapters.keys());
+  }
+
+  /**
+   * Enrich metadata with screenshots from Edge adapter
+   *
+   * Called when HTML adapter succeeds but has no screenshots.
+   * Fetches metadata from Edge adapter and merges screenshot-related fields.
+   *
+   * @param appIdentifier - App ID to fetch
+   * @param htmlMetadata - Metadata from HTML adapter (has subtitle, no screenshots)
+   * @param options - Fetch options
+   * @returns Merged metadata with HTML fields + Edge screenshots, or null if Edge fails
+   *
+   * @private
+   */
+  private async enrichScreenshotsFromEdge(
+    appIdentifier: string,
+    htmlMetadata: NormalizedMetadata,
+    options?: OrchestrationOptions
+  ): Promise<NormalizedMetadata | null> {
+    // Find Edge adapter
+    const edgeAdapter = this.adapters.get('appstore-edge');
+
+    if (!edgeAdapter || !edgeAdapter.enabled) {
+      console.log('[ORCHESTRATOR] Edge adapter not available for screenshot enrichment');
+      return null;
+    }
+
+    try {
+      console.log('[ORCHESTRATOR] 🔍 Fetching screenshots from Edge adapter...');
+
+      // Fetch raw metadata from Edge adapter
+      const raw = await edgeAdapter.fetch(appIdentifier, options);
+
+      // Validate
+      if (!edgeAdapter.validate(raw)) {
+        console.warn('[ORCHESTRATOR] Edge adapter returned invalid data during enrichment');
+        return null;
+      }
+
+      // Transform to ScrapedMetadata
+      const edgeMetadata = await edgeAdapter.transform(raw);
+
+      // Normalize Edge metadata
+      const normalizedEdge = this.normalizer.normalize(edgeMetadata, edgeAdapter.name);
+
+      // Merge HTML + Edge metadata
+      const merged = this.mergeHtmlAndEdgeMetadata(htmlMetadata, normalizedEdge);
+
+      console.log('[ORCHESTRATOR] 📊 Screenshot enrichment stats:', {
+        htmlScreenshots: htmlMetadata.screenshots?.length || 0,
+        edgeScreenshots: normalizedEdge.screenshots?.length || 0,
+        mergedScreenshots: merged.screenshots?.length || 0,
+        htmlSubtitle: htmlMetadata.subtitle,
+        preservedSubtitle: merged.subtitle,
+      });
+
+      return merged;
+
+    } catch (error: any) {
+      console.error('[ORCHESTRATOR] ❌ Edge adapter enrichment failed:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Merge HTML and Edge metadata with field-level precedence
+   *
+   * Merging strategy:
+   * - HTML wins: name, title, subtitle, subtitleSource, developer, description (text fields)
+   * - Edge wins: screenshots, screenshotSource, icon (visual assets)
+   * - HTML wins: All HTML-specific telemetry fields
+   * - Edge wins: All Edge-specific telemetry fields
+   * - First non-empty wins: rating, reviews, other fields
+   *
+   * @param htmlMetadata - Metadata from HTML adapter (authoritative for text)
+   * @param edgeMetadata - Metadata from Edge adapter (authoritative for screenshots)
+   * @returns Merged metadata with best of both adapters
+   *
+   * @private
+   */
+  private mergeHtmlAndEdgeMetadata(
+    htmlMetadata: NormalizedMetadata,
+    edgeMetadata: NormalizedMetadata
+  ): NormalizedMetadata {
+    console.log('[ORCHESTRATOR] 🔀 Merging HTML + Edge metadata...');
+
+    // Start with HTML metadata as base (preserves subtitle and text fields)
+    const merged: NormalizedMetadata = { ...htmlMetadata };
+
+    // === SCREENSHOTS (Edge wins) ===
+    if (edgeMetadata.screenshots && edgeMetadata.screenshots.length > 0) {
+      merged.screenshots = edgeMetadata.screenshots;
+      merged.screenshotSource = 'appstore-edge';
+      console.log('[ORCHESTRATOR]   ✅ Screenshots from Edge:', edgeMetadata.screenshots.length);
+    } else {
+      console.log('[ORCHESTRATOR]   ⚠️ Edge has no screenshots, keeping HTML (empty)');
+    }
+
+    // === ICON (Edge wins if present) ===
+    if (edgeMetadata.icon) {
+      merged.icon = edgeMetadata.icon;
+      console.log('[ORCHESTRATOR]   ✅ Icon from Edge');
+    }
+
+    // === TEXT FIELDS (HTML wins - already in base) ===
+    // name, title, subtitle, subtitleSource, developer, description
+    // These are already from htmlMetadata, no override needed
+    console.log('[ORCHESTRATOR]   ✅ Text fields from HTML (subtitle preserved)');
+
+    // === RATING/REVIEWS (First non-empty wins) ===
+    if (!merged.rating && edgeMetadata.rating) {
+      merged.rating = edgeMetadata.rating;
+    }
+    if (!merged.reviews && edgeMetadata.reviews) {
+      merged.reviews = edgeMetadata.reviews;
+    }
+
+    // === TELEMETRY (Merge both sources) ===
+    // Preserve HTML telemetry
+    const htmlTelemetry: any = {};
+    if ((htmlMetadata as any).htmlEdgeLatency) htmlTelemetry.htmlEdgeLatency = (htmlMetadata as any).htmlEdgeLatency;
+    if ((htmlMetadata as any).htmlLength) htmlTelemetry.htmlLength = (htmlMetadata as any).htmlLength;
+    if ((htmlMetadata as any).subtitleExtractionMethod) htmlTelemetry.subtitleExtractionMethod = (htmlMetadata as any).subtitleExtractionMethod;
+
+    // Preserve Edge telemetry
+    const edgeTelemetry: any = {};
+    if ((edgeMetadata as any).screenshotCount) edgeTelemetry.screenshotCount = (edgeMetadata as any).screenshotCount;
+    if ((edgeMetadata as any)._debugInfo) edgeTelemetry._debugInfo = (edgeMetadata as any)._debugInfo;
+
+    // Merge telemetry into result
+    Object.assign(merged, htmlTelemetry, edgeTelemetry);
+
+    // === SOURCE TRACKING ===
+    merged._source = 'appstore-html+edge'; // Indicate merged source
+
+    console.log('[ORCHESTRATOR] 🎯 Merge complete:', {
+      name: merged.name,
+      subtitle: merged.subtitle,
+      screenshots: merged.screenshots?.length || 0,
+      source: merged._source,
+    });
+
+    return merged;
   }
 }
 

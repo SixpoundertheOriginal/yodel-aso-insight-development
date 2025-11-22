@@ -25,8 +25,11 @@ import {
 import { RateLimiter, RateLimiterFactory } from './rate-limiter';
 import { SecurityValidator } from './security-validator';
 import * as cheerio from 'cheerio';
+import { debug } from '@/lib/logging';
 import {
   ENABLE_DOM_SUBTITLE_EXTRACTION,
+  ENABLE_PRERENDERED_FETCH,
+  ENABLE_SSR_LITE_SUBTITLE_HYDRATION,
   SubtitleSource,
 } from '@/config/metadataFeatureFlags';
 
@@ -55,6 +58,12 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
   // Telemetry: Track subtitle extraction source
   private lastSubtitleSource: SubtitleSource = 'none';
 
+  // Phase D: SSR-Lite Subtitle Hydration
+  private lastFetchedUrl: string | null = null;
+  private lastHydrationAttempted: boolean = false;
+  private lastHydrationSucceeded: boolean = false;
+  private lastHydrationLatencyMs: number = 0;
+
   constructor(rateLimiter?: RateLimiter) {
     this.rateLimiter = rateLimiter || RateLimiterFactory.createHtmlScrapingLimiter();
     this.validator = new SecurityValidator();
@@ -79,7 +88,18 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
       await this.rateLimiter.acquire();
 
       // Construct URL
-      const url = this.constructUrl(appId, country);
+      let url = this.constructUrl(appId, country);
+
+      // Apply pre-rendered URL transformation if feature flag enabled
+      if (ENABLE_PRERENDERED_FETCH) {
+        url = this.getPrerenderUrl(url);
+
+        // Dev-only diagnostic logging
+        if (import.meta.env.DEV) {
+          console.log('[PRERENDER-FETCH] Enabled: true');
+          console.log('[PRERENDER-FETCH] Final URL:', url);
+        }
+      }
 
       // Validate URL (SSRF prevention)
       this.validator.validateUrl(url);
@@ -121,6 +141,9 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
         htmlLength: html.length,
         latency: `${latency}ms`,
       });
+
+      // Store URL for potential hydration fallback in transform()
+      this.lastFetchedUrl = url;
 
       return {
         source: this.name,
@@ -183,8 +206,9 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
   /**
    * Transform raw HTML to ScrapedMetadata
    * Uses two-phase extraction: JSON-LD + DOM
+   * PHASE D: Now async to support SSR-Lite subtitle hydration
    */
-  transform(raw: RawMetadata): ScrapedMetadata {
+  async transform(raw: RawMetadata): Promise<ScrapedMetadata> {
     if (!this.validate(raw)) {
       throw new Error(`${this.name}: Invalid raw metadata`);
     }
@@ -199,7 +223,113 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
     const domData = this.extractFromDom($);
 
     // Merge data (DOM preferred for subtitle, JSON-LD for structured data)
-    const merged = this.mergeExtractedData(jsonLdData, domData);
+    let merged = this.mergeExtractedData(jsonLdData, domData);
+
+    // PHASE D: SSR-Lite Subtitle Hydration Fallback
+    // If subtitle is empty after DOM extraction, attempt hydration
+    // Note: Hydration only works in Node.js environment (not browser)
+    if (
+      ENABLE_SSR_LITE_SUBTITLE_HYDRATION &&
+      (!merged.subtitle || merged.subtitle.trim().length === 0) &&
+      this.lastFetchedUrl &&
+      typeof window === 'undefined' // Only in Node.js environment
+    ) {
+      if (import.meta.env.DEV) {
+        console.log('');
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log('[SSR-LITE-HYDRATION] 🚀 HYDRATION TRIGGERED');
+        console.log('═══════════════════════════════════════════════════════════════');
+        console.log('[SSR-LITE-HYDRATION] Reason: Subtitle empty after DOM extraction');
+        console.log('[SSR-LITE-HYDRATION] URL:', this.lastFetchedUrl);
+        console.log('[SSR-LITE-HYDRATION] Flag ENABLE_SSR_LITE_SUBTITLE_HYDRATION:', ENABLE_SSR_LITE_SUBTITLE_HYDRATION);
+        console.log('───────────────────────────────────────────────────────────────');
+      }
+
+      try {
+        // Dynamic import to avoid bundling Playwright for browser
+        const { hydrateSubtitle, isPlaywrightAvailable } = await import('@/lib/metadata/subtitleHydration.ssr');
+
+        // Check if Playwright is available
+        if (!isPlaywrightAvailable()) {
+          if (import.meta.env.DEV) {
+            console.warn('[SSR-LITE-HYDRATION] ⚠️ Playwright not available, skipping hydration');
+            console.warn('[SSR-LITE-HYDRATION] Install with: npm install playwright');
+            console.log('═══════════════════════════════════════════════════════════════');
+            console.log('');
+          }
+          this.lastHydrationAttempted = false;
+          this.lastHydrationSucceeded = false;
+        } else {
+          // Attempt hydration
+          if (import.meta.env.DEV) {
+            console.log('[SSR-LITE-HYDRATION] 🌐 Launching Playwright WebKit browser...');
+          }
+
+          const hydrationResult = await hydrateSubtitle(this.lastFetchedUrl, {
+            timeout: 10000, // 10 second timeout
+          });
+
+          // Update telemetry
+          this.lastHydrationAttempted = hydrationResult.hydrationAttempted;
+          this.lastHydrationSucceeded = hydrationResult.hydrationSucceeded;
+          this.lastHydrationLatencyMs = hydrationResult.hydrationLatencyMs;
+
+          if (hydrationResult.hydrationSucceeded && hydrationResult.subtitle) {
+            // Hydration succeeded, use hydrated subtitle
+            merged.subtitle = hydrationResult.subtitle;
+            this.lastSubtitleSource = 'hydrated';
+
+            if (import.meta.env.DEV) {
+              console.log('');
+              console.log('🎉 [SSR-LITE-HYDRATION] ✅ HYDRATION SUCCESS!');
+              console.log('───────────────────────────────────────────────────────────────');
+              console.log('[SSR-LITE-HYDRATION] Extracted subtitle:', hydrationResult.subtitle);
+              console.log('[SSR-LITE-HYDRATION] Subtitle length:', hydrationResult.subtitle.length, 'chars');
+              console.log('[SSR-LITE-HYDRATION] Latency:', hydrationResult.hydrationLatencyMs, 'ms');
+              console.log('[SSR-LITE-HYDRATION] Subtitle source:', 'hydrated');
+              console.log('[SSR-LITE-HYDRATION] hydrationAttempted:', true);
+              console.log('[SSR-LITE-HYDRATION] hydrationSucceeded:', true);
+              console.log('═══════════════════════════════════════════════════════════════');
+              console.log('');
+            }
+          } else {
+            if (import.meta.env.DEV) {
+              console.log('');
+              console.log('❌ [SSR-LITE-HYDRATION] HYDRATION FAILED');
+              console.log('───────────────────────────────────────────────────────────────');
+              console.warn('[SSR-LITE-HYDRATION] Error:', hydrationResult.error);
+              console.warn('[SSR-LITE-HYDRATION] Latency:', hydrationResult.hydrationLatencyMs, 'ms');
+              console.log('[SSR-LITE-HYDRATION] hydrationAttempted:', true);
+              console.log('[SSR-LITE-HYDRATION] hydrationSucceeded:', false);
+              console.log('═══════════════════════════════════════════════════════════════');
+              console.log('');
+            }
+          }
+        }
+      } catch (hydrationError) {
+        // Hydration failed, but don't break the adapter
+        this.lastHydrationAttempted = true;
+        this.lastHydrationSucceeded = false;
+
+        if (import.meta.env.DEV) {
+          console.error('[SSR-LITE-HYDRATION] ❌ Hydration exception:', hydrationError);
+        }
+      }
+    }
+
+    // Debug-gated adapter diagnostic
+    debug('ADAPTER', 'AppStoreWebAdapter.transform()', {
+      subtitle: merged.subtitle,
+      subtitleSource: this.lastSubtitleSource,
+      hydrationAttempted: this.lastHydrationAttempted,
+      hydrationSucceeded: this.lastHydrationSucceeded,
+      hydrationLatencyMs: this.lastHydrationLatencyMs,
+      name: merged.name,
+      adapter: this.name
+    });
+
+    // Add subtitleSource to metadata before returning
+    merged.subtitleSource = this.lastSubtitleSource;
 
     return merged;
   }
@@ -627,6 +757,56 @@ export class AppStoreWebAdapter implements MetadataSourceAdapter {
     // Note: We don't have the app name slug, so we use a generic pattern
     // Apple's web server redirects /app/id123 to /app/name/id123
     return `${this.baseUrl}/${country.toLowerCase()}/app/id${appId}`;
+  }
+
+  /**
+   * Get pre-rendered (SSR) URL for App Store page
+   *
+   * Appends SSR trigger parameters to fetch Apple's server-rendered HTML
+   * which includes all content (especially subtitles) without JavaScript execution.
+   *
+   * **Safety guarantees:**
+   * - Never throws exceptions
+   * - Always returns a valid URL string
+   * - Falls back to original URL on any error
+   * - Preserves existing query parameters
+   * - Maintains country/region from original URL
+   *
+   * **SSR Parameters:**
+   * - platform=iphone: Triggers mobile-optimized pre-render
+   * - see-all=reviews: Forces full page render (not lazy-loaded)
+   *
+   * @param originalUrl - Base App Store URL (e.g., https://apps.apple.com/us/app/id123)
+   * @returns URL with SSR parameters appended, or original URL on error
+   *
+   * @example
+   * Input:  https://apps.apple.com/us/app/instagram/id389801252
+   * Output: https://apps.apple.com/us/app/instagram/id389801252?platform=iphone&see-all=reviews
+   *
+   * @example
+   * Input:  https://apps.apple.com/gb/app/id123?l=en
+   * Output: https://apps.apple.com/gb/app/id123?l=en&platform=iphone&see-all=reviews
+   */
+  private getPrerenderUrl(originalUrl: string): string {
+    try {
+      // Parse URL safely
+      const url = new URL(originalUrl);
+
+      // Preserve existing parameters, add SSR triggers
+      url.searchParams.set('platform', 'iphone');
+      url.searchParams.set('see-all', 'reviews');
+
+      return url.toString();
+    } catch (error) {
+      // URL parsing failed - return original (never throw)
+      if (import.meta.env.DEV) {
+        console.warn('[PRERENDER-FETCH] URL parsing failed, using original:', {
+          originalUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return originalUrl;
+    }
   }
 
   getHealth(): AdapterHealth {

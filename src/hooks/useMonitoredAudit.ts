@@ -13,6 +13,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { MonitoredAppWithAudit, AppMetadataCache, AuditSnapshot } from '@/modules/app-monitoring';
+import { getKeyFromMonitoredApp } from '@/utils/monitoringKeys';
 
 export interface MonitoredAuditData {
   monitoredApp: MonitoredAppWithAudit;
@@ -58,15 +59,26 @@ export function useMonitoredAudit(
       console.log('[useMonitoredAudit] ✓ Monitored app:', monitoredApp.app_name);
 
       // ========================================================================
-      // STEP 2: Fetch latest metadata cache
+      // STEP 1.5: Normalize composite key (CRITICAL for cache hits)
+      // ========================================================================
+      const normalizedKey = getKeyFromMonitoredApp(monitoredApp);
+
+      console.log('[useMonitoredAudit] Normalized key for cache lookup:', {
+        app_id: normalizedKey.app_id,
+        platform: normalizedKey.platform,
+        locale: normalizedKey.locale
+      });
+
+      // ========================================================================
+      // STEP 2: Fetch latest metadata cache (using normalized key)
       // ========================================================================
       const { data: metadataCache, error: cacheError } = await supabase
         .from('app_metadata_cache')
         .select('*')
-        .eq('organization_id', organizationId) // RLS-safe filter
-        .eq('app_id', monitoredApp.app_id)
-        .eq('platform', monitoredApp.platform)
-        .eq('locale', monitoredApp.locale)
+        .eq('organization_id', normalizedKey.organization_id)
+        .eq('app_id', normalizedKey.app_id)
+        .eq('platform', normalizedKey.platform)
+        .eq('locale', normalizedKey.locale)
         .order('fetched_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -81,14 +93,14 @@ export function useMonitoredAudit(
       }
 
       // ========================================================================
-      // STEP 3: Fetch latest audit snapshot
+      // STEP 3: Fetch latest audit snapshot (using normalized key)
       // ========================================================================
       const { data: latestSnapshot, error: snapshotError } = await supabase
         .from('audit_snapshots')
         .select('*')
-        .eq('organization_id', organizationId) // RLS-safe filter
-        .eq('app_id', monitoredApp.app_id)
-        .eq('platform', monitoredApp.platform)
+        .eq('organization_id', normalizedKey.organization_id)
+        .eq('app_id', normalizedKey.app_id)
+        .eq('platform', normalizedKey.platform)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

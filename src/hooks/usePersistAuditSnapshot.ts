@@ -16,6 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { ScrapedMetadata } from '@/types/aso';
+import { getKeyFromMetadata } from '@/utils/monitoringKeys';
 
 /**
  * Enhanced audit data structure from useEnhancedAppAudit
@@ -103,6 +104,21 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] Persisting audit for:', input.app_id);
 
       // ========================================================================
+      // STEP 0: Normalize composite key (CRITICAL for cache hits)
+      // ========================================================================
+      const normalizedKey = getKeyFromMetadata(input.organizationId, {
+        appId: input.app_id,
+        platform: input.platform,
+        locale: input.locale
+      });
+
+      console.log('[usePersistAuditSnapshot] Normalized key:', {
+        app_id: normalizedKey.app_id,
+        platform: normalizedKey.platform,
+        locale: normalizedKey.locale
+      });
+
+      // ========================================================================
       // STEP 1: Compute version hash
       // ========================================================================
       const version_hash = await computeVersionHash({
@@ -116,13 +132,13 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] Version hash:', version_hash);
 
       // ========================================================================
-      // STEP 2: Upsert metadata cache
+      // STEP 2: Upsert metadata cache (using normalized key)
       // ========================================================================
       const cachePayload = {
-        organization_id: input.organizationId,
-        app_id: input.app_id,
-        platform: input.platform,
-        locale: input.locale,
+        organization_id: normalizedKey.organization_id,
+        app_id: normalizedKey.app_id,
+        platform: normalizedKey.platform,
+        locale: normalizedKey.locale,
         title: input.metadata.title || input.metadata.name || null,
         subtitle: input.metadata.subtitle || input.metadata.appStoreSubtitle || null,
         description: input.metadata.description || null,
@@ -155,13 +171,13 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] ✓ Metadata cached:', metadataCache.id);
 
       // ========================================================================
-      // STEP 3: Create audit snapshot
+      // STEP 3: Create audit snapshot (using normalized key)
       // ========================================================================
       const snapshotPayload = {
-        organization_id: input.organizationId,
-        app_id: input.app_id,
-        platform: input.platform,
-        locale: input.locale,
+        organization_id: normalizedKey.organization_id,
+        app_id: normalizedKey.app_id,
+        platform: normalizedKey.platform,
+        locale: normalizedKey.locale,
         title: cachePayload.title,
         subtitle: cachePayload.subtitle,
         // Use metadataAnalysis if available, fallback to empty structures
@@ -207,7 +223,7 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] ✓ Audit snapshot created:', auditSnapshot.id);
 
       // ========================================================================
-      // STEP 4: Update monitored_apps if requested
+      // STEP 4: Update monitored_apps if requested (using normalized key)
       // ========================================================================
       if (input.updateMonitoredApp) {
         const { error: updateError } = await supabase
@@ -217,9 +233,9 @@ export function usePersistAuditSnapshot() {
             latest_audit_at: new Date().toISOString(),
             metadata_last_refreshed_at: new Date().toISOString()
           })
-          .eq('organization_id', input.organizationId)
-          .eq('app_id', input.app_id)
-          .eq('platform', input.platform);
+          .eq('organization_id', normalizedKey.organization_id)
+          .eq('app_id', normalizedKey.app_id)
+          .eq('platform', normalizedKey.platform);
 
         if (updateError) {
           console.warn('[usePersistAuditSnapshot] Failed to update monitored_apps:', updateError);

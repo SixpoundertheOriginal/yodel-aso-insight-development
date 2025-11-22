@@ -7,13 +7,16 @@ import {
   Brain,
   Sparkles,
   FileText,
-  Palette,
   Eye
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
 import { formatNumber, getScoreColor, getScoreLabel } from '@/lib/numberFormat';
+
+// Feature flag: Hide metadata editor blocks in ASO AI Audit Slide View
+// Does NOT affect Metadata Copilot page (/aso-ai-hub/metadata-copilot)
+const ENABLE_METADATA_BLOCKS_IN_AUDIT = import.meta.env.VITE_ENABLE_METADATA_BLOCKS_IN_AUDIT !== 'false';
 
 // Existing Tab Components (REUSE - DO NOT SIMPLIFY)
 import { ExecutiveSummaryPanel } from '../NarrativeModules/ExecutiveSummaryPanel';
@@ -26,7 +29,7 @@ import { MetadataWorkspace } from '../../AsoAiHub/MetadataCopilot/MetadataWorksp
 // DELETED (2025-01-18): KeywordTrendsTable, SearchDominationTab - keyword intelligence cleanup
 // import { KeywordTrendsTable } from '../../KeywordIntelligence/KeywordTrendsTable';
 // import { SearchDominationTab } from '../../AsoAiHub/SearchDominationTab';
-import { CreativeAnalysisPanel } from '../CreativeAnalysisPanel';
+// Removed: CreativeAnalysisPanel import - creative analysis moved to dedicated module
 // DELETED (2025-01-18): CompetitiveKeywordAnalysis - keyword intelligence cleanup
 // import { CompetitiveKeywordAnalysis } from '../CompetitiveKeywordAnalysis';
 // DELETED (2025-01-18): InlineKeywordPlaceholder - keyword intelligence cleanup
@@ -219,11 +222,22 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
             )}
             <div className="text-center">
               <h1 className="text-4xl font-bold text-foreground mb-1">{metadata.name}</h1>
-              {metadata.subtitle && (
-                <p className="text-zinc-300 text-lg font-medium mb-2">
-                  {metadata.subtitle}
-                </p>
-              )}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {metadata.subtitle ? (
+                  <>
+                    <p className="text-zinc-300 text-lg font-medium">
+                      {metadata.subtitle}
+                    </p>
+                    {metadata.subtitleSource && (
+                      <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">
+                        Source: {metadata.subtitleSource}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-zinc-500 text-base italic">No subtitle set</p>
+                )}
+              </div>
               <p className="text-zinc-400 text-base">
                 {metadata.applicationCategory} • {metadata.locale}
               </p>
@@ -261,12 +275,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
                   <p className={`text-3xl font-bold ${getScoreColor(auditData.keywordScore)}`}>{formatNumber.score(auditData.keywordScore)}</p>
                 </CardContent>
               </Card>
-              <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
-                <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
-                  <p className="text-sm text-zinc-400 mb-2 font-medium">Creative</p>
-                  <p className={`text-3xl font-bold ${getScoreColor(auditData.creativeScore)}`}>{formatNumber.score(auditData.creativeScore)}</p>
-                </CardContent>
-              </Card>
+              {/* Creative score removed - use Creative Intelligence module for visual analysis */}
               <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
                 <CardContent className="p-5 text-center min-h-[100px] flex flex-col justify-center">
                   <p className="text-sm text-zinc-400 mb-2 font-medium">Competitive</p>
@@ -319,13 +328,16 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         )}
         */}
 
-        {/* Section 4: Metadata Analysis */}
-        <SectionWrapper icon={FileText} title="Metadata Optimization" iconColor="text-emerald-400">
-          <MetadataWorkspace
-            initialData={metadata}
-            organizationId={organizationId}
-          />
-        </SectionWrapper>
+        {/* Section 4: Metadata Analysis - Hidden when ENABLE_METADATA_BLOCKS_IN_AUDIT=false */}
+        {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
+        {ENABLE_METADATA_BLOCKS_IN_AUDIT && (
+          <SectionWrapper icon={FileText} title="Metadata Optimization" iconColor="text-emerald-400">
+            <MetadataWorkspace
+              initialData={metadata}
+              organizationId={organizationId}
+            />
+          </SectionWrapper>
+        )}
 
         {/* Section 5: Keyword Trends - DELETED (2025-01-18) */}
         {/* DELETED: KeywordTrendsTable removed - keyword intelligence cleanup
@@ -361,15 +373,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         )}
         */}
 
-        {/* Section 7: Creative Analysis */}
-        <SectionWrapper icon={Palette} title="Creative Analysis" iconColor="text-purple-400">
-          <CreativeAnalysisPanel
-            metadata={metadata}
-            competitorData={auditData.competitorAnalysis}
-            isLoading={false}
-          />
-        </SectionWrapper>
-
+        {/* DELETED (2025-11-21): Section 7: Creative Analysis - moved to dedicated Creative Intelligence module */}
         {/* DELETED (2025-01-18): Sections 8, 9, 10 - Competitive Analysis, Risk Assessment, Priority Action Items - keyword intelligence cleanup */}
 
         {/* Footer */}

@@ -267,7 +267,6 @@ export const useBigQueryData = (
         logger.bigquery(`Response received: success=${bigQueryResponse.success}, isDemo=${bigQueryResponse.meta?.isDemo || false}`);
 
         if (!bigQueryResponse.success) {
-          debugLog.error('Service error', bigQueryResponse.error);
           throw new Error(bigQueryResponse.error || 'BigQuery request failed');
         }
 
