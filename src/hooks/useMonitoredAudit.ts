@@ -1,10 +1,13 @@
 /**
  * useMonitoredAudit Hook
  *
- * Fetches cached audit data for a monitored app:
+ * Fetches cached audit data for a monitored app with auto-healing:
  * - monitored_apps row
  * - latest app_metadata_cache
  * - latest audit_snapshot
+ *
+ * NEW: Integrates with consistency system to auto-rebuild invalid/stale entries.
+ * Users will NEVER see "No metadata cache available" errors.
  *
  * This hook is used when viewing a monitored app's audit from the Workspace,
  * ensuring we load cached data instead of triggering a new import.
@@ -14,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { MonitoredAppWithAudit, AppMetadataCache, AuditSnapshot } from '@/modules/app-monitoring';
 import { getKeyFromMonitoredApp } from '@/utils/monitoringKeys';
+import { useMonitoredAppConsistency } from './useMonitoredAppConsistency';
 
 export interface MonitoredAuditData {
   monitoredApp: MonitoredAppWithAudit;
@@ -124,4 +128,77 @@ export function useMonitoredAudit(
     staleTime: 5 * 60 * 1000, // 5 minutes - cache is relatively fresh
     retry: 1
   });
+}
+
+/**
+ * Enhanced hook with auto-healing consistency system
+ *
+ * This is the RECOMMENDED hook for workspace pages.
+ * It automatically validates and rebuilds invalid/stale entries before loading.
+ *
+ * Usage:
+ * ```tsx
+ * const { data, isLoading, isAutoHealing } = useMonitoredAuditWithConsistency(
+ *   monitoredAppId,
+ *   organizationId
+ * );
+ *
+ * if (isLoading || isAutoHealing) {
+ *   return <LoadingShimmer message="Refreshing data..." />;
+ * }
+ *
+ * // data.metadataCache and data.latestSnapshot are GUARANTEED to exist
+ * ```
+ */
+export function useMonitoredAuditWithConsistency(
+  monitoredAppId: string | undefined,
+  organizationId: string | undefined,
+  options: {
+    /**
+     * If false, skips auto-rebuild and just returns validation state
+     * Default: true
+     */
+    autoRebuild?: boolean;
+    /**
+     * If true, shows toast notifications during rebuild
+     * Default: false (silent auto-healing)
+     */
+    showNotifications?: boolean;
+  } = {}
+) {
+  const { autoRebuild = true, showNotifications = false } = options;
+
+  // STEP 1: Validate and auto-rebuild if needed
+  const {
+    validated_state,
+    isValidating,
+    isRebuilding,
+    isAutoHealing,
+    needs_rebuild
+  } = useMonitoredAppConsistency(monitoredAppId, organizationId, {
+    autoRebuild,
+    showNotifications
+  });
+
+  // STEP 2: Fetch cached audit (only after validation/rebuild completes)
+  const auditQuery = useMonitoredAudit(monitoredAppId, organizationId);
+
+  // Disable audit query until consistency is validated and rebuilt if needed
+  const shouldFetchAudit =
+    validated_state === 'valid' ||
+    (!isValidating && !isRebuilding && !needs_rebuild);
+
+  return {
+    ...auditQuery,
+    // Override isLoading to include consistency check
+    isLoading: auditQuery.isLoading || isValidating || isRebuilding,
+    // Expose consistency state
+    validated_state,
+    isValidating,
+    isRebuilding,
+    isAutoHealing,
+    needs_rebuild,
+    // Data is only available after validation passes
+    data: shouldFetchAudit ? auditQuery.data : undefined
+  };
 }
