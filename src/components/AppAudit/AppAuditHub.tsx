@@ -26,6 +26,8 @@ import { toast } from 'sonner';
 import { AUDIT_KEYWORDS_ENABLED, isTabVisible } from '@/config/auditFeatureFlags';
 import { getScoreLabel } from '@/lib/scoringUtils';
 import { useEffect, useRef } from 'react';
+import { AUDIT_METADATA_V2_ENABLED } from '@/config/metadataFeatureFlags';
+import { AuditV2View } from './AuditV2View';
 
 // Feature flag: Hide metadata editor blocks in ASO AI Audit
 // Does NOT affect Metadata Copilot page (/aso-ai-hub/metadata-copilot)
@@ -542,7 +544,17 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className={`grid w-full ${AUDIT_KEYWORDS_ENABLED ? 'grid-cols-11' : (ENABLE_METADATA_BLOCKS_IN_AUDIT ? 'grid-cols-4' : 'grid-cols-3')} bg-zinc-900 border-zinc-800`}>
+        <TabsList className={`grid w-full ${
+          AUDIT_KEYWORDS_ENABLED
+            ? 'grid-cols-11'
+            : (() => {
+                const baseTabCount = 3; // slide-view, executive-summary, overview
+                const metadataTabCount = ENABLE_METADATA_BLOCKS_IN_AUDIT ? 1 : 0;
+                const auditV2TabCount = AUDIT_METADATA_V2_ENABLED ? 1 : 0;
+                const totalCols = baseTabCount + metadataTabCount + auditV2TabCount;
+                return `grid-cols-${totalCols}`;
+              })()
+        } bg-zinc-900 border-zinc-800`}>
           {isTabVisible('slide-view') && (
             <TabsTrigger value="slide-view" className="flex items-center space-x-1">
               <FileSpreadsheet className="h-4 w-4" />
@@ -562,6 +574,13 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
           {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
           {ENABLE_METADATA_BLOCKS_IN_AUDIT && isTabVisible('metadata') && (
             <TabsTrigger value="metadata">Metadata</TabsTrigger>
+          )}
+          {/* Audit V2 tab: New unified metadata audit module (feature-flagged) */}
+          {AUDIT_METADATA_V2_ENABLED && isTabVisible('audit-v2') && (
+            <TabsTrigger value="audit-v2" className="flex items-center space-x-1">
+              <Sparkles className="h-4 w-4 text-emerald-400" />
+              <span>Audit V2</span>
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -597,6 +616,17 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
             <MetadataWorkspace
               initialData={importedMetadata}
               organizationId={organizationId}
+            />
+          </TabsContent>
+        )}
+
+        {/* Audit V2 tab: New unified metadata audit module (feature-flagged) */}
+        {AUDIT_METADATA_V2_ENABLED && (
+          <TabsContent value="audit-v2" className="space-y-6">
+            <AuditV2View
+              metadata={displayMetadata}
+              monitored_app_id={mode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
+              mode={mode}
             />
           </TabsContent>
         )}

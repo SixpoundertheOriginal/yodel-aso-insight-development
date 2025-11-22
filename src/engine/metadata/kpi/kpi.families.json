@@ -1,0 +1,40 @@
+{
+  "families": [
+    {
+      "id": "clarity_structure",
+      "label": "Clarity & Structure",
+      "description": "Measures structural quality: character usage, word counts, token density, and efficient use of metadata real estate.",
+      "weight": 0.20
+    },
+    {
+      "id": "keyword_architecture",
+      "label": "Keyword Architecture",
+      "description": "Evaluates keyword quality, composition, and distribution. Includes high-value keywords, noise ratios, and incremental keyword coverage.",
+      "weight": 0.25
+    },
+    {
+      "id": "hook_strength",
+      "label": "Hook & Promise Strength",
+      "description": "Measures the strength of opening hooks, promises, and value propositions. Includes action verbs, benefits, and specificity signals.",
+      "weight": 0.15
+    },
+    {
+      "id": "brand_vs_generic",
+      "label": "Brand vs Generic Balance",
+      "description": "Evaluates the balance between branded search (navigational) and generic discovery (informational/commercial). Critical for organic reach.",
+      "weight": 0.20
+    },
+    {
+      "id": "psychology_alignment",
+      "label": "Psychology & Alignment",
+      "description": "Captures psychological signals: benefit density, specificity, redundancy penalties, urgency, and social proof indicators.",
+      "weight": 0.10
+    },
+    {
+      "id": "intent_alignment",
+      "label": "Intent Alignment",
+      "description": "Measures alignment with search intent patterns: navigational, informational, commercial, and transactional signals.",
+      "weight": 0.10
+    }
+  ]
+}

@@ -233,3 +233,227 @@ export const ENABLE_WEB_ADAPTER_PRIORITY = true; // DEVELOPMENT TESTING - E2E Su
  * @see src/lib/metadata/subtitleHydration.ssr.ts
  */
 export const ENABLE_SSR_LITE_SUBTITLE_HYDRATION = true; // ENABLED for Phase D testing
+
+/**
+ * AUDIT_METADATA_V2_ENABLED
+ *
+ * Controls rollout of the new Unified Metadata Audit V2 UI module.
+ *
+ * **Background:**
+ * Consolidates two overlapping scoring systems into a single backend-driven approach:
+ * - Legacy: MetadataScoringPanel + EnhancedOverviewTab (frontend computation)
+ * - New: UnifiedMetadataAuditModule (backend metadata-audit-v2 Edge Function)
+ *
+ * **When false (default - LEGACY MODE):**
+ * - Uses existing EnhancedOverviewTab in Slide View
+ * - Frontend-based scoring logic
+ * - No changes to production behavior
+ *
+ * **When true (UNIFIED AUDIT V2):**
+ * - Uses UnifiedMetadataAuditModule in Slide View
+ * - Backend-driven scoring via metadata-audit-v2 Edge Function
+ * - Element-by-element analysis with 15+ scoring rules
+ * - Benchmark comparisons with category percentiles
+ * - Keyword and combo coverage visualization
+ *
+ * **Features:**
+ * - Overall metadata score (0-100)
+ * - Per-element scoring (app_name, title, subtitle, description)
+ * - Rule-by-rule evaluation with pass/fail indicators
+ * - Top recommendations prioritized by impact
+ * - Expandable element detail cards
+ * - Real-time API integration with React Query
+ *
+ * **Integration:**
+ * - Modifies: src/components/AppAudit/SlideView/SlideViewPanel.tsx
+ * - Conditionally renders UnifiedMetadataAuditModule vs EnhancedOverviewTab
+ * - Zero impact when flag is false
+ *
+ * **Rollout Plan:**
+ * 1. Phase 1 (Current): Flag=false, no changes, safe deployment
+ * 2. Phase 2: Flag=true in development, validate UI and API integration
+ * 3. Phase 3: Flag=true in staging, user acceptance testing
+ * 4. Phase 4: Flag=true in production (canary 10%), monitor performance
+ * 5. Phase 5: Remove flag and make V2 default
+ *
+ * @default false
+ * @since 2025-11-22 Metadata Audit V2 Implementation
+ * @see src/components/AppAudit/UnifiedMetadataAuditModule/
+ */
+export const AUDIT_METADATA_V2_ENABLED = true; // ENABLED for development testing
+
+/**
+ * AUTOCOMPLETE_INTELLIGENCE_ENABLED
+ *
+ * Controls rollout of the Autocomplete Intelligence Layer for semantic keyword expansion.
+ *
+ * **Background:**
+ * Adds search intent classification to the Keyword Intelligence and Metadata Copilot systems
+ * using Apple/Google autocomplete API data. This enables smarter keyword recommendations based
+ * on how users actually search in the App Store.
+ *
+ * **When false (default - LEGACY MODE):**
+ * - Keyword Intelligence uses basic keyword analysis only
+ * - Metadata Copilot seed expansion uses simple token matching
+ * - No autocomplete API calls
+ * - No intent classification
+ * - No changes to production behavior
+ *
+ * **When true (AUTOCOMPLETE INTELLIGENCE MODE):**
+ * - Fetches Apple/Google autocomplete suggestions for target keywords
+ * - Classifies search intent (navigational, informational, commercial, transactional)
+ * - Stores intent classifications in search_intent_registry table
+ * - Caches autocomplete responses (7-day TTL) in autocomplete_intelligence_cache
+ * - Keyword Intelligence shows intent badges and autocomplete-aware scoring
+ * - Metadata Copilot seed expansion prioritizes high-intent keywords
+ *
+ * **Features:**
+ * - Search Intent Registry: Persistent keyword intent classifications
+ * - Autocomplete Cache: 7-day TTL cache to reduce external API costs
+ * - Intent Classification: Heuristic-based intent analysis from autocomplete patterns
+ * - Edge Function Integration: autocomplete-intelligence function for API calls
+ * - UI Enhancements: Intent badges in Keyword Intelligence, seed keyword expansion hints
+ *
+ * **Intent Types:**
+ * - Navigational: User searching for specific app (e.g., "facebook", "spotify")
+ * - Informational: User seeking information (e.g., "how to learn spanish")
+ * - Commercial: User researching products (e.g., "best fitness tracker")
+ * - Transactional: User ready to download (e.g., "free photo editor")
+ *
+ * **Database Tables:**
+ * - search_intent_registry: Stores keyword intent classifications
+ * - autocomplete_intelligence_cache: Caches autocomplete API responses
+ * - Migration: 20260123000004_create_autocomplete_intelligence_tables.sql
+ *
+ * **Integration Points:**
+ * - ASO Audit V2: Intent-aware keyword coverage scoring
+ * - Keyword Intelligence: Intent badges and autocomplete-aware ranking
+ * - Metadata Copilot: Seed keyword expansion with intent prioritization
+ * - Competitor Intelligence: Optional intent analysis for competitor keywords
+ *
+ * **Protected Invariants (NEVER MODIFIED):**
+ * - MetadataOrchestrator: No changes to metadata extraction flow
+ * - Metadata Adapters: No changes to scraping logic
+ * - BigQuery schemas: No changes to analytics pipeline
+ * - Analytics Edge Functions: No changes to existing metrics
+ *
+ * **Rollout Plan:**
+ * 1. Phase 1 (Current): Database migration + Edge Function deployment
+ * 2. Phase 2: Service layer integration (hooks, React Query)
+ * 3. Phase 3: UI integration (Keyword Intelligence, Metadata Copilot)
+ * 4. Phase 4: Staging validation + user acceptance testing
+ * 5. Phase 5: Production canary rollout (10% traffic)
+ * 6. Phase 6: Full production rollout
+ *
+ * **Rollback Plan:**
+ * - Instant rollback: Set flag to false (disables all autocomplete features)
+ * - Emergency rollback: Revert commits (no data loss)
+ * - Database tables remain (safe to keep for future re-enablement)
+ *
+ * **Performance Considerations:**
+ * - Autocomplete API latency: ~200-500ms per query
+ * - Cache hit rate target: >80% (7-day TTL)
+ * - Database inserts: Async, non-blocking
+ * - UI updates: React Query with stale-while-revalidate strategy
+ *
+ * **Cost Management:**
+ * - Cache reduces external API calls by ~80%
+ * - No autocomplete calls for cached keywords
+ * - Intent classifications persist indefinitely (no re-fetching needed)
+ *
+ * @default false
+ * @since 2026-01-23 Autocomplete Intelligence V1 Implementation
+ * @see docs/AUTOCOMPLETE_INTELLIGENCE_AUDIT.md
+ * @see supabase/functions/autocomplete-intelligence/
+ */
+export const AUTOCOMPLETE_INTELLIGENCE_ENABLED = true; // ENABLED - Phase 2 testing
+
+/**
+ * AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED
+ *
+ * Controls rollout of the Brand Intelligence enrichment layer for combo and intent analysis.
+ *
+ * **Background:**
+ * Phase 5 extension that adds brand/generic classification to:
+ * - Combo Coverage (Audit V2)
+ * - Autocomplete Intent Intelligence (Phases 2-4)
+ *
+ * This is a NON-INVASIVE enrichment layer that adds optional brand classification fields
+ * to existing data structures without modifying core logic.
+ *
+ * **When false (default - DISABLED):**
+ * - No brand classification on combos or intent clusters
+ * - No brand badges in UI
+ * - No brand-aware recommendations
+ * - brandClassification, matchedBrandAlias, matchedCompetitor fields remain undefined
+ * - Zero impact on existing V2.3 logic
+ *
+ * **When true (BRAND INTELLIGENCE MODE):**
+ * - Extracts canonical brand from app metadata (developer name, app title)
+ * - Generates brand aliases (e.g., "pimsleur" → "pimsleur language", "pimsleur app")
+ * - Classifies combos as brand/generic/competitor
+ * - Enriches intent clusters with brand keyword counts
+ * - UI shows brand badges in ComboCoverageCard
+ * - UI shows brand summary in SearchIntentAnalysisCard
+ * - Recommendations include brand-specific insights
+ *
+ * **Architecture:**
+ * - Pure enrichment layer (post-processing only)
+ * - No modifications to:
+ *   - comboEngineV2 generation logic
+ *   - MetadataOrchestrator
+ *   - Metadata adapters
+ *   - Scoring registry weights
+ *   - Existing audit rules
+ * - All brand fields are OPTIONAL in DTOs
+ * - Graceful fallback on error (no brand fields added)
+ *
+ * **Classification Logic:**
+ * - brand: Contains canonical brand name or aliases
+ * - generic: Meaningful keywords/combos without brand
+ * - competitor: Contains competitor brand names (detection only, UI not implemented yet)
+ *
+ * **Integration Points:**
+ * - metadataAuditEngine.ts: Combo brand classification (lines 503-542)
+ * - intent-intelligence.service.ts: Intent cluster enrichment (lines 407-421, 511-537)
+ * - ComboCoverageCard.tsx: Brand badge display
+ * - SearchIntentAnalysisCard.tsx: Brand summary stats
+ * - Recommendation Engine V2: Brand-aware recommendations
+ *
+ * **Protected Invariants (NEVER MODIFIED):**
+ * - Combo generation logic (comboEngineV2)
+ * - Scoring weights and rules
+ * - MetadataOrchestrator flow
+ * - Database schema (no migrations)
+ * - BigQuery analytics
+ *
+ * **Competitor Detection:**
+ * - Competitor detection functions exist in brand-intelligence.service.ts
+ * - Competitor classification is computed but NOT surfaced in UI yet
+ * - matchedCompetitor field remains optional and unused
+ * - Future phase will add competitor UI
+ *
+ * **Performance Impact:**
+ * - Minimal: Only adds brand classification to existing objects
+ * - No external API calls
+ * - No database queries
+ * - Adds ~5-10ms to audit computation
+ *
+ * **Rollout Plan:**
+ * 1. Phase 1 (Current): Flag=false, safe deployment
+ * 2. Phase 2: Flag=true in development, validate brand detection accuracy
+ * 3. Phase 3: Flag=true in staging, user acceptance testing
+ * 4. Phase 4: Flag=true in production (canary 10%), monitor UI/UX
+ * 5. Phase 5: Remove flag and make brand intelligence default
+ *
+ * **Rollback Plan:**
+ * - Instant rollback: Set flag to false (no brand fields, no UI changes)
+ * - Emergency rollback: Revert commits (fully backward compatible)
+ * - No data loss, no migrations to reverse
+ *
+ * @default false
+ * @since 2026-01-23 Brand Intelligence Phase 5 Implementation
+ * @see docs/BRAND_INTELLIGENCE_PHASE5_COMPLETE.md
+ * @see src/services/brand-intelligence.service.ts
+ */
+export const AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED = true; // ENABLED - Phase 5 brand classification active

@@ -18,6 +18,9 @@ import { formatNumber, getScoreColor, getScoreLabel } from '@/lib/numberFormat';
 // Does NOT affect Metadata Copilot page (/aso-ai-hub/metadata-copilot)
 const ENABLE_METADATA_BLOCKS_IN_AUDIT = import.meta.env.VITE_ENABLE_METADATA_BLOCKS_IN_AUDIT !== 'false';
 
+// Feature flag: Use Metadata Audit V2 UI (unified scoring)
+import { AUDIT_METADATA_V2_ENABLED } from '@/config/metadataFeatureFlags';
+
 // Existing Tab Components (REUSE - DO NOT SIMPLIFY)
 import { ExecutiveSummaryPanel } from '../NarrativeModules/ExecutiveSummaryPanel';
 // DELETED (2025-01-18): KeywordStrategyPanel - keyword intelligence cleanup
@@ -26,6 +29,7 @@ import { ExecutiveSummaryPanel } from '../NarrativeModules/ExecutiveSummaryPanel
 // import { RiskAssessmentPanel } from '../NarrativeModules/RiskAssessmentPanel';
 import { EnhancedOverviewTab } from '../ElementAnalysis/EnhancedOverviewTab';
 import { MetadataWorkspace } from '../../AsoAiHub/MetadataCopilot/MetadataWorkspace';
+import { UnifiedMetadataAuditModule } from '../UnifiedMetadataAuditModule';
 // DELETED (2025-01-18): KeywordTrendsTable, SearchDominationTab - keyword intelligence cleanup
 // import { KeywordTrendsTable } from '../../KeywordIntelligence/KeywordTrendsTable';
 // import { SearchDominationTab } from '../../AsoAiHub/SearchDominationTab';
@@ -303,11 +307,20 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
 
         {/* Section 2: Element-by-Element Overview */}
         <SectionWrapper icon={Eye} title="Element-by-Element Analysis" iconColor="text-blue-400">
-          <EnhancedOverviewTab
-            metadata={metadata}
-            competitorData={auditData.competitorAnalysis}
-            isLoading={false}
-          />
+          {AUDIT_METADATA_V2_ENABLED ? (
+            <UnifiedMetadataAuditModule
+              app_id={metadata.app_id}
+              platform={metadata.platform}
+              locale={metadata.locale}
+              monitored_app_id={metadata.id}
+            />
+          ) : (
+            <EnhancedOverviewTab
+              metadata={metadata}
+              competitorData={auditData.competitorAnalysis}
+              isLoading={false}
+            />
+          )}
         </SectionWrapper>
 
         {/* Section 3: Keyword Strategy - DELETED (2025-01-18) */}

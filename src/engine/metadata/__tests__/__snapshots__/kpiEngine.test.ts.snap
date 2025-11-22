@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`KpiEngine > Snapshot Test > should match snapshot for Pimsleur example 1`] = `
+{
+  "familyScores": {
+    "brand_vs_generic": 61.74,
+    "clarity_structure": 95.68,
+    "hook_strength": 45.98,
+    "intent_alignment": 12.24,
+    "keyword_architecture": 50.22,
+    "psychology_alignment": 40.99,
+  },
+  "keyKpis": {
+    "title_char_usage": 86.67,
+    "title_high_value_keyword_count": 2,
+    "title_noise_ratio": 0,
+  },
+  "overallScore": 56.26,
+  "vectorLength": 34,
+  "version": "v1",
+}
+`;

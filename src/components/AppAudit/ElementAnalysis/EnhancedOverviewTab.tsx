@@ -9,8 +9,8 @@ import { AppElementAnalysisService, ComprehensiveElementAnalysis } from '@/servi
 import { UnifiedNameTitleAnalysisCard } from './UnifiedNameTitleAnalysisCard';
 import { SubtitleAnalysisCard } from './SubtitleAnalysisCard';
 import { DescriptionAnalysisCard } from './DescriptionAnalysisCard';
-import { MetadataScoringPanel } from '../MetadataScoringPanel';
 // IconAnalysisCard removed - icons are visual assets, not text metadata
+// MetadataScoringPanel removed - replaced by UnifiedMetadataAuditModule (V2) in Audit V2 tab
 
 interface EnhancedOverviewTabProps {
   metadata: ScrapedMetadata;
@@ -119,11 +119,8 @@ export const EnhancedOverviewTab: React.FC<EnhancedOverviewTabProps> = ({
         {/* Icon analysis removed - icons are visual assets, use Creative Intelligence module */}
       </div>
 
-      {/* Metadata Scoring Panel - Deterministic Title + Subtitle Analysis */}
-      <MetadataScoringPanel
-        title={metadata.title}
-        subtitle={metadata.subtitle || ''}
-      />
+      {/* Metadata Scoring Panel removed - replaced by UnifiedMetadataAuditModule (V2) in Audit V2 tab */}
+      {/* For comprehensive metadata scoring with 15+ rules, benchmarks, and recommendations, use the "Audit V2" tab */}
 
       {/* Visual analysis removed - use Creative Intelligence module for screenshots and icons */}
     </div>

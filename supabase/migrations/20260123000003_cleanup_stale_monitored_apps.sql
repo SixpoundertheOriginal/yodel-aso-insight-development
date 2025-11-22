@@ -48,6 +48,7 @@ WHERE
 DO $$
 DECLARE
   stale_count INTEGER;
+  record RECORD;
 BEGIN
   SELECT COUNT(*) INTO stale_count FROM stale_monitored_apps;
   RAISE NOTICE 'Found % stale monitored apps to delete', stale_count;
