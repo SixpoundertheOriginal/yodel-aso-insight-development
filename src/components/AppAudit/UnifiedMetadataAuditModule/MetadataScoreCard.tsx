@@ -15,7 +15,7 @@ import {
   getScoreTextGlow,
   cn
 } from '@/design-registry';
-import { auditTypography, auditSpacing, cyberpunkEffects } from '@/design-registry';
+import { auditTypography, auditSpacing, tacticalEffects } from '@/design-registry';
 import type { UnifiedMetadataAuditResult } from './types';
 
 interface MetadataScoreCardProps {
@@ -32,41 +32,68 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
   const tierName = getScoreTier(overallScore);
 
   return (
-    <Card className="relative bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-zinc-700 overflow-hidden before:absolute before:inset-0 before:bg-[var(--scanline-overlay)] before:opacity-20 before:pointer-events-none before:animate-scanline-move">
+    <Card className={cn(
+      "relative overflow-hidden",
+      tacticalEffects.glassPanel.medium,
+      tacticalEffects.gridOverlay.className,
+      tacticalEffects.transitions.smooth
+    )}>
+      {/* L-shaped corner brackets */}
+      <div className={cn(
+        tacticalEffects.cornerBracket.topLeft,
+        tacticalEffects.cornerBracket.colors.orange,
+        tacticalEffects.cornerBracket.animated
+      )} />
+      <div className={cn(
+        tacticalEffects.cornerBracket.topRight,
+        tacticalEffects.cornerBracket.colors.orange,
+        tacticalEffects.cornerBracket.animated
+      )} />
+      <div className={cn(
+        tacticalEffects.cornerBracket.bottomLeft,
+        tacticalEffects.cornerBracket.colors.orange,
+        tacticalEffects.cornerBracket.animated
+      )} />
+      <div className={cn(
+        tacticalEffects.cornerBracket.bottomRight,
+        tacticalEffects.cornerBracket.colors.orange,
+        tacticalEffects.cornerBracket.animated
+      )} />
+
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 relative z-10">
-          <Award className="h-5 w-5 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-          <span className="bg-gradient-to-r from-zinc-100 to-zinc-300 bg-clip-text text-transparent">
-            Metadata Audit Score
-          </span>
+        <CardTitle className={cn(
+          "flex items-center gap-2 relative z-10",
+          auditTypography.section.main
+        )}>
+          <Award className="h-5 w-5 text-orange-400" style={{ filter: 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.4))' }} />
+          <span>Metadata Audit Score</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 relative z-10">
-        {/* Overall Score */}
-        <div className="flex items-center justify-center">
+        {/* Overall Score with Orbital Rings */}
+        <div className="flex items-center justify-center py-6">
           <div className={cn("flex flex-col items-center", auditSpacing.score.containerGap)}>
-            <div className="relative">
-              {/* Outer glow ring */}
-              <div className={cn(
-                "absolute inset-0 w-32 h-32 rounded-full blur-xl opacity-40",
-                tierColors.text.replace('text-', 'bg-'),
-                cyberpunkEffects.animations.cyberPulse
-              )} />
+            <div className="relative w-40 h-40">
+              {/* Orbital rings (rotating) */}
+              <div className={tacticalEffects.orbitalRing.outer} />
+              <div className={tacticalEffects.orbitalRing.middle} />
+              <div className={tacticalEffects.orbitalRing.inner} />
               
-              {/* Score circle */}
+              {/* Score circle with hexagonal frame effect */}
               <div
                 className={cn(
-                  "relative flex items-center justify-center w-32 h-32 rounded-full border-4",
+                  "absolute inset-6 flex items-center justify-center rounded-full border-2",
                   tierColors.border,
-                  tierColors.text,
                   tierColors.bg,
-                  cyberpunkEffects.transitions.smooth,
-                  cyberpunkEffects.hover.scale
+                  tacticalEffects.transitions.smooth
                 )}
-                style={{ boxShadow: scoreGlow }}
+                style={{ 
+                  boxShadow: scoreGlow,
+                  background: 'radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 100%)'
+                }}
               >
-                <div className={cn("text-center", cyberpunkEffects.animations.counterUp)}>
-                  <div className={auditTypography.score.hero} style={{ textShadow: textGlow }}>
+                <div className="text-center">
+                  <div className={cn(auditTypography.score.hero, tierColors.text)} style={{ textShadow: textGlow }}>
                     {overallScore}
                   </div>
                   <div className={auditTypography.score.label}>/ 100</div>
@@ -78,47 +105,51 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
               variant="outline"
               className={cn(
                 auditTypography.tier.badge,
-                "px-3 py-1",
+                "px-4 py-1.5 mt-2",
                 tierColors.badge,
-                cyberpunkEffects.transitions.smooth,
-                cyberpunkEffects.hover.scale,
-                "hover:animate-badge-glow"
+                tacticalEffects.transitions.smooth,
+                "hover:scale-105"
               )}
             >
               {tierName}
             </Badge>
-            <p className={cn(auditTypography.tier.note, auditSpacing.score.labelMargin)}>
-              ASO Ranking Score<br/>(Title + Subtitle)
+            <p className={cn(auditTypography.tier.note, "mt-2")}>
+              ASO Ranking Score (Title + Subtitle)
             </p>
           </div>
         </div>
 
         {/* ASO Ranking Element Scores */}
-        <div>
-          <p className={cn(auditTypography.section.label, "text-center", auditSpacing.section.subsectionMargin)}>
+        <div className="pt-4 border-t border-zinc-800/50">
+          <p className={cn(auditTypography.section.label, "text-center mb-4")}>
             ASO Ranking Elements
           </p>
           <div className={cn(auditSpacing.layout.gridCols2, auditSpacing.score.elementGrid)}>
             {/* Title */}
             <div className={cn(
-              "group relative flex flex-col items-center p-4 bg-zinc-800/50 rounded-lg border border-emerald-700/30",
-              cyberpunkEffects.transitions.smooth,
-              "hover:border-emerald-500/50 hover:bg-zinc-800/70 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-            )}>
-              <div className={cn(cyberpunkEffects.cornerAccent.topLeft, cyberpunkEffects.cornerAccent.colors.emerald)} />
-              <div className={cn(cyberpunkEffects.cornerAccent.bottomRight, cyberpunkEffects.cornerAccent.colors.emerald)} />
+              "group relative flex flex-col items-center p-4 rounded border",
+              tacticalEffects.glassPanel.light,
+              tacticalEffects.transitions.smooth,
+              "hover:border-emerald-500/50",
+              "border-emerald-700/40"
+            )}
+              style={{ boxShadow: '0 0 15px rgba(16, 185, 129, 0.1)' }}
+            >
+              {/* L-brackets */}
+              <div className={cn(tacticalEffects.cornerBracket.topLeft, tacticalEffects.cornerBracket.colors.emerald, "w-4 h-4 opacity-60 group-hover:opacity-100", tacticalEffects.transitions.bracket)} />
+              <div className={cn(tacticalEffects.cornerBracket.bottomRight, tacticalEffects.cornerBracket.colors.emerald, "w-4 h-4 opacity-60 group-hover:opacity-100", tacticalEffects.transitions.bracket)} />
               
-              <div className={cn(auditTypography.section.subsection, auditSpacing.score.subsectionMargin)}>
+              <div className={cn(auditTypography.section.subsection, "mb-3")}>
                 Title (65%)
               </div>
               <Badge
                 variant="outline"
                 className={cn(
                   auditTypography.score.small,
-                  "px-4 py-1",
+                  "px-4 py-1.5",
                   getScoreTierColors(elements.title.score).badge,
-                  cyberpunkEffects.transitions.smooth,
-                  "group-hover:scale-110"
+                  tacticalEffects.transitions.smooth,
+                  "group-hover:scale-105"
                 )}
               >
                 {elements.title.score}
@@ -127,24 +158,29 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
 
             {/* Subtitle */}
             <div className={cn(
-              "group relative flex flex-col items-center p-4 bg-zinc-800/50 rounded-lg border border-emerald-700/30",
-              cyberpunkEffects.transitions.smooth,
-              "hover:border-emerald-500/50 hover:bg-zinc-800/70 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-            )}>
-              <div className={cn(cyberpunkEffects.cornerAccent.topLeft, cyberpunkEffects.cornerAccent.colors.emerald)} />
-              <div className={cn(cyberpunkEffects.cornerAccent.bottomRight, cyberpunkEffects.cornerAccent.colors.emerald)} />
+              "group relative flex flex-col items-center p-4 rounded border",
+              tacticalEffects.glassPanel.light,
+              tacticalEffects.transitions.smooth,
+              "hover:border-emerald-500/50",
+              "border-emerald-700/40"
+            )}
+              style={{ boxShadow: '0 0 15px rgba(16, 185, 129, 0.1)' }}
+            >
+              {/* L-brackets */}
+              <div className={cn(tacticalEffects.cornerBracket.topLeft, tacticalEffects.cornerBracket.colors.emerald, "w-4 h-4 opacity-60 group-hover:opacity-100", tacticalEffects.transitions.bracket)} />
+              <div className={cn(tacticalEffects.cornerBracket.bottomRight, tacticalEffects.cornerBracket.colors.emerald, "w-4 h-4 opacity-60 group-hover:opacity-100", tacticalEffects.transitions.bracket)} />
               
-              <div className={cn(auditTypography.section.subsection, auditSpacing.score.subsectionMargin)}>
+              <div className={cn(auditTypography.section.subsection, "mb-3")}>
                 Subtitle (35%)
               </div>
               <Badge
                 variant="outline"
                 className={cn(
                   auditTypography.score.small,
-                  "px-4 py-1",
+                  "px-4 py-1.5",
                   getScoreTierColors(elements.subtitle.score).badge,
-                  cyberpunkEffects.transitions.smooth,
-                  "group-hover:scale-110"
+                  tacticalEffects.transitions.smooth,
+                  "group-hover:scale-105"
                 )}
               >
                 {elements.subtitle.score}
@@ -154,46 +190,40 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
         </div>
 
         {/* Description - Conversion Only */}
-        <div>
-          <p className={cn(auditTypography.section.label, "text-center", auditSpacing.section.subsectionMargin)}>
+        <div className="pt-4 border-t border-zinc-800/50">
+          <p className={cn(auditTypography.section.label, "text-center mb-4")}>
             Conversion Intelligence
           </p>
           <div className={cn(
-            "relative flex flex-col items-center p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 opacity-70",
-            cyberpunkEffects.transitions.smooth,
+            "relative flex flex-col items-center p-4 rounded border border-zinc-700/40 opacity-75",
+            tacticalEffects.glassPanel.heavy,
+            tacticalEffects.transitions.smooth,
             "hover:opacity-90"
           )}>
-            <div 
-              className="absolute inset-0 opacity-10 rounded-lg" 
-              style={{
-                backgroundImage: cyberpunkEffects.overlay.grid,
-                backgroundSize: '20px 20px'
-              }} 
-            />
             
-            <div className={cn(auditTypography.section.subsection, auditSpacing.score.subsectionMargin, "relative z-10")}>
+            <div className={cn(auditTypography.section.subsection, "mb-3 relative z-10")}>
               Description (0% Ranking)
             </div>
             <Badge
               variant="outline"
               className={cn(
                 auditTypography.score.small,
-                "px-4 py-1 border-zinc-700 text-zinc-400 relative z-10"
+                "px-4 py-1.5 border-zinc-700 text-zinc-400 relative z-10"
               )}
             >
               {elements.description.score}
             </Badge>
-            <p className={cn(auditTypography.tier.note, "max-w-xs relative z-10", auditSpacing.score.labelMargin)}>
+            <p className={cn(auditTypography.tier.note, "max-w-xs relative z-10 mt-2")}>
               Conversion quality only. Does NOT influence App Store ranking.
             </p>
           </div>
         </div>
 
         {/* Summary */}
-        <div className={auditSpacing.section.dividerMargin}>
-          <div className={cn(auditSpacing.layout.flex, "items-start", auditSpacing.layout.flexGap)}>
-            <TrendingUp className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
-            <p className={auditTypography.card.description}>
+        <div className="pt-4 border-t border-zinc-800/50">
+          <div className="flex items-start gap-2">
+            <TrendingUp className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" style={{ filter: 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.4))' }} />
+            <p className="text-sm text-zinc-400 font-light leading-relaxed">
               {overallScore >= 80 ? (
                 <>
                   Your metadata is performing <span className="text-emerald-400 font-medium">excellently</span>.

@@ -165,7 +165,7 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
                 {index + 1}
               </div>
               <div className="flex-1">
-                <p className={auditTypography.recommendation.text}>{rec}</p>
+                <p className={auditTypography.recommendation.title}>{rec}</p>
               </div>
             </div>
           ))}
