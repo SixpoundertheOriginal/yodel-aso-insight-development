@@ -1,0 +1,32 @@
+{
+  "title": {
+    "weight_in_metadata_score": 0.7,
+    "character_usage_weight": 0.2,
+    "unique_keyword_weight": 0.2,
+    "combination_coverage_weight": 0.4,
+    "semantic_quality_weight": 0.1,
+    "duplication_penalty_weight": 0.1,
+    "max_chars": 30
+  },
+  "subtitle": {
+    "weight_in_metadata_score": 0.3,
+    "character_usage_weight": 0.2,
+    "incremental_value_weight": 0.35,
+    "combination_coverage_weight": 0.25,
+    "semantic_quality_weight": 0.1,
+    "duplication_penalty_weight": 0.1,
+    "max_chars": 30
+  },
+  "combos": {
+    "min_ngram": 2,
+    "max_ngram": 4,
+    "weights": {
+      "2": 0.4,
+      "3": 0.4,
+      "4": 0.2
+    }
+  },
+  "penalties": {
+    "duplication_penalty": 30
+  }
+}

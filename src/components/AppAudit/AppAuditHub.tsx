@@ -5,33 +5,72 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isDebugTarget } from '@/lib/debugTargets';
-import { Brain, Target, TrendingUp, FileText, Palette, RefreshCw, Download, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { debug, metadataDigest } from '@/lib/logging';
+import { RefreshCw, Download, FileSpreadsheet, Sparkles, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
 import { MetadataWorkspace } from '../AsoAiHub/MetadataCopilot/MetadataWorkspace';
 import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
-import { CreativeAnalysisPanel } from './CreativeAnalysisPanel';
 import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
 import { ExecutiveSummaryPanel, RiskAssessmentPanel } from './NarrativeModules';
 import { SlideViewPanel } from './SlideView';
 import { KeywordDisabledPlaceholder } from './KeywordDisabledPlaceholder';
+import { MonitorAppButton } from './MonitorAppButton';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
+import { useMonitoredAudit } from '@/hooks/useMonitoredAudit';
+import { useSaveMonitoredApp } from '@/hooks/useMonitoredAppForAudit';
+import { usePersistAuditSnapshot } from '@/hooks/usePersistAuditSnapshot';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
 import { AUDIT_KEYWORDS_ENABLED, isTabVisible } from '@/config/auditFeatureFlags';
 import { getScoreLabel } from '@/lib/scoringUtils';
+import { useEffect, useRef } from 'react';
+
+// Feature flag: Hide metadata editor blocks in ASO AI Audit
+// Does NOT affect Metadata Copilot page (/aso-ai-hub/metadata-copilot)
+const ENABLE_METADATA_BLOCKS_IN_AUDIT = import.meta.env.VITE_ENABLE_METADATA_BLOCKS_IN_AUDIT !== 'false';
 
 interface AppAuditHubProps {
   organizationId: string;
   onAppScraped?: (metadata: ScrapedMetadata) => void; // Optional callback for unified page
+  mode?: 'live' | 'monitored'; // NEW: Mode determines behavior
+  monitoredAppId?: string; // NEW: ID of monitored app (for monitored mode)
 }
 
-export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppScraped }) => {
+export const AppAuditHub: React.FC<AppAuditHubProps> = ({
+  organizationId,
+  onAppScraped,
+  mode = 'live',
+  monitoredAppId
+}) => {
   const [importedMetadata, setImportedMetadata] = useState<ScrapedMetadata | null>(null);
   const [activeTab, setActiveTab] = useState('import');
   const [isExportingPDF, setIsExportingPDF] = useState(false);
 
+  // ========================================================================
+  // MONITORED MODE: Fetch cached audit data
+  // ========================================================================
+  const {
+    data: monitoredAuditData,
+    isLoading: isLoadingMonitored,
+    error: monitoredError
+  } = useMonitoredAudit(
+    mode === 'monitored' ? monitoredAppId : undefined,
+    mode === 'monitored' ? organizationId : undefined
+  );
+
+  const { mutate: rerunAudit, isPending: isRerunning } = useSaveMonitoredApp();
+
+  // ========================================================================
+  // AUDIT PERSISTENCE: Auto-save audit results to database
+  // ========================================================================
+  const { mutate: persistAudit, isPending: isPersisting } = usePersistAuditSnapshot();
+  const lastPersistedScoreRef = useRef<number | null>(null);
+
+  // ========================================================================
+  // LIVE MODE: Use enhanced audit (existing flow)
+  // ========================================================================
   const {
     auditData,
     isLoading,
@@ -43,25 +82,49 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
     organizationId,
     appId: importedMetadata?.appId,
     metadata: importedMetadata,
-    enabled: !!importedMetadata
+    enabled: mode === 'live' && !!importedMetadata // Only enable in live mode
   });
 
-  const handleMetadataImport = (metadata: ScrapedMetadata, orgId: string) => {
-    const debug = isDebugTarget(metadata);
-    console.log('🎯 [APP-AUDIT] App imported:', metadata.name, debug ? '(debug target)' : '');
+  // ========================================================================
+  // AUTO-PERSIST AUDIT: Save to cache when audit completes
+  // ========================================================================
+  useEffect(() => {
+    if (
+      mode === 'live' &&
+      auditData &&
+      importedMetadata &&
+      !isPersisting &&
+      auditData.overallScore !== lastPersistedScoreRef.current
+    ) {
+      console.log('[AppAuditHub] Auto-persisting audit results to database...');
 
-    // DIAGNOSTIC: Log name/title/subtitle WHEN metadata received
-    console.log('[DIAGNOSTIC-IMPORT-AppAuditHub] WHEN metadata received:', {
-      'metadata.name': metadata.name,
-      'metadata.title': metadata.title,
-      'metadata.subtitle': metadata.subtitle,
-      'metadata._source': (metadata as any)._source
-    });
+      persistAudit({
+        organizationId,
+        app_id: importedMetadata.appId,
+        platform: importedMetadata.platform || 'ios',
+        locale: importedMetadata.locale || 'us',
+        metadata: importedMetadata,
+        auditData,
+        updateMonitoredApp: false // Don't update monitored_apps yet (user hasn't clicked "Monitor App")
+      });
+
+      lastPersistedScoreRef.current = auditData.overallScore;
+    }
+  }, [auditData?.overallScore, importedMetadata?.appId, mode, isPersisting]);
+
+  const handleMetadataImport = (metadata: ScrapedMetadata, orgId: string) => {
+    const isDebug = isDebugTarget(metadata);
+    console.log('🎯 [APP-AUDIT] App imported:', metadata.name, isDebug ? '(debug target)' : '');
+
+    // Debug-gated diagnostic log with privacy-safe digest
+    debug('IMPORT', 'AppAuditHub received metadata', metadataDigest(metadata));
+    debug('COMPONENT-PROPS', 'AppAuditHub.handleMetadataImport', metadataDigest(metadata));
 
     // Phase E: Force clean state by resetting to null BEFORE setting new metadata
     // This prevents Zustand from merging old and new metadata fields
     setImportedMetadata(null);
     setImportedMetadata(metadata);
+
     setActiveTab('slide-view'); // Show comprehensive deck-ready slide view first
     toast.success(`Started comprehensive audit for ${metadata.name}`);
 
@@ -249,72 +312,116 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
     toast.success('Audit data refreshed');
   };
 
-  if (!importedMetadata) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-4">App Audit Hub</h1>
-          <p className="text-zinc-400 text-lg max-w-3xl mx-auto">
-            Comprehensive ASO analysis combining metadata optimization and keyword intelligence. 
-            Import your app to get started with competitor analysis, keyword gaps, and optimization recommendations.
-          </p>
+  const handleRerunMonitoredAudit = () => {
+    if (!monitoredAuditData) return;
+
+    const { monitoredApp, metadataCache } = monitoredAuditData;
+
+    rerunAudit({
+      organizationId,
+      app_id: monitoredApp.app_id,
+      platform: monitoredApp.platform as 'ios' | 'android',
+      app_name: monitoredApp.app_name,
+      locale: monitoredApp.locale || 'us',
+      bundle_id: monitoredApp.bundle_id,
+      app_icon_url: monitoredApp.app_icon_url,
+      developer_name: monitoredApp.developer_name,
+      category: monitoredApp.category,
+      audit_enabled: true,
+      // Include cached metadata if available to prevent re-fetch
+      metadata: metadataCache ? {
+        title: metadataCache.title || monitoredApp.app_name,
+        subtitle: metadataCache.subtitle || null,
+        description: metadataCache.description || null,
+        developer_name: metadataCache.developer_name || null,
+        app_icon_url: metadataCache.app_icon_url || null,
+        screenshots: metadataCache.screenshots || [],
+      } : undefined
+    });
+  };
+
+  // ========================================================================
+  // MONITORED MODE: Render cached audit
+  // ========================================================================
+  if (mode === 'monitored') {
+    if (isLoadingMonitored) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-yodel-orange" />
+          <span className="ml-3 text-zinc-400">Loading monitored audit...</span>
         </div>
+      );
+    }
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center space-x-2">
-              <Brain className="h-6 w-6 text-yodel-orange" />
-              <span>Import App for Audit</span>
-            </CardTitle>
-            <CardDescription>
-              Enter your app's App Store URL to begin comprehensive ASO analysis
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MetadataImporter onImportSuccess={handleMetadataImport} />
-          </CardContent>
-        </Card>
+    if (monitoredError || !monitoredAuditData) {
+      return (
+        <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">
+          <h3 className="text-xl font-semibold text-foreground mb-2">Failed to Load Audit</h3>
+          <p className="text-zinc-400">{monitoredError?.message || 'Monitored app not found or access denied'}</p>
+        </div>
+      );
+    }
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="bg-zinc-900/30 border-zinc-800">
-            <CardContent className="p-6 text-center">
-              <Target className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Keyword Analysis</h3>
-              <p className="text-zinc-400 text-sm">
-                Discover ranking opportunities, analyze competitor keywords, and identify gaps in your strategy.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900/30 border-zinc-800">
-            <CardContent className="p-6 text-center">
-              <FileText className="h-12 w-12 text-green-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Metadata Optimization</h3>
-              <p className="text-zinc-400 text-sm">
-                Optimize your app title, subtitle, and keywords with AI-powered suggestions and competitor insights.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900/30 border-zinc-800">
-            <CardContent className="p-6 text-center">
-              <Palette className="h-12 w-12 text-pink-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Creative Analysis</h3>
-              <p className="text-zinc-400 text-sm">
-                AI-powered visual analysis of app icons, screenshots, and in-app events for optimization insights.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-zinc-900/30 border-zinc-800">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Competitive Intelligence</h3>
-              <p className="text-zinc-400 text-sm">
-                Track competitor performance, monitor metadata changes, and stay ahead of market trends.
-              </p>
-            </CardContent>
-          </Card>
+    // Convert cached data to ScrapedMetadata format for rendering
+    const { monitoredApp, metadataCache, latestSnapshot } = monitoredAuditData;
+    const cachedMetadata: ScrapedMetadata = {
+      name: monitoredApp.app_name,
+      appId: monitoredApp.app_id,
+      title: metadataCache?.title || monitoredApp.app_name,
+      subtitle: metadataCache?.subtitle || '',
+      description: metadataCache?.description || '',
+      applicationCategory: monitoredApp.category || '',
+      locale: monitoredApp.locale || 'us',
+      icon: metadataCache?.app_icon_url || monitoredApp.app_icon_url || '',
+      url: `https://apps.apple.com/app/id${monitoredApp.app_id}`,
+      developer: metadataCache?.developer_name || monitoredApp.developer_name || '',
+      screenshots: metadataCache?.screenshots || [],
+      subtitleSource: 'cache'
+    };
+
+    // Use cached metadata for importedMetadata to render the audit view
+    // This bypasses the importer and shows the cached audit
+    // (Implementation continues below with the existing rendering logic)
+  }
+
+  // ========================================================================
+  // LIVE MODE: Show importer if no metadata
+  // ========================================================================
+  if (mode === 'live' && !importedMetadata) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground mb-2">Import App</h2>
+          <MetadataImporter onImportSuccess={handleMetadataImport} />
         </div>
       </div>
     );
+  }
+
+  // Determine which metadata to use for rendering
+  const displayMetadata = mode === 'monitored' && monitoredAuditData
+    ? (() => {
+        const { monitoredApp, metadataCache } = monitoredAuditData;
+        return {
+          name: monitoredApp.app_name,
+          appId: monitoredApp.app_id,
+          title: metadataCache?.title || monitoredApp.app_name,
+          subtitle: metadataCache?.subtitle || '',
+          description: metadataCache?.description || '',
+          applicationCategory: monitoredApp.category || '',
+          locale: monitoredApp.locale || 'us',
+          icon: metadataCache?.app_icon_url || monitoredApp.app_icon_url || '',
+          url: `https://apps.apple.com/app/id${monitoredApp.app_id}`,
+          developer: metadataCache?.developer_name || monitoredApp.developer_name || '',
+          screenshots: metadataCache?.screenshots || [],
+          subtitleSource: 'cache' as const,
+          sellerName: metadataCache?.developer_name || monitoredApp.developer_name || ''
+        } as ScrapedMetadata;
+      })()
+    : importedMetadata;
+
+  if (!displayMetadata) {
+    return null; // Should never happen - guarded above
   }
 
   return (
@@ -322,30 +429,49 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
       {/* Header with App Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          {importedMetadata.icon && (
-            <img 
-              src={importedMetadata.icon} 
-              alt={importedMetadata.name}
+          {displayMetadata.icon && (
+            <img
+              src={displayMetadata.icon}
+              alt={displayMetadata.name}
               className="w-16 h-16 rounded-xl"
             />
           )}
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              {importedMetadata.name}
-              {isDebugTarget(importedMetadata) && (
+              {displayMetadata.name}
+              {mode === 'monitored' && (
+                <Badge variant="outline" className="text-xs border-emerald-400/30 text-emerald-400">Monitored</Badge>
+              )}
+              {isDebugTarget(displayMetadata) && (
                 <Badge variant="outline" className="text-xs border-yodel-orange text-yodel-orange">Debug</Badge>
               )}
             </h1>
-            {importedMetadata.subtitle && (
-              <p className="text-zinc-300 text-sm font-medium">
-                {importedMetadata.subtitle}
-              </p>
-            )}
-            <p className="text-zinc-400">
-              {importedMetadata.applicationCategory} • {importedMetadata.locale}
-              {lastUpdated && (
+            <div className="flex items-center gap-2 mt-1">
+              {displayMetadata.subtitle ? (
+                <>
+                  <p className="text-zinc-300 text-sm font-medium">
+                    {displayMetadata.subtitle}
+                  </p>
+                  {displayMetadata.subtitleSource && (
+                    <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">
+                      Source: {displayMetadata.subtitleSource}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <p className="text-zinc-500 text-sm italic">No subtitle set</p>
+              )}
+            </div>
+            <p className="text-zinc-400 mt-1">
+              {displayMetadata.applicationCategory} • {displayMetadata.locale}
+              {lastUpdated && mode === 'live' && (
                 <span className="ml-2 text-zinc-500 text-sm">
                   • Last updated: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+              {mode === 'monitored' && monitoredAuditData?.monitoredApp.latest_audit_at && (
+                <span className="ml-2 text-zinc-500 text-sm">
+                  • Last audit: {new Date(monitoredAuditData.monitoredApp.latest_audit_at).toLocaleString()}
                 </span>
               )}
             </p>
@@ -353,15 +479,46 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          {mode === 'monitored' ? (
+            <Button
+              onClick={handleRerunMonitoredAudit}
+              disabled={isRerunning}
+              variant="outline"
+              size="sm"
+              className="text-yodel-orange border-yodel-orange/30 hover:bg-yodel-orange/10"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRerunning ? 'animate-spin' : ''}`} />
+              {isRerunning ? 'Re-running Audit...' : 'Re-run Audit'}
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+
+              {/* Monitor App Button (live mode only) */}
+              <MonitorAppButton
+                app_id={displayMetadata.appId}
+                platform="ios"
+                app_name={displayMetadata.name}
+                locale={displayMetadata.locale}
+                bundle_id={displayMetadata.appId}
+                app_icon_url={displayMetadata.icon}
+                developer_name={displayMetadata.sellerName || displayMetadata.developer}
+                category={displayMetadata.applicationCategory}
+                primary_country={displayMetadata.locale}
+                metadata={displayMetadata}
+                auditData={auditData} // Pass audit data for high-quality snapshot
+              />
+            </>
+          )}
+
           <Button
             onClick={handleExportPDF}
             disabled={isExportingPDF || !auditData}
@@ -385,7 +542,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
 
       {/* Main Audit Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className={`grid w-full ${AUDIT_KEYWORDS_ENABLED ? 'grid-cols-11' : 'grid-cols-4'} bg-zinc-900 border-zinc-800`}>
+        <TabsList className={`grid w-full ${AUDIT_KEYWORDS_ENABLED ? 'grid-cols-11' : (ENABLE_METADATA_BLOCKS_IN_AUDIT ? 'grid-cols-4' : 'grid-cols-3')} bg-zinc-900 border-zinc-800`}>
           {isTabVisible('slide-view') && (
             <TabsTrigger value="slide-view" className="flex items-center space-x-1">
               <FileSpreadsheet className="h-4 w-4" />
@@ -401,11 +558,10 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           {isTabVisible('overview') && (
             <TabsTrigger value="overview">Overview</TabsTrigger>
           )}
-          {isTabVisible('metadata') && (
+          {/* Metadata tab: Hidden in ASO AI Audit when ENABLE_METADATA_BLOCKS_IN_AUDIT=false */}
+          {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
+          {ENABLE_METADATA_BLOCKS_IN_AUDIT && isTabVisible('metadata') && (
             <TabsTrigger value="metadata">Metadata</TabsTrigger>
-          )}
-          {isTabVisible('creative') && (
-            <TabsTrigger value="creative">Creative</TabsTrigger>
           )}
         </TabsList>
 
@@ -434,22 +590,19 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({ organizationId, onAppS
           />
         </TabsContent>
 
-        <TabsContent value="metadata" className="space-y-6">
-          <MetadataWorkspace
-            initialData={importedMetadata}
-            organizationId={organizationId}
-          />
-        </TabsContent>
-
-        <TabsContent value="creative" className="space-y-6">
-          <CreativeAnalysisPanel
-            metadata={importedMetadata}
-            competitorData={auditData?.competitorAnalysis}
-            isLoading={isLoading}
-          />
-        </TabsContent>
+        {/* Metadata tab: Hidden in ASO AI Audit when ENABLE_METADATA_BLOCKS_IN_AUDIT=false */}
+        {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
+        {ENABLE_METADATA_BLOCKS_IN_AUDIT && (
+          <TabsContent value="metadata" className="space-y-6">
+            <MetadataWorkspace
+              initialData={importedMetadata}
+              organizationId={organizationId}
+            />
+          </TabsContent>
+        )}
 
         {/* DELETED (2025-01-18): Competitors, Risk Assessment, Recommendations tabs - keyword intelligence cleanup */}
+        {/* DELETED (2025-11-21): Creative tab - moved to dedicated Creative Intelligence module */}
       </Tabs>
     </div>
   );

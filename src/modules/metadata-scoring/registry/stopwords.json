@@ -1,0 +1,5 @@
+{
+  "stopwords": [
+    "a", "an", "and", "the", "for", "with", "on", "in", "to", "of", "by", "is", "it", "at", "or", "as", "are", "be", "was", "that", "this", "from", "your", "you", "we", "our", "can", "will", "all", "get", "has", "have", "had", "do", "does", "did", "but", "not", "no", "yes", "so", "if", "then", "than", "more", "most", "very", "just", "only", "about", "into", "through", "over", "after", "before", "between", "under", "out", "up", "down", "off", "there", "where", "when", "how", "why", "what", "which", "who", "whom", "whose", "their", "them", "they", "these", "those", "such", "some", "any", "many", "much", "few", "little", "each", "every", "either", "neither", "both", "other", "another", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "first", "second", "third", "last", "next", "new", "best", "top", "great", "good", "better"
+  ]
+}

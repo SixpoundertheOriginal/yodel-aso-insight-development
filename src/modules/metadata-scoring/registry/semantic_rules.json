@@ -1,0 +1,75 @@
+{
+  "category": "language_learning",
+  "category_keywords": [
+    "language", "learning", "lessons", "education", "fluency", "vocabulary",
+    "grammar", "pronunciation", "conversation", "immersion", "tutor", "course"
+  ],
+  "brand_keywords": [],
+  "title": {
+    "brand_required": true,
+    "category_required": true,
+    "benefit_optional": true
+  },
+  "subtitle": {
+    "verb_required": true,
+    "benefit_required": true,
+    "time_hint_optional": true
+  },
+  "benefit_keywords": [
+    "learn", "speak", "practice", "improve", "master", "track", "save", "book"
+  ],
+  "time_keywords": [
+    "day", "days", "week", "weeks", "month", "minutes"
+  ],
+  "cta_verbs": [
+    "learn", "start", "try", "speak", "book", "track", "get"
+  ],
+  "positive_patterns": [
+    {
+      "pattern": "^(free|unlimited|pro|premium|official)$",
+      "bonus": 2,
+      "reason": "Value proposition indicator"
+    },
+    {
+      "pattern": "^(fast|easy|simple|quick|instant)$",
+      "bonus": 1,
+      "reason": "User benefit indicator"
+    },
+    {
+      "pattern": "^(secure|safe|private|encrypted)$",
+      "bonus": 2,
+      "reason": "Trust signal"
+    },
+    {
+      "pattern": "^[0-9]+(k|m|million|billion)\\+?$",
+      "bonus": 3,
+      "reason": "Social proof (user count)"
+    },
+    {
+      "pattern": "^(rated|award|winner|certified)$",
+      "bonus": 2,
+      "reason": "Credibility indicator"
+    }
+  ],
+  "negative_patterns": [
+    {
+      "pattern": "^(app|application|mobile|software|tool|platform)$",
+      "penalty": 2,
+      "reason": "Generic filler - obvious from context"
+    },
+    {
+      "pattern": "^(now|today|here|available)$",
+      "penalty": 1,
+      "reason": "Temporal filler"
+    },
+    {
+      "pattern": "^(try|download|install|get|use)$",
+      "penalty": 1,
+      "reason": "Call-to-action filler (better for description)"
+    }
+  ],
+  "capitalization_rules": {
+    "all_caps_penalty": 3,
+    "proper_case_bonus": 1
+  }
+}
