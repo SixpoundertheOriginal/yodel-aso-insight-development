@@ -137,6 +137,33 @@ export {
 } from './tokens/microcopy';
 
 // ============================================================================
+// AUDIT TOKENS (Specialized for Audit V2)
+// ============================================================================
+export {
+  auditColors,
+  type AuditColors,
+  type ScoreTierColors,
+  type RuleStateColors,
+  type KeywordTypeColors,
+  type RecommendationPriorityColors,
+} from './tokens/auditColors';
+
+export {
+  cyberpunkEffects,
+  type CyberpunkEffects,
+} from './tokens/cyberpunkEffects';
+
+export {
+  auditTypography,
+  type AuditTypography,
+} from './tokens/auditTypography';
+
+export {
+  auditSpacing,
+  type AuditSpacing,
+} from './tokens/auditSpacing';
+
+// ============================================================================
 // UTILITIES
 // ============================================================================
 export {
@@ -145,6 +172,17 @@ export {
   responsive,
   states,
 } from './utils/classBuilder';
+
+export {
+  auditUtils,
+  getScoreTier,
+  getScoreTierColors,
+  getScoreGlow,
+  getScoreTextGlow,
+  getKeywordTypeColors,
+  getRecommendationColors,
+  getRuleStateColors,
+} from './utils/auditUtils';
 
 // ============================================================================
 // TYPES

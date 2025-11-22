@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { cn, getRecommendationColors, auditTypography, auditSpacing, cyberpunkEffects } from '@/design-registry';
 import type { UnifiedMetadataAuditResult } from './types';
 
 interface RecommendationsPanelProps {
@@ -84,52 +85,87 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
     ? 'No critical ranking issues detected. Your title and subtitle are performing well.'
     : 'No critical conversion issues detected. Your description quality is good.';
 
+  const recColors = getRecommendationColors('high');
+
   if (allRecommendations.length === 0) {
     return (
       <Card className="bg-emerald-900/10 border-emerald-400/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-emerald-400">
+          <CardTitle className={cn(auditSpacing.layout.flex, auditSpacing.layout.flexGap, "text-emerald-400")}>
             <CheckCircle2 className="h-5 w-5" />
             No Critical Issues
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-400">{emptyMessage}</p>
+          <p className={auditTypography.card.description}>{emptyMessage}</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="relative bg-zinc-900 border-zinc-800 overflow-hidden before:absolute before:inset-0 before:bg-[var(--grid-overlay)] before:opacity-5 before:pointer-events-none" style={{ backgroundSize: '30px 30px' }}>
+    <Card 
+      className="relative bg-zinc-900 border-zinc-800 overflow-hidden before:absolute before:inset-0 before:bg-[var(--grid-overlay)] before:opacity-5 before:pointer-events-none" 
+      style={{ backgroundSize: '30px 30px' }}
+    >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.6)]" />
+        <CardTitle className={cn(auditSpacing.layout.flex, auditSpacing.layout.flexGap)}>
+          <AlertCircle 
+            className="h-5 w-5 text-orange-400" 
+            style={{ filter: `drop-shadow(${cyberpunkEffects.glow.orange.moderate})` }}
+          />
           <span className="bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">
             {title || defaultTitle}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-zinc-400 mb-4">
+        <p className={cn(auditTypography.card.description, "mb-4")}>
           {description || defaultDescription}
         </p>
-        <div className="space-y-3">
+        <div className={auditSpacing.recommendation.itemGap}>
           {allRecommendations.map((rec, index) => (
             <div
               key={index}
-              className="group flex items-start gap-3 p-3 bg-zinc-800/30 rounded-lg border border-zinc-800 transition-all duration-300 hover:border-orange-500/30 hover:bg-zinc-800/50 hover:shadow-[0_0_15px_rgba(251,146,60,0.1)] animate-slide-in-left"
+              className={cn(
+                "group relative flex items-start",
+                auditSpacing.recommendation.numberGap,
+                auditSpacing.recommendation.innerPadding,
+                "bg-zinc-800/30 rounded-lg border border-zinc-800",
+                cyberpunkEffects.transitions.smooth,
+                recColors.hoverBorder,
+                recColors.hoverBg,
+                recColors.hoverShadow,
+                cyberpunkEffects.animations.slideInLeft
+              )}
               style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
             >
               {/* Corner accents */}
-              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-orange-400/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-0 left-8 w-2 h-2 border-b border-l border-orange-400/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={cn(
+                "absolute top-0 right-0 w-2 h-2 border-t border-r border-orange-400/30 opacity-0 group-hover:opacity-100",
+                cyberpunkEffects.transitions.smooth
+              )} />
+              <div className={cn(
+                "absolute bottom-0 left-8 w-2 h-2 border-b border-l border-orange-400/30 opacity-0 group-hover:opacity-100",
+                cyberpunkEffects.transitions.smooth
+              )} />
               
-              <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-orange-400/20 text-orange-400 text-sm font-bold font-mono transition-all duration-300 group-hover:bg-orange-400/30 group-hover:scale-110 group-hover:shadow-[0_0_10px_rgba(251,146,60,0.4)]">
+              <div 
+                className={cn(
+                  "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full",
+                  recColors.number,
+                  auditTypography.recommendation.number,
+                  cyberpunkEffects.transitions.smooth,
+                  "group-hover:bg-orange-400/30 group-hover:scale-110"
+                )}
+                style={{ 
+                  boxShadow: recColors.glow,
+                }}
+              >
                 {index + 1}
               </div>
               <div className="flex-1">
-                <p className="text-sm text-foreground">{rec}</p>
+                <p className={auditTypography.recommendation.text}>{rec}</p>
               </div>
             </div>
           ))}
