@@ -53,28 +53,54 @@ export const AuditV2View: React.FC<AuditV2ViewProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <Card className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-zinc-700">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-6 w-6 text-emerald-400" />
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                Unified Metadata Audit V2
-              </h2>
-              <p className="text-sm text-zinc-400 mt-1">
-                Client-side scoring with 15+ evaluation rules across 3 metadata elements
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Audit Module */}
-      <UnifiedMetadataAuditModule
-        metadata={metadata}
+    <div className="relative min-h-screen">
+      {/* Tactical Grid Overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-30"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(249, 115, 22, 0.08) 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+        }}
       />
+      
+      {/* Orange Vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(249, 115, 22, 0.05) 100%)',
+        }}
+      />
+      
+      {/* Content */}
+      <div className="relative z-10 space-y-6">
+        {/* Header Section */}
+        <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 overflow-hidden">
+          {/* L-bracket corners */}
+          <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-orange-500/60" />
+          <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-orange-500/60" />
+          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-orange-500/60" />
+          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-orange-500/60" />
+          
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-6 w-6 text-orange-400" />
+              <div>
+                <h2 className="text-xl font-mono font-light tracking-wide text-foreground uppercase">
+                  Unified Metadata Audit V2
+                </h2>
+                <p className="text-[10px] text-zinc-400 mt-1 uppercase tracking-widest">
+                  Client-side scoring • 15+ evaluation rules • 3 metadata elements
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Audit Module */}
+        <UnifiedMetadataAuditModule
+          metadata={metadata}
+        />
+      </div>
     </div>
   );
 };

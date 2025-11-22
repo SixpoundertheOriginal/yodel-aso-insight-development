@@ -105,7 +105,13 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
   const transactionalKeywords = intentSignals.transactionalKeywords || [];
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed">
+      {/* L-bracket corners */}
+      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-blue-400/60" />
+      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-blue-400/60" />
+      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-blue-400/60" />
+      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-blue-400/60" />
+      
       <CardHeader
         className="cursor-pointer hover:bg-zinc-800/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
