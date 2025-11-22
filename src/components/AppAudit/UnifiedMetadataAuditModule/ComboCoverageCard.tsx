@@ -38,19 +38,19 @@ export const ComboCoverageCard: React.FC<ComboCoverageCardProps> = ({ comboCover
   const allCombos = [...titleCombosClassified, ...subtitleCombosClassified];
 
   // Phase 5: Use brandClassification when available, fallback to legacy type
-  const useBrandClassification = AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && allCombos.some(c => c.brandClassification);
+  const useBrandClassification = AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && allCombos.some(c => 'brandClassification' in c && c.brandClassification);
 
   // Separate by brand classification (Phase 5) or legacy type
   const allBranded = useBrandClassification
-    ? allCombos.filter(c => c.brandClassification === 'brand')
+    ? allCombos.filter(c => 'brandClassification' in c && c.brandClassification === 'brand')
     : allCombos.filter(c => c.type === 'branded');
 
   const allGeneric = useBrandClassification
-    ? allCombos.filter(c => c.brandClassification === 'generic')
+    ? allCombos.filter(c => 'brandClassification' in c && c.brandClassification === 'generic')
     : allCombos.filter(c => c.type === 'generic');
 
   const allCompetitor = useBrandClassification
-    ? allCombos.filter(c => c.brandClassification === 'competitor')
+    ? allCombos.filter(c => 'brandClassification' in c && c.brandClassification === 'competitor')
     : [];
 
   // Counts for summary
@@ -126,8 +126,8 @@ export const ComboCoverageCard: React.FC<ComboCoverageCardProps> = ({ comboCover
                     {combo.text}
                   </Badge>
                   {/* Phase 5: Brand classification badge */}
-                  {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && combo.brandClassification === 'brand' && (
-                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" title={`Brand match: ${combo.matchedBrandAlias || 'detected'}`} />
+                  {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && 'brandClassification' in combo && combo.brandClassification === 'brand' && (
+                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
                   )}
                 </div>
               ))}
@@ -163,8 +163,8 @@ export const ComboCoverageCard: React.FC<ComboCoverageCardProps> = ({ comboCover
                     {combo.text}
                   </Badge>
                   {/* Phase 5: Brand classification badge (shouldn't appear in generic section, but defensive) */}
-                  {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && combo.brandClassification === 'brand' && (
-                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" title={`Brand match: ${combo.matchedBrandAlias || 'detected'}`} />
+                  {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED && 'brandClassification' in combo && combo.brandClassification === 'brand' && (
+                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
                   )}
                 </div>
               ))}
