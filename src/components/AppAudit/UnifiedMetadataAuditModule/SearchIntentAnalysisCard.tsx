@@ -193,7 +193,7 @@ export const SearchIntentAnalysisCard: React.FC<SearchIntentAnalysisCardProps> =
                         </Badge>
                       </div>
                       <div className="text-xs text-zinc-500">
-                        Avg confidence: {Math.round(cluster.avg_confidence)}%
+                        Avg confidence: {Math.round((cluster as any).avgConfidence || (cluster as any).avg_confidence || 0)}%
                       </div>
                     </div>
 
