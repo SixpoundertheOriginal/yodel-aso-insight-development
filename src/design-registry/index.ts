@@ -154,6 +154,11 @@ export {
 } from './tokens/cyberpunkEffects';
 
 export {
+  tacticalEffects,
+  type TacticalEffects,
+} from './tokens/tacticalEffects';
+
+export {
   auditTypography,
   type AuditTypography,
 } from './tokens/auditTypography';

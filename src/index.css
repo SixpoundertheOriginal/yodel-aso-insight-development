@@ -290,6 +290,23 @@
     animation: scaleIn 0.2s ease-out;
   }
 
+  /* Tactical animations */
+  .animate-bracket-pulse {
+    animation: bracket-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-slow-spin {
+    animation: slow-spin 20s linear infinite;
+  }
+
+  .animate-reverse-spin {
+    animation: reverse-spin 15s linear infinite;
+  }
+
+  .animate-data-stream {
+    animation: data-stream-vertical 3s ease-in-out infinite;
+  }
+
   /* Mobile-specific components */
   .mobile-safe-area {
     @apply pb-safe-bottom;
@@ -462,6 +479,50 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Tactical Arkham Knight-style animations */
+@keyframes bracket-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes slow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes reverse-spin {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes data-stream-vertical {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
   }
 }
 
