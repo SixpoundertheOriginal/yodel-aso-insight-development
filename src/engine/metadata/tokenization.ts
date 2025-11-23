@@ -8,6 +8,8 @@
  * - Removes punctuation correctly without creating ghost tokens
  * - Provides both raw tokens and filtered keywords
  * - Exposes noise ratio for quality scoring
+ *
+ * Phase 10: Stopword merging with vertical/market overrides
  */
 
 /**
@@ -61,6 +63,45 @@ const ASO_STOPWORDS = new Set([
   // Connectors often used in descriptions
   'from', 'then', 'now', 'get', 'lets', "let's"
 ]);
+
+/**
+ * Phase 10: Merge stopwords from base + vertical + market
+ *
+ * Implements union merge strategy (no deletions, only additions)
+ *
+ * @param activeRuleSet - Optional active rule set with stopword overrides
+ * @returns Merged stopword set
+ */
+export function getMergedStopwords(activeRuleSet?: any): Set<string> {
+  // Start with base ASO stopwords
+  const merged = new Set(ASO_STOPWORDS);
+
+  // Add market-specific stopwords
+  if (activeRuleSet?.stopwordOverrides?.market) {
+    activeRuleSet.stopwordOverrides.market.forEach((word: string) => {
+      merged.add(word.toLowerCase());
+    });
+
+    // Log market stopwords (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Stopword Merge] Added ${activeRuleSet.stopwordOverrides.market.length} market stopwords (market: ${activeRuleSet.marketId})`);
+    }
+  }
+
+  // Add vertical-specific stopwords
+  if (activeRuleSet?.stopwordOverrides?.vertical) {
+    activeRuleSet.stopwordOverrides.vertical.forEach((word: string) => {
+      merged.add(word.toLowerCase());
+    });
+
+    // Log vertical stopwords (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Stopword Merge] Added ${activeRuleSet.stopwordOverrides.vertical.length} vertical stopwords (vertical: ${activeRuleSet.verticalId})`);
+    }
+  }
+
+  return merged;
+}
 
 /**
  * Tokenization result with both raw and filtered tokens

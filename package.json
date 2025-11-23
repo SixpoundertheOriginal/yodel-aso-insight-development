@@ -14,7 +14,18 @@
     "smoke:admin": "./scripts/admin-smoke.sh",
     "token:bot": "node scripts/get-token.ts",
     "smoke:demo": "node scripts/smoke-demo.js",
-    "seed:keywords": "tsx src/scripts/seed-keyword-snapshots.ts"
+    "seed:keywords": "tsx src/scripts/seed-keyword-snapshots.ts",
+    "test:aso-bible": "tsx scripts/test-aso-bible-engine.ts",
+    "test:aso-bible:debug": "DEBUG_ASO_BIBLE_TESTS=true tsx scripts/test-aso-bible-engine.ts",
+    "test:aso-bible:kpi": "tsx scripts/tests/test_kpi_override.ts",
+    "test:aso-bible:formula": "tsx scripts/tests/test_formula_override.ts",
+    "test:aso-bible:rules": "tsx scripts/tests/test_rule_thresholds.ts",
+    "test:aso-bible:stopwords": "tsx scripts/tests/test_stopwords.ts",
+    "test:aso-bible:tokens": "tsx scripts/tests/test_token_relevance.ts",
+    "test:aso-bible:hooks": "tsx scripts/tests/test_hook_patterns.ts",
+    "test:aso-bible:intent": "tsx scripts/tests/test_intent_coverage.ts",
+    "test:aso-bible:ruleset": "tsx scripts/tests/test_ruleset_merging.ts",
+    "test:aso-bible:audit": "tsx scripts/tests/test_full_audit_output.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

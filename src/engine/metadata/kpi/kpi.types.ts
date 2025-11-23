@@ -57,6 +57,49 @@ export type KpiMetricType = 'score' | 'count' | 'ratio' | 'flag';
 export type KpiDirection = 'higher_is_better' | 'lower_is_better' | 'target_range';
 
 /**
+ * Input control type for admin UI
+ */
+export type KpiInputType = 'slider' | 'number' | 'toggle' | 'select' | 'readonly';
+
+/**
+ * Admin metadata for KPI management UI
+ *
+ * This metadata enables frontend admin interfaces to render
+ * appropriate controls for editing KPI weights and thresholds.
+ */
+export interface KpiAdminMeta {
+  /** Whether this KPI can be edited via admin UI */
+  editable: boolean;
+
+  /** Input control type for editing */
+  inputType?: KpiInputType;
+
+  /** Minimum value for slider/number inputs */
+  min?: number;
+
+  /** Maximum value for slider/number inputs */
+  max?: number;
+
+  /** Step increment for slider/number inputs */
+  step?: number;
+
+  /** Display group for UI organization (e.g., 'Overall', 'Coverage', 'Intent') */
+  group?: string;
+
+  /** Sort order within group for UI display */
+  displayOrder?: number;
+
+  /** Help text for tooltips/hints (one-liner) */
+  helpText?: string;
+
+  /** Internal notes for Yodel team (not shown to clients) */
+  notes?: string;
+
+  /** Tags for filtering/categorization */
+  tags?: string[];
+}
+
+/**
  * KPI Definition from Registry
  *
  * Defines a single KPI with metadata for computation and normalization
@@ -94,6 +137,32 @@ export interface KpiDefinition {
 
   /** Optional: Target range tolerance for target_range direction */
   targetTolerance?: number;
+
+  /** Optional: Admin metadata for UI management */
+  admin?: KpiAdminMeta;
+}
+
+/**
+ * Admin metadata for KPI family management
+ */
+export interface FamilyAdminMeta {
+  /** Whether this family weight can be edited */
+  editable: boolean;
+
+  /** Display order in UI */
+  displayOrder?: number;
+
+  /** Color theme for UI visualization */
+  color?: string;
+
+  /** Icon identifier for UI */
+  icon?: string;
+
+  /** Help text for family */
+  helpText?: string;
+
+  /** Internal notes */
+  notes?: string;
 }
 
 /**
@@ -113,6 +182,9 @@ export interface KpiFamilyDefinition {
 
   /** Weight for overall KPI score aggregation (0-1) */
   weight: number;
+
+  /** Optional: Admin metadata for UI management */
+  admin?: FamilyAdminMeta;
 }
 
 // ============================================================================
@@ -234,6 +306,9 @@ export interface KpiEngineInput {
 
   /** Optional: Precomputed intent signals */
   intentSignals?: IntentSignals;
+
+  /** Phase 10: Optional active rule set for KPI weight overrides */
+  activeRuleSet?: any; // MergedRuleSet - avoiding circular dependency
 }
 
 // ============================================================================

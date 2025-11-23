@@ -7,9 +7,9 @@
 import { MetadataAuditEngine } from '../metadataAuditEngine';
 import type { ScrapedMetadata } from '@/types/aso';
 
-describe('MetadataAuditEngine', () => {
-  describe('evaluate', () => {
-    it('should evaluate basic metadata and return valid result', () => {
+describe('MetadataAuditEngine', async () => {
+  describe('evaluate', async () => {
+    it('should evaluate basic metadata and return valid result', async () => {
       const metadata: ScrapedMetadata = {
         name: 'Pimsleur',
         title: 'Pimsleur | Language Learning',
@@ -18,7 +18,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Verify structure
       expect(result).toBeDefined();
@@ -43,7 +43,7 @@ describe('MetadataAuditEngine', () => {
       expect(result.comboCoverage.totalCombos).toBeGreaterThanOrEqual(0);
     });
 
-    it('should score high-quality title appropriately', () => {
+    it('should score high-quality title appropriately', async () => {
       const metadata: ScrapedMetadata = {
         name: 'TestApp',
         title: 'Language Learning App Master',
@@ -52,13 +52,13 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Title uses good characters and keywords
       expect(result.elements.title.score).toBeGreaterThan(60);
     });
 
-    it('should penalize short title with low character usage', () => {
+    it('should penalize short title with low character usage', async () => {
       const metadata: ScrapedMetadata = {
         name: 'App',
         title: 'App',
@@ -67,13 +67,13 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Short title should get penalized
       expect(result.elements.title.score).toBeLessThan(80);
     });
 
-    it('should score subtitle incremental value correctly', () => {
+    it('should score subtitle incremental value correctly', async () => {
       const metadata: ScrapedMetadata = {
         name: 'TestApp',
         title: 'Language Learning Master',
@@ -82,14 +82,14 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Subtitle has high incremental value (all new keywords)
       expect(result.elements.subtitle.score).toBeGreaterThan(50);
       expect(result.keywordCoverage.subtitleNewKeywords.length).toBeGreaterThan(0);
     });
 
-    it('should detect low complementarity when subtitle duplicates title', () => {
+    it('should detect low complementarity when subtitle duplicates title', async () => {
       const metadata: ScrapedMetadata = {
         name: 'TestApp',
         title: 'Language Learning Master',
@@ -98,7 +98,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Should have some overlap penalty
       const complementarityRule = result.elements.subtitle.ruleResults.find(
@@ -109,7 +109,7 @@ describe('MetadataAuditEngine', () => {
       expect(complementarityRule!.score).toBeLessThan(100);
     });
 
-    it('should score description hook strength', () => {
+    it('should score description hook strength', async () => {
       const metadata: ScrapedMetadata = {
         name: 'TestApp',
         title: 'Test App',
@@ -118,7 +118,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Productivity'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Description has "Discover" and "Transform" hook keywords
       const hookRule = result.elements.description.ruleResults.find(
@@ -129,7 +129,7 @@ describe('MetadataAuditEngine', () => {
       expect(hookRule!.score).toBeGreaterThan(70);
     });
 
-    it('should handle missing elements gracefully', () => {
+    it('should handle missing elements gracefully', async () => {
       const metadata: ScrapedMetadata = {
         name: 'TestApp',
         title: '',
@@ -138,14 +138,14 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Unknown'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Should not crash, but scores should be low
       expect(result.overallScore).toBeLessThan(50);
       expect(result.topRecommendations.length).toBeGreaterThan(0);
     });
 
-    it('should generate actionable recommendations', () => {
+    it('should generate actionable recommendations', async () => {
       const metadata: ScrapedMetadata = {
         name: 'A',
         title: 'App',
@@ -154,7 +154,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Games'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Should have recommendations for improvement
       expect(result.topRecommendations.length).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe('MetadataAuditEngine', () => {
       expect(result.topRecommendations[0]).toContain('[');
     });
 
-    it('should calculate keyword coverage across all elements', () => {
+    it('should calculate keyword coverage across all elements', async () => {
       const metadata: ScrapedMetadata = {
         name: 'Learning App',
         title: 'Language Learning Master',
@@ -172,7 +172,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Should have progressive keyword additions
       expect(result.keywordCoverage.titleKeywords.length).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ describe('MetadataAuditEngine', () => {
       );
     });
 
-    it('should calculate combo coverage correctly', () => {
+    it('should calculate combo coverage correctly', async () => {
       const metadata: ScrapedMetadata = {
         name: 'App',
         title: 'Language Learning Spanish',
@@ -191,7 +191,7 @@ describe('MetadataAuditEngine', () => {
         applicationCategory: 'Education'
       };
 
-      const result = MetadataAuditEngine.evaluate(metadata);
+      const result = await MetadataAuditEngine.evaluate(metadata);
 
       // Should have title combos
       expect(result.comboCoverage.titleCombos.length).toBeGreaterThan(0);

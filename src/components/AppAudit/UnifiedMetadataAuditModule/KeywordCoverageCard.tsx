@@ -12,32 +12,34 @@ import type { UnifiedMetadataAuditResult } from './types';
 
 interface KeywordCoverageCardProps {
   keywordCoverage: UnifiedMetadataAuditResult['keywordCoverage'];
+  compact?: boolean; // Compact mode for Workbench integration
 }
 
-export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywordCoverage }) => {
+export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywordCoverage, compact = false }) => {
   const [showAllKeywords, setShowAllKeywords] = useState(false);
 
-  // Top tokens to show by default
-  const titleTopTokens = keywordCoverage.titleKeywords.slice(0, 7);
-  const subtitleTopTokens = keywordCoverage.subtitleNewKeywords.slice(0, 7);
-  const descriptionTopTokens = keywordCoverage.descriptionNewKeywords.slice(0, 5);
+  // Top tokens to show by default (fewer in compact mode)
+  const titleTopTokens = keywordCoverage.titleKeywords.slice(0, compact ? 5 : 7);
+  const subtitleTopTokens = keywordCoverage.subtitleNewKeywords.slice(0, compact ? 5 : 7);
+  const descriptionTopTokens = keywordCoverage.descriptionNewKeywords.slice(0, compact ? 3 : 5);
+
   return (
-    <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed hover:border-orange-500/40 transition-all duration-300">
+    <Card className={`relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed hover:border-orange-500/40 transition-all duration-300 ${compact ? '' : ''}`}>
       {/* L-bracket corners */}
       <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-blue-400/60" />
       <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-blue-400/60" />
       <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-blue-400/60" />
       <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-blue-400/60" />
-      
-      <CardHeader>
+
+      <CardHeader className={compact ? 'p-3' : ''}>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base font-normal tracking-wide uppercase text-zinc-300">
-            <Search className="h-5 w-5 text-blue-400" />
+          <CardTitle className={`flex items-center gap-2 font-normal tracking-wide uppercase text-zinc-300 ${compact ? 'text-sm' : 'text-base'}`}>
+            <Search className={compact ? 'h-4 w-4 text-blue-400' : 'h-5 w-5 text-blue-400'} />
             KEYWORD COVERAGE
           </CardTitle>
-          <Badge 
-            variant="outline" 
-            className="text-xl font-mono font-normal px-4 py-1 border-blue-400/30 text-blue-400"
+          <Badge
+            variant="outline"
+            className={`font-mono font-normal border-blue-400/30 text-blue-400 ${compact ? 'text-base px-2 py-0.5' : 'text-xl px-4 py-1'}`}
             style={{
               clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
             }}
@@ -46,7 +48,7 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={compact ? 'space-y-3 p-3 pt-0' : 'space-y-4'}>
         {/* Title Keywords */}
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -120,7 +122,8 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
           </div>
         </div>
 
-        {/* Description New Keywords */}
+        {/* Description New Keywords (hidden in compact mode) */}
+        {!compact && (
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Plus className="h-4 w-4 text-cyan-400" />
@@ -150,8 +153,10 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
             )}
           </div>
         </div>
+        )}
 
-        {/* Advanced View: All Keywords */}
+        {/* Advanced View: All Keywords (hidden in compact mode) */}
+        {!compact && (
         <div className="pt-3 border-t border-zinc-800">
           <button
             onClick={() => setShowAllKeywords(!showAllKeywords)}
@@ -217,23 +222,26 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
             </div>
           )}
         </div>
+        )}
 
-        {/* Summary */}
-        <div className="pt-3 space-y-2">
-          <p className="text-sm text-zinc-400">
+        {/* Summary (shortened in compact mode) */}
+        <div className={compact ? 'pt-2' : 'pt-3 space-y-2'}>
+          <p className={compact ? 'text-xs text-zinc-400' : 'text-sm text-zinc-400'}>
             <span className="font-medium text-zinc-300">
               {keywordCoverage.totalUniqueKeywords}
             </span>{' '}
-            unique keywords across all metadata elements.
-            {keywordCoverage.subtitleNewKeywords.length > 0 && (
+            {compact ? 'unique keywords' : 'unique keywords across all metadata elements'}.
+            {!compact && keywordCoverage.subtitleNewKeywords.length > 0 && (
               <span className="text-emerald-400 ml-1">
                 Good incremental value from subtitle!
               </span>
             )}
           </p>
+          {!compact && (
           <p className="text-xs text-zinc-500 italic">
             Keywords are sorted by ASO relevance (high-value terms shown first)
           </p>
+          )}
         </div>
       </CardContent>
     </Card>

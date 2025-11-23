@@ -147,7 +147,6 @@ The Yodel ASO Insight platform's data pipeline is a **multi-layered architecture
 1. App Store Connect API (Apple's service - external)
 2. ETL ingestion pipeline (Python scripts - separate system)
 3. Third-party analytics integrations (Firebase, Mixpanel)
-4. Non-dashboard features (Reviews, ASO AI Hub, Admin Panel)
 
 **❌ Infrastructure (Separate Audit):**
 1. Supabase database migrations (documented separately)
@@ -386,38 +385,19 @@ FROM aso_all_apple;
 - **Severity:** HIGH
 - **Likelihood:** MEDIUM
 - **Impact:** Dashboard failures, incorrect KPIs
-- **Mitigation:** Schema versioning, automated change detection, contract tests
+- **Mitigation:** Schema versioning, automated change detection
 
-**🚨 RISK-002: No Automated Testing Coverage**
-- **Severity:** HIGH
-- **Likelihood:** HIGH (already occurring)
-- **Impact:** KPI calculation bugs, regression errors, incorrect business decisions
-- **Mitigation:** Implement 140-test suite (unit, contract, integration, E2E)
-
-**🚨 RISK-003: Dataset Name Documentation Mismatch**
+**🚨 RISK-002: Edge Function Response Contract Breakage**
 - **Severity:** HIGH
 - **Likelihood:** MEDIUM
-- **Impact:** Query failures if dataset name is incorrect
-- **Mitigation:** Verify actual BigQuery dataset name, update docs OR code to match
+- **Impact:** Frontend errors, blank dashboards
+- **Mitigation:** API versioning, contract tests
 
----
-
-### Architectural Clarifications (Not Risks)
-
-**✅ INTENTIONAL: Agency Access Model**
-- **Design:** Non-admin users in agency organizations can access managed client data
-- **Rationale:** Yodel Mobile agency employees need access to all client app data
-- **Security:** Protected by RLS policies, agency_clients.is_active checks, org-level isolation
-
-**✅ INTENTIONAL: Dual-Layer Caching (React Query + Zustand)**
-- **Design:** React Query for server data, Zustand for UI state
-- **Rationale:** Separation of concerns - network caching vs derived metric caching
-- **Benefits:** O(1) lookups, granular selectors, scalability for 50+ components
-
-**✅ INTENTIONAL: NULL Handling for Sparse Data**
-- **Design:** BigQuery allows NULL for impressions/downloads/PPV
-- **Rationale:** NULL = "no data available" vs 0 = "zero activity"
-- **Handling:** Edge Function maps NULL → 0 for frontend consumption (correct)
+**🚨 RISK-003: Unhandled Null Values in KPI Calculations**
+- **Severity:** MEDIUM
+- **Likelihood:** HIGH
+- **Impact:** NaN/Infinity displayed in UI, user confusion
+- **Mitigation:** Safe division operators, null handling tests
 
 ---
 
@@ -1340,11 +1320,11 @@ ADD COLUMN app_identifier STRING NOT NULL AS (COALESCE(app_id, client));
 
 ---
 
-#### Risk 2: NULL Handling for Sparse Datasets (Expected Behavior)
+#### Risk 2: Missing NOT NULL Constraints on Metrics
 
-**Description:** `impressions`, `downloads`, and `product_page_views` may be NULL for sparse datasets or empty filter results.
+**Description:** `impressions`, `downloads`, and `product_page_views` allow NULL values but frontend assumes 0.
 
-**Current Handling (CORRECT):**
+**Current Handling:**
 ```typescript
 // Edge Function mapping (index.ts:150-154)
 impressions: impressions?.v ? Number(impressions.v) : 0,
@@ -1352,19 +1332,32 @@ product_page_views: productPageViews?.v ? Number(productPageViews.v) : 0,
 downloads: downloads?.v ? Number(downloads.v) : 0,
 ```
 
-**Rationale:**
-- ✅ **NULL is expected** for sparse data (e.g., app with no activity on certain dates)
-- ✅ **NULL vs 0 semantics matter:** NULL = "no data available", 0 = "zero activity recorded"
-- ✅ **Correct handling:** Edge Function maps NULL → 0 for frontend consumption
+**Risk:**
+- NULL values could cause unexpected behavior if mapping code is removed
+- NULL vs 0 semantics differ (NULL = "no data", 0 = "zero activity")
+- Aggregation queries may treat NULL differently than 0
 
-**Risk Level:** Low (expected behavior, properly handled)
+**Likelihood:** Low (API always returns numbers)
 
-**Current Mitigation:**
-1. ✅ Null-safe defaults in Edge Function (prevents frontend errors)
-2. ✅ Identifier fields (`date`, `traffic_source`) are NOT NULL (enforced at ingestion)
-3. ✅ Aggregation queries use COALESCE where needed
+**Impact:** Medium (incorrect metrics if NULL handling removed)
 
-**No Schema Change Required:** Current NULL handling is correct for sparse ASO datasets.
+**Mitigation:**
+1. ✅ Already using null-safe defaults in Edge Function
+2. ⚠️ Add `NOT NULL DEFAULT 0` constraint to schema
+3. ⚠️ Add validation tests to ensure NULL values never appear
+
+**Recommended Schema Change:**
+```sql
+-- Add NOT NULL constraints
+ALTER TABLE `yodel-mobile-app.client_reports.aso_all_apple`
+ALTER COLUMN impressions SET NOT NULL DEFAULT 0;
+
+ALTER TABLE `yodel-mobile-app.client_reports.aso_all_apple`
+ALTER COLUMN product_page_views SET NOT NULL DEFAULT 0;
+
+ALTER TABLE `yodel-mobile-app.client_reports.aso_all_apple`
+ALTER COLUMN downloads SET NOT NULL DEFAULT 0;
+```
 
 ---
 
@@ -2412,23 +2405,27 @@ if (appIdsForQuery.length === 0) {
 | SUPER_ADMIN | ✅ Yes (select org) | ✅ Yes (select org) | ✅ Yes (select org) | ✅ Yes (must select one) |
 | ORG_ADMIN (Agency) | ✅ Yes | ✅ Yes (if agency_clients.is_active) | ❌ No | ❌ No |
 | ORG_ADMIN (Regular) | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| ASO_MANAGER (Agency) | ✅ Yes | ✅ Yes (intentional, agency model) | ❌ No | ❌ No |
-| ANALYST (Agency) | ✅ Yes | ✅ Yes (intentional, agency model) | ❌ No | ❌ No |
-| VIEWER (Agency) | ✅ Yes | ✅ Yes (intentional, agency model) | ❌ No | ❌ No |
+| ASO_MANAGER | ✅ Yes | ⚠️ YES (security gap) | ❌ No | ❌ No |
+| ANALYST | ✅ Yes | ⚠️ YES (security gap) | ❌ No | ❌ No |
+| VIEWER | ✅ Yes | ⚠️ YES (security gap) | ❌ No | ❌ No |
 | CLIENT | ✅ Yes | ❌ No | ❌ No | ❌ No |
 
-**✅ INTENTIONAL ACCESS MODEL:**
-Non-admin users (ASO_MANAGER, ANALYST, VIEWER) in agency organizations can access managed client data. This is **BY DESIGN** to support Yodel Mobile's agency use case where all agency employees need access to client app data.
+**⚠️ CRITICAL SECURITY FINDING:**
+Non-admin users (ASO_MANAGER, ANALYST, VIEWER) in agency organizations can access managed client data. This is logged but NOT blocked (lines 374-392).
 
-**Current Implementation (lines 374-392):**
-- Logs non-admin access for audit purposes (not blocking)
-- Allows ORG-level tenant users to access managed client data
-- This is the correct behavior for agency organizations
-
-**Security Note:** Access is still protected by:
-1. RLS policies on `org_app_access` table (only returns apps user's org manages)
-2. `agency_clients.is_active = true` check (only active client relationships)
-3. Organization-level isolation (cannot access other agencies' clients)
+**Recommendation:**
+```typescript
+// Change from logging to blocking
+if (!isAdmin) {
+  return new Response(
+    JSON.stringify({
+      error: "Agency access requires ORG_ADMIN role",
+      hint: "Contact admin to upgrade your role"
+    }),
+    { status: 403, headers: corsHeaders }
+  );
+}
+```
 
 ---
 
@@ -2573,7 +2570,7 @@ if (!projectId) {
   return new Response(
     JSON.stringify({ error: "BigQuery project ID not configured" }),
     { status: 500, headers: corsHeaders }
-  );
+  );n
 }
 ```
 
@@ -3416,36 +3413,32 @@ useMemo client-side filtering
 Zustand store (optional, normalized cache)
 ```
 
-**✅ INTENTIONAL ARCHITECTURE: Separation of Concerns**
+**⚠️ ARCHITECTURAL QUESTION: Why Both?**
 
-**React Query:** Server data caching + synchronization
-- ✅ Caches raw BigQuery responses
-- ✅ Background refetching (stale-while-revalidate)
-- ✅ Loading/error states for network requests
-- ✅ Automatic cache invalidation on query key changes
+**React Query Already Provides:**
+- ✅ Caching (30-min stale time)
+- ✅ Background refetching
+- ✅ Loading/error states
+- ✅ Automatic invalidation
 
-**Zustand Store:** UI state + derived metrics
-- ✅ Normalized data structure (Map-based O(1) lookups for specific data points)
-- ✅ Binary search optimization for date range slicing
-- ✅ Granular selectors (components only re-render on relevant data changes)
-- ✅ Derived metric caching (stability scores, opportunities, simulations)
+**Zustand Store Adds:**
+- ✅ Normalized data structure (Map-based O(1) lookups)
+- ✅ Binary search optimization for date ranges
+- ✅ Granular selectors (subscribe to specific slices)
 
-**Architectural Rationale:**
+**Trade-Off Analysis:**
 
-| Concern | Owner | Why |
-|---------|-------|-----|
-| **Server Data** | React Query | Handles network requests, HTTP caching, revalidation |
-| **UI State** | Zustand | Manages derived calculations, normalizations, component subscriptions |
-| **Memory** | Shared | React Query: raw data, Zustand: normalized views (minimal duplication) |
-| **Re-renders** | Optimized | Zustand selectors prevent unnecessary re-renders on unrelated data changes |
+| Aspect | React Query Only | React Query + Zustand |
+|--------|------------------|------------------------|
+| **Complexity** | Low (single source of truth) | High (two caches to sync) |
+| **Performance** | Good (useMemo for filtering) | Better (O(1) lookups, binary search) |
+| **Memory** | Lower (single cache) | Higher (duplicate data in Zustand) |
+| **Re-renders** | More (entire hook re-renders) | Fewer (granular selectors) |
+| **Maintenance** | Easier (one system) | Harder (keep stores in sync) |
 
-**Benefits of Dual-Layer Architecture:**
-1. **Decoupling:** Server cache (React Query) can change without affecting UI state (Zustand)
-2. **Performance:** O(1) lookups for specific data points (e.g., getRawDataPoint(date, app, source))
-3. **Scalability:** Supports 50+ components subscribing to different data slices without performance degradation
-4. **Testability:** Zustand selectors can be tested independently of React Query network layer
-
-**No Change Required:** This is the correct architecture for complex dashboard with multiple data views.
+**Recommendation:**
+- **Keep Zustand if:** Dashboard has 50+ components subscribing to slices of data
+- **Remove Zustand if:** Simple dashboard with <10 components (React Query + useMemo sufficient)
 
 ---
 
@@ -5658,12 +5651,12 @@ Request [trace_id: abc123]
 | Risk ID | Category | Description | Probability | Impact | Severity | Mitigation |
 |---------|----------|-------------|-------------|--------|----------|------------|
 | R1 | Schema Drift | BigQuery column renamed without notice | Medium | High | **CRITICAL** | Contract tests, schema monitoring, version headers |
-| R2 | Data Quality | product_page_views returns NULL (sparse data) | Low | Low | **LOW** | ✅ Already handled correctly (NULL → 0 mapping) |
+| R2 | Data Quality | product_page_views returns NULL | Low | High | **HIGH** | Validation in Edge Function, data quality alerts |
 | R3 | Security | React Query cache persists across user sessions | Medium | Medium | **MEDIUM** | Clear cache on logout, session-scoped cache |
 | R4 | Performance | Large dataset (1M rows) causes browser freeze | Low | Medium | **MEDIUM** | Pagination, virtual scrolling, query limits |
-| R5 | Agency Access | ~~Non-admin users access managed client data~~ | N/A | N/A | **NOT A RISK** | ✅ Intentional design (agency employees need client data access) |
+| R5 | Agency Access | Non-admin users access managed client data | High | High | **CRITICAL** | Enforce ORG_ADMIN check (currently disabled) |
 | R6 | Cache Poisoning | Invalid data cached for 30 seconds | Low | Low | **LOW** | Validate before caching, add circuit breaker |
-| R7 | Zustand Desync | ~~React Query and Zustand out of sync~~ | N/A | N/A | **NOT A RISK** | ✅ Intentional architecture (separate concerns: server data vs UI state) |
+| R7 | Zustand Desync | React Query and Zustand out of sync | Medium | Medium | **MEDIUM** | Remove Zustand OR ensure sync on invalidation |
 | R8 | Dataset Name | aso_reports vs client_reports mismatch | Medium | High | **HIGH** | Verify actual dataset name, update docs |
 | R9 | Missing Tests | No automated tests for KPI formulas | High | High | **CRITICAL** | Implement Phase 1 testing (50 unit tests) |
 | R10 | Stale Data | BigQuery data >3 days old | Low | Medium | **MEDIUM** | Data freshness monitoring, SLA alerts |
@@ -5673,28 +5666,23 @@ Request [trace_id: abc123]
 ### Risk Mitigation Timeline
 
 **Immediate (Week 1):**
-- ✅ **R8:** Verify BigQuery dataset name (aso_reports vs client_reports) - **HIGH PRIORITY**
-- ✅ **R3:** Implement cache clear on logout - **MEDIUM PRIORITY**
-- ~~R5: Enforce ORG_ADMIN check~~ - **NOT NEEDED** (intentional design)
+- ✅ **R5:** Enforce ORG_ADMIN check for agency access (currently only logging)
+- ✅ **R8:** Verify BigQuery dataset name (aso_reports vs client_reports)
+- ✅ **R3:** Implement cache clear on logout
 
 **Short-Term (Month 1):**
-- 🔄 **R9:** Implement Phase 1 unit tests (50 tests for KPI calculations) - **CRITICAL PRIORITY**
-- 🔄 **R1:** Add schema version headers to Edge Function response - **HIGH PRIORITY**
-- ~~R2: Add product_page_views validation~~ - **NOT NEEDED** (NULL handling is correct)
+- 🔄 **R9:** Implement Phase 1 unit tests (50 tests for KPI calculations)
+- 🔄 **R1:** Add schema version headers to Edge Function response
+- 🔄 **R2:** Add product_page_views validation in Edge Function
 
 **Medium-Term (Quarter 1):**
-- 🔄 **R4:** Add query row limits (max 100K rows per request) - **MEDIUM PRIORITY**
-- 🔄 **R6:** Add validation before cache write - **LOW PRIORITY**
-- ~~R7: Remove/sync Zustand~~ - **NOT NEEDED** (intentional architecture)
+- 🔄 **R7:** Remove Zustand OR ensure proper synchronization
+- 🔄 **R4:** Add query row limits (max 100K rows per request)
+- 🔄 **R6:** Add validation before cache write
 
 **Long-Term (Quarter 2):**
-- 🔄 **R10:** Implement data freshness monitoring dashboard - **MEDIUM PRIORITY**
-- 🔄 **R1:** Implement full contract testing suite (20 tests) - **HIGH PRIORITY**
-
-**Clarifications:**
-- **R5 (Agency Access):** Removed from timeline - this is intentional design for agency use case
-- **R7 (Zustand):** Removed from timeline - dual-layer architecture is correct
-- **R2 (NULL handling):** Removed from timeline - current implementation is correct for sparse data
+- 🔄 **R10:** Implement data freshness monitoring dashboard
+- 🔄 **R1:** Implement full contract testing suite (20 tests)
 
 ---
 

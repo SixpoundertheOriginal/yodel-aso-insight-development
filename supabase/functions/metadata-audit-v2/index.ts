@@ -192,9 +192,9 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Run audit engine
+    // Run audit engine (Phase 15.7: now async for Bible integration)
     console.log('[metadata-audit-v2] Running audit engine');
-    const auditResult = MetadataAuditEngine.evaluate(metadata);
+    const auditResult = await MetadataAuditEngine.evaluate(metadata);
 
     const executionTimeMs = Date.now() - startTime;
 

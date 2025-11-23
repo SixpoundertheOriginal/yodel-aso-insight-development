@@ -115,6 +115,61 @@ const FAMILY_MAP = new Map<KpiFamilyId, KpiFamilyDefinition>(
 );
 
 // ============================================================================
+// Phase 10: KPI Weight Override Helpers
+// ============================================================================
+
+/**
+ * Apply KPI weight override from active rule set
+ *
+ * Phase 10: Applies vertical/market-specific weight multipliers
+ *
+ * @param baseWeight - Base weight from KPI definition
+ * @param kpiId - KPI identifier
+ * @param activeRuleSet - Optional active rule set with overrides
+ * @returns Adjusted weight (multiplier applied)
+ */
+function applyKpiWeightOverride(
+  baseWeight: number,
+  kpiId: KpiId,
+  activeRuleSet?: any
+): number {
+  const override = activeRuleSet?.kpiOverrides?.[kpiId];
+  if (!override?.weight) {
+    return baseWeight; // No override
+  }
+
+  // Apply multiplier with safety bounds (0.5x - 2.0x)
+  const multiplier = Math.max(0.5, Math.min(2.0, override.weight));
+  const adjustedWeight = baseWeight * multiplier;
+
+  // Log override usage (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[KPI Override] "${kpiId}" weight: ${baseWeight} → ${adjustedWeight} (${multiplier}x, vertical: ${activeRuleSet.verticalId})`);
+  }
+
+  return adjustedWeight;
+}
+
+/**
+ * Normalize KPI weights to sum to 1.0
+ *
+ * Phase 10: Called after applying all weight overrides
+ *
+ * @param weights - Record of KPI ID → weight
+ * @returns Normalized weights (sum = 1.0)
+ */
+function normalizeKpiWeights(weights: Record<string, number>): Record<string, number> {
+  const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+  if (sum === 0) return weights;
+
+  const normalized: Record<string, number> = {};
+  for (const [key, value] of Object.entries(weights)) {
+    normalized[key] = value / sum;
+  }
+  return normalized;
+}
+
+// ============================================================================
 // KPI Engine Class
 // ============================================================================
 
@@ -173,22 +228,37 @@ export class KpiEngine {
       vector.push(normalized);
     }
 
-    // Compute family scores
+    // Phase 10: Compute family scores with KPI weight overrides
     const families: Record<KpiFamilyId, KpiFamilyResult> = {};
 
     for (const familyDef of FAMILY_DEFINITIONS) {
       const familyKpis = KPI_DEFINITIONS.filter(k => k.familyId === familyDef.id);
+
+      // Phase 10: Apply weight overrides and normalize
+      const adjustedWeights: Record<string, number> = {};
+      familyKpis.forEach(kpiDef => {
+        const adjustedWeight = applyKpiWeightOverride(
+          kpiDef.weight,
+          kpiDef.id,
+          input.activeRuleSet
+        );
+        adjustedWeights[kpiDef.id] = adjustedWeight;
+      });
+
+      // Normalize weights to sum to 1.0
+      const normalizedWeights = normalizeKpiWeights(adjustedWeights);
+
+      // Compute weighted sum using normalized weights
       const weightedSum = familyKpis.reduce((sum, kpiDef) => {
         const kpiResult = kpis[kpiDef.id];
-        return sum + (kpiResult.normalized * kpiDef.weight);
+        const weight = normalizedWeights[kpiDef.id];
+        return sum + (kpiResult.normalized * weight);
       }, 0);
-      const totalWeight = familyKpis.reduce((sum, kpiDef) => sum + kpiDef.weight, 0);
-      const score = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
       families[familyDef.id] = {
         id: familyDef.id,
         label: familyDef.label,
-        score: Math.round(score * 100) / 100,
+        score: Math.round(weightedSum * 100) / 100,
         kpiIds: familyKpis.map(k => k.id),
         weight: familyDef.weight,
       };

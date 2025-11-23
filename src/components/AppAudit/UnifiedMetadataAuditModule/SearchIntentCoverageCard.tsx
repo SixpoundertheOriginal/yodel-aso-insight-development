@@ -11,8 +11,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronUp, Target, TrendingUp, Search, ShoppingCart } from 'lucide-react';
+import { ChevronDown, ChevronUp, Target, TrendingUp, Search, ShoppingCart, AlertCircle } from 'lucide-react';
 import type { IntentSignals } from '@/services/intent-intelligence.service';
+import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 
 interface SearchIntentCoverageCardProps {
   /** Intent signals data from useIntentCoverage hook */
@@ -104,6 +105,19 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
   const commercialKeywords = intentSignals.commercialKeywords || [];
   const transactionalKeywords = intentSignals.transactionalKeywords || [];
 
+  // Detect empty states
+  const hasIntentData =
+    navigationalKeywords.length > 0 ||
+    informationalKeywords.length > 0 ||
+    commercialKeywords.length > 0 ||
+    transactionalKeywords.length > 0;
+
+  // ENGINE FAILURE: Keywords exist but no intent data returned (registry empty or Edge Function failed)
+  const engineFailure = keywords.length > 0 && !hasIntentData && coverageScore === 0;
+
+  // GENUINE NO INTENT: Engine worked but found no intent keywords
+  const noIntentDetected = keywords.length > 0 && !hasIntentData && !engineFailure;
+
   return (
     <Card className="relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed">
       {/* L-bracket corners */}
@@ -139,19 +153,70 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
 
       {isExpanded && (
         <CardContent className="space-y-5 pt-6">
-          {/* Dominant Intent Badge */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500 uppercase">Dominant Intent:</span>
-            <Badge
-              variant="outline"
-              className={`text-sm ${getIntentBadgeColor(dominantIntent)}`}
-            >
-              <DominantIcon className="h-3 w-3 mr-1.5" />
-              {dominantIntent.charAt(0).toUpperCase() + dominantIntent.slice(1)}
-            </Badge>
-          </div>
+          {/* STATE A: ENGINE FAILURE (ALWAYS VISIBLE) */}
+          {engineFailure && (
+            <div className="p-4 bg-red-900/10 border-l-4 border-l-red-500 border border-red-400/20 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-400 mb-2 tracking-wide">
+                    No Intent Data Available
+                  </p>
+                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                    We could not classify your {elementDisplayName.toLowerCase()} keywords with the current intent engine.
+                  </p>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mb-1.5 font-medium">
+                    This may indicate:
+                  </p>
+                  <ul className="text-[11px] text-zinc-400 leading-relaxed space-y-1 ml-4 list-disc">
+                    <li>Empty <code className="text-red-300 font-mono text-[10px]">search_intent_registry</code> database table</li>
+                    <li>Edge Function connectivity issues</li>
+                    <li>Keywords too generic/specific to classify</li>
+                  </ul>
+                  <p className="text-[10px] text-zinc-500 mt-3 italic">
+                    💡 Check browser console for detailed diagnostic logs.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* Intent Distribution Grid */}
+          {/* STATE B: GENUINE NO INTENT DETECTED */}
+          {noIntentDetected && (
+            <div className="p-4 bg-yellow-900/10 border-l-4 border-l-yellow-500 border border-yellow-400/20 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-yellow-400 mb-2 tracking-wide">
+                    No Search Intent Found
+                  </p>
+                  <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+                    Your {elementDisplayName.toLowerCase()} metadata does not contain discovery, commercial, transactional or learning keywords.
+                  </p>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    💡 Consider adding phrases like <span className="text-yellow-300 font-medium">'learn spanish'</span>, <span className="text-yellow-300 font-medium">'language lessons'</span>, or <span className="text-yellow-300 font-medium">'best language app'</span> to broaden search coverage.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* NORMAL STATE: Dominant Intent Badge */}
+          {hasIntentData && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-500 uppercase">Dominant Intent:</span>
+              <Badge
+                variant="outline"
+                className={`text-sm ${getIntentBadgeColor(dominantIntent)}`}
+              >
+                <DominantIcon className="h-3 w-3 mr-1.5" />
+                {dominantIntent.charAt(0).toUpperCase() + dominantIntent.slice(1)}
+              </Badge>
+            </div>
+          )}
+
+          {/* Intent Distribution Grid (hidden on engine failure) */}
+          {!engineFailure && (
           <div>
             <div className="text-sm font-medium text-zinc-300 mb-3">
               Intent Distribution
@@ -206,8 +271,10 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
               </div>
             </div>
           </div>
+          )}
 
-          {/* Keywords Grouped by Intent */}
+          {/* Keywords Grouped by Intent (hidden on engine failure) */}
+          {!engineFailure && (
           <div className="space-y-4 pt-2 border-t border-zinc-800">
             <div className="text-sm font-medium text-zinc-300">
               Keywords by Intent Type
@@ -315,6 +382,7 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                 </div>
               )}
           </div>
+          )}
         </CardContent>
       )}
     </Card>

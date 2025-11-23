@@ -16,6 +16,12 @@ import {
   Users,
   Settings,
   Stethoscope,
+  BookOpen,
+  Sliders,
+  History,
+  Target,
+  Wrench,
+  Brain,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -53,6 +59,13 @@ const navigationConfig: Record<string, NavigationItem['status']> = {
   compliance: 'coming_soon',
   'access-review': 'coming_soon',
   'ui-permissions': 'ready',
+  'aso-bible-rulesets': 'ready', // ✅ ASO Bible Admin UI
+  'aso-bible-overrides': 'ready',
+  'aso-bible-versions': 'ready',
+  'kpi-registry': 'ready', // ✅ Phase 14: KPI Registry
+  'formula-registry': 'ready', // ✅ Phase 14: Formula Registry
+  'rule-registry': 'ready', // ✅ Phase 15: Rule Evaluator Registry
+  'intent-registry': 'ready', // ✅ Phase 16: Intent Pattern Registry
 };
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPage }) => {
@@ -260,6 +273,60 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
           icon: Settings,
           href: '/admin?tab=ui-permissions',
           status: navigationConfig['ui-permissions'],
+        },
+      ],
+    },
+    {
+      section: 'ASO Bible Engine',
+      items: [
+        {
+          id: 'aso-bible-rulesets',
+          label: 'Rule Sets',
+          icon: BookOpen,
+          href: '/admin/aso-bible/rulesets',
+          status: navigationConfig['aso-bible-rulesets'],
+        },
+        {
+          id: 'aso-bible-overrides',
+          label: 'Override Editor',
+          icon: Sliders,
+          href: '/admin/aso-bible/overrides',
+          status: navigationConfig['aso-bible-overrides'],
+        },
+        {
+          id: 'aso-bible-versions',
+          label: 'Version History',
+          icon: History,
+          href: '/admin/aso-bible/versions',
+          status: navigationConfig['aso-bible-versions'],
+        },
+        {
+          id: 'kpi-registry',
+          label: 'KPI Registry',
+          icon: BarChart3,
+          href: '/admin/aso-bible/kpi-registry',
+          status: navigationConfig['kpi-registry'],
+        },
+        {
+          id: 'formula-registry',
+          label: 'Formula Registry',
+          icon: Target,
+          href: '/admin/aso-bible/formula-registry',
+          status: navigationConfig['formula-registry'],
+        },
+        {
+          id: 'rule-registry',
+          label: 'Rule Evaluators',
+          icon: Wrench,
+          href: '/admin/aso-bible/rule-registry',
+          status: navigationConfig['rule-registry'],
+        },
+        {
+          id: 'intent-registry',
+          label: 'Intent Patterns',
+          icon: Brain,
+          href: '/admin/aso-bible/intent-registry',
+          status: navigationConfig['intent-registry'],
         },
       ],
     },

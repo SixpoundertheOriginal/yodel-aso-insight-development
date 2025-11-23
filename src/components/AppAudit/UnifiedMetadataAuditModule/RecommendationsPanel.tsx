@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { cn, getRecommendationColors, auditTypography, auditSpacing, cyberpunkEffects } from '@/design-registry';
 import type { UnifiedMetadataAuditResult } from './types';
+import { RecommendationCard } from './RecommendationCard';
+import { parseRecommendation, deduplicateRecommendations, sortRecommendationsBySeverity } from './utils';
 
 interface RecommendationsPanelProps {
   recommendations: string[];
@@ -66,14 +68,20 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
     return comboRecs;
   }, [type, comboCoverage]);
 
-  // Merge original recommendations with combo and intent recommendations
-  const allRecommendations = useMemo(() => {
-    // For ranking type: merge intent recommendations as well
-    if (type === 'ranking') {
-      return [...recommendations, ...comboRecommendations, ...intentRecommendations];
-    }
-    // For conversion type: only merge combo recommendations (intent is ranking-specific)
-    return [...recommendations, ...comboRecommendations];
+  // Merge, deduplicate, and sort recommendations
+  const processedRecommendations = useMemo(() => {
+    // Merge all sources
+    const merged = type === 'ranking'
+      ? [...recommendations, ...comboRecommendations, ...intentRecommendations]
+      : [...recommendations, ...comboRecommendations];
+
+    // Deduplicate based on normalized message
+    const deduped = deduplicateRecommendations(merged);
+
+    // Sort by severity (critical first)
+    const sorted = sortRecommendationsBySeverity(deduped);
+
+    return sorted;
   }, [recommendations, comboRecommendations, intentRecommendations, type]);
 
   const defaultTitle = type === 'ranking' ? 'ASO Ranking Recommendations' : 'Conversion Recommendations';
@@ -87,7 +95,7 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
 
   const recColors = getRecommendationColors('high');
 
-  if (allRecommendations.length === 0) {
+  if (processedRecommendations.length === 0) {
     return (
       <Card className="bg-emerald-900/10 border-emerald-400/30">
         <CardHeader>
@@ -104,71 +112,37 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   }
 
   return (
-    <Card 
-      className="relative bg-zinc-900 border-zinc-800 overflow-hidden before:absolute before:inset-0 before:bg-[var(--grid-overlay)] before:opacity-5 before:pointer-events-none" 
-      style={{ backgroundSize: '30px 30px' }}
+    <Card
+      className="relative bg-black/40 border border-zinc-800/50 rounded-xl overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]"
     >
-      <CardHeader>
-        <CardTitle className={cn(auditSpacing.layout.flex, auditSpacing.layout.flexGap)}>
-          <AlertCircle 
-            className="h-5 w-5 text-orange-400" 
-            style={{ filter: `drop-shadow(${cyberpunkEffects.glow.orange.moderate})` }}
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-medium tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <AlertCircle
+            className="h-4 w-4 text-orange-400"
+            style={{ filter: `drop-shadow(0 0 8px rgba(251, 146, 60, 0.4))` }}
           />
           <span className="bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">
             {title || defaultTitle}
           </span>
         </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className={cn(auditTypography.card.description, "mb-4")}>
+        <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
           {description || defaultDescription}
         </p>
-        <div className={auditSpacing.recommendation.itemGap}>
-          {allRecommendations.map((rec, index) => (
-            <div
-              key={index}
-              className={cn(
-                "group relative flex items-start",
-                auditSpacing.recommendation.numberGap,
-                auditSpacing.recommendation.innerPadding,
-                "bg-zinc-800/30 rounded-lg border border-zinc-800",
-                cyberpunkEffects.transitions.smooth,
-                recColors.hoverBorder,
-                recColors.hoverBg,
-                recColors.hoverShadow,
-                cyberpunkEffects.animations.slideInLeft
-              )}
-              style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}
-            >
-              {/* Corner accents */}
-              <div className={cn(
-                "absolute top-0 right-0 w-2 h-2 border-t border-r border-orange-400/30 opacity-0 group-hover:opacity-100",
-                cyberpunkEffects.transitions.smooth
-              )} />
-              <div className={cn(
-                "absolute bottom-0 left-8 w-2 h-2 border-b border-l border-orange-400/30 opacity-0 group-hover:opacity-100",
-                cyberpunkEffects.transitions.smooth
-              )} />
-              
-              <div 
-                className={cn(
-                  "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full",
-                  recColors.number,
-                  auditTypography.recommendation.number,
-                  cyberpunkEffects.transitions.smooth,
-                  "group-hover:bg-orange-400/30 group-hover:scale-110"
-                )}
-                style={{ 
-                  boxShadow: recColors.glow,
-                }}
-              >
-                {index + 1}
-              </div>
-              <div className="flex-1">
-                <p className={auditTypography.recommendation.title}>{rec}</p>
-              </div>
-            </div>
-          ))}
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {processedRecommendations.map((rec, index) => {
+            const parsed = parseRecommendation(rec);
+            return (
+              <RecommendationCard
+                key={index}
+                category={parsed.category}
+                severity={parsed.severity}
+                message={parsed.message}
+                index={index}
+              />
+            );
+          })}
         </div>
       </CardContent>
     </Card>

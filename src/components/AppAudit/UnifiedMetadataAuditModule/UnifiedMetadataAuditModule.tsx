@@ -5,21 +5,35 @@
  * Performs client-side scoring using MetadataAuditEngine (no API calls).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine';
+import { KpiEngine } from '@/engine/metadata/kpi/kpiEngine';
 import type { ScrapedMetadata } from '@/types/aso';
 import type { UnifiedMetadataAuditResult } from './types';
 import { MetadataScoreCard } from './MetadataScoreCard';
 import { ElementDetailCard } from './ElementDetailCard';
 import { KeywordCoverageCard } from './KeywordCoverageCard';
-import { ComboCoverageCard } from './ComboCoverageCard';
+import { KeywordComboWorkbench } from '../KeywordComboWorkbench';
 import { SearchIntentAnalysisCard } from './SearchIntentAnalysisCard';
 import { RecommendationsPanel } from './RecommendationsPanel';
+import { MetadataKpiGrid } from '../MetadataKpi';
 import { useIntentIntelligence } from '@/hooks/useIntentIntelligence';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 import { MOCK_PIMSLEUR_AUDIT } from './mockAuditResult';
+import {
+  MetadataOpportunityDeltaChart,
+  MetadataDimensionRadar,
+  SlotUtilizationBars,
+  TokenMixDonut,
+  SeverityDonut,
+  EfficiencySparkline,
+  DiscoveryFootprintMap,
+  SemanticDensityGauge,
+  HookDiversityWheel,
+} from './charts';
+import { IntentEngineDiagnosticsPanel } from './IntentEngineDiagnosticsPanel';
 
 interface UnifiedMetadataAuditModuleProps {
   metadata: ScrapedMetadata;
@@ -46,16 +60,21 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       return;
     }
 
-    try {
-      // Run client-side scoring engine (instant, synchronous)
-      const result = MetadataAuditEngine.evaluate(metadata);
-      setAuditResult(result);
-      setError(null);
-    } catch (err) {
-      console.error('Metadata audit engine failed:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-      setAuditResult(null);
-    }
+    // Phase 15.7: Now async to support Bible config loading
+    const runAudit = async () => {
+      try {
+        // Run client-side scoring engine (now async for Bible integration)
+        const result = await MetadataAuditEngine.evaluate(metadata);
+        setAuditResult(result);
+        setError(null);
+      } catch (err) {
+        console.error('Metadata audit engine failed:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        setAuditResult(null);
+      }
+    };
+
+    runAudit();
   }, [metadata, useMockData]);
 
   // Intent Intelligence Integration (MUST be called on every render - React Hooks Rule)
@@ -78,6 +97,54 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     region: metadata?.locale?.split('-')[1]?.toLowerCase() || 'us',
     enabled: AUTOCOMPLETE_INTELLIGENCE_ENABLED && !error && !!auditResult && allKeywords.length > 0,
   });
+
+  // KPI Engine Integration (Phase 1)
+  // Compute 34 KPIs across 6 families for metadata quality assessment
+  const kpiResult = useMemo(() => {
+    if (!auditResult || !metadata) return null;
+
+    try {
+      return KpiEngine.evaluate({
+        title: metadata.title || '',
+        subtitle: metadata.subtitle || '',
+        platform: 'ios',
+        locale: metadata.locale || 'us',
+        comboCoverage: auditResult.comboCoverage,
+        // Optional: Can add brand + intent signals when available
+      });
+    } catch (err) {
+      console.error('KPI Engine evaluation failed:', err);
+      return null;
+    }
+  }, [auditResult, metadata]);
+
+  // Compute metadata dimension scores from existing data (for visualization)
+  const metadataDimensionScores = useMemo(() => {
+    if (!auditResult) return null;
+
+    // Derive dimension scores from element scores and existing metrics
+    const titleScore = auditResult.elements.title.score;
+    const subtitleScore = auditResult.elements.subtitle.score;
+    const avgElementScore = (titleScore + subtitleScore) / 2;
+
+    // Compute brand balance from combos
+    const titleCombos = auditResult.comboCoverage.titleCombosClassified || [];
+    const subtitleCombos = auditResult.comboCoverage.subtitleNewCombosClassified || [];
+    const allCombos = [...titleCombos, ...subtitleCombos];
+    const brandedCount = allCombos.filter(c => c.type === 'branded').length;
+    const genericCount = allCombos.filter(c => c.type === 'generic').length;
+    const totalMeaningful = brandedCount + genericCount;
+    const brandBalance = totalMeaningful > 0
+      ? Math.min(100, (genericCount / totalMeaningful) * 100 + 30) // Weighted toward generic discovery
+      : 50;
+
+    return {
+      relevance: avgElementScore, // Average of title + subtitle scores
+      learning: Math.min(100, genericCount * 15), // Generic combos drive discovery
+      structure: titleScore, // Title score reflects structure quality
+      brandBalance: brandBalance,
+    };
+  }, [auditResult]);
 
   // Error state
   if (error) {
@@ -115,13 +182,73 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       {/* Overall Score Card */}
       <MetadataScoreCard auditResult={auditResult} />
 
-      {/* ASO Ranking Recommendations (title + subtitle) */}
-      <div>
-        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
-          <div className="h-[2px] w-8 bg-orange-500/40" />
-          🎯 ASO RANKING RECOMMENDATIONS
-          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
-        </h3>
+      {/* Intent Engine Diagnostics (DEV ONLY) */}
+      <IntentEngineDiagnosticsPanel auditResult={auditResult} />
+
+      {/* ======================================================================
+          CHAPTER 1 — METADATA HEALTH
+          ====================================================================== */}
+      {metadataDimensionScores && (
+        <div className="space-y-4 mt-6">
+          <div className="relative">
+            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-8 bg-cyan-500/40" />
+              CHAPTER 1 — METADATA HEALTH
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-cyan-500/40 to-transparent" />
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 -mt-2">
+              Overall metadata quality, dimension balance, and optimization opportunities
+            </p>
+          </div>
+
+          {/* Row 1: Opportunity Delta + Dimension Radar */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <MetadataOpportunityDeltaChart
+              keywordCoverageScore={auditResult.keywordCoverage.totalUniqueKeywords * 5}
+              comboCoverageScore={Math.min(100, auditResult.comboCoverage.totalCombos * 8)}
+              intentCoverageScore={intentStatistics.coverageScore || 0}
+              metadataDimensionScores={metadataDimensionScores}
+            />
+            <MetadataDimensionRadar metadataDimensionScores={metadataDimensionScores} />
+          </div>
+
+          {/* Row 2: Discovery Footprint */}
+          <DiscoveryFootprintMap comboCoverage={auditResult.comboCoverage} />
+        </div>
+      )}
+
+      {/* Metadata KPI Engine (Phase 1: 34 KPIs across 6 families) */}
+      {kpiResult && (
+        <div>
+          <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="h-[2px] w-8 bg-emerald-500/40" />
+            📊 METADATA KPI ANALYSIS
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
+          </h3>
+          <MetadataKpiGrid kpiResult={kpiResult} />
+        </div>
+      )}
+
+      {/* ======================================================================
+          CHAPTER 3 — RANKING DRIVERS & GAPS
+          ====================================================================== */}
+      <div className="space-y-4 mt-6">
+        <div className="relative">
+          <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="h-[2px] w-8 bg-orange-500/40" />
+            CHAPTER 3 — RANKING DRIVERS & GAPS
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+          </h3>
+          <p className="text-xs text-zinc-500 mb-4 -mt-2">
+            Actionable recommendations prioritized by severity and ranking impact
+          </p>
+        </div>
+
+        {/* Severity Donut */}
+        {auditResult.topRecommendations.length > 0 && (
+          <SeverityDonut recommendations={auditResult.topRecommendations} />
+        )}
+
         <RecommendationsPanel
           recommendations={auditResult.topRecommendations}
           type="ranking"
@@ -178,20 +305,47 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         />
       </div>
 
-      {/* Keyword & Combo Coverage - Side by Side */}
-      <div className="space-y-4">
-        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
-          <div className="h-[2px] w-8 bg-orange-500/40" />
-          COVERAGE ANALYSIS
-          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
-        </h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <KeywordCoverageCard keywordCoverage={auditResult.keywordCoverage} />
-          <ComboCoverageCard comboCoverage={auditResult.comboCoverage} />
+      {/* ======================================================================
+          CHAPTER 2 — COVERAGE MECHANICS
+          ====================================================================== */}
+      <div className="space-y-4 mt-6">
+        <div className="relative">
+          <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="h-[2px] w-8 bg-emerald-500/40" />
+            CHAPTER 2 — COVERAGE MECHANICS
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
+          </h3>
+          <p className="text-xs text-zinc-500 mb-4 -mt-2">
+            Keyword distribution, slot utilization, semantic density, and hook diversity analysis
+          </p>
         </div>
 
-        {/* Search Intent Analysis (Full Width) */}
+        {/* Row 1: Keyword Coverage Card + Slot Utilization */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <KeywordCoverageCard keywordCoverage={auditResult.keywordCoverage} />
+          <SlotUtilizationBars keywordCoverage={auditResult.keywordCoverage} />
+        </div>
+
+        {/* Row 2: Token Mix + Efficiency + Hook Diversity */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <TokenMixDonut keywordCoverage={auditResult.keywordCoverage} />
+          <EfficiencySparkline keywordCoverage={auditResult.keywordCoverage} />
+          <SemanticDensityGauge comboCoverage={auditResult.comboCoverage} />
+        </div>
+
+        {/* Row 3: Hook Diversity Wheel */}
+        <HookDiversityWheel
+          comboCoverage={auditResult.comboCoverage}
+          keywordCoverage={auditResult.keywordCoverage}
+        />
+
+        {/* Row 4: Keyword Combo Workbench (Full Width) */}
+        <KeywordComboWorkbench
+          comboCoverage={auditResult.comboCoverage}
+          keywordCoverage={auditResult.keywordCoverage}
+        />
+
+        {/* Row 5: Search Intent Analysis (Full Width) */}
         {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (
           <SearchIntentAnalysisCard
             clusters={intentClusters}

@@ -7,6 +7,8 @@
  * - Deduplication logic
  * - Impact scoring for prioritization
  * - Integration with V2 engine signals
+ *
+ * Phase 10: Vertical-aware recommendation templates with fallback
  */
 
 import type { ElementScoringResult, MetadataElement, UnifiedMetadataAuditResult, ClassifiedCombo } from '../metadataScoringRegistry';
@@ -63,6 +65,9 @@ export interface RecommendationSignals {
   descriptionFeatureMentions: number;
   descriptionReadability: number;
   descriptionCtaStrength: number;
+
+  // Phase 10: Optional active rule set for vertical-specific templates
+  activeRuleSet?: any; // MergedRuleSet - avoiding circular dependency
 }
 
 /**
@@ -74,6 +79,35 @@ const SEVERITY_TO_IMPACT: Record<RecommendationSeverity, number> = {
   moderate: 40,
   optional: 20
 };
+
+/**
+ * Phase 10: Get recommendation message with vertical-specific template
+ *
+ * Checks for vertical-specific templates first, falls back to global message
+ *
+ * @param recommendationId - Recommendation identifier
+ * @param fallbackMessage - Global fallback message (without hardcoded examples)
+ * @param activeRuleSet - Optional active rule set with recommendation overrides
+ * @returns Final recommendation message
+ */
+function getRecommendationMessage(
+  recommendationId: string,
+  fallbackMessage: string,
+  activeRuleSet?: any
+): string {
+  // 1. Check for vertical-specific template
+  const verticalTemplate = activeRuleSet?.recommendationOverrides?.[recommendationId];
+  if (verticalTemplate?.message) {
+    // Log override usage (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Recommendation Template] Using vertical template for "${recommendationId}" (vertical: ${activeRuleSet.verticalId})`);
+    }
+    return verticalTemplate.message;
+  }
+
+  // 2. Fall back to global message
+  return fallbackMessage;
+}
 
 /**
  * Generates ranking keyword recommendations
@@ -88,7 +122,11 @@ function generateRankingKeywordRecs(signals: RecommendationSignals): EnhancedRec
       category: 'ranking_keyword',
       severity: 'critical',
       impactScore: SEVERITY_TO_IMPACT.critical,
-      message: '[RANKING][critical] Title includes very few high-value discovery keywords. Adding 1–2 intent terms (e.g. \'learn spanish\', \'language lessons\') typically increases ranking breadth.',
+      message: getRecommendationMessage(
+        'title_low_high_value_keywords',
+        '[RANKING][critical] Title includes very few high-value discovery keywords. Adding 1–2 intent terms typically increases ranking breadth.',
+        signals.activeRuleSet
+      ),
       element: 'title'
     });
   } else if (signals.titleHighValueKeywordCount === 2) {
@@ -97,7 +135,11 @@ function generateRankingKeywordRecs(signals: RecommendationSignals): EnhancedRec
       category: 'ranking_keyword',
       severity: 'moderate',
       impactScore: SEVERITY_TO_IMPACT.moderate,
-      message: '[RANKING][moderate] Title has decent high-value keywords, but adding 1 more can help capture additional search queries.',
+      message: getRecommendationMessage(
+        'title_moderate_high_value_keywords',
+        '[RANKING][moderate] Title has decent high-value keywords, but adding 1 more can help capture additional search queries.',
+        signals.activeRuleSet
+      ),
       element: 'title'
     });
   }
@@ -109,7 +151,11 @@ function generateRankingKeywordRecs(signals: RecommendationSignals): EnhancedRec
       category: 'ranking_keyword',
       severity: 'critical',
       impactScore: SEVERITY_TO_IMPACT.critical,
-      message: '[RANKING][critical] Subtitle adds no new high-value keywords. This is a missed opportunity—consider adding unique intent phrases (e.g. \'speak fluently\', \'grammar lessons\').',
+      message: getRecommendationMessage(
+        'subtitle_no_incremental_keywords',
+        '[RANKING][critical] Subtitle adds no new high-value keywords. This is a missed opportunity—consider adding unique intent phrases.',
+        signals.activeRuleSet
+      ),
       element: 'subtitle'
     });
   } else if (signals.subtitleHighValueKeywordCount === 1) {
@@ -118,7 +164,11 @@ function generateRankingKeywordRecs(signals: RecommendationSignals): EnhancedRec
       category: 'ranking_keyword',
       severity: 'strong',
       impactScore: SEVERITY_TO_IMPACT.strong,
-      message: '[RANKING][strong] Subtitle adds only 1 new high-value keyword. Adding 1–2 more can significantly expand search coverage.',
+      message: getRecommendationMessage(
+        'subtitle_low_incremental_keywords',
+        '[RANKING][strong] Subtitle adds only 1 new high-value keyword. Adding 1–2 more can significantly expand search coverage.',
+        signals.activeRuleSet
+      ),
       element: 'subtitle'
     });
   }

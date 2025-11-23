@@ -20,11 +20,17 @@ export interface ClassifiedCombo {
   text: string;
   type: ComboType;
   relevanceScore: number;  // 0-3
+  source?: 'title' | 'subtitle' | 'title+subtitle';  // Combo source
 
   // Phase 5: Brand Intelligence (optional fields)
   brandClassification?: BrandClassification;
   matchedBrandAlias?: string;
   matchedCompetitor?: string;
+
+  // Keyword Combo Workbench: Client-side editing fields (optional)
+  userMarkedAsNoise?: boolean;  // User-controlled noise flag
+  userEditedText?: string;       // Edited version (original preserved in text)
+  intentClass?: 'learning' | 'outcome' | 'brand' | 'noise';  // Intent classification
 }
 
 export interface RuleEvaluationResult {

@@ -89,7 +89,7 @@ export const AuditV2View: React.FC<AuditV2ViewProps> = ({
                   Unified Metadata Audit V2
                 </h2>
                 <p className="text-[10px] text-zinc-400 mt-1 uppercase tracking-widest">
-                  Client-side scoring • 15+ evaluation rules • 3 metadata elements
+                  34 KPIs across 6 families • 15+ evaluation rules • Intent Intelligence
                 </p>
               </div>
             </div>

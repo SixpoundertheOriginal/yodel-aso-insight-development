@@ -115,6 +115,8 @@ export interface IntentStatistics {
   hasCommercialIntent: boolean;
   hasTransactionalIntent: boolean;
   dominantIntent: 'navigational' | 'informational' | 'commercial' | 'transactional' | null;
+  hasIntentData: boolean; // True if any keywords have intent classifications
+  engineFailure: boolean; // True if engine failed to classify any keywords
 }
 
 /**
@@ -136,7 +138,8 @@ interface IntentIntelligenceData {
  */
 function calculateStatistics(
   intentions: Map<string, IntentClassification>,
-  clusters: IntentCluster[]
+  clusters: IntentCluster[],
+  inputKeywordCount: number = 0
 ): IntentStatistics {
   const totalKeywords = intentions.size;
 
@@ -176,6 +179,16 @@ function calculateStatistics(
     maxCount = transactionalCount;
   }
 
+  // Detect if we have any intent data
+  const hasIntentData =
+    navigationalCount > 0 ||
+    informationalCount > 0 ||
+    commercialCount > 0 ||
+    transactionalCount > 0;
+
+  // Detect engine failure: input keywords provided but NO intent data returned
+  const engineFailure = inputKeywordCount > 0 && !hasIntentData && intentions.size === 0;
+
   return {
     totalKeywords,
     navigationalCount,
@@ -188,6 +201,8 @@ function calculateStatistics(
     hasCommercialIntent: commercialCount > 0,
     hasTransactionalIntent: transactionalCount > 0,
     dominantIntent,
+    hasIntentData,
+    engineFailure,
   };
 }
 
@@ -207,6 +222,8 @@ function getDefaultStatistics(): IntentStatistics {
     hasCommercialIntent: false,
     hasTransactionalIntent: false,
     dominantIntent: null,
+    hasIntentData: false,
+    engineFailure: false,
   };
 }
 
@@ -336,7 +353,7 @@ export function useIntentIntelligence(
 
   // Calculate statistics
   const statistics = data
-    ? calculateStatistics(data.intentions, data.clusters)
+    ? calculateStatistics(data.intentions, data.clusters, combinedKeywords.length)
     : getDefaultStatistics();
 
   return {

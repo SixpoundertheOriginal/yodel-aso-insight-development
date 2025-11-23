@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Check, X } from 'lucide-react';
 import type { RuleEvaluationResult } from './types';
+import { formatScore } from './utils';
 
 interface RuleResultsTableProps {
   rules: RuleEvaluationResult[];
@@ -16,20 +17,20 @@ interface RuleResultsTableProps {
 
 export const RuleResultsTable: React.FC<RuleResultsTableProps> = ({ rules }) => {
   return (
-    <div className="rounded-md border-2 border-dashed border-zinc-700/50 bg-zinc-900/30">
+    <div className="rounded-xl border border-zinc-800/50 bg-black/20 overflow-hidden shadow-sm">
       <Table>
         <TableHeader>
-          <TableRow className="bg-zinc-800/50 border-b border-zinc-700/50">
-            <TableHead className="w-12 text-[10px] uppercase tracking-widest text-zinc-500">Status</TableHead>
-            <TableHead className="text-[10px] uppercase tracking-widest text-zinc-500">Rule</TableHead>
-            <TableHead className="w-24 text-right text-[10px] uppercase tracking-widest text-zinc-500">Score</TableHead>
-            <TableHead className="text-[10px] uppercase tracking-widest text-zinc-500">Message</TableHead>
+          <TableRow className="bg-zinc-900/40 border-b-2 border-zinc-800">
+            <TableHead className="w-12 px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500 font-medium">Status</TableHead>
+            <TableHead className="px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500 font-medium">Rule</TableHead>
+            <TableHead className="w-24 text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500 font-medium">Score</TableHead>
+            <TableHead className="px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500 font-medium">Message</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rules.map((rule) => (
-            <TableRow key={rule.ruleId} className="hover:bg-zinc-800/30 border-b border-dashed border-zinc-800/50">
-              <TableCell>
+            <TableRow key={rule.ruleId} className="hover:bg-zinc-800/20 border-b border-zinc-800/30 transition-colors">
+              <TableCell className="px-3 py-2">
                 <div
                   className="w-5 h-5 flex items-center justify-center"
                   style={{
@@ -44,10 +45,10 @@ export const RuleResultsTable: React.FC<RuleResultsTableProps> = ({ rules }) => 
                   )}
                 </div>
               </TableCell>
-              <TableCell className="font-mono text-[11px] text-zinc-400 uppercase tracking-wide">
+              <TableCell className="px-3 py-2 font-mono text-[11px] text-zinc-400 uppercase tracking-wide">
                 {rule.ruleId}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right px-3 py-2">
                 <Badge
                   variant="outline"
                   className={`font-mono text-sm ${
@@ -61,10 +62,10 @@ export const RuleResultsTable: React.FC<RuleResultsTableProps> = ({ rules }) => 
                     clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
                   }}
                 >
-                  {rule.score}
+                  {formatScore(rule.score)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm font-light text-zinc-300">
+              <TableCell className="px-3 py-2 text-xs font-light text-zinc-300 leading-relaxed">
                 {rule.message}
                 {rule.evidence && rule.evidence.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">

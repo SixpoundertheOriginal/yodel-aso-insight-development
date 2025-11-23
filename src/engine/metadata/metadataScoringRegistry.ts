@@ -7,9 +7,11 @@
 
 import type { ScrapedMetadata } from '@/types/aso';
 import type { BenchmarkComparison } from '@/services/benchmark-registry.service';
+import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 import { tokenizeForASO, analyzeText } from './tokenization';
 import { analyzeCombinations } from '@/modules/metadata-scoring/utils/ngram';
 import { getTokenRelevance } from './metadataAuditEngine';
+import { getRuleConfig } from '@/services/ruleConfigLoader';
 
 /**
  * Metadata element types
@@ -62,6 +64,8 @@ export interface EvaluationContext {
     positive_patterns: Array<{ pattern: string; bonus?: number; reason: string }>;
     negative_patterns: Array<{ pattern: string; penalty?: number; reason: string }>;
   };
+  // Phase 8/10: Active rule set (Base → Vertical → Market → Client)
+  activeRuleSet?: MergedRuleSet;
 }
 
 /**
@@ -72,7 +76,7 @@ export interface RuleConfig {
   name: string;
   description: string;
   weight: number;         // Weight in element score (0-1)
-  evaluator: (text: string, context: EvaluationContext) => RuleEvaluationResult;
+  evaluator: (text: string, context: EvaluationContext) => RuleEvaluationResult | Promise<RuleEvaluationResult>;
 }
 
 /**
@@ -179,6 +183,103 @@ function countSyllables(word: string): number {
 }
 
 /**
+ * Hook Categories for Description Opening Hook Strength
+ *
+ * Phase 10: Category-based hook scoring with vertical-specific weight multipliers
+ */
+interface HookCategory {
+  keywords: string[];
+  weight: number;
+}
+
+type HookCategoryType =
+  | 'learning_educational'
+  | 'outcome_benefit'
+  | 'status_authority'
+  | 'ease_of_use'
+  | 'time_to_result'
+  | 'trust_safety';
+
+const DEFAULT_HOOK_CATEGORIES: Record<HookCategoryType, HookCategory> = {
+  learning_educational: {
+    keywords: ['learn', 'master', 'study', 'practice', 'discover', 'understand', 'improve', 'develop'],
+    weight: 1.0
+  },
+  outcome_benefit: {
+    keywords: ['achieve', 'unlock', 'transform', 'gain', 'revolutionize', 'experience', 'reach', 'attain'],
+    weight: 1.0
+  },
+  status_authority: {
+    keywords: ['#1', 'leading', 'trusted', 'award', 'top', 'best', 'rated', 'proven'],
+    weight: 0.9
+  },
+  ease_of_use: {
+    keywords: ['easy', 'simple', 'quick', 'fast', 'effortless', 'straightforward', 'intuitive'],
+    weight: 0.8
+  },
+  time_to_result: {
+    keywords: ['instant', 'today', 'now', 'minutes', 'immediately', 'quickly', 'rapid'],
+    weight: 0.7
+  },
+  trust_safety: {
+    keywords: ['secure', 'safe', 'protected', 'guaranteed', 'privacy', 'trusted', 'reliable'],
+    weight: 0.8
+  }
+};
+
+/**
+ * Calculate hook strength score using category-based weighted scoring
+ *
+ * Phase 10: Replaces binary hook detection with multi-category weighted system
+ *
+ * @param text - Text to analyze (typically first paragraph)
+ * @param activeRuleSet - Optional merged rule set with vertical-specific hook overrides
+ * @returns Hook score (0-100) and matched categories
+ */
+function calculateHookScore(
+  text: string,
+  activeRuleSet?: MergedRuleSet
+): { score: number; matchedCategories: string[]; totalWeight: number } {
+  const textLower = text.toLowerCase();
+  const matchedCategories: string[] = [];
+  let totalWeight = 0;
+
+  // Apply vertical-specific multipliers to base weights
+  const categories = { ...DEFAULT_HOOK_CATEGORIES };
+  if (activeRuleSet?.hookOverrides) {
+    Object.entries(activeRuleSet.hookOverrides).forEach(([category, multiplier]) => {
+      if (categories[category as HookCategoryType]) {
+        categories[category as HookCategoryType].weight *= multiplier;
+
+        // Log override usage (development only)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Hook Scoring] Category "${category}" weight multiplied by ${multiplier} (vertical: ${activeRuleSet.verticalId})`);
+        }
+      }
+    });
+  }
+
+  // Check each category for keyword matches
+  Object.entries(categories).forEach(([categoryName, category]) => {
+    const hasMatch = category.keywords.some(keyword => textLower.includes(keyword));
+    if (hasMatch) {
+      matchedCategories.push(categoryName);
+      totalWeight += category.weight;
+    }
+  });
+
+  // Calculate score: base 30 + (totalWeight * 35) capped at 100
+  // - No matches: 30
+  // - 1 category (weight 1.0): 65
+  // - 2 categories (weight 2.0): 100
+  const baseScore = 30;
+  const weightedBonus = Math.min(70, totalWeight * 35);
+  const score = Math.min(100, baseScore + weightedBonus);
+
+  return { score, matchedCategories, totalWeight };
+}
+
+/**
  * METADATA SCORING REGISTRY
  *
  * Based on existing metadata-scoring module logic with additions from Element Analysis.
@@ -197,21 +298,29 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Character Usage Efficiency',
         description: 'Measures how well the title uses available character space',
         weight: 0.25,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('title_character_usage', ctx.activeRuleSet);
+          const effectiveWeight = ruleConfig?.weight ?? 0.25;
+
           const charCount = text.length;
           const maxChars = 30;
           const usagePercent = (charCount / maxChars) * 100;
 
+          // Use thresholds from Bible if available
+          const thresholdLow = ruleConfig?.threshold_low ?? 70;
+          const thresholdHigh = ruleConfig?.threshold_high ?? 100;
+
           let score = 0;
           if (usagePercent < 50) score = 40;
-          else if (usagePercent < 70) score = 60;
+          else if (usagePercent < thresholdLow) score = 60;
           else if (usagePercent < 90) score = 85;
-          else if (usagePercent <= 100) score = 100;
+          else if (usagePercent <= thresholdHigh) score = 100;
           else score = 0; // Over limit
 
           return {
             ruleId: 'title_character_usage',
-            passed: usagePercent >= 70 && usagePercent <= 100,
+            passed: usagePercent >= thresholdLow && usagePercent <= thresholdHigh,
             score,
             message: `Using ${charCount}/${maxChars} characters (${Math.round(usagePercent)}%)`,
             evidence: []
@@ -223,17 +332,20 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Unique Keyword Density',
         description: 'Evaluates meaningful keyword coverage with semantic relevance weighting',
         weight: 0.30,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('title_unique_keywords', ctx.activeRuleSet);
+
           const analysis = analyzeText(text, ctx.stopwords);
           const keywords = analysis.keywords;
 
           // Filter to only relevance >= 1 (exclude level 0 tokens)
-          const relevantKeywords = keywords.filter(k => getTokenRelevance(k) >= 1);
+          const relevantKeywords = keywords.filter(k => getTokenRelevance(k, ctx.activeRuleSet) >= 1);
           const uniqueRelevant = new Set(relevantKeywords);
 
           // Calculate relevance-weighted score
           const avgRelevance = relevantKeywords.length > 0
-            ? relevantKeywords.reduce((sum, k) => sum + getTokenRelevance(k), 0) / relevantKeywords.length
+            ? relevantKeywords.reduce((sum, k) => sum + getTokenRelevance(k, ctx.activeRuleSet), 0) / relevantKeywords.length
             : 0;
 
           // Base score from keyword count, boosted by average relevance
@@ -255,7 +367,10 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Keyword Combination Coverage',
         description: 'Evaluates multi-word keyword combinations (2-4 words)',
         weight: 0.30,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('title_combo_coverage', ctx.activeRuleSet);
+
           const tokens = tokenizeForASO(text);
           const comboAnalysis = analyzeCombinations(tokens, ctx.stopwords, 2, 4);
           const comboCount = comboAnalysis.meaningfulCombos.length;
@@ -280,7 +395,10 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Filler Token Penalty',
         description: 'Penalizes excessive use of stopwords and generic terms using noise ratio',
         weight: 0.15,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('title_filler_penalty', ctx.activeRuleSet);
+
           const analysis = analyzeText(text, ctx.stopwords);
           const noiseRatio = analysis.noiseRatio;
           const ignoredCount = analysis.ignored.length;
@@ -317,7 +435,12 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Character Usage Efficiency',
         description: 'Measures how well the subtitle uses available character space',
         weight: 0.20,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('subtitle_character_usage', ctx.activeRuleSet);
+          const thresholdLow = ruleConfig?.threshold_low ?? 70;
+          const thresholdHigh = ruleConfig?.threshold_high ?? 100;
+
           const charCount = text.length;
           const maxChars = 30;
           const usagePercent = charCount > 0 ? (charCount / maxChars) * 100 : 0;
@@ -325,14 +448,14 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
           let score = 0;
           if (charCount === 0) score = 0;
           else if (usagePercent < 50) score = 40;
-          else if (usagePercent < 70) score = 60;
+          else if (usagePercent < thresholdLow) score = 60;
           else if (usagePercent < 90) score = 85;
-          else if (usagePercent <= 100) score = 100;
+          else if (usagePercent <= thresholdHigh) score = 100;
           else score = 0;
 
           return {
             ruleId: 'subtitle_character_usage',
-            passed: usagePercent >= 70 && usagePercent <= 100,
+            passed: usagePercent >= thresholdLow && usagePercent <= thresholdHigh,
             score,
             message: charCount > 0
               ? `Using ${charCount}/${maxChars} characters (${Math.round(usagePercent)}%)`
@@ -346,7 +469,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Incremental Value',
         description: 'Measures how much NEW high-value information subtitle adds vs title',
         weight: 0.40,  // Highest weight - most important for subtitle
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('subtitle_incremental_value', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'subtitle_incremental_value',
@@ -359,7 +484,7 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
 
           // Get relevant title tokens (relevance >= 2)
           const titleRelevantTokens = new Set(
-            ctx.titleTokens.filter(t => getTokenRelevance(t) >= 2)
+            ctx.titleTokens.filter(t => getTokenRelevance(t, ctx.activeRuleSet) >= 2)
           );
 
           // Analyze subtitle
@@ -368,7 +493,7 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
 
           // Count only high-value NEW keywords (relevance >= 2, not in title)
           const newHighValueTokens = subtitleKeywords.filter(t => {
-            const relevance = getTokenRelevance(t);
+            const relevance = getTokenRelevance(t, ctx.activeRuleSet);
             return relevance >= 2 && !titleRelevantTokens.has(t);
           });
 
@@ -394,7 +519,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'New Combination Coverage',
         description: 'Evaluates NEW multi-word combinations vs title',
         weight: 0.25,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('subtitle_combo_coverage', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'subtitle_combo_coverage',
@@ -434,7 +561,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Title Complementarity',
         description: 'Ensures subtitle complements (not duplicates) title based on relevant tokens',
         weight: 0.15,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('subtitle_complementarity', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'subtitle_complementarity',
@@ -447,12 +576,12 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
 
           // Get relevant title tokens (relevance >= 2)
           const titleRelevantTokens = new Set(
-            ctx.titleTokens.filter(t => getTokenRelevance(t) >= 2)
+            ctx.titleTokens.filter(t => getTokenRelevance(t, ctx.activeRuleSet) >= 2)
           );
 
           // Get relevant subtitle tokens
           const analysis = analyzeText(text, ctx.stopwords);
-          const subtitleRelevantTokens = analysis.keywords.filter(t => getTokenRelevance(t) >= 2);
+          const subtitleRelevantTokens = analysis.keywords.filter(t => getTokenRelevance(t, ctx.activeRuleSet) >= 2);
 
           // Calculate overlap of relevant tokens only
           const overlapTokens = subtitleRelevantTokens.filter(t => titleRelevantTokens.has(t));
@@ -490,9 +619,11 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
       {
         id: 'description_hook_strength',
         name: 'Opening Hook Strength',
-        description: 'Evaluates the first paragraph\'s ability to capture attention',
+        description: 'Evaluates the first paragraph\'s ability to capture attention using category-based weighted scoring',
         weight: 0.30,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('description_hook_strength', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'description_hook_strength',
@@ -504,25 +635,34 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
           }
 
           const firstParagraph = text.split('\n')[0] || '';
-          const hookKeywords = ['discover', 'experience', 'transform', 'achieve', 'unlock', 'revolutionize', 'master'];
-          const hasHookKeyword = hookKeywords.some(k => firstParagraph.toLowerCase().includes(k));
-
           const firstSentence = firstParagraph.split('.')[0] || '';
-          const hasStrongOpening = firstSentence.length >= 50 && firstSentence.length <= 150;
 
-          let score = 60;
-          if (hasHookKeyword && hasStrongOpening) score = 90;
-          else if (hasHookKeyword) score = 75;
-          else if (hasStrongOpening) score = 70;
+          // Phase 10: Category-based hook scoring with vertical-specific weights
+          const hookResult = calculateHookScore(firstParagraph, ctx.activeRuleSet);
+
+          // Bonus for strong opening sentence length
+          const hasStrongOpening = firstSentence.length >= 50 && firstSentence.length <= 150;
+          const lengthBonus = hasStrongOpening ? 10 : 0;
+
+          // Final score with length bonus
+          const finalScore = Math.min(100, hookResult.score + lengthBonus);
+
+          // Build message based on matched categories
+          let message: string;
+          if (hookResult.matchedCategories.length === 0) {
+            message = 'Consider adding compelling hook words in first sentence';
+          } else if (hookResult.matchedCategories.length === 1) {
+            message = `Good opening hook (${hookResult.matchedCategories[0]})`;
+          } else {
+            message = `Strong opening hook (${hookResult.matchedCategories.length} categories: ${hookResult.matchedCategories.join(', ')})`;
+          }
 
           return {
             ruleId: 'description_hook_strength',
-            passed: score >= 70,
-            score,
-            message: hasHookKeyword
-              ? 'Strong opening hook detected'
-              : 'Consider adding compelling hook words in first sentence',
-            evidence: hasHookKeyword ? hookKeywords.filter(k => firstParagraph.toLowerCase().includes(k)) : []
+            passed: finalScore >= 60,
+            score: finalScore,
+            message,
+            evidence: hookResult.matchedCategories
           };
         }
       },
@@ -531,7 +671,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Feature Mentions',
         description: 'Counts explicit feature/benefit mentions',
         weight: 0.25,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('description_feature_mentions', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'description_feature_mentions',
@@ -559,7 +701,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Call-to-Action Strength',
         description: 'Evaluates presence of conversion-focused CTAs',
         weight: 0.20,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('description_cta_strength', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'description_cta_strength',
@@ -590,7 +734,9 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         name: 'Readability Score',
         description: 'Flesch-Kincaid Reading Ease (0-100, higher is better)',
         weight: 0.25,
-        evaluator: (text, ctx) => {
+        evaluator: async (text, ctx) => {
+          // Phase 15.7: Try Bible first, fallback to code default
+          const ruleConfig = await getRuleConfig('description_readability', ctx.activeRuleSet);
           if (!text || text.length === 0) {
             return {
               ruleId: 'description_readability',

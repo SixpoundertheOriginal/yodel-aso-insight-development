@@ -65,6 +65,12 @@ const AdminUsers = lazy(() => import("./pages/admin/users"));
 const FeatureManagement = lazy(() => import("./pages/admin/FeatureManagement"));
 const FeatureTestingLab = lazy(() => import("./pages/admin/FeatureTestingLab"));
 const SecurityMonitoring = lazy(() => import("./pages/SecurityMonitoring"));
+const RuleSetListPage = lazy(() => import("./pages/admin/aso-bible/RuleSetListPage"));
+const RuleSetEditorPage = lazy(() => import("./pages/admin/aso-bible/RuleSetEditorPage"));
+const KpiRegistryPage = lazy(() => import("./pages/admin/aso-bible/KpiRegistryPage"));
+const FormulaRegistryPage = lazy(() => import("./pages/admin/aso-bible/FormulaRegistryPage"));
+const RuleRegistryPage = lazy(() => import("./pages/admin/aso-bible/RuleRegistryPage"));
+const IntentRegistryPage = lazy(() => import("./pages/admin/aso-bible/IntentRegistryPage"));
 
 
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
@@ -266,6 +272,38 @@ function App() {
                           <Route
                             path="/admin/security"
                             element={<ProtectedRoute><SecurityMonitoring /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/rulesets"
+                            element={<ProtectedRoute><RuleSetListPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/rulesets/:vertical"
+                            element={<ProtectedRoute><RuleSetEditorPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/rulesets/:vertical/:market"
+                            element={<ProtectedRoute><RuleSetEditorPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/rulesets/market/:market"
+                            element={<ProtectedRoute><RuleSetEditorPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/kpi-registry"
+                            element={<ProtectedRoute><KpiRegistryPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/formula-registry"
+                            element={<ProtectedRoute><FormulaRegistryPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/rule-registry"
+                            element={<ProtectedRoute><RuleRegistryPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/intent-registry"
+                            element={<ProtectedRoute><IntentRegistryPage /></ProtectedRoute>}
                           />
                           <Route
                             path="/smoke-test"

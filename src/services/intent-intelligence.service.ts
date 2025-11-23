@@ -256,14 +256,18 @@ export class IntentIntelligenceService {
   ): Promise<Map<string, IntentClassification>> {
     // Feature flag check
     if (!AUTOCOMPLETE_INTELLIGENCE_ENABLED) {
+      console.log('⚠️ [IntentIntelligence] Feature disabled by AUTOCOMPLETE_INTELLIGENCE_ENABLED flag');
       return new Map();
     }
 
     try {
+      console.log(`🔍 [IntentIntelligence] Enriching ${keywords.length} keywords:`, keywords.slice(0, 5), keywords.length > 5 ? '...' : '');
+
       const resultMap = new Map<string, IntentClassification>();
 
       // Step 1: Check registry for existing entries
       const registryEntries = await this.fetchIntentRegistry(keywords, platform, region);
+      console.log(`📊 [IntentIntelligence] Registry hits: ${registryEntries.length}/${keywords.length}`);
 
       // Add registry entries to result map
       for (const entry of registryEntries) {
@@ -278,11 +282,11 @@ export class IntentIntelligenceService {
       const missingKeywords = keywords.filter((kw) => !resultMap.has(kw));
 
       if (missingKeywords.length === 0) {
-        console.log('✅ All keywords found in registry');
+        console.log('✅ [IntentIntelligence] All keywords found in registry');
         return resultMap;
       }
 
-      console.log(`📡 Fetching intent for ${missingKeywords.length} missing keywords via Edge Function`);
+      console.log(`📡 [IntentIntelligence] Fetching ${missingKeywords.length} missing keywords via Edge Function:`, missingKeywords.slice(0, 3));
 
       // Step 3: Call Edge Function for missing keywords (batched)
       const edgeFunctionResults = await Promise.allSettled(
@@ -290,17 +294,27 @@ export class IntentIntelligenceService {
       );
 
       // Step 4: Add Edge Function results to map
+      let edgeFunctionSuccessCount = 0;
       edgeFunctionResults.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value) {
           const keyword = missingKeywords[index];
           resultMap.set(keyword, result.value);
+          edgeFunctionSuccessCount++;
+        } else if (result.status === 'rejected') {
+          console.warn(`❌ [IntentIntelligence] Edge Function failed for "${missingKeywords[index]}":`, result.reason);
         }
       });
 
-      console.log(`✅ Enriched ${resultMap.size}/${keywords.length} keywords with intent`);
+      console.log(`📡 [IntentIntelligence] Edge Function success: ${edgeFunctionSuccessCount}/${missingKeywords.length}`);
+      console.log(`✅ [IntentIntelligence] Final enrichment: ${resultMap.size}/${keywords.length} keywords with intent data`);
+
+      if (resultMap.size === 0) {
+        console.warn('⚠️ [IntentIntelligence] WARNING: No keywords enriched. Check registry data and Edge Function connectivity.');
+      }
+
       return resultMap;
     } catch (error) {
-      console.error('IntentIntelligenceService.enrichKeywordsWithIntent error:', error);
+      console.error('❌ [IntentIntelligence] enrichKeywordsWithIntent error:', error);
       return new Map();
     }
   }
