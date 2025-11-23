@@ -22,19 +22,40 @@ import {
   type RuleEvaluationResult
 } from './metadataScoringRegistry';
 import { generateEnhancedRecommendations, type RecommendationSignals } from './utils/recommendationEngineV2';
+import { getActiveRuleSet } from '@/engine/asoBible/rulesetLoader';
+import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
+import { loadIntentPatterns } from '@/engine/asoBible/intentEngine';
+import { setIntentPatterns, classifyIntent } from '@/utils/comboIntentClassifier';
 
 /**
  * Lightweight semantic relevance scoring for tokens (exported for use in registry)
  *
+ * Phase 10: Now accepts optional activeRuleSet to support vertical-specific token relevance overrides
+ *
  * @param token - Token to evaluate
+ * @param activeRuleSet - Optional merged rule set with vertical/market overrides
  * @returns Relevance score (0-3)
  *   3 = Languages, core intent verbs (learn, speak, study, master)
  *   2 = Strong domain nouns (lessons, courses, grammar, vocabulary)
  *   1 = Neutral but valid words
  *   0 = Numeric/time-only, generic adjectives, low-value tokens
  */
-export function getTokenRelevance(token: string): 0 | 1 | 2 | 3 {
+export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet): 0 | 1 | 2 | 3 {
   const tokenLower = token.toLowerCase();
+
+  // Phase 10: Check for vertical/market token relevance overrides
+  if (activeRuleSet?.tokenRelevanceOverrides) {
+    const override = activeRuleSet.tokenRelevanceOverrides[tokenLower];
+    if (override !== undefined) {
+      // Log override usage (development only)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Token Relevance] Override applied for "${token}": ${override} (vertical: ${activeRuleSet.verticalId})`);
+      }
+      return override;
+    }
+  }
+
+  // Fallback to global patterns (Phase 9 behavior)
 
   // Level 0: Low-value tokens (numeric, time-bound, generic adjectives)
   const lowValuePatterns = /^(best|top|great|good|new|latest|free|premium|pro|plus|lite|\d+|one|two|three)$/i;
@@ -63,28 +84,69 @@ export class MetadataAuditEngine {
   /**
    * Lightweight semantic relevance scoring for tokens
    * (Delegates to exported function for use in registry)
+   *
+   * Phase 10: Now accepts optional activeRuleSet for vertical-specific overrides
    */
-  static getTokenRelevance(token: string): 0 | 1 | 2 | 3 {
-    return getTokenRelevance(token);
+  static getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet): 0 | 1 | 2 | 3 {
+    return getTokenRelevance(token, activeRuleSet);
   }
 
   /**
    * Evaluates all metadata elements and returns unified audit result
+   * Phase 15.7: Now async to support Bible config loading
    *
    * @param metadata - Scraped app metadata from orchestrator
    * @param options - Optional evaluation options
    * @returns Unified metadata audit result
    */
-  static evaluate(
+  static async evaluate(
     metadata: ScrapedMetadata,
     options?: {
       competitorData?: any[];
+      locale?: string;
     }
-  ): UnifiedMetadataAuditResult {
+  ): Promise<UnifiedMetadataAuditResult> {
+    // Phase 8: Load active rule set (Base → Vertical → Market → Client)
+    const activeRuleSet = getActiveRuleSet(
+      {
+        appId: metadata.appId,
+        category: metadata.applicationCategory,
+        title: metadata.title,
+        subtitle: metadata.subtitle,
+        description: metadata.description,
+      },
+      options?.locale || 'en-US'
+    );
+
+    // Log active rule set (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Metadata Audit Engine] Active RuleSet:', {
+        verticalId: activeRuleSet.verticalId,
+        marketId: activeRuleSet.marketId,
+        leakWarnings: activeRuleSet.leakWarnings?.length || 0,
+      });
+    }
+
     // Load configuration
     const stopwordsData = getStopwords();
     const stopwords = new Set(stopwordsData.stopwords || []);
     const semanticRules = getSemanticRules();
+
+    // Phase 16.7: Load intent patterns for Bible-driven combo classification
+    // Uses Hybrid Model (Option B): Try DB first, fall back to minimal defaults if DB empty/fails
+    const intentPatterns = await loadIntentPatterns(
+      activeRuleSet.verticalId,
+      activeRuleSet.marketId,
+      metadata.organizationId,  // Optional app/client context
+      metadata.appId
+    );
+
+    // Inject patterns into combo classifier (cached for synchronous use)
+    setIntentPatterns(intentPatterns);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Intent Engine] Loaded ${intentPatterns.length} patterns for classification`);
+    }
 
     // Tokenize all elements upfront using ASO-aware tokenizer
     const titleTokens = tokenizeForASO(metadata.title || '');
@@ -107,14 +169,22 @@ export class MetadataAuditEngine {
         time_keywords: semanticRules.time_keywords || [],
         positive_patterns: semanticRules.positive_patterns || [],
         negative_patterns: semanticRules.negative_patterns || []
-      }
+      },
+      // Phase 8: Include active rule set for future override logic
+      activeRuleSet
     };
 
-    // Evaluate each element
+    // Evaluate each element (Phase 15.7: await async evaluators)
+    const [titleResult, subtitleResult, descriptionResult] = await Promise.all([
+      this.evaluateElement('title', metadata.title || '', context),
+      this.evaluateElement('subtitle', metadata.subtitle || '', context),
+      this.evaluateElement('description', metadata.description || '', context)
+    ]);
+
     const elementResults: Record<MetadataElement, ElementScoringResult> = {
-      title: this.evaluateElement('title', metadata.title || '', context),
-      subtitle: this.evaluateElement('subtitle', metadata.subtitle || '', context),
-      description: this.evaluateElement('description', metadata.description || '', context)
+      title: titleResult,
+      subtitle: subtitleResult,
+      description: descriptionResult
     };
 
     // Calculate weighted overall score (RANKING elements only: title + subtitle)
@@ -144,7 +214,8 @@ export class MetadataAuditEngine {
       elementResults,
       keywordCoverage,
       comboCoverage,
-      conversionInsights
+      conversionInsights,
+      activeRuleSet
     );
     const topRecommendations = recommendations.rankingRecommendations;
     const conversionRecommendations = recommendations.conversionRecommendations;
@@ -162,32 +233,35 @@ export class MetadataAuditEngine {
 
   /**
    * Evaluates a single element using its registered rules
+   * Phase 15.7: Now async to support Bible config loading
    */
-  private static evaluateElement(
+  private static async evaluateElement(
     element: MetadataElement,
     text: string,
     context: EvaluationContext
-  ): ElementScoringResult {
+  ): Promise<ElementScoringResult> {
     const config = METADATA_SCORING_REGISTRY.find(c => c.element === element);
     if (!config) {
       throw new Error(`No config found for element: ${element}`);
     }
 
-    // Evaluate all rules
-    const ruleResults: RuleEvaluationResult[] = config.rules.map(rule => {
-      try {
-        return rule.evaluator(text, context);
-      } catch (error) {
-        console.error(`[MetadataAuditEngine] Rule ${rule.id} failed:`, error);
-        return {
-          ruleId: rule.id,
-          passed: false,
-          score: 0,
-          message: `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          evidence: []
-        };
-      }
-    });
+    // Evaluate all rules (Phase 15.7: await each evaluator as it may be async)
+    const ruleResults: RuleEvaluationResult[] = await Promise.all(
+      config.rules.map(async rule => {
+        try {
+          return await rule.evaluator(text, context);
+        } catch (error) {
+          console.error(`[MetadataAuditEngine] Rule ${rule.id} failed:`, error);
+          return {
+            ruleId: rule.id,
+            passed: false,
+            score: 0,
+            message: `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            evidence: []
+          };
+        }
+      })
+    );
 
     // Calculate weighted element score
     const score = ruleResults.reduce((total, result, index) => {
@@ -277,12 +351,15 @@ export class MetadataAuditEngine {
 
   /**
    * Generates recommendations using V2 engine (strategic, consultant-style)
+   *
+   * Phase 10: Now accepts activeRuleSet for vertical-specific templates
    */
   private static generateRecommendationsV2(
     elementResults: Record<MetadataElement, ElementScoringResult>,
     keywordCoverage: UnifiedMetadataAuditResult['keywordCoverage'],
     comboCoverage: UnifiedMetadataAuditResult['comboCoverage'],
-    conversionInsights: UnifiedMetadataAuditResult['conversionInsights']
+    conversionInsights: UnifiedMetadataAuditResult['conversionInsights'],
+    activeRuleSet?: MergedRuleSet
   ): {
     rankingRecommendations: string[];
     conversionRecommendations: string[];
@@ -331,7 +408,8 @@ export class MetadataAuditEngine {
       descriptionHookStrength: conversionInsights.description.hookStrength,
       descriptionFeatureMentions: conversionInsights.description.featureMentions,
       descriptionReadability: conversionInsights.description.readability,
-      descriptionCtaStrength: conversionInsights.description.ctaStrength
+      descriptionCtaStrength: conversionInsights.description.ctaStrength,
+      activeRuleSet  // Phase 10: Pass activeRuleSet for vertical-specific templates
     };
 
     return generateEnhancedRecommendations(signals);
@@ -543,6 +621,23 @@ export class MetadataAuditEngine {
         console.error('[MetadataAuditEngine] Brand classification failed:', error);
         // Graceful fallback: use existing classification without brand enrichment
       }
+    }
+
+    // Phase 16.7: Intent Classification Post-Processor
+    // Enrich combos with search intent classification using Intent Engine
+    // Intent patterns were loaded at the start of evaluate() and injected via setIntentPatterns()
+    titleCombosEnriched = titleCombosEnriched.map(combo => ({
+      ...combo,
+      intentClass: classifyIntent(combo),
+    }));
+
+    subtitleCombosEnriched = subtitleCombosEnriched.map(combo => ({
+      ...combo,
+      intentClass: classifyIntent(combo),
+    }));
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[MetadataAuditEngine] Intent classification applied to ${titleCombosEnriched.length + subtitleCombosEnriched.length} combos`);
     }
 
     return {
