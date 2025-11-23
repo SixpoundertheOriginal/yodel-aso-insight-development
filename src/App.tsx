@@ -46,7 +46,6 @@ const CreativeIntelligence = lazy(() =>
 const AsoKnowledgeEngine = lazy(() => import("./pages/aso-knowledge-engine"));
 const ASOUnified = lazy(() => import("./pages/aso-unified"));
 const Apps = lazy(() => import("./pages/apps"));
-const WorkspaceApps = lazy(() => import("./pages/workspace/apps"));
 const AppDiscovery = lazy(() => import("./pages/app-discovery"));
 const Profile = lazy(() => import("./pages/profile"));
 const Settings = lazy(() => import("./pages/settings"));
@@ -243,10 +242,6 @@ function App() {
                           <Route
                             path="/apps"
                             element={<ProtectedRoute><Apps /></ProtectedRoute>}
-                          />
-                          <Route
-                            path="/workspace/apps"
-                            element={<ProtectedRoute><WorkspaceApps /></ProtectedRoute>}
                           />
                           <Route
                             path="/app-discovery"
