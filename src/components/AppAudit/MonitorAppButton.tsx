@@ -119,6 +119,14 @@ export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
       auditScore: auditData?.overallScore
     });
 
+    const normalizedMetadata = metadata ? normalizeMetadata(metadata) : undefined;
+    console.log('[DIAG-SUBTITLE] MonitorAppButton sending to edge function:', {
+      original_subtitle: metadata?.subtitle,
+      original_appStoreSubtitle: metadata?.appStoreSubtitle,
+      normalized_subtitle: normalizedMetadata?.subtitle,
+      metadata_title: metadata?.title,
+    });
+
     saveApp({
       organizationId: normalizedKey.organization_id,
       app_id: normalizedKey.app_id,
@@ -132,7 +140,7 @@ export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
       primary_country,
       audit_enabled: true,
       // CRITICAL: Include UI-fetched metadata to prevent server re-fetch
-      metadata: metadata ? normalizeMetadata(metadata) : undefined,
+      metadata: normalizedMetadata,
       // CRITICAL: Include UI-computed audit snapshot for best quality
       auditSnapshot: auditData ? {
         audit_score: Math.round(auditData.overallScore),

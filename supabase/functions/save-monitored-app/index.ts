@@ -401,6 +401,12 @@ serve(async (req: Request): Promise<Response> => {
       if (uiMetadata) {
         // PRIORITY 1: Use UI-provided metadata (prevents server re-fetch)
         console.log('[save-monitored-app] ✓ Using UI-provided metadata (best path)');
+        console.log('[DIAG-SUBTITLE] uiMetadata received:', {
+          has_subtitle: !!uiMetadata.subtitle,
+          subtitle_value: uiMetadata.subtitle,
+          subtitle_length: uiMetadata.subtitle?.length,
+          title: uiMetadata.title,
+        });
         effectiveMetadata = uiMetadata;
         metadataSource = 'ui';
       } else if (!existingCache || needsRefresh) {
@@ -454,6 +460,14 @@ serve(async (req: Request): Promise<Response> => {
         const screenshots = effectiveMetadata.screenshots || [];
         const iconUrl = effectiveMetadata.app_icon_url || effectiveMetadata.icon || null;
 
+        console.log('[DIAG-SUBTITLE] Extracted for cache:', {
+          has_subtitle: !!subtitle,
+          subtitle_value: subtitle,
+          subtitle_length: subtitle?.length,
+          title: title,
+          metadataSource: metadataSource,
+        });
+
         const version_hash = await computeVersionHash({
           title,
           subtitle,
@@ -499,6 +513,10 @@ serve(async (req: Request): Promise<Response> => {
           metadataCache = cacheData;
           metadataCached = true;
           console.log('[save-monitored-app] Metadata cached:', version_hash);
+          console.log('[DIAG-SUBTITLE] Cached to database:', {
+            subtitle_in_payload: subtitle,
+            subtitle_in_cache_data: cacheData?.subtitle,
+          });
         }
 
         // STEP 5: Generate Bible-driven audit snapshot (Phase 19)
@@ -583,6 +601,10 @@ serve(async (req: Request): Promise<Response> => {
               auditSnapshot = snapshotData;
               auditCreated = true;
               console.log('[save-monitored-app] Bible audit snapshot created:', snapshotData.id);
+              console.log('[DIAG-SUBTITLE] Snapshot saved to database:', {
+                subtitle_in_payload: subtitle,
+                subtitle_in_snapshot_data: snapshotData?.subtitle,
+              });
 
               // STEP 6: Update monitored_apps with audit results and validation state
               await supabase
