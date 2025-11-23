@@ -24,6 +24,7 @@ interface MetadataDimensionRadarProps {
     learning: number;
     structure: number;
     brandBalance: number;
+    intentQuality: number;
     compliance?: number;
     discoveryCoverage?: number;
   };
@@ -38,6 +39,7 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
       { dimension: 'Learning', score: metadataDimensionScores.learning, fullMark: 100 },
       { dimension: 'Structure', score: metadataDimensionScores.structure, fullMark: 100 },
       { dimension: 'Brand Balance', score: metadataDimensionScores.brandBalance, fullMark: 100 },
+      { dimension: 'Intent Quality', score: metadataDimensionScores.intentQuality, fullMark: 100 },
     ];
 
     // Add optional dimensions if available
@@ -65,7 +67,7 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
           METADATA DIMENSION BALANCE
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-          Multi-axis quality assessment — target: balanced pentagon at 80+
+          Multi-axis quality assessment — target: balanced hexagon at 80+
         </p>
       </CardHeader>
 

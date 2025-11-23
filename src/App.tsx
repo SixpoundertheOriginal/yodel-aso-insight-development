@@ -72,6 +72,9 @@ const FormulaRegistryPage = lazy(() => import("./pages/admin/aso-bible/FormulaRe
 const RuleRegistryPage = lazy(() => import("./pages/admin/aso-bible/RuleRegistryPage"));
 const IntentRegistryPage = lazy(() => import("./pages/admin/aso-bible/IntentRegistryPage"));
 
+// Phase 19: Monitoring & Audit History Pages
+const MonitoredAppsPage = lazy(() => import("./pages/aso-ai-hub/MonitoredAppsPage"));
+const AuditHistoryView = lazy(() => import("./pages/aso-ai-hub/AuditHistoryView"));
 
 const SignIn = lazy(() => import("./pages/auth/sign-in"));
 const SignUp = lazy(() => import("./pages/auth/sign-up"));
@@ -162,6 +165,18 @@ function App() {
                             <Route
                               path="audit"
                               element={<ProtectedRoute><AsoAiHub mode="live" /></ProtectedRoute>}
+                            />
+
+                            {/* Phase 19: Monitored Apps List */}
+                            <Route
+                              path="monitored"
+                              element={<ProtectedRoute><MonitoredAppsPage /></ProtectedRoute>}
+                            />
+
+                            {/* Phase 19: Audit History View */}
+                            <Route
+                              path="monitored/:monitoredAppId/history"
+                              element={<ProtectedRoute><AuditHistoryView /></ProtectedRoute>}
                             />
 
                             {/* Monitored app audit mode (cached data) */}

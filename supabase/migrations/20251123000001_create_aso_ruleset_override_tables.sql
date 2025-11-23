@@ -52,8 +52,10 @@ COMMENT ON TABLE aso_token_relevance_overrides IS 'Phase 11: Token relevance sco
 -- ============================================================================
 -- INTENT PATTERN OVERRIDES
 -- ============================================================================
+-- Note: This table may already exist from earlier migration (20250124000001_create_intent_registry.sql)
+-- Using IF NOT EXISTS to avoid conflicts
 
-CREATE TABLE aso_intent_pattern_overrides (
+CREATE TABLE IF NOT EXISTS aso_intent_pattern_overrides (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Scope

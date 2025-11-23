@@ -171,23 +171,42 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // ========================================================================
-    // STEP 3: Check for audit snapshot
+    // STEP 3: Check for audit snapshot (Phase 19: Try Bible snapshot first)
     // ========================================================================
-    const { data: snapshot, error: snapshotError } = await supabase
-      .from('audit_snapshots')
+    // Try Bible-driven snapshot first
+    const { data: bibleSnapshot, error: bibleSnapshotError } = await supabase
+      .from('aso_audit_snapshots')
       .select('id')
+      .eq('monitored_app_id', monitored_app_id)
       .eq('organization_id', organization_id)
-      .eq('app_id', app_id)
-      .eq('platform', platform)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (snapshotError) {
-      console.error('[validate-consistency] Snapshot query error:', snapshotError);
+    if (bibleSnapshotError) {
+      console.error('[validate-consistency] Bible snapshot query error:', bibleSnapshotError);
     }
 
-    const hasSnapshot = Boolean(snapshot);
+    let hasSnapshot = Boolean(bibleSnapshot);
+
+    // Fallback to old audit_snapshots for backwards compatibility
+    if (!hasSnapshot) {
+      const { data: oldSnapshot, error: oldSnapshotError } = await supabase
+        .from('audit_snapshots')
+        .select('id')
+        .eq('organization_id', organization_id)
+        .eq('app_id', app_id)
+        .eq('platform', platform)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (oldSnapshotError) {
+        console.error('[validate-consistency] Old snapshot query error:', oldSnapshotError);
+      }
+
+      hasSnapshot = Boolean(oldSnapshot);
+    }
 
     // ========================================================================
     // STEP 4: Determine validation state

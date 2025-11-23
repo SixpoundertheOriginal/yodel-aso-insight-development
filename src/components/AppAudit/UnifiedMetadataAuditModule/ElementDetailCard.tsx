@@ -13,19 +13,22 @@ import { RuleResultsTable } from './RuleResultsTable';
 import { SearchIntentCoverageCard } from './SearchIntentCoverageCard';
 import { useIntentCoverage } from '@/hooks/useIntentIntelligence';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
-import type { ElementScoringResult } from './types';
+import type { ElementScoringResult, UnifiedMetadataAuditResult } from './types';
 import type { ScrapedMetadata } from '@/types/aso';
 
 interface ElementDetailCardProps {
   elementResult: ElementScoringResult;
   elementDisplayName: string;
   metadata: ScrapedMetadata;
+  /** Phase 17: Bible-driven intent coverage (optional) */
+  auditResult?: UnifiedMetadataAuditResult;
 }
 
 export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   elementResult,
   elementDisplayName,
   metadata: rawMetadata,
+  auditResult,
 }) => {
   // Title and Subtitle always start expanded, Description starts collapsed
   const initiallyExpanded = elementResult.element === 'title' || elementResult.element === 'subtitle';
@@ -385,9 +388,16 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
           </div>
 
           {/* Search Intent Coverage (Title and Subtitle only) */}
-          {shouldShowIntentCoverage && intentSignalsForElement && !isIntentLoading && (
+          {shouldShowIntentCoverage && !isIntentLoading && (
             <div className="pt-2 border-t border-zinc-800">
               <SearchIntentCoverageCard
+                bibleCoverage={
+                  element === 'title'
+                    ? auditResult?.intentCoverage?.title
+                    : element === 'subtitle'
+                    ? auditResult?.intentCoverage?.subtitle
+                    : undefined
+                }
                 intentSignals={intentSignalsForElement}
                 elementType={element as 'title' | 'subtitle'}
                 keywords={elementMetadata.keywords}

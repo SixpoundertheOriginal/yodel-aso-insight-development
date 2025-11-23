@@ -207,6 +207,7 @@ export class KpiEngine {
       comboCoverage: input.comboCoverage,
       brandSignals: input.brandSignals,
       intentSignals: input.intentSignals,
+      intentCoverage: input.intentCoverage, // Phase 18: Bible-driven intent coverage
     });
 
     // Compute all KPIs
@@ -304,6 +305,7 @@ export class KpiEngine {
     comboCoverage?: any;
     brandSignals?: any;
     intentSignals?: any;
+    intentCoverage?: any; // Phase 18: Bible-driven intent coverage
   }) {
     const {
       title,
@@ -316,6 +318,7 @@ export class KpiEngine {
       comboCoverage,
       brandSignals,
       intentSignals,
+      intentCoverage, // Phase 18
     } = data;
 
     // Character counts
@@ -386,11 +389,46 @@ export class KpiEngine {
     });
     const repeatedTokens = Array.from(tokenCounts.values()).filter(count => count > 1).length;
 
-    // Intent metrics
-    const navigationalCount = intentSignals?.navigationalCount || 0;
-    const informationalCount = intentSignals?.informationalCount || 0;
-    const commercialCount = intentSignals?.commercialCount || 0;
-    const transactionalCount = intentSignals?.transactionalCount || 0;
+    // Phase 18: Intent metrics (prefer Bible-driven intentCoverage over legacy intentSignals)
+    let navigationalCount = 0;
+    let informationalCount = 0;
+    let commercialCount = 0;
+    let transactionalCount = 0;
+    let unclassifiedCount = 0;
+    let totalTokens = 0;
+    let intentCoverageScore = 0;
+    let intentBalanceScore = 0;
+    let intentDiversityScore = 0;
+    let intentGapIndex = 0;
+
+    if (intentCoverage) {
+      // Phase 18: Use Bible-driven Intent Coverage (Phase 17)
+      const combined = intentCoverage.combinedDistribution;
+      navigationalCount = combined.navigational || 0;
+      informationalCount = combined.informational || 0;
+      commercialCount = combined.commercial || 0;
+      transactionalCount = combined.transactional || 0;
+      unclassifiedCount = combined.unclassified || 0;
+      totalTokens = navigationalCount + informationalCount + commercialCount + transactionalCount + unclassifiedCount;
+      intentCoverageScore = intentCoverage.overallScore || 0;
+
+      // Calculate balance score (entropy-based)
+      intentBalanceScore = this.calculateIntentBalanceScore(combined);
+
+      // Calculate diversity score (number of distinct intent types present)
+      intentDiversityScore = this.calculateIntentDiversityScore(combined);
+
+      // Calculate gap index (number of missing important intent types)
+      intentGapIndex = this.calculateIntentGapIndex(combined);
+    } else if (intentSignals) {
+      // Fallback: Legacy Autocomplete Intelligence
+      navigationalCount = intentSignals.navigationalCount || 0;
+      informationalCount = intentSignals.informationalCount || 0;
+      commercialCount = intentSignals.commercialCount || 0;
+      transactionalCount = intentSignals.transactionalCount || 0;
+      totalTokens = navigationalCount + informationalCount + commercialCount + transactionalCount;
+    }
+
     const totalIntentKeywords = navigationalCount + informationalCount + commercialCount + transactionalCount;
 
     return {
@@ -439,12 +477,18 @@ export class KpiEngine {
       totalMeaningfulTokens,
       repeatedTokens,
 
-      // Intent
+      // Intent (Legacy + Phase 18 Bible-driven)
       navigationalCount,
       informationalCount,
       commercialCount,
       transactionalCount,
+      unclassifiedCount,
+      totalTokens,
       totalIntentKeywords,
+      intentCoverageScore, // Phase 18: Overall intent coverage (0-100)
+      intentBalanceScore, // Phase 18: Entropy-based balance
+      intentDiversityScore, // Phase 18: Number of distinct intent types
+      intentGapIndex, // Phase 18: Missing intent types
     };
   }
 
@@ -584,23 +628,46 @@ export class KpiEngine {
           ? primitives.actionVerbCount / primitives.totalMeaningfulTokens
           : 0;
 
-      // Intent Alignment
-      case 'intent_alignment_title_primary':
-        return this.calculateIntentAlignment(primitives);
-
-      case 'intent_alignment_subtitle_primary':
-        return this.calculateIntentAlignment(primitives);
-
-      case 'navigational_bias':
-        return primitives.totalIntentKeywords > 0
-          ? (primitives.navigationalCount / primitives.totalIntentKeywords) * 100
+      // Phase 18: Intent Quality (Bible-driven)
+      case 'informational_intent_coverage_score':
+        return primitives.totalTokens > 0
+          ? (primitives.informationalCount / primitives.totalTokens) * 100
           : 0;
 
-      case 'generic_discovery_bias':
-        const discoveryCount = primitives.informationalCount + primitives.commercialCount;
-        return primitives.totalIntentKeywords > 0
-          ? (discoveryCount / primitives.totalIntentKeywords) * 100
+      case 'commercial_intent_coverage_score':
+        return primitives.totalTokens > 0
+          ? (primitives.commercialCount / primitives.totalTokens) * 100
           : 0;
+
+      case 'transactional_intent_coverage_score':
+        return primitives.totalTokens > 0
+          ? (primitives.transactionalCount / primitives.totalTokens) * 100
+          : 0;
+
+      case 'navigational_noise_ratio':
+        // navigational + unclassified = noise (lower is better)
+        const noiseCount = primitives.navigationalCount + primitives.unclassifiedCount;
+        return primitives.totalTokens > 0
+          ? (noiseCount / primitives.totalTokens) * 100
+          : 0;
+
+      case 'intent_balance_score':
+        return primitives.intentBalanceScore;
+
+      case 'intent_diversity_score':
+        return primitives.intentDiversityScore;
+
+      case 'intent_gap_index':
+        return primitives.intentGapIndex;
+
+      case 'intent_alignment_score':
+        // Vertical-specific intent alignment
+        // TODO: Implement vertical-specific expectations
+        return primitives.intentCoverageScore; // For now, use overall coverage
+
+      case 'intent_quality_score':
+        // Weighted blend of all intent quality metrics
+        return this.calculateIntentQualityScore(primitives);
 
       default:
         return 0;
@@ -642,6 +709,7 @@ export class KpiEngine {
 
   /**
    * Calculate intent alignment (0-100)
+   * @deprecated Legacy method - use intent_quality KPIs instead
    */
   private static calculateIntentAlignment(primitives: any): number {
     if (primitives.totalIntentKeywords === 0) return 0;
@@ -664,6 +732,113 @@ export class KpiEngine {
       : 0;
 
     return Math.min(diversityScore + discoveryScore, 100);
+  }
+
+  /**
+   * Phase 18: Calculate intent balance score using Shannon entropy (0-100)
+   * Higher entropy = more balanced distribution
+   */
+  private static calculateIntentBalanceScore(distribution: any): number {
+    const counts = [
+      distribution.informational || 0,
+      distribution.commercial || 0,
+      distribution.transactional || 0,
+      distribution.navigational || 0,
+    ];
+
+    const total = counts.reduce((sum, c) => sum + c, 0);
+    if (total === 0) return 0;
+
+    // Calculate Shannon entropy
+    let entropy = 0;
+    for (const count of counts) {
+      if (count > 0) {
+        const p = count / total;
+        entropy -= p * Math.log2(p);
+      }
+    }
+
+    // Normalize to 0-100 (max entropy for 4 categories is log2(4) = 2)
+    const maxEntropy = Math.log2(4);
+    const normalizedEntropy = (entropy / maxEntropy) * 100;
+
+    return Math.round(normalizedEntropy);
+  }
+
+  /**
+   * Phase 18: Calculate intent diversity score (0-100)
+   * Number of distinct intent types present, scaled 0-100
+   */
+  private static calculateIntentDiversityScore(distribution: any): number {
+    const counts = [
+      distribution.informational || 0,
+      distribution.commercial || 0,
+      distribution.transactional || 0,
+      distribution.navigational || 0,
+    ];
+
+    // Count non-zero intent types
+    const presentTypes = counts.filter(c => c > 0).length;
+
+    // Scale to 0-100 (4 types = 100, 3 types = 75, 2 types = 50, 1 type = 25, 0 types = 0)
+    return Math.round((presentTypes / 4) * 100);
+  }
+
+  /**
+   * Phase 18: Calculate intent gap index (0-100)
+   * Measures how many important intent types are missing
+   * Lower is better (0 = no gaps, 100 = all gaps)
+   */
+  private static calculateIntentGapIndex(distribution: any): number {
+    const counts = [
+      distribution.informational || 0,
+      distribution.commercial || 0,
+      distribution.transactional || 0,
+      // Note: navigational is not counted as "important" since it's brand-focused
+    ];
+
+    // Count missing important intent types
+    const missingTypes = counts.filter(c => c === 0).length;
+
+    // Scale to 0-100 (0 missing = 0, 1 missing = 33, 2 missing = 67, 3 missing = 100)
+    return Math.round((missingTypes / 3) * 100);
+  }
+
+  /**
+   * Phase 18: Calculate overall intent quality score (0-100)
+   * Weighted blend of all intent quality metrics
+   */
+  private static calculateIntentQualityScore(primitives: any): number {
+    if (primitives.totalTokens === 0) return 0;
+
+    // Calculate coverage scores
+    const informationalCoverage = primitives.totalTokens > 0
+      ? (primitives.informationalCount / primitives.totalTokens) * 100
+      : 0;
+    const commercialCoverage = primitives.totalTokens > 0
+      ? (primitives.commercialCount / primitives.totalTokens) * 100
+      : 0;
+    const transactionalCoverage = primitives.totalTokens > 0
+      ? (primitives.transactionalCount / primitives.totalTokens) * 100
+      : 0;
+
+    // Calculate noise ratio (lower is better, so invert it)
+    const noiseCount = primitives.navigationalCount + primitives.unclassifiedCount;
+    const noiseRatio = primitives.totalTokens > 0
+      ? (noiseCount / primitives.totalTokens) * 100
+      : 0;
+    const noiseScore = Math.max(0, 100 - noiseRatio); // Invert: 0% noise = 100 score
+
+    // Weighted blend
+    const qualityScore =
+      informationalCoverage * 0.25 +    // 25% weight on informational
+      commercialCoverage * 0.20 +       // 20% weight on commercial
+      transactionalCoverage * 0.15 +    // 15% weight on transactional
+      primitives.intentBalanceScore * 0.20 + // 20% weight on balance
+      primitives.intentDiversityScore * 0.10 + // 10% weight on diversity
+      noiseScore * 0.10;                // 10% weight on noise (inverted)
+
+    return Math.round(Math.min(100, qualityScore));
   }
 
   /**

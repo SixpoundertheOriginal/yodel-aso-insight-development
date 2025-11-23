@@ -347,50 +347,202 @@
       "direction": "higher_is_better"
     },
     {
-      "id": "intent_alignment_title_primary",
-      "familyId": "intent_alignment",
-      "label": "Title Intent Alignment",
-      "description": "Alignment with primary search intent (0-100)",
-      "weight": 0.9,
-      "metricType": "score",
-      "minValue": 0,
-      "maxValue": 100,
-      "direction": "higher_is_better"
-    },
-    {
-      "id": "intent_alignment_subtitle_primary",
-      "familyId": "intent_alignment",
-      "label": "Subtitle Intent Alignment",
-      "description": "Alignment with primary search intent (0-100)",
-      "weight": 0.85,
-      "metricType": "score",
-      "minValue": 0,
-      "maxValue": 100,
-      "direction": "higher_is_better"
-    },
-    {
-      "id": "navigational_bias",
-      "familyId": "intent_alignment",
-      "label": "Navigational Intent Bias",
-      "description": "Strength of navigational (brand-focused) intent (0-100)",
-      "weight": 0.75,
-      "metricType": "score",
-      "minValue": 0,
-      "maxValue": 100,
-      "direction": "target_range",
-      "targetValue": 30,
-      "targetTolerance": 20
-    },
-    {
-      "id": "generic_discovery_bias",
-      "familyId": "intent_alignment",
-      "label": "Generic Discovery Bias",
-      "description": "Strength of generic discovery (informational/commercial) intent (0-100)",
+      "id": "informational_intent_coverage_score",
+      "familyId": "intent_quality",
+      "label": "Informational Intent Coverage",
+      "description": "Percentage of tokens classified as informational (discovery/learning keywords)",
       "weight": 1.0,
       "metricType": "score",
       "minValue": 0,
       "maxValue": 100,
-      "direction": "higher_is_better"
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Coverage",
+        "displayOrder": 1,
+        "helpText": "Bible-driven classification of informational search keywords",
+        "tags": ["intent", "coverage", "bible"]
+      }
+    },
+    {
+      "id": "commercial_intent_coverage_score",
+      "familyId": "intent_quality",
+      "label": "Commercial Intent Coverage",
+      "description": "Percentage of tokens classified as commercial (comparison/evaluation keywords)",
+      "weight": 0.9,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Coverage",
+        "displayOrder": 2,
+        "helpText": "Bible-driven classification of commercial search keywords",
+        "tags": ["intent", "coverage", "bible"]
+      }
+    },
+    {
+      "id": "transactional_intent_coverage_score",
+      "familyId": "intent_quality",
+      "label": "Transactional Intent Coverage",
+      "description": "Percentage of tokens classified as transactional (download intent keywords)",
+      "weight": 0.85,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Coverage",
+        "displayOrder": 3,
+        "helpText": "Bible-driven classification of transactional search keywords",
+        "tags": ["intent", "coverage", "bible"]
+      }
+    },
+    {
+      "id": "navigational_noise_ratio",
+      "familyId": "intent_quality",
+      "label": "Navigational/Noise Ratio",
+      "description": "Percentage of tokens classified as navigational or noise (lower is better)",
+      "weight": 0.8,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "lower_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Coverage",
+        "displayOrder": 4,
+        "helpText": "High noise indicates excessive brand/filler keywords",
+        "tags": ["intent", "noise", "bible"]
+      }
+    },
+    {
+      "id": "intent_balance_score",
+      "familyId": "intent_quality",
+      "label": "Intent Balance Score",
+      "description": "Entropy-based balance of intent distribution across all types (0-100)",
+      "weight": 0.9,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality",
+        "displayOrder": 5,
+        "helpText": "Balanced intent distribution = better metadata coverage",
+        "tags": ["intent", "balance", "bible"]
+      }
+    },
+    {
+      "id": "intent_diversity_score",
+      "familyId": "intent_quality",
+      "label": "Intent Diversity Score",
+      "description": "Number of distinct intent types present, scaled 0-100",
+      "weight": 0.85,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality",
+        "displayOrder": 6,
+        "helpText": "Higher diversity = broader search intent coverage",
+        "tags": ["intent", "diversity", "bible"]
+      }
+    },
+    {
+      "id": "intent_gap_index",
+      "familyId": "intent_quality",
+      "label": "Intent Gap Index",
+      "description": "Number of important intent types missing (lower is better)",
+      "weight": 0.75,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "lower_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality",
+        "displayOrder": 7,
+        "helpText": "Identifies missing search intent types",
+        "tags": ["intent", "gap", "bible"]
+      }
+    },
+    {
+      "id": "intent_alignment_score",
+      "familyId": "intent_quality",
+      "label": "Intent Alignment Score",
+      "description": "Score based on vertical-specific intent expectations (0-100)",
+      "weight": 1.0,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality",
+        "displayOrder": 8,
+        "helpText": "Vertical-specific intent alignment (e.g., Learning apps should have high informational intent)",
+        "tags": ["intent", "alignment", "vertical", "bible"]
+      }
+    },
+    {
+      "id": "intent_quality_score",
+      "familyId": "intent_quality",
+      "label": "Intent Quality Score",
+      "description": "Weighted blend of all intent quality metrics (0-100)",
+      "weight": 1.2,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality",
+        "displayOrder": 9,
+        "helpText": "Overall intent quality assessment",
+        "tags": ["intent", "quality", "overall", "bible"]
+      }
     }
   ]
 }

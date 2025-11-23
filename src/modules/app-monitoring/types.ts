@@ -253,3 +253,167 @@ export interface AuditHistory {
   latestSnapshot: AuditSnapshot | null;
   scoreChange: number | null; // Difference between latest and previous
 }
+
+// ============================================================================
+// BIBLE-DRIVEN AUDIT SNAPSHOTS (Phase 19)
+// ============================================================================
+
+/**
+ * Bible-driven audit snapshot (Phase 19)
+ * Stores full Metadata Audit V2 + KPI Engine + Intent Coverage results
+ * Maps to: aso_audit_snapshots table
+ */
+export interface BibleAuditSnapshot {
+  id: string;
+  monitored_app_id: string;
+  organization_id: string;
+  app_id: string;
+  platform: 'ios' | 'android';
+  locale: string;
+  created_at: string;
+  source: 'live' | 'cache' | 'manual';
+
+  // Metadata at time of audit
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+
+  // Full Bible-driven audit result (UnifiedMetadataAuditResult)
+  audit_result: Record<string, any>; // JSONB
+
+  // Extracted overall score (denormalized)
+  overall_score: number; // 0-100
+
+  // Full KPI Engine result (43 KPIs across 6 families)
+  kpi_result: Record<string, any> | null; // JSONB
+
+  // Extracted KPI overall score (denormalized)
+  kpi_overall_score: number | null; // 0-100
+
+  // Family scores (denormalized)
+  kpi_family_scores: Record<string, number> | null; // { "clarity_structure": 75, ... }
+
+  // Bible ruleset metadata
+  bible_metadata: Record<string, any> | null; // { version, rulesetId, mergedRules, overridesApplied }
+
+  // Version tracking
+  audit_version: string; // 'v2'
+  kpi_version: string | null; // 'v1'
+
+  // Versioning & cache linkage
+  metadata_version_hash: string | null;
+  audit_hash: string | null;
+
+  updated_at: string;
+}
+
+/**
+ * Input for creating Bible-driven audit snapshot
+ */
+export interface CreateBibleAuditSnapshotInput {
+  monitored_app_id: string;
+  organization_id: string;
+  app_id: string;
+  platform: 'ios' | 'android';
+  locale: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  audit_result: Record<string, any>; // Full UnifiedMetadataAuditResult
+  overall_score: number;
+  kpi_result?: Record<string, any> | null;
+  kpi_overall_score?: number | null;
+  kpi_family_scores?: Record<string, number> | null;
+  bible_metadata?: Record<string, any> | null;
+  source?: 'live' | 'cache' | 'manual';
+  metadata_version_hash?: string | null;
+}
+
+/**
+ * Audit diff between two snapshots (Phase 19)
+ * Maps to: aso_audit_diffs table
+ */
+export interface AuditDiff {
+  id: string;
+  from_snapshot_id: string;
+  to_snapshot_id: string;
+  organization_id: string;
+  monitored_app_id: string;
+  created_at: string;
+
+  // Score changes
+  overall_score_delta: number; // Positive = improvement
+  kpi_overall_score_delta: number | null;
+  kpi_family_deltas: Record<string, number> | null; // { "family_id": delta }
+
+  // Metadata changes
+  title_changed: boolean;
+  subtitle_changed: boolean;
+  description_changed: boolean;
+  title_diff: string | null;
+  subtitle_diff: string | null;
+
+  // Semantic changes
+  keywords_added: string[] | null;
+  keywords_removed: string[] | null;
+  keyword_count_delta: number | null;
+  combo_count_delta: number | null;
+
+  // Severity & recommendations
+  new_critical_issues: number;
+  resolved_critical_issues: number;
+  new_recommendations: number;
+
+  // Change summary (JSONB)
+  change_summary: Record<string, any>; // { scoreImprovement, significantChanges, topKpiChanges, impactLevel }
+}
+
+/**
+ * Input for creating audit diff
+ */
+export interface CreateAuditDiffInput {
+  from_snapshot_id: string;
+  to_snapshot_id: string;
+  organization_id: string;
+  monitored_app_id: string;
+  overall_score_delta: number;
+  kpi_overall_score_delta?: number | null;
+  kpi_family_deltas?: Record<string, number> | null;
+  title_changed: boolean;
+  subtitle_changed: boolean;
+  description_changed: boolean;
+  title_diff?: string | null;
+  subtitle_diff?: string | null;
+  keywords_added?: string[] | null;
+  keywords_removed?: string[] | null;
+  keyword_count_delta?: number | null;
+  combo_count_delta?: number | null;
+  new_critical_issues?: number;
+  resolved_critical_issues?: number;
+  new_recommendations?: number;
+  change_summary: Record<string, any>;
+}
+
+/**
+ * Bible audit history (Phase 19)
+ */
+export interface BibleAuditHistory {
+  snapshots: BibleAuditSnapshot[];
+  diffs: AuditDiff[];
+  totalCount: number;
+  latestSnapshot: BibleAuditSnapshot | null;
+  latestScore: number | null;
+  scoreChange: number | null;
+  hasTrend: boolean; // True if 2+ snapshots exist
+}
+
+/**
+ * Query parameters for Bible audit history
+ */
+export interface BibleAuditHistoryQueryParams {
+  monitored_app_id: string;
+  organization_id: string;
+  limit?: number;
+  offset?: number;
+  include_diffs?: boolean;
+}

@@ -15,7 +15,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { MonitoredAppWithAudit, AppMetadataCache, AuditSnapshot } from '@/modules/app-monitoring';
+import type { MonitoredAppWithAudit, AppMetadataCache, AuditSnapshot, BibleAuditSnapshot } from '@/modules/app-monitoring';
 import { getKeyFromMonitoredApp } from '@/utils/monitoringKeys';
 import { useMonitoredAppConsistency } from './useMonitoredAppConsistency';
 
@@ -23,6 +23,9 @@ export interface MonitoredAuditData {
   monitoredApp: MonitoredAppWithAudit;
   metadataCache: AppMetadataCache | null;
   latestSnapshot: AuditSnapshot | null;
+  // Phase 19: Bible-driven snapshot (preferred)
+  bibleSnapshot?: BibleAuditSnapshot | null;
+  auditResult?: any; // Parsed UnifiedMetadataAuditResult from Bible snapshot
 }
 
 /**
@@ -97,31 +100,59 @@ export function useMonitoredAudit(
       }
 
       // ========================================================================
-      // STEP 3: Fetch latest audit snapshot (using normalized key)
+      // STEP 3: Fetch latest Bible-driven audit snapshot (Phase 19)
       // ========================================================================
-      const { data: latestSnapshot, error: snapshotError } = await supabase
-        .from('audit_snapshots')
+      const { data: bibleSnapshot, error: bibleSnapshotError } = await supabase
+        .from('aso_audit_snapshots')
         .select('*')
-        .eq('organization_id', normalizedKey.organization_id)
-        .eq('app_id', normalizedKey.app_id)
-        .eq('platform', normalizedKey.platform)
+        .eq('monitored_app_id', monitoredAppId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (snapshotError) {
-        console.warn('[useMonitoredAudit] Failed to fetch audit snapshot:', snapshotError);
-        // Non-fatal - continue without snapshot
-      } else if (latestSnapshot) {
-        console.log('[useMonitoredAudit] ✓ Latest snapshot found (score:', latestSnapshot.audit_score, ')');
+      if (bibleSnapshotError) {
+        console.warn('[useMonitoredAudit] Failed to fetch Bible snapshot:', bibleSnapshotError);
+      } else if (bibleSnapshot) {
+        console.log('[useMonitoredAudit] ✓ Bible snapshot found (score:', bibleSnapshot.overall_score, ')');
       } else {
-        console.warn('[useMonitoredAudit] No audit snapshot available');
+        console.log('[useMonitoredAudit] No Bible snapshot available yet');
       }
+
+      // ========================================================================
+      // STEP 4: Fallback to OLD audit snapshot (backwards compatibility)
+      // ========================================================================
+      let latestSnapshot = null;
+
+      if (!bibleSnapshot) {
+        const { data: oldSnapshot, error: snapshotError } = await supabase
+          .from('audit_snapshots')
+          .select('*')
+          .eq('organization_id', normalizedKey.organization_id)
+          .eq('app_id', normalizedKey.app_id)
+          .eq('platform', normalizedKey.platform)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (snapshotError) {
+          console.warn('[useMonitoredAudit] Failed to fetch OLD snapshot:', snapshotError);
+        } else if (oldSnapshot) {
+          console.log('[useMonitoredAudit] ✓ OLD snapshot found (score:', oldSnapshot.audit_score, ')');
+          latestSnapshot = oldSnapshot;
+        } else {
+          console.warn('[useMonitoredAudit] No audit snapshot available');
+        }
+      }
+
+      // Extract audit result from Bible snapshot (JSONB)
+      const auditResult = bibleSnapshot?.audit_result || null;
 
       return {
         monitoredApp: monitoredApp as MonitoredAppWithAudit,
         metadataCache: metadataCache as AppMetadataCache | null,
-        latestSnapshot: latestSnapshot as AuditSnapshot | null
+        latestSnapshot: latestSnapshot as AuditSnapshot | null,
+        bibleSnapshot: bibleSnapshot as BibleAuditSnapshot | null,
+        auditResult // Parsed UnifiedMetadataAuditResult
       };
     },
     enabled: Boolean(monitoredAppId && organizationId),

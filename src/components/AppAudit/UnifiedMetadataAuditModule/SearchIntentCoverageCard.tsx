@@ -4,20 +4,26 @@
  * Displays intent intelligence data for Title or Subtitle elements.
  * Shows intent distribution, coverage score, and keyword groupings by intent type.
  *
- * Phase 4: UI Integration for Autocomplete Intelligence
+ * Phase 17: Bible-driven Search Intent Coverage
+ * - Primary: Uses Bible Intent Engine patterns (intentCoverage from audit result)
+ * - Fallback: Legacy Autocomplete Intelligence (for migration compatibility)
  */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronUp, Target, TrendingUp, Search, ShoppingCart, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Target, TrendingUp, Search, ShoppingCart, AlertCircle, Brain } from 'lucide-react';
 import type { IntentSignals } from '@/services/intent-intelligence.service';
+import type { SearchIntentCoverageResult } from '@/engine/asoBible/searchIntentCoverageEngine';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 
 interface SearchIntentCoverageCardProps {
-  /** Intent signals data from useIntentCoverage hook */
-  intentSignals: IntentSignals;
+  /** Bible-driven coverage data (Phase 17 - PRIMARY) */
+  bibleCoverage?: SearchIntentCoverageResult;
+
+  /** Intent signals data from useIntentCoverage hook (LEGACY - Fallback) */
+  intentSignals?: IntentSignals;
 
   /** Element type (for display name) */
   elementType: 'title' | 'subtitle';
@@ -75,6 +81,7 @@ function getCoverageScoreColor(score: number): string {
  * SearchIntentCoverageCard Component
  */
 export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> = ({
+  bibleCoverage,
   intentSignals,
   elementType,
   keywords,
@@ -83,27 +90,71 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
 
   const elementDisplayName = elementType === 'title' ? 'Title' : 'Subtitle';
 
-  // Get dominant intent
-  const dominantIntent = intentSignals.dominantIntent || 'unknown';
-  const DominantIcon = getIntentIcon(dominantIntent);
+  // Phase 17: Prefer Bible-driven coverage, fall back to legacy Autocomplete Intelligence
+  const usingBibleCoverage = !!bibleCoverage;
 
   // Get coverage score (0-100)
-  const coverageScore = intentSignals.coverageScore || 0;
-  const coverageColor = getCoverageScoreColor(coverageScore);
-
-  // Get intent distribution
-  const distribution = intentSignals.intentDistribution || {
+  let coverageScore = 0;
+  let distribution = {
     navigational: 0,
     informational: 0,
     commercial: 0,
     transactional: 0,
   };
+  let navigationalKeywords: string[] = [];
+  let informationalKeywords: string[] = [];
+  let commercialKeywords: string[] = [];
+  let transactionalKeywords: string[] = [];
+  let dominantIntent = 'unknown';
+  let fallbackMode = false;
 
-  // Group keywords by intent type (for display)
-  const navigationalKeywords = intentSignals.navigationalKeywords || [];
-  const informationalKeywords = intentSignals.informationalKeywords || [];
-  const commercialKeywords = intentSignals.commercialKeywords || [];
-  const transactionalKeywords = intentSignals.transactionalKeywords || [];
+  if (usingBibleCoverage) {
+    // Phase 17: Use Bible-driven coverage
+    coverageScore = bibleCoverage.score;
+    distribution = {
+      navigational: bibleCoverage.distributionPercentage.navigational,
+      informational: bibleCoverage.distributionPercentage.informational,
+      commercial: bibleCoverage.distributionPercentage.commercial,
+      transactional: bibleCoverage.distributionPercentage.transactional,
+    };
+    fallbackMode = bibleCoverage.fallbackMode;
+
+    // Group tokens by intent type
+    navigationalKeywords = bibleCoverage.classifiedTokensList
+      .filter(t => t.intentType === 'navigational')
+      .map(t => t.token);
+    informationalKeywords = bibleCoverage.classifiedTokensList
+      .filter(t => t.intentType === 'informational')
+      .map(t => t.token);
+    commercialKeywords = bibleCoverage.classifiedTokensList
+      .filter(t => t.intentType === 'commercial')
+      .map(t => t.token);
+    transactionalKeywords = bibleCoverage.classifiedTokensList
+      .filter(t => t.intentType === 'transactional')
+      .map(t => t.token);
+
+    // Determine dominant intent from distribution
+    const intentCounts = [
+      { type: 'navigational' as const, count: bibleCoverage.distribution.navigational },
+      { type: 'informational' as const, count: bibleCoverage.distribution.informational },
+      { type: 'commercial' as const, count: bibleCoverage.distribution.commercial },
+      { type: 'transactional' as const, count: bibleCoverage.distribution.transactional },
+    ];
+    const sorted = intentCounts.sort((a, b) => b.count - a.count);
+    dominantIntent = sorted[0].count > 0 ? sorted[0].type : 'unknown';
+  } else if (intentSignals) {
+    // Legacy: Use Autocomplete Intelligence
+    dominantIntent = intentSignals.dominantIntent || 'unknown';
+    coverageScore = intentSignals.coverageScore || 0;
+    distribution = intentSignals.intentDistribution || distribution;
+    navigationalKeywords = intentSignals.navigationalKeywords || [];
+    informationalKeywords = intentSignals.informationalKeywords || [];
+    commercialKeywords = intentSignals.commercialKeywords || [];
+    transactionalKeywords = intentSignals.transactionalKeywords || [];
+  }
+
+  const DominantIcon = getIntentIcon(dominantIntent);
+  const coverageColor = getCoverageScoreColor(coverageScore);
 
   // Detect empty states
   const hasIntentData =
@@ -142,9 +193,25 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
               <ChevronDown className="h-5 w-5 text-zinc-400" />
             )}
           </div>
-          <Badge variant="outline" className={`text-sm px-3 py-1 ${coverageColor}`}>
-            {coverageScore}/100
-          </Badge>
+          <div className="flex items-center gap-2">
+            {/* Phase 17: Bible Engine Indicator */}
+            {usingBibleCoverage && (
+              <Badge variant="outline" className="text-xs border-emerald-400/30 text-emerald-400">
+                <Brain className="h-3 w-3 mr-1" />
+                Bible
+              </Badge>
+            )}
+            {/* Fallback Mode Warning */}
+            {fallbackMode && (
+              <Badge variant="outline" className="text-xs border-yellow-400/30 text-yellow-400">
+                Minimal Patterns
+              </Badge>
+            )}
+            {/* Coverage Score */}
+            <Badge variant="outline" className={`text-sm px-3 py-1 ${coverageColor}`}>
+              {coverageScore}/100
+            </Badge>
+          </div>
         </div>
 
         {/* Coverage progress bar */}

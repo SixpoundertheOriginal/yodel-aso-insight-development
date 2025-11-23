@@ -98,8 +98,8 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     enabled: AUTOCOMPLETE_INTELLIGENCE_ENABLED && !error && !!auditResult && allKeywords.length > 0,
   });
 
-  // KPI Engine Integration (Phase 1)
-  // Compute 34 KPIs across 6 families for metadata quality assessment
+  // KPI Engine Integration (Phase 1 + Phase 18)
+  // Compute 43 KPIs across 6 families for metadata quality assessment
   const kpiResult = useMemo(() => {
     if (!auditResult || !metadata) return null;
 
@@ -110,6 +110,8 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         platform: 'ios',
         locale: metadata.locale || 'us',
         comboCoverage: auditResult.comboCoverage,
+        // Phase 18: Pass intent coverage from Search Intent Coverage Engine (Phase 17)
+        intentCoverage: auditResult.intentCoverage,
         // Optional: Can add brand + intent signals when available
       });
     } catch (err) {
@@ -138,13 +140,17 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       ? Math.min(100, (genericCount / totalMeaningful) * 100 + 30) // Weighted toward generic discovery
       : 50;
 
+    // Phase 18.5: Extract Intent Quality score from KPI Engine
+    const intentQualityScore = kpiResult?.families?.intent_quality?.score || 0;
+
     return {
       relevance: avgElementScore, // Average of title + subtitle scores
       learning: Math.min(100, genericCount * 15), // Generic combos drive discovery
       structure: titleScore, // Title score reflects structure quality
       brandBalance: brandBalance,
+      intentQuality: intentQualityScore, // Intent Quality family score from KPI Engine
     };
-  }, [auditResult]);
+  }, [auditResult, kpiResult]);
 
   // Error state
   if (error) {
@@ -272,12 +278,14 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           elementResult={auditResult.elements.title}
           elementDisplayName="Title"
           metadata={metadata}
+          auditResult={auditResult}
         />
 
         <ElementDetailCard
           elementResult={auditResult.elements.subtitle}
           elementDisplayName="Subtitle"
           metadata={metadata}
+          auditResult={auditResult}
         />
       </div>
 

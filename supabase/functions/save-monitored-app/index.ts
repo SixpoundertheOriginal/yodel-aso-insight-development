@@ -159,51 +159,56 @@ async function fetchAppMetadata(
 // ==================== AUDIT GENERATION ====================
 
 /**
- * Generates audit snapshot from metadata
- * Note: This is a simplified version - full implementation would import from metadata-scoring module
+ * Phase 19: Call Bible-driven metadata-audit-v2 edge function
  */
-async function generateAuditSnapshot(
-  title: string | null,
-  subtitle: string | null
-): Promise<any> {
-  // For now, return a simple audit object
-  // TODO: Import and use analyzeEnhancedCombinations from metadata-scoring module
+async function callMetadataAuditV2(
+  supabase: SupabaseClient,
+  metadata: any,
+  organizationId: string
+): Promise<{auditResult: any; kpiResult: any; auditHash: string} | null> {
+  try {
+    console.log('[save-monitored-app] Calling metadata-audit-v2 for Bible-driven audit');
 
-  console.log('[save-monitored-app] Generating audit snapshot for:', title, subtitle);
+    const { data, error } = await supabase.functions.invoke('metadata-audit-v2', {
+      body: {
+        metadata,
+        organization_id: organizationId,
+        // Force Bible audit (no placeholder)
+        skipPlaceholder: true
+      }
+    });
 
-  // Simple scoring (placeholder)
-  const hasTitle = Boolean(title && title.length > 0);
-  const hasSubtitle = Boolean(subtitle && subtitle.length > 0);
-  const titleLength = title?.length || 0;
-  const subtitleLength = subtitle?.length || 0;
+    if (error) {
+      console.error('[save-monitored-app] metadata-audit-v2 error:', error);
+      return null;
+    }
 
-  const audit_score = Math.min(
-    100,
-    Math.round(
-      (hasTitle ? 30 : 0) +
-      (hasSubtitle ? 20 : 0) +
-      (titleLength > 15 ? 25 : titleLength) +
-      (subtitleLength > 15 ? 25 : subtitleLength)
-    )
-  );
+    if (!data || !data.audit) {
+      console.warn('[save-monitored-app] metadata-audit-v2 returned no audit data');
+      return null;
+    }
 
-  return {
-    combinations: [],
-    metrics: {
-      longTailStrength: 0,
-      intentDiversity: 0,
-      categoryCoverage: 0,
-      redundancyIndex: 0,
-      avgFillerRatio: 0
-    },
-    insights: {
-      missingClusters: [],
-      potentialCombos: [],
-      estimatedGain: 0,
-      actionableInsights: ['Full audit implementation pending - Phase 6']
-    },
-    audit_score
-  };
+    // Compute audit hash for deduplication
+    const auditForHash = {
+      overallScore: data.audit.overallScore || 0,
+      metadataScore: data.audit.metadataScore || 0
+    };
+    const auditStr = JSON.stringify(auditForHash);
+    const encoder = new TextEncoder();
+    const auditData = encoder.encode(auditStr);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', auditData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const auditHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    return {
+      auditResult: data.audit,
+      kpiResult: data.kpi || null,
+      auditHash
+    };
+  } catch (err) {
+    console.error('[save-monitored-app] Failed to call metadata-audit-v2:', err);
+    return null;
+  }
 }
 
 // ==================== MAIN HANDLER ====================
@@ -496,69 +501,80 @@ serve(async (req: Request): Promise<Response> => {
           console.log('[save-monitored-app] Metadata cached:', version_hash);
         }
 
-        // STEP 5: Generate or use pre-computed audit snapshot
+        // STEP 5: Generate Bible-driven audit snapshot (Phase 19)
         try {
-          let auditData: any;
-          let auditSource: 'ui' | 'server' = 'server';
+          // Call metadata-audit-v2 for Bible-driven audit
+          const bibleAudit = await callMetadataAuditV2(supabase, effectiveMetadata, organization_id);
 
-          // PRIORITY 1: Use UI-provided audit snapshot (BEST QUALITY)
-          if (requestBody.auditSnapshot) {
-            console.log('[save-monitored-app] ✓ Using UI-provided audit snapshot (best quality)');
-            auditData = {
-              combinations: requestBody.auditSnapshot.combinations || [],
-              metrics: requestBody.auditSnapshot.metrics || {},
-              insights: requestBody.auditSnapshot.insights || {},
-              audit_score: requestBody.auditSnapshot.audit_score
+          if (!bibleAudit) {
+            console.warn('[save-monitored-app] Bible audit generation failed');
+            failureReason = 'Bible audit generation failed';
+            acceptableFailure = true;
+          } else {
+            // Extract KPI scores
+            const kpiResult = bibleAudit.kpiResult;
+            const kpiOverallScore = kpiResult?.overallScore || null;
+            const kpiFamilyScores = kpiResult?.families ? Object.fromEntries(
+              Object.entries(kpiResult.families).map(([k, v]: [string, any]) => [k, v.score || 0])
+            ) : null;
+
+            const snapshotPayload = {
+              monitored_app_id: monitoredApp.id,
+              organization_id,
+              app_id,
+              platform,
+              locale,
+              title,
+              subtitle,
+              description: effectiveMetadata.description || null,
+              // Store FULL Bible audit as JSONB
+              audit_result: bibleAudit.auditResult,
+              overall_score: Math.round(bibleAudit.auditResult.overallScore || 0),
+              // KPI Engine results
+              kpi_result: kpiResult,
+              kpi_overall_score: kpiOverallScore ? Math.round(kpiOverallScore) : null,
+              kpi_family_scores: kpiFamilyScores,
+              // Bible metadata
+              bible_metadata: {
+                ruleset: 'default',
+                version: 'v2',
+                timestamp: new Date().toISOString()
+              },
+              audit_version: 'v2',
+              kpi_version: kpiResult ? 'v1' : null,
+              metadata_version_hash: version_hash,
+              audit_hash: bibleAudit.auditHash,
+              source: metadataSource === 'cache' ? 'cache' : 'live'
             };
-            auditSource = 'ui';
-          } else {
-            // PRIORITY 2: Generate placeholder audit on server (FALLBACK)
-            console.log('[save-monitored-app] ⚠️ No UI audit provided, generating placeholder...');
-            auditData = await generateAuditSnapshot(title, subtitle);
-          }
 
-          const snapshotPayload = {
-            organization_id,
-            app_id,
-            platform,
-            locale,
-            title,
-            subtitle,
-            combinations: auditData.combinations,
-            metrics: auditData.metrics,
-            insights: auditData.insights,
-            audit_score: auditData.audit_score,
-            metadata_version_hash: version_hash,
-            metadata_source: auditSource === 'ui' ? 'live' : (metadataSource === 'cache' ? 'cache' : 'live'),
-            competitor_overlap: {},
-            metadata_health: requestBody.auditSnapshot?.metadata_health || {},
-            metadata_version: auditSource === 'ui' ? 'v2' : 'v1' // v2 = UI audit, v1 = server placeholder
-          };
+            const { data: snapshotData, error: snapshotError } = await supabase
+              .from('aso_audit_snapshots')
+              .insert(snapshotPayload)
+              .select()
+              .single();
 
-          const { data: snapshotData, error: snapshotError } = await supabase
-            .from('audit_snapshots')
-            .insert(snapshotPayload)
-            .select()
-            .single();
+            if (snapshotError) {
+              console.error('[save-monitored-app] Failed to create Bible audit snapshot:', snapshotError);
+              failureReason = 'Failed to create Bible audit snapshot';
+              acceptableFailure = true;
+            } else {
+              auditSnapshot = snapshotData;
+              auditCreated = true;
+              console.log('[save-monitored-app] Bible audit snapshot created:', snapshotData.id);
 
-          if (snapshotError) {
-            console.error('[save-monitored-app] Failed to create audit snapshot:', snapshotError);
-            failureReason = 'Failed to create audit snapshot';
-            acceptableFailure = true; // Acceptable - app is monitored, audit can be regenerated
-          } else {
-            auditSnapshot = snapshotData;
-            auditCreated = true;
-            console.log('[save-monitored-app] Audit snapshot created:', snapshotData.id);
-
-            // STEP 6: Update monitored_apps with audit results
-            await supabase
-              .from('monitored_apps')
-              .update({
-                latest_audit_score: auditData.audit_score,
-                latest_audit_at: new Date().toISOString(),
-                metadata_last_refreshed_at: new Date().toISOString()
-              })
-              .eq('id', monitoredApp.id);
+              // STEP 6: Update monitored_apps with audit results and validation state
+              await supabase
+                .from('monitored_apps')
+                .update({
+                  latest_audit_score: snapshotData.overall_score,
+                  latest_audit_at: new Date().toISOString(),
+                  metadata_last_refreshed_at: new Date().toISOString(),
+                  validated_state: 'valid',
+                  validated_at: new Date().toISOString(),
+                  validation_error: null
+                })
+                .eq('id', monitoredApp.id);
+            }
           }
         } catch (auditError) {
           console.error('[save-monitored-app] Audit generation failed:', auditError);
@@ -566,7 +582,7 @@ serve(async (req: Request): Promise<Response> => {
           acceptableFailure = true; // Acceptable - app is monitored, audit can be regenerated
         }
       } else if (effectiveMetadata && metadataSource === 'cache') {
-        // We're using existing cache - generate audit from it
+        // We're using existing cache - generate Bible audit from it
         metadataCache = effectiveMetadata;
         metadataCached = true;
 
@@ -574,67 +590,78 @@ serve(async (req: Request): Promise<Response> => {
         const subtitle = effectiveMetadata.subtitle || null;
 
         try {
-          let auditData: any;
-          let auditSource: 'ui' | 'server' = 'server';
+          // Call metadata-audit-v2 for Bible-driven audit
+          const bibleAudit = await callMetadataAuditV2(supabase, effectiveMetadata, organization_id);
 
-          // PRIORITY 1: Use UI-provided audit snapshot (even for cached metadata)
-          if (requestBody.auditSnapshot) {
-            console.log('[save-monitored-app] ✓ Using UI-provided audit snapshot for cached metadata');
-            auditData = {
-              combinations: requestBody.auditSnapshot.combinations || [],
-              metrics: requestBody.auditSnapshot.metrics || {},
-              insights: requestBody.auditSnapshot.insights || {},
-              audit_score: requestBody.auditSnapshot.audit_score
+          if (!bibleAudit) {
+            console.warn('[save-monitored-app] Bible audit generation from cache failed');
+            failureReason = failureReason || 'Bible audit generation from cache failed';
+            acceptableFailure = true;
+          } else {
+            // Extract KPI scores
+            const kpiResult = bibleAudit.kpiResult;
+            const kpiOverallScore = kpiResult?.overallScore || null;
+            const kpiFamilyScores = kpiResult?.families ? Object.fromEntries(
+              Object.entries(kpiResult.families).map(([k, v]: [string, any]) => [k, v.score || 0])
+            ) : null;
+
+            const snapshotPayload = {
+              monitored_app_id: monitoredApp.id,
+              organization_id,
+              app_id,
+              platform,
+              locale,
+              title,
+              subtitle,
+              description: effectiveMetadata.description || null,
+              // Store FULL Bible audit as JSONB
+              audit_result: bibleAudit.auditResult,
+              overall_score: Math.round(bibleAudit.auditResult.overallScore || 0),
+              // KPI Engine results
+              kpi_result: kpiResult,
+              kpi_overall_score: kpiOverallScore ? Math.round(kpiOverallScore) : null,
+              kpi_family_scores: kpiFamilyScores,
+              // Bible metadata
+              bible_metadata: {
+                ruleset: 'default',
+                version: 'v2',
+                timestamp: new Date().toISOString()
+              },
+              audit_version: 'v2',
+              kpi_version: kpiResult ? 'v1' : null,
+              metadata_version_hash: effectiveMetadata.version_hash,
+              audit_hash: bibleAudit.auditHash,
+              source: 'cache'
             };
-            auditSource = 'ui';
-          } else {
-            // PRIORITY 2: Generate placeholder from cache
-            console.log('[save-monitored-app] Generating placeholder audit from cache');
-            auditData = await generateAuditSnapshot(title, subtitle);
-          }
 
-          const snapshotPayload = {
-            organization_id,
-            app_id,
-            platform,
-            locale,
-            title,
-            subtitle,
-            combinations: auditData.combinations,
-            metrics: auditData.metrics,
-            insights: auditData.insights,
-            audit_score: auditData.audit_score,
-            metadata_version_hash: effectiveMetadata.version_hash,
-            metadata_source: auditSource === 'ui' ? 'live' : 'cache',
-            competitor_overlap: {},
-            metadata_health: requestBody.auditSnapshot?.metadata_health || {},
-            metadata_version: auditSource === 'ui' ? 'v2' : 'v1'
-          };
+            const { data: snapshotData, error: snapshotError } = await supabase
+              .from('aso_audit_snapshots')
+              .insert(snapshotPayload)
+              .select()
+              .single();
 
-          const { data: snapshotData, error: snapshotError } = await supabase
-            .from('audit_snapshots')
-            .insert(snapshotPayload)
-            .select()
-            .single();
+            if (snapshotError) {
+              console.error('[save-monitored-app] Failed to create Bible audit snapshot from cache:', snapshotError);
+              failureReason = failureReason || 'Failed to create Bible audit snapshot from cache';
+              acceptableFailure = true;
+            } else {
+              auditSnapshot = snapshotData;
+              auditCreated = true;
+              console.log('[save-monitored-app] Bible audit snapshot created from cache:', snapshotData.id);
 
-          if (snapshotError) {
-            console.error('[save-monitored-app] Failed to create audit snapshot from cache:', snapshotError);
-            failureReason = failureReason || 'Failed to create audit snapshot from cache';
-            acceptableFailure = true; // Acceptable - app is monitored, audit can be regenerated
-          } else {
-            auditSnapshot = snapshotData;
-            auditCreated = true;
-            console.log('[save-monitored-app] Audit snapshot created from cache:', snapshotData.id);
-
-            // Update monitored_apps with audit results
-            await supabase
-              .from('monitored_apps')
-              .update({
-                latest_audit_score: auditData.audit_score,
-                latest_audit_at: new Date().toISOString(),
-                metadata_last_refreshed_at: effectiveMetadata.fetched_at
-              })
-              .eq('id', monitoredApp.id);
+              // Update monitored_apps with audit results and validation state
+              await supabase
+                .from('monitored_apps')
+                .update({
+                  latest_audit_score: snapshotData.overall_score,
+                  latest_audit_at: new Date().toISOString(),
+                  metadata_last_refreshed_at: effectiveMetadata.fetched_at,
+                  validated_state: 'valid',
+                  validated_at: new Date().toISOString(),
+                  validation_error: null
+                })
+                .eq('id', monitoredApp.id);
+            }
           }
         } catch (auditError) {
           console.error('[save-monitored-app] Audit generation from cache failed:', auditError);

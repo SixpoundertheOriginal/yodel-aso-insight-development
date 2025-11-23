@@ -40,7 +40,7 @@ export const MetadataKpiGrid: React.FC<MetadataKpiGridProps> = ({ kpiResult }) =
               METADATA KPI ENGINE
             </CardTitle>
             <p className="text-xs text-zinc-500 mt-1">
-              34 KPIs across 6 families • Registry-driven analysis
+              43 KPIs across 6 families • Registry-driven analysis
             </p>
           </div>
           <Badge

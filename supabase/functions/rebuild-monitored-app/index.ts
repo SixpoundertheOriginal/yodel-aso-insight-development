@@ -108,44 +108,55 @@ async function fetchAppMetadata(
 }
 
 /**
- * Generates simple audit snapshot (placeholder until full scoring implemented)
+ * Phase 19: Call Bible-driven metadata-audit-v2 edge function
  */
-function generateSimpleAudit(
-  title: string | null,
-  subtitle: string | null
-): { audit_score: number; combinations: any[]; metrics: any; insights: any } {
-  const hasTitle = Boolean(title && title.length > 0);
-  const hasSubtitle = Boolean(subtitle && subtitle.length > 0);
-  const titleLength = title?.length || 0;
-  const subtitleLength = subtitle?.length || 0;
+async function callMetadataAuditV2(
+  supabase: SupabaseClient,
+  metadata: any,
+  organizationId: string
+): Promise<{auditResult: any; kpiResult: any; auditHash: string} | null> {
+  try {
+    console.log('[rebuild-monitored-app] Calling metadata-audit-v2 for Bible-driven audit');
 
-  const audit_score = Math.min(
-    100,
-    Math.round(
-      (hasTitle ? 30 : 0) +
-      (hasSubtitle ? 20 : 0) +
-      (titleLength > 15 ? 25 : titleLength) +
-      (subtitleLength > 15 ? 25 : subtitleLength)
-    )
-  );
+    const { data, error } = await supabase.functions.invoke('metadata-audit-v2', {
+      body: {
+        metadata,
+        organization_id: organizationId,
+        skipPlaceholder: true
+      }
+    });
 
-  return {
-    audit_score,
-    combinations: [],
-    metrics: {
-      longTailStrength: 0,
-      intentDiversity: 0,
-      categoryCoverage: 0,
-      redundancyIndex: 0,
-      avgFillerRatio: 0
-    },
-    insights: {
-      missingClusters: [],
-      potentialCombos: [],
-      estimatedGain: 0,
-      actionableInsights: ['Auto-generated audit - run full audit for detailed analysis']
+    if (error) {
+      console.error('[rebuild-monitored-app] metadata-audit-v2 error:', error);
+      return null;
     }
-  };
+
+    if (!data || !data.audit) {
+      console.warn('[rebuild-monitored-app] metadata-audit-v2 returned no audit data');
+      return null;
+    }
+
+    // Compute audit hash
+    const auditForHash = {
+      overallScore: data.audit.overallScore || 0,
+      metadataScore: data.audit.metadataScore || 0
+    };
+    const auditStr = JSON.stringify(auditForHash);
+    const encoder = new TextEncoder();
+    const auditData = encoder.encode(auditStr);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', auditData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const auditHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    return {
+      auditResult: data.audit,
+      kpiResult: data.kpi || null,
+      auditHash
+    };
+  } catch (err) {
+    console.error('[rebuild-monitored-app] Failed to call metadata-audit-v2:', err);
+    return null;
+  }
 }
 
 // ==================== MAIN HANDLER ====================
@@ -338,30 +349,53 @@ serve(async (req: Request): Promise<Response> => {
     console.log('[rebuild-monitored-app] ✓ Metadata cached');
 
     // ========================================================================
-    // STEP 4: Generate and insert audit snapshot
+    // STEP 4: Generate Bible-driven audit snapshot (Phase 19)
     // ========================================================================
-    const auditData = generateSimpleAudit(title, subtitle);
+    const bibleAudit = await callMetadataAuditV2(supabase, metadata, organization_id);
+
+    if (!bibleAudit) {
+      console.error('[rebuild-monitored-app] Bible audit generation failed');
+      throw new Error('Bible audit generation failed');
+    }
+
+    // Extract KPI scores
+    const kpiResult = bibleAudit.kpiResult;
+    const kpiOverallScore = kpiResult?.overallScore || null;
+    const kpiFamilyScores = kpiResult?.families ? Object.fromEntries(
+      Object.entries(kpiResult.families).map(([k, v]: [string, any]) => [k, v.score || 0])
+    ) : null;
 
     const snapshotPayload = {
+      monitored_app_id: monitored_app_id,
       organization_id,
       app_id,
       platform,
       locale: locale || 'us',
       title,
       subtitle,
-      combinations: auditData.combinations,
-      metrics: auditData.metrics,
-      insights: auditData.insights,
-      audit_score: auditData.audit_score,
+      description,
+      // Store FULL Bible audit as JSONB
+      audit_result: bibleAudit.auditResult,
+      overall_score: Math.round(bibleAudit.auditResult.overallScore || 0),
+      // KPI Engine results
+      kpi_result: kpiResult,
+      kpi_overall_score: kpiOverallScore ? Math.round(kpiOverallScore) : null,
+      kpi_family_scores: kpiFamilyScores,
+      // Bible metadata
+      bible_metadata: {
+        ruleset: 'default',
+        version: 'v2',
+        timestamp: new Date().toISOString()
+      },
+      audit_version: 'v2',
+      kpi_version: kpiResult ? 'v1' : null,
       metadata_version_hash: version_hash,
-      metadata_source: 'rebuild',
-      competitor_overlap: {},
-      metadata_health: {},
-      metadata_version: 'v1-rebuild'
+      audit_hash: bibleAudit.auditHash,
+      source: 'manual' // User-triggered rebuild
     };
 
     const { error: snapshotError } = await supabase
-      .from('audit_snapshots')
+      .from('aso_audit_snapshots')
       .insert(snapshotPayload);
 
     if (snapshotError) {
@@ -369,7 +403,9 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error(`Snapshot insert failed: ${snapshotError.message}`);
     }
 
-    console.log('[rebuild-monitored-app] ✓ Audit snapshot created');
+    console.log('[rebuild-monitored-app] ✓ Bible audit snapshot created');
+
+    const overallScore = Math.round(bibleAudit.auditResult.overallScore || 0);
 
     // ========================================================================
     // STEP 5: Update monitored_apps with validation state
@@ -380,7 +416,7 @@ serve(async (req: Request): Promise<Response> => {
         validated_state: 'valid',
         validated_at: new Date().toISOString(),
         validation_error: null,
-        latest_audit_score: auditData.audit_score,
+        latest_audit_score: overallScore,
         latest_audit_at: new Date().toISOString(),
         metadata_last_refreshed_at: new Date().toISOString()
       })
@@ -395,7 +431,7 @@ serve(async (req: Request): Promise<Response> => {
           validated_state: 'valid',
           metadata_cached: true,
           audit_created: true,
-          audit_score: auditData.audit_score
+          audit_score: overallScore
         }
       } as RebuildResponse),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -171,46 +171,109 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] ✓ Metadata cached:', metadataCache.id);
 
       // ========================================================================
-      // STEP 3: Create audit snapshot (using normalized key)
+      // STEP 3: Find or create monitored_app (for aso_audit_snapshots FK)
       // ========================================================================
+      const { data: existingMonitoredApp } = await supabase
+        .from('monitored_apps')
+        .select('id')
+        .eq('organization_id', normalizedKey.organization_id)
+        .eq('app_id', normalizedKey.app_id)
+        .eq('platform', normalizedKey.platform)
+        .maybeSingle();
+
+      let monitored_app_id = existingMonitoredApp?.id;
+
+      // If no monitored app exists, create one (for audit history tracking)
+      if (!monitored_app_id) {
+        const { data: newMonitoredApp, error: createError } = await supabase
+          .from('monitored_apps')
+          .insert({
+            organization_id: normalizedKey.organization_id,
+            app_id: normalizedKey.app_id,
+            platform: normalizedKey.platform,
+            app_name: input.metadata.name || input.metadata.title || 'Unknown App',
+            locale: normalizedKey.locale,
+            primary_country: normalizedKey.locale,
+            monitor_type: 'audit',
+            audit_enabled: false, // Not actively monitored, just storing audits
+            bundle_id: input.metadata.bundleId || null,
+            app_icon_url: input.metadata.icon || null,
+            developer_name: input.metadata.developer || null,
+            category: input.metadata.applicationCategory || null
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.warn('[usePersistAuditSnapshot] Failed to create monitored_app:', createError);
+          // Continue without monitored_app_id (will fail snapshot insert, but acceptable)
+        } else {
+          monitored_app_id = newMonitoredApp.id;
+          console.log('[usePersistAuditSnapshot] ✓ Monitored app created:', monitored_app_id);
+        }
+      }
+
+      // ========================================================================
+      // STEP 4: Create Bible-driven audit snapshot (Phase 19)
+      // ========================================================================
+      // Note: This is frontend-generated audit data, not full Bible audit
+      // When user clicks "Monitor App", edge function will generate proper Bible audit
+
+      // Compute audit hash for deduplication
+      const auditResultForHash = {
+        overallScore: input.auditData.overallScore,
+        metadataScore: input.auditData.metadataScore,
+        keywordScore: input.auditData.keywordScore
+      };
+      const auditStr = JSON.stringify(auditResultForHash);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(auditStr);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const audit_hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
       const snapshotPayload = {
+        monitored_app_id,
         organization_id: normalizedKey.organization_id,
         app_id: normalizedKey.app_id,
         platform: normalizedKey.platform,
         locale: normalizedKey.locale,
         title: cachePayload.title,
         subtitle: cachePayload.subtitle,
-        // Use metadataAnalysis if available, fallback to empty structures
-        combinations: input.auditData.metadataAnalysis?.combinations || [],
-        metrics: input.auditData.metadataAnalysis?.metrics || {
-          longTailStrength: 0,
-          intentDiversity: 0,
-          categoryCoverage: 0,
-          redundancyIndex: 0,
-          avgFillerRatio: 0
-        },
-        insights: input.auditData.metadataAnalysis?.insights || {
-          missingClusters: [],
-          potentialCombos: [],
-          estimatedGain: 0,
-          actionableInsights: []
-        },
-        audit_score: Math.round(input.auditData.overallScore),
-        metadata_version_hash: version_hash,
-        metadata_source: 'live', // This is a fresh UI audit
-        competitor_overlap: {},
-        metadata_health: {
+        description: cachePayload.description,
+        // Store full frontend audit data as JSONB
+        audit_result: {
+          overallScore: input.auditData.overallScore,
           metadataScore: input.auditData.metadataScore,
           keywordScore: input.auditData.keywordScore,
           competitorScore: input.auditData.competitorScore,
           creativeScore: input.auditData.creativeScore,
-          opportunityCount: input.auditData.opportunityCount
+          opportunityCount: input.auditData.opportunityCount,
+          metadataAnalysis: input.auditData.metadataAnalysis,
+          recommendations: input.auditData.recommendations,
+          currentKeywords: input.auditData.currentKeywords,
+          // Mark as frontend audit
+          source: 'frontend',
+          engine: 'useEnhancedAppAudit'
         },
-        metadata_version: 'v2' // Enhanced frontend audit
+        overall_score: Math.round(input.auditData.overallScore),
+        kpi_result: null, // Frontend audit doesn't have KPI Engine
+        kpi_overall_score: null,
+        kpi_family_scores: null,
+        bible_metadata: {
+          source: 'frontend',
+          note: 'Frontend-generated audit. Click "Monitor App" for full Bible-driven audit.',
+          timestamp: new Date().toISOString()
+        },
+        audit_version: 'v2-frontend',
+        kpi_version: null,
+        metadata_version_hash: version_hash,
+        audit_hash,
+        source: 'manual' // User-triggered from UI
       };
 
       const { data: auditSnapshot, error: snapshotError } = await supabase
-        .from('audit_snapshots')
+        .from('aso_audit_snapshots') // NEW TABLE (Phase 19)
         .insert(snapshotPayload)
         .select()
         .single();
@@ -223,19 +286,20 @@ export function usePersistAuditSnapshot() {
       console.log('[usePersistAuditSnapshot] ✓ Audit snapshot created:', auditSnapshot.id);
 
       // ========================================================================
-      // STEP 4: Update monitored_apps if requested (using normalized key)
+      // STEP 5: Update monitored_apps if requested (using normalized key)
       // ========================================================================
-      if (input.updateMonitoredApp) {
+      if (input.updateMonitoredApp && monitored_app_id) {
         const { error: updateError } = await supabase
           .from('monitored_apps')
           .update({
             latest_audit_score: Math.round(input.auditData.overallScore),
             latest_audit_at: new Date().toISOString(),
-            metadata_last_refreshed_at: new Date().toISOString()
+            metadata_last_refreshed_at: new Date().toISOString(),
+            validated_state: 'valid',
+            validated_at: new Date().toISOString(),
+            validation_error: null
           })
-          .eq('organization_id', normalizedKey.organization_id)
-          .eq('app_id', normalizedKey.app_id)
-          .eq('platform', normalizedKey.platform);
+          .eq('id', monitored_app_id);
 
         if (updateError) {
           console.warn('[usePersistAuditSnapshot] Failed to update monitored_apps:', updateError);
@@ -266,6 +330,9 @@ export function usePersistAuditSnapshot() {
       });
       queryClient.invalidateQueries({
         queryKey: ['audit-snapshots', variables.organizationId, variables.app_id]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['aso-audit-snapshots', variables.organizationId, variables.app_id]
       });
     },
     onError: (error) => {

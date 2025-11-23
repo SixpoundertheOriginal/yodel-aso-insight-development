@@ -215,7 +215,7 @@ export interface BrandSignals {
 }
 
 /**
- * Intent signals from Intent Intelligence service
+ * Intent signals from Intent Intelligence service (LEGACY)
  */
 export interface IntentSignals {
   /** Navigational keyword count */
@@ -232,6 +232,74 @@ export interface IntentSignals {
 
   /** Dominant intent type */
   dominantIntent: 'navigational' | 'informational' | 'commercial' | 'transactional' | null;
+}
+
+/**
+ * Intent Coverage data from Bible-driven Search Intent Coverage Engine (Phase 17)
+ */
+export interface IntentCoverageData {
+  /** Title coverage result */
+  title: {
+    score: number; // 0-100
+    classifiedTokens: number;
+    unclassifiedTokens: number;
+    distribution: {
+      informational: number;
+      commercial: number;
+      transactional: number;
+      navigational: number;
+      unclassified: number;
+    };
+    distributionPercentage: {
+      informational: number;
+      commercial: number;
+      transactional: number;
+      navigational: number;
+      unclassified: number;
+    };
+  };
+
+  /** Subtitle coverage result */
+  subtitle: {
+    score: number; // 0-100
+    classifiedTokens: number;
+    unclassifiedTokens: number;
+    distribution: {
+      informational: number;
+      commercial: number;
+      transactional: number;
+      navigational: number;
+      unclassified: number;
+    };
+    distributionPercentage: {
+      informational: number;
+      commercial: number;
+      transactional: number;
+      navigational: number;
+      unclassified: number;
+    };
+  };
+
+  /** Overall coverage score (weighted average) */
+  overallScore: number;
+
+  /** Combined distribution across title + subtitle */
+  combinedDistribution: {
+    informational: number;
+    commercial: number;
+    transactional: number;
+    navigational: number;
+    unclassified: number;
+  };
+
+  /** Combined distribution percentages */
+  combinedDistributionPercentage: {
+    informational: number;
+    commercial: number;
+    transactional: number;
+    navigational: number;
+    unclassified: number;
+  };
 }
 
 /**
@@ -304,8 +372,11 @@ export interface KpiEngineInput {
   /** Optional: Precomputed brand signals */
   brandSignals?: BrandSignals;
 
-  /** Optional: Precomputed intent signals */
+  /** Optional: Precomputed intent signals (LEGACY - Autocomplete Intelligence) */
   intentSignals?: IntentSignals;
+
+  /** Phase 18: Optional intent coverage from Bible-driven Search Intent Coverage Engine (Phase 17) */
+  intentCoverage?: IntentCoverageData;
 
   /** Phase 10: Optional active rule set for KPI weight overrides */
   activeRuleSet?: any; // MergedRuleSet - avoiding circular dependency

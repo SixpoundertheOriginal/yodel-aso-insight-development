@@ -8,6 +8,8 @@
 import type { ScrapedMetadata } from '@/types/aso';
 import type { BenchmarkComparison } from '@/services/benchmark-registry.service';
 import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
+import type { IntentCoverageData } from '@/engine/asoBible/searchIntentCoverageEngine';
+import type { KpiEngineResult } from './kpi/kpi.types';
 import { tokenizeForASO, analyzeText } from './tokenization';
 import { analyzeCombinations } from '@/modules/metadata-scoring/utils/ngram';
 import { getTokenRelevance } from './metadataAuditEngine';
@@ -151,6 +153,10 @@ export interface UnifiedMetadataAuditResult {
       recommendations: string[];  // Conversion-specific recommendations
     };
   };
+  // Phase 17: Search Intent Coverage (Bible-driven token-level classification)
+  intentCoverage?: IntentCoverageData;
+  // Phase 18: KPI Engine Result (9 Intent Quality KPIs + all other KPI families)
+  kpiResult?: KpiEngineResult;
 }
 
 /**

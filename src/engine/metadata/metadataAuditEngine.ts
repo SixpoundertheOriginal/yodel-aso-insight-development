@@ -26,6 +26,8 @@ import { getActiveRuleSet } from '@/engine/asoBible/rulesetLoader';
 import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 import { loadIntentPatterns } from '@/engine/asoBible/intentEngine';
 import { setIntentPatterns, classifyIntent } from '@/utils/comboIntentClassifier';
+import { computeCombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
+import { KpiEngine } from './kpi/kpiEngine';
 
 /**
  * Lightweight semantic relevance scoring for tokens (exported for use in registry)
@@ -209,6 +211,46 @@ export class MetadataAuditEngine {
       metadata  // Pass metadata for brand intelligence (Phase 5)
     );
 
+    // Phase 17: Search Intent Coverage (Bible-driven, token-level)
+    // Uses same intent patterns loaded earlier for combo classification
+    const fallbackMode = intentPatterns.length <= 13; // 13 = minimal fallback patterns
+    const intentCoverage = computeCombinedSearchIntentCoverage(
+      titleTokens,
+      subtitleTokens,
+      intentPatterns,
+      fallbackMode
+    );
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Search Intent Coverage] Title: ${intentCoverage.title.score}%, Subtitle: ${intentCoverage.subtitle.score}%, Overall: ${intentCoverage.overallScore}%`);
+    }
+
+    // Phase 18: KPI Engine (Bible-driven KPI computation)
+    // Computes 9 Intent Quality KPIs + all other KPI families
+    const kpiResult = KpiEngine.evaluate({
+      title: metadata.title || '',
+      subtitle: metadata.subtitle || '',
+      locale: options?.locale || 'en-US',
+      platform: metadata.platform === 'android' ? 'android' : 'ios',
+      tokensTitle: titleTokens,
+      tokensSubtitle: subtitleTokens,
+      comboCoverage: {
+        totalCombos: comboCoverage.totalCombos,
+        titleCombos: comboCoverage.titleCombos,
+        subtitleNewCombos: comboCoverage.subtitleNewCombos,
+        allCombinedCombos: comboCoverage.allCombinedCombos,
+        titleCombosClassified: comboCoverage.titleCombosClassified,
+        subtitleNewCombosClassified: comboCoverage.subtitleNewCombosClassified,
+        lowValueCombos: comboCoverage.lowValueCombos,
+      },
+      intentCoverage,  // Phase 18: Pass Intent Coverage data for Intent Quality KPIs
+      activeRuleSet,   // Phase 10: Pass active rule set for weight overrides
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[KPI Engine] Overall Score: ${kpiResult.overallScore}%, Intent Quality Score: ${kpiResult.families.intent_quality?.score || 'N/A'}%`);
+    }
+
     // Generate enhanced recommendations using V2 engine
     const recommendations = this.generateRecommendationsV2(
       elementResults,
@@ -227,7 +269,9 @@ export class MetadataAuditEngine {
       conversionRecommendations,
       keywordCoverage,
       comboCoverage,
-      conversionInsights
+      conversionInsights,
+      intentCoverage,  // Phase 17: Include Search Intent Coverage result
+      kpiResult        // Phase 18: Include KPI Engine result
     };
   }
 

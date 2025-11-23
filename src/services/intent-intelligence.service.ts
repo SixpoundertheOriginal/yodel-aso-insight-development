@@ -16,6 +16,31 @@
  *
  * @see docs/AUTOCOMPLETE_INTELLIGENCE_PHASE1_COMPLETE.md
  * @see supabase/functions/autocomplete-intelligence/index.ts
+ *
+ * ============================================================================
+ * @deprecated PHASE 17 DEPRECATION NOTICE
+ * ============================================================================
+ * This service is being DEPRECATED in favor of the ASO Bible Intent Engine.
+ *
+ * **Migration Path:**
+ * - Search Intent Coverage: Use searchIntentCoverageEngine.ts (Bible-driven, token-level)
+ * - Combo Intent Classification: Use intentEngine.ts (Bible-driven, combo-level)
+ * - This service remains for OPTIONAL autocomplete suggestions/insights ONLY
+ *
+ * **Status:**
+ * - ✅ Search Intent Coverage migrated to Bible Engine (Phase 17)
+ * - ✅ Combo Intent Classification migrated to Bible Engine (Phase 16.7)
+ * - ⚠️ Autocomplete Intelligence kept as optional insight module
+ * - ❌ DO NOT USE for Search Intent Coverage scoring
+ * - ❌ DO NOT USE for metadata audit scoring
+ *
+ * **Timeline:**
+ * - Phase 17: Search Intent Coverage fully migrated to Bible Engine
+ * - Phase 21+: Consider removing this service entirely
+ *
+ * @see src/engine/asoBible/searchIntentCoverageEngine.ts (Primary for coverage)
+ * @see src/engine/asoBible/intentEngine.ts (Primary for combo classification)
+ * ============================================================================
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -167,6 +192,16 @@ export class IntentIntelligenceService {
     platform: Platform = 'ios',
     region: string = 'us'
   ): Promise<IntentRegistryEntry[]> {
+    // Phase 17: Deprecation warning (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '⚠️ [DEPRECATED] IntentIntelligenceService is deprecated for Search Intent Coverage.\n' +
+        '  → Use searchIntentCoverageEngine.ts (Bible-driven, token-level) instead.\n' +
+        '  → This service remains for OPTIONAL autocomplete suggestions only.\n' +
+        '  → See src/engine/asoBible/searchIntentCoverageEngine.ts'
+      );
+    }
+
     // Feature flag check
     if (!AUTOCOMPLETE_INTELLIGENCE_ENABLED) {
       console.log('⚠️ Intent Intelligence disabled by feature flag');

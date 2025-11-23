@@ -31,10 +31,17 @@
       "weight": 0.10
     },
     {
-      "id": "intent_alignment",
-      "label": "Intent Alignment",
-      "description": "Measures alignment with search intent patterns: navigational, informational, commercial, and transactional signals.",
-      "weight": 0.10
+      "id": "intent_quality",
+      "label": "Intent Quality",
+      "description": "Measures metadata alignment with informational, commercial, transactional, and navigational search behaviors.",
+      "weight": 0.10,
+      "admin": {
+        "editable": true,
+        "displayOrder": 6,
+        "color": "#8b5cf6",
+        "icon": "brain",
+        "helpText": "Bible-driven intent classification quality (Phase 17)"
+      }
     }
   ]
 }

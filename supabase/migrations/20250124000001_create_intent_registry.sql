@@ -234,21 +234,20 @@ CREATE POLICY intent_patterns_org_read ON aso_intent_patterns
     scope IN ('client', 'app')
     AND organization_id IN (
       SELECT organization_id
-      FROM user_organization_roles
+      FROM user_roles
       WHERE user_id = auth.uid()
     )
   );
 
--- Only internal users can write
+-- Only SUPER_ADMIN users can write
 CREATE POLICY intent_patterns_internal_write ON aso_intent_patterns
   FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM user_organization_roles uor
-      JOIN organizations o ON o.id = uor.organization_id
-      WHERE uor.user_id = auth.uid()
-        AND o.slug = 'yodel-internal'
-        AND uor.role IN ('admin', 'owner')
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
@@ -265,7 +264,7 @@ CREATE POLICY intent_overrides_org_read ON aso_intent_pattern_overrides
     scope IN ('client', 'app')
     AND organization_id IN (
       SELECT organization_id
-      FROM user_organization_roles
+      FROM user_roles
       WHERE user_id = auth.uid()
     )
   );
@@ -274,11 +273,10 @@ CREATE POLICY intent_overrides_internal_write ON aso_intent_pattern_overrides
   FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM user_organization_roles uor
-      JOIN organizations o ON o.id = uor.organization_id
-      WHERE uor.user_id = auth.uid()
-        AND o.slug = 'yodel-internal'
-        AND uor.role IN ('admin', 'owner')
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
@@ -299,14 +297,14 @@ CREATE TRIGGER update_intent_overrides_updated_at
 -- ============================================================================
 -- Version History Trigger
 -- ============================================================================
-
-CREATE TRIGGER increment_intent_pattern_version
-  BEFORE UPDATE ON aso_intent_patterns
-  FOR EACH ROW
-  WHEN (
-    OLD.pattern IS DISTINCT FROM NEW.pattern
-    OR OLD.intent_type IS DISTINCT FROM NEW.intent_type
-    OR OLD.weight IS DISTINCT FROM NEW.weight
-    OR OLD.is_active IS DISTINCT FROM NEW.is_active
-  )
-  EXECUTE FUNCTION increment_version();
+-- Note: Disabled - increment_version() function not available
+-- CREATE TRIGGER increment_intent_pattern_version
+--   BEFORE UPDATE ON aso_intent_patterns
+--   FOR EACH ROW
+--   WHEN (
+--     OLD.pattern IS DISTINCT FROM NEW.pattern
+--     OR OLD.intent_type IS DISTINCT FROM NEW.intent_type
+--     OR OLD.weight IS DISTINCT FROM NEW.weight
+--     OR OLD.is_active IS DISTINCT FROM NEW.is_active
+--   )
+--   EXECUTE FUNCTION increment_version();

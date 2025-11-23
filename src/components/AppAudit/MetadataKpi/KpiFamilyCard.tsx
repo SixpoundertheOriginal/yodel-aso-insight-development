@@ -63,7 +63,7 @@ export const KpiFamilyCard: React.FC<KpiFamilyCardProps> = ({ family, kpis }) =>
         return '⚖️';
       case 'psychology_alignment':
         return '🧠';
-      case 'intent_alignment':
+      case 'intent_quality':
         return '🎯';
       default:
         return '📊';

@@ -4,6 +4,8 @@
  * Matches backend UnifiedMetadataAuditResult from metadata-audit-v2 Edge Function.
  */
 
+import type { CombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
+
 export type MetadataElement = 'title' | 'subtitle' | 'description';
 
 export type ComboType = 'branded' | 'generic' | 'low_value';
@@ -107,6 +109,8 @@ export interface UnifiedMetadataAuditResult {
       recommendations: string[];
     };
   };
+  // Phase 17: Search Intent Coverage (Bible-driven, token-level)
+  intentCoverage?: CombinedSearchIntentCoverage;
 }
 
 export interface MetadataAuditV2Response {

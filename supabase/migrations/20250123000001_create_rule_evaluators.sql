@@ -110,10 +110,16 @@ CREATE TABLE IF NOT EXISTS aso_rule_evaluator_overrides (
 
   -- Audit fields
   created_by uuid REFERENCES auth.users(id),
-  updated_by uuid REFERENCES auth.users(id),
+  updated_by uuid REFERENCES auth.users(id)
+);
 
-  -- Unique constraint: one override per rule per scope
-  CONSTRAINT unique_rule_override UNIQUE (rule_id, scope, COALESCE(vertical, ''), COALESCE(market, ''), COALESCE(organization_id::text, ''))
+-- Unique index: one override per rule per scope (using expression index with COALESCE)
+CREATE UNIQUE INDEX unique_rule_override ON aso_rule_evaluator_overrides(
+  rule_id,
+  scope,
+  COALESCE(vertical, ''),
+  COALESCE(market, ''),
+  COALESCE(organization_id::text, '')
 );
 
 -- Indexes for aso_rule_evaluator_overrides
@@ -146,46 +152,50 @@ CREATE POLICY rule_evaluators_select_authenticated
   TO authenticated
   USING (true);
 
--- INSERT: Only internal Yodel users can create rules
+-- INSERT: Only SUPER_ADMIN users can create rules
 CREATE POLICY rule_evaluators_insert_internal
   ON aso_rule_evaluators FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
--- UPDATE: Only internal Yodel users can update rules
+-- UPDATE: Only SUPER_ADMIN users can update rules
 CREATE POLICY rule_evaluators_update_internal
   ON aso_rule_evaluators FOR UPDATE
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
--- DELETE: Only internal Yodel users can delete rules
+-- DELETE: Only SUPER_ADMIN users can delete rules
 CREATE POLICY rule_evaluators_delete_internal
   ON aso_rule_evaluators FOR DELETE
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
@@ -201,58 +211,63 @@ CREATE POLICY rule_overrides_select_authenticated
     OR
     -- Own organization's overrides
     organization_id IN (
-      SELECT organization_id FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
+      SELECT organization_id FROM user_roles
+      WHERE user_id = auth.uid()
     )
     OR
-    -- Internal Yodel users can see all
+    -- SUPER_ADMIN users can see all
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
--- INSERT: Only internal Yodel users can create overrides
+-- INSERT: Only SUPER_ADMIN users can create overrides
 CREATE POLICY rule_overrides_insert_internal
   ON aso_rule_evaluator_overrides FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
--- UPDATE: Only internal Yodel users can update overrides
+-- UPDATE: Only SUPER_ADMIN users can update overrides
 CREATE POLICY rule_overrides_update_internal
   ON aso_rule_evaluator_overrides FOR UPDATE
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
--- DELETE: Only internal Yodel users can delete overrides
+-- DELETE: Only SUPER_ADMIN users can delete overrides
 CREATE POLICY rule_overrides_delete_internal
   ON aso_rule_evaluator_overrides FOR DELETE
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE user_profiles.user_id = auth.uid()
-      AND user_profiles.is_internal_yodel = true
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'SUPER_ADMIN'
+      AND organization_id IS NULL
     )
   );
 
