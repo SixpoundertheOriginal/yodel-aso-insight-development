@@ -4,6 +4,7 @@ import { MainLayout } from '@/layouts';
 import { AsoAiHubProvider } from '@/context/AsoAiHubContext';
 import { WorkflowProvider } from '@/context/WorkflowContext';
 import { AppAuditHub } from '@/components/AppAudit/AppAuditHub';
+import { MonitoredAppsWidget } from '@/components/AppAudit/MonitoredAppsWidget';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
@@ -91,7 +92,15 @@ const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
                 className="mb-6"
               />
             )}
-            
+
+            {/* Monitored Apps Widget - Only show in live audit mode */}
+            {mode === 'live' && (selectedOrgId || dataContext.organizationId) && (
+              <MonitoredAppsWidget
+                organizationId={(selectedOrgId || dataContext.organizationId) as string}
+                maxApps={6}
+              />
+            )}
+
             {/* Main Audit Hub */}
             {(selectedOrgId || dataContext.organizationId) ? (
               <AppAuditHub
