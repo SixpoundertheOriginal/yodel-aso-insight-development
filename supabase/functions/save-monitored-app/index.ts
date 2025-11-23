@@ -510,6 +510,17 @@ serve(async (req: Request): Promise<Response> => {
             console.warn('[save-monitored-app] Bible audit generation failed');
             failureReason = 'Bible audit generation failed';
             acceptableFailure = true;
+
+            // Still update monitored_apps to mark as needs_rebuild
+            await supabase
+              .from('monitored_apps')
+              .update({
+                metadata_last_refreshed_at: new Date().toISOString(),
+                validated_state: 'needs_rebuild',
+                validated_at: new Date().toISOString(),
+                validation_error: 'Bible audit generation failed'
+              })
+              .eq('id', monitoredApp.id);
           } else {
             // Extract KPI scores
             const kpiResult = bibleAudit.kpiResult;
@@ -557,6 +568,17 @@ serve(async (req: Request): Promise<Response> => {
               console.error('[save-monitored-app] Failed to create Bible audit snapshot:', snapshotError);
               failureReason = 'Failed to create Bible audit snapshot';
               acceptableFailure = true;
+
+              // Still update monitored_apps to mark as needs_rebuild
+              await supabase
+                .from('monitored_apps')
+                .update({
+                  metadata_last_refreshed_at: new Date().toISOString(),
+                  validated_state: 'needs_rebuild',
+                  validated_at: new Date().toISOString(),
+                  validation_error: 'Failed to create Bible audit snapshot'
+                })
+                .eq('id', monitoredApp.id);
             } else {
               auditSnapshot = snapshotData;
               auditCreated = true;
@@ -580,6 +602,17 @@ serve(async (req: Request): Promise<Response> => {
           console.error('[save-monitored-app] Audit generation failed:', auditError);
           failureReason = 'Audit generation failed';
           acceptableFailure = true; // Acceptable - app is monitored, audit can be regenerated
+
+          // Still update monitored_apps to mark as needs_rebuild
+          await supabase
+            .from('monitored_apps')
+            .update({
+              metadata_last_refreshed_at: new Date().toISOString(),
+              validated_state: 'needs_rebuild',
+              validated_at: new Date().toISOString(),
+              validation_error: `Audit generation failed: ${auditError.message || 'Unknown error'}`
+            })
+            .eq('id', monitoredApp.id);
         }
       } else if (effectiveMetadata && metadataSource === 'cache') {
         // We're using existing cache - generate Bible audit from it
@@ -597,6 +630,17 @@ serve(async (req: Request): Promise<Response> => {
             console.warn('[save-monitored-app] Bible audit generation from cache failed');
             failureReason = failureReason || 'Bible audit generation from cache failed';
             acceptableFailure = true;
+
+            // Still update monitored_apps to mark as needs_rebuild
+            await supabase
+              .from('monitored_apps')
+              .update({
+                metadata_last_refreshed_at: effectiveMetadata.fetched_at,
+                validated_state: 'needs_rebuild',
+                validated_at: new Date().toISOString(),
+                validation_error: 'Bible audit generation from cache failed'
+              })
+              .eq('id', monitoredApp.id);
           } else {
             // Extract KPI scores
             const kpiResult = bibleAudit.kpiResult;
@@ -644,6 +688,17 @@ serve(async (req: Request): Promise<Response> => {
               console.error('[save-monitored-app] Failed to create Bible audit snapshot from cache:', snapshotError);
               failureReason = failureReason || 'Failed to create Bible audit snapshot from cache';
               acceptableFailure = true;
+
+              // Still update monitored_apps to mark as needs_rebuild
+              await supabase
+                .from('monitored_apps')
+                .update({
+                  metadata_last_refreshed_at: effectiveMetadata.fetched_at,
+                  validated_state: 'needs_rebuild',
+                  validated_at: new Date().toISOString(),
+                  validation_error: 'Failed to create Bible audit snapshot from cache'
+                })
+                .eq('id', monitoredApp.id);
             } else {
               auditSnapshot = snapshotData;
               auditCreated = true;
@@ -667,6 +722,17 @@ serve(async (req: Request): Promise<Response> => {
           console.error('[save-monitored-app] Audit generation from cache failed:', auditError);
           failureReason = failureReason || 'Audit generation from cache failed';
           acceptableFailure = true; // Acceptable - app is monitored, audit can be regenerated
+
+          // Still update monitored_apps to mark as needs_rebuild
+          await supabase
+            .from('monitored_apps')
+            .update({
+              metadata_last_refreshed_at: effectiveMetadata.fetched_at,
+              validated_state: 'needs_rebuild',
+              validated_at: new Date().toISOString(),
+              validation_error: `Audit generation from cache failed: ${auditError.message || 'Unknown error'}`
+            })
+            .eq('id', monitoredApp.id);
         }
       }
     } catch (error) {
