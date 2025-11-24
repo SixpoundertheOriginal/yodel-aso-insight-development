@@ -284,6 +284,22 @@ export const ENTERTAINMENT_RECOMMENDATIONS: RecommendationTemplateMap = {
 };
 
 /**
+ * Generic phrase examples by vertical
+ * Used to populate recommendation messages with vertical-specific examples
+ */
+export const VERTICAL_GENERIC_PHRASE_EXAMPLES: Record<string, string[]> = {
+  language_learning: ['learn spanish', 'speak fluently', 'language lessons'],
+  rewards: ['earn rewards', 'win prizes', 'play games'],
+  finance: ['save money', 'invest smart', 'build wealth'],
+  dating: ['meet singles', 'find love', 'true connections'],
+  productivity: ['organize tasks', 'manage projects', 'boost efficiency'],
+  health: ['track fitness', 'workout daily', 'get healthy'],
+  entertainment: ['watch movies', 'stream shows', 'unlimited entertainment'],
+  // Fallback for unknown verticals
+  base: ['discover features', 'explore options', 'find solutions'],
+};
+
+/**
  * Map of all vertical recommendation templates
  */
 export const VERTICAL_RECOMMENDATION_TEMPLATES: Record<
@@ -368,4 +384,48 @@ export function getRecommendationsByCategory(
   return Object.values(templates).filter(
     (template) => template.category === category
   );
+}
+
+/**
+ * Get vertical-specific generic phrase examples
+ *
+ * @param verticalId - Vertical ID (e.g., "rewards", "language_learning")
+ * @param count - Number of examples to return (default: 2)
+ * @returns Array of example phrases, or empty array if vertical not found
+ */
+export function getGenericPhraseExamples(
+  verticalId: string | undefined,
+  count: number = 2
+): string[] {
+  if (!verticalId) {
+    return VERTICAL_GENERIC_PHRASE_EXAMPLES.base.slice(0, count);
+  }
+
+  const examples = VERTICAL_GENERIC_PHRASE_EXAMPLES[verticalId];
+  if (!examples) {
+    // Fallback to base examples if vertical not found
+    return VERTICAL_GENERIC_PHRASE_EXAMPLES.base.slice(0, count);
+  }
+
+  return examples.slice(0, count);
+}
+
+/**
+ * Format generic phrase examples as a string for use in recommendations
+ *
+ * @param verticalId - Vertical ID
+ * @param count - Number of examples to include
+ * @returns Formatted example string (e.g., " (e.g. 'earn rewards', 'play games')")
+ */
+export function formatGenericPhraseExamples(
+  verticalId: string | undefined,
+  count: number = 2
+): string {
+  const examples = getGenericPhraseExamples(verticalId, count);
+  if (examples.length === 0) {
+    return '';
+  }
+
+  const formattedExamples = examples.map(e => `'${e}'`).join(', ');
+  return ` (e.g. ${formattedExamples})`;
 }

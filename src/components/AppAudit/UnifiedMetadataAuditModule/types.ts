@@ -111,6 +111,12 @@ export interface UnifiedMetadataAuditResult {
   };
   // Phase 17: Search Intent Coverage (Bible-driven, token-level)
   intentCoverage?: CombinedSearchIntentCoverage;
+  // Phase 20: Intent Engine Diagnostics (DEV ONLY)
+  intentEngineDiagnostics?: {
+    patternsLoaded: number;
+    fallbackMode: boolean;
+    cacheTtlRemaining: number; // seconds until cache expires
+  };
 }
 
 export interface MetadataAuditV2Response {

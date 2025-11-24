@@ -27,13 +27,17 @@ interface SearchResponse {
 }
 
 export class AppStoreIntegrationService {
-  static async searchApp(searchTerm: string, organizationId: string): Promise<SearchResponse> {
+  static async searchApp(
+    searchTerm: string,
+    organizationId: string,
+    country: string = 'gb' // Default to GB per Phase 2025-01-24 requirements
+  ): Promise<SearchResponse> {
     try {
-      console.log('🔍 [APPSTORE-INTEGRATION-V2] Searching via Phase A adapters:', searchTerm);
+      console.log(`🔍 [APPSTORE-INTEGRATION-V2] Searching via Phase A adapters: ${searchTerm} in ${country.toUpperCase()} market`);
 
       // Use Phase A adapter orchestrator for metadata fetching
       const metadata = await metadataOrchestrator.fetchMetadata(searchTerm, {
-        country: 'us',
+        country, // Use provided market parameter
         timeout: 30000,
         retries: 2
       });

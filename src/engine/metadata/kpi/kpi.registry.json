@@ -161,10 +161,10 @@
       "direction": "lower_is_better"
     },
     {
-      "id": "title_language_verb_pairs",
+      "id": "title_semantic_keyword_pairs",
       "familyId": "keyword_architecture",
-      "label": "Semantic Language-Verb Pairs",
-      "description": "Count of semantic pairs like 'learn spanish', 'speak french' in title",
+      "label": "Semantic Keyword Pairs",
+      "description": "Count of meaningful semantic pairs (category + action verb combinations, e.g. 'game rewards', 'track fitness', 'learn languages') in title",
       "weight": 0.85,
       "metricType": "count",
       "minValue": 0,

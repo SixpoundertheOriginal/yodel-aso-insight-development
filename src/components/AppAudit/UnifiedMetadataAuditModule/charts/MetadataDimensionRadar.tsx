@@ -21,7 +21,7 @@ interface RadarDataPoint {
 interface MetadataDimensionRadarProps {
   metadataDimensionScores: {
     relevance: number;
-    learning: number;
+    discovery: number;
     structure: number;
     brandBalance: number;
     intentQuality: number;
@@ -36,7 +36,7 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
   const data: RadarDataPoint[] = useMemo(() => {
     const points: RadarDataPoint[] = [
       { dimension: 'Relevance', score: metadataDimensionScores.relevance, fullMark: 100 },
-      { dimension: 'Learning', score: metadataDimensionScores.learning, fullMark: 100 },
+      { dimension: 'Discovery', score: metadataDimensionScores.discovery, fullMark: 100 },
       { dimension: 'Structure', score: metadataDimensionScores.structure, fullMark: 100 },
       { dimension: 'Brand Balance', score: metadataDimensionScores.brandBalance, fullMark: 100 },
       { dimension: 'Intent Quality', score: metadataDimensionScores.intentQuality, fullMark: 100 },

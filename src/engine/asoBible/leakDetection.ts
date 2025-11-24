@@ -205,6 +205,8 @@ function detectRecommendationLeak(
   const learningExamples = ['learn spanish', 'language lessons', 'fluency'];
 
   for (const [id, rec] of Object.entries(ruleSet.recommendationOverrides)) {
+    if (!rec.messageTemplate) continue;
+
     const template = rec.messageTemplate.toLowerCase();
 
     const hasLearningExample = learningExamples.some((example) =>

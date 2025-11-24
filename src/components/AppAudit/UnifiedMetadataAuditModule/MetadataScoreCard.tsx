@@ -20,16 +20,42 @@ import type { UnifiedMetadataAuditResult } from './types';
 
 interface MetadataScoreCardProps {
   auditResult: UnifiedMetadataAuditResult;
+  baselineAudit?: UnifiedMetadataAuditResult | null;
+  isCompetitor?: boolean;
 }
 
-export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResult }) => {
+export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({
+  auditResult,
+  baselineAudit = null,
+  isCompetitor = false
+}) => {
   const { overallScore, elements } = auditResult;
-  
+
   // Get score-based colors and effects
   const tierColors = getScoreTierColors(overallScore);
   const scoreGlow = getScoreGlow(overallScore);
   const textGlow = getScoreTextGlow(overallScore);
   const tierName = getScoreTier(overallScore);
+
+  // Helper: Calculate delta for comparison
+  const getDelta = (competitorValue: number | undefined, baselineValue: number | undefined) => {
+    if (!isCompetitor || !baselineAudit || competitorValue === undefined || baselineValue === undefined) {
+      return null;
+    }
+    const delta = competitorValue - baselineValue;
+    return {
+      value: delta,
+      label: delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1),
+      isPositive: delta > 0,
+      isNeutral: Math.abs(delta) < 0.5
+    };
+  };
+
+  // Calculate deltas
+  const overallDelta = getDelta(overallScore, baselineAudit?.overallScore);
+  const titleDelta = getDelta(elements.title.score, baselineAudit?.elements.title.score);
+  const subtitleDelta = getDelta(elements.subtitle.score, baselineAudit?.elements.subtitle.score);
+  const descriptionDelta = getDelta(elements.description.score, baselineAudit?.elements.description.score);
 
   return (
     <Card className={cn(
@@ -113,6 +139,24 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
             >
               {tierName}
             </Badge>
+
+            {/* Delta Badge (Comparison Mode) */}
+            {overallDelta && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "px-3 py-1 mt-2 font-mono",
+                  overallDelta.isNeutral
+                    ? 'border-zinc-500/40 text-zinc-400'
+                    : overallDelta.isPositive
+                    ? 'border-green-500/40 text-green-400'
+                    : 'border-red-500/40 text-red-400'
+                )}
+              >
+                {overallDelta.isPositive ? '↑' : '↓'} {overallDelta.label} vs Your App
+              </Badge>
+            )}
+
             <p className={cn(auditTypography.tier.note, "mt-2")}>
               ASO Ranking Score (Title + Subtitle)
             </p>
@@ -154,6 +198,21 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
               >
                 {elements.title.score}
               </Badge>
+              {titleDelta && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "px-2 py-0.5 mt-2 text-xs font-mono",
+                    titleDelta.isNeutral
+                      ? 'border-zinc-500/40 text-zinc-400'
+                      : titleDelta.isPositive
+                      ? 'border-green-500/40 text-green-400'
+                      : 'border-red-500/40 text-red-400'
+                  )}
+                >
+                  {titleDelta.isPositive ? '↑' : '↓'} {titleDelta.label}
+                </Badge>
+              )}
             </div>
 
             {/* Subtitle */}
@@ -185,6 +244,21 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
               >
                 {elements.subtitle.score}
               </Badge>
+              {subtitleDelta && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "px-2 py-0.5 mt-2 text-xs font-mono",
+                    subtitleDelta.isNeutral
+                      ? 'border-zinc-500/40 text-zinc-400'
+                      : subtitleDelta.isPositive
+                      ? 'border-green-500/40 text-green-400'
+                      : 'border-red-500/40 text-red-400'
+                  )}
+                >
+                  {subtitleDelta.isPositive ? '↑' : '↓'} {subtitleDelta.label}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -213,6 +287,21 @@ export const MetadataScoreCard: React.FC<MetadataScoreCardProps> = ({ auditResul
             >
               {elements.description.score}
             </Badge>
+            {descriptionDelta && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "px-2 py-0.5 mt-2 text-xs font-mono relative z-10",
+                  descriptionDelta.isNeutral
+                    ? 'border-zinc-500/40 text-zinc-400'
+                    : descriptionDelta.isPositive
+                    ? 'border-green-500/40 text-green-400'
+                    : 'border-red-500/40 text-red-400'
+                )}
+              >
+                {descriptionDelta.isPositive ? '↑' : '↓'} {descriptionDelta.label}
+              </Badge>
+            )}
             <p className={cn(auditTypography.tier.note, "max-w-xs relative z-10 mt-2")}>
               Conversion quality only. Does NOT influence App Store ranking.
             </p>

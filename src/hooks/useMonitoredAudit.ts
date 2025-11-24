@@ -30,13 +30,16 @@ export interface MonitoredAuditData {
 
 /**
  * Hook to fetch monitored audit data (RLS-safe, organization-scoped)
+ *
+ * @param marketCode - Optional market code to filter audits by specific market
  */
 export function useMonitoredAudit(
   monitoredAppId: string | undefined,
-  organizationId: string | undefined
+  organizationId: string | undefined,
+  marketCode?: string
 ) {
   return useQuery({
-    queryKey: ['monitored-audit', organizationId, monitoredAppId],
+    queryKey: ['monitored-audit', organizationId, monitoredAppId, marketCode],
     queryFn: async (): Promise<MonitoredAuditData> => {
       if (!monitoredAppId || !organizationId) {
         throw new Error('Missing monitoredAppId or organizationId');
@@ -102,10 +105,35 @@ export function useMonitoredAudit(
       // ========================================================================
       // STEP 3: Fetch latest Bible-driven audit snapshot (Phase 19)
       // ========================================================================
-      const { data: bibleSnapshot, error: bibleSnapshotError } = await supabase
+      // If marketCode is provided, get the monitored_app_market_id first
+      let marketId: string | null = null;
+      if (marketCode) {
+        const { data: marketData } = await supabase
+          .from('monitored_app_markets')
+          .select('id')
+          .eq('monitored_app_id', monitoredAppId)
+          .eq('market_code', marketCode)
+          .maybeSingle();
+
+        marketId = marketData?.id || null;
+
+        if (!marketId) {
+          console.warn(`[useMonitoredAudit] Market ${marketCode} not found for app ${monitoredAppId}`);
+        }
+      }
+
+      // Build query for Bible snapshot with optional market filter
+      let bibleSnapshotQuery = supabase
         .from('aso_audit_snapshots')
         .select('*')
-        .eq('monitored_app_id', monitoredAppId)
+        .eq('monitored_app_id', monitoredAppId);
+
+      // Apply market filter if we have a marketId
+      if (marketId) {
+        bibleSnapshotQuery = bibleSnapshotQuery.eq('monitored_app_market_id', marketId);
+      }
+
+      const { data: bibleSnapshot, error: bibleSnapshotError } = await bibleSnapshotQuery
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -184,6 +212,7 @@ export function useMonitoredAudit(
 export function useMonitoredAuditWithConsistency(
   monitoredAppId: string | undefined,
   organizationId: string | undefined,
+  marketCode?: string,
   options: {
     /**
      * If false, skips auto-rebuild and just returns validation state
@@ -212,7 +241,7 @@ export function useMonitoredAuditWithConsistency(
   });
 
   // STEP 2: Fetch cached audit (only after validation/rebuild completes)
-  const auditQuery = useMonitoredAudit(monitoredAppId, organizationId);
+  const auditQuery = useMonitoredAudit(monitoredAppId, organizationId, marketCode);
 
   // Disable audit query until consistency is validated and rebuilt if needed
   const shouldFetchAudit =

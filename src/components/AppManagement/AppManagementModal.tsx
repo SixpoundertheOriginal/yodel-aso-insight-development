@@ -25,6 +25,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
 import { toast } from 'sonner';
 import { isDebugTarget } from '@/lib/debugTargets';
+import { MarketSelector } from './MarketSelector';
+import { DEFAULT_MARKET, type MarketCode } from '@/config/markets';
 
 interface App {
   id: string;
@@ -61,7 +63,8 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
     bundle_id: '',
     category: '',
     developer_name: '',
-    app_icon_url: ''
+    app_icon_url: '',
+    primary_market: DEFAULT_MARKET as MarketCode, // Default to GB
   });
 
   const [isSearching, setIsSearching] = useState(false);
@@ -88,7 +91,8 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
         bundle_id: '',
         category: '',
         developer_name: '',
-        app_icon_url: ''
+        app_icon_url: '',
+        primary_market: DEFAULT_MARKET as MarketCode,
       });
     }
     setSearchResults([]);
@@ -138,7 +142,8 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
 
       const result = await AppStoreIntegrationService.searchApp(
         formData.app_name,
-        orgId
+        orgId,
+        formData.primary_market // Pass selected market
       );
 
       if (result.success && result.data) {
@@ -282,6 +287,18 @@ export const AppManagementModal: React.FC<AppManagementModalProps> = ({
                     <SelectItem value="android">Android</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="market" className="text-foreground">Market *</Label>
+                <MarketSelector
+                  value={formData.primary_market}
+                  onChange={(value) => handleInputChange('primary_market', value as string)}
+                  placeholder="Select market to search"
+                  className="bg-zinc-800 border-zinc-700 text-foreground"
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  Search for apps in this market's App Store
+                </p>
               </div>
             </div>
 

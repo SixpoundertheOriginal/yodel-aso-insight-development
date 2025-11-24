@@ -138,6 +138,26 @@ export function clearIntentPatternCache(): void {
 }
 
 /**
+ * Get cache diagnostics (for Intent Engine Diagnostics Panel)
+ * Returns current cache state and TTL remaining
+ */
+export function getIntentPatternCacheDiagnostics(): {
+  patternsLoaded: number;
+  fallbackMode: boolean;
+  cacheTtlRemaining: number; // seconds
+} {
+  const now = Date.now();
+  const ttlRemainingMs = cachedPatterns ? Math.max(0, CACHE_TTL_MS - (now - cacheTimestamp)) : 0;
+  const ttlRemainingSec = Math.floor(ttlRemainingMs / 1000);
+
+  return {
+    patternsLoaded: cachedPatterns?.length || 0,
+    fallbackMode: cachedPatterns ? cachedPatterns.length <= 13 : true, // 13 = minimal fallback patterns
+    cacheTtlRemaining: ttlRemainingSec,
+  };
+}
+
+/**
  * Load effective intent patterns from DB with fallback
  *
  * Hybrid Model (Option B):

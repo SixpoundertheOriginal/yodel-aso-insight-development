@@ -560,7 +560,8 @@ export class KpiEngine {
       case 'subtitle_low_value_combo_ratio':
         return primitives.lowValueComboRatio;
 
-      case 'title_language_verb_pairs':
+      case 'title_semantic_keyword_pairs':
+      case 'title_language_verb_pairs': // Legacy alias for backwards compatibility
         return primitives.titleLanguageVerbPairs;
 
       case 'total_unique_keyword_coverage':

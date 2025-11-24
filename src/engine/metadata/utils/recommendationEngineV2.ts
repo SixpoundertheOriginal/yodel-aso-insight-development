@@ -9,10 +9,12 @@
  * - Integration with V2 engine signals
  *
  * Phase 10: Vertical-aware recommendation templates with fallback
+ * Phase 20: Vertical-specific generic phrase examples (no more hardcoded language learning)
  */
 
 import type { ElementScoringResult, MetadataElement, UnifiedMetadataAuditResult, ClassifiedCombo } from '../metadataScoringRegistry';
 import { AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
+import { formatGenericPhraseExamples } from '@/engine/asoBible/commonPatterns/recommendationTemplates';
 
 /**
  * Severity levels for recommendations
@@ -281,12 +283,14 @@ function generateBrandAlignmentRecs(signals: RecommendationSignals): EnhancedRec
     if (brandClassifiedCount > 0 && genericClassifiedCount > 0) {
       // Brand >> Generic (too brand-focused) - using Phase 5 classification
       if (brandClassifiedCount >= 4 && genericClassifiedCount <= 2) {
+        // Phase 20: Use vertical-specific examples
+        const examplePhrase = formatGenericPhraseExamples(signals.activeRuleSet?.verticalId);
         recs.push({
           id: 'brand_intelligence_too_brand_focused',
           category: 'brand_alignment',
           severity: 'strong',
           impactScore: SEVERITY_TO_IMPACT.strong,
-          message: `[BRAND][strong] ${brandClassifiedCount} brand combos detected vs. ${genericClassifiedCount} generic discovery combos. Consider balancing with more non-branded phrases (e.g. 'learn spanish', 'language lessons') to reach non-brand-aware users.`
+          message: `[BRAND][strong] ${brandClassifiedCount} brand combos detected vs. ${genericClassifiedCount} generic discovery combos. Consider balancing with more non-branded phrases${examplePhrase} to reach non-brand-aware users.`
         });
       }
 
@@ -316,12 +320,14 @@ function generateBrandAlignmentRecs(signals: RecommendationSignals): EnhancedRec
     // Fallback: Legacy brand alignment recommendations (using TYPE classification)
     // Branded >> Generic (too brand-focused)
     if (brandedCount >= 4 && genericCount <= 2) {
+      // Phase 20: Use vertical-specific examples
+      const examplePhrase = formatGenericPhraseExamples(signals.activeRuleSet?.verticalId);
       recs.push({
         id: 'combo_too_brand_focused',
         category: 'brand_alignment',
         severity: 'strong',
         impactScore: SEVERITY_TO_IMPACT.strong,
-        message: '[RANKING][strong] Strong branded coverage but limited generic discovery combos. Consider adding more generic phrases (e.g. \'learn spanish\', \'language lessons\') to reach non-brand-aware users.'
+        message: `[RANKING][strong] Strong branded coverage but limited generic discovery combos. Consider adding more generic phrases${examplePhrase} to reach non-brand-aware users.`
       });
     }
 
@@ -339,12 +345,14 @@ function generateBrandAlignmentRecs(signals: RecommendationSignals): EnhancedRec
 
   // Low-value combos dominate (applies regardless of brand intelligence flag)
   if (lowValueCount > 0 && lowValueCount >= genericCount) {
+    // Phase 20: Use vertical-specific examples
+    const examplePhrase = formatGenericPhraseExamples(signals.activeRuleSet?.verticalId);
     recs.push({
       id: 'combo_low_value_dominance',
       category: 'brand_alignment',
       severity: 'moderate',
       impactScore: SEVERITY_TO_IMPACT.moderate,
-      message: '[RANKING][moderate] A significant share of your combinations are numeric or time-based (e.g. \'in 30 days\'). These have limited impact on search. Consider refocusing on intent-driven phrases such as \'learn spanish\', \'language lessons\'.'
+      message: `[RANKING][moderate] A significant share of your combinations are numeric or time-based (e.g. 'in 30 days'). These have limited impact on search. Consider refocusing on intent-driven phrases${examplePhrase}.`
     });
   }
 

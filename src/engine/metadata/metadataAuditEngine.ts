@@ -24,7 +24,7 @@ import {
 import { generateEnhancedRecommendations, type RecommendationSignals } from './utils/recommendationEngineV2';
 import { getActiveRuleSet } from '@/engine/asoBible/rulesetLoader';
 import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
-import { loadIntentPatterns } from '@/engine/asoBible/intentEngine';
+import { loadIntentPatterns, getIntentPatternCacheDiagnostics } from '@/engine/asoBible/intentEngine';
 import { setIntentPatterns, classifyIntent } from '@/utils/comboIntentClassifier';
 import { computeCombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
 import { KpiEngine } from './kpi/kpiEngine';
@@ -208,7 +208,8 @@ export class MetadataAuditEngine {
       titleTokens,
       subtitleTokens,
       stopwords,
-      metadata  // Pass metadata for brand intelligence (Phase 5)
+      metadata,      // Pass metadata for brand intelligence (Phase 5)
+      activeRuleSet  // Phase 20: Pass activeRuleSet for vertical-specific token relevance
     );
 
     // Phase 17: Search Intent Coverage (Bible-driven, token-level)
@@ -262,6 +263,9 @@ export class MetadataAuditEngine {
     const topRecommendations = recommendations.rankingRecommendations;
     const conversionRecommendations = recommendations.conversionRecommendations;
 
+    // Phase 20: Get Intent Engine diagnostics for DEV panel
+    const intentEngineDiagnostics = getIntentPatternCacheDiagnostics();
+
     return {
       overallScore,
       elements: elementResults,
@@ -271,7 +275,8 @@ export class MetadataAuditEngine {
       comboCoverage,
       conversionInsights,
       intentCoverage,  // Phase 17: Include Search Intent Coverage result
-      kpiResult        // Phase 18: Include KPI Engine result
+      kpiResult,       // Phase 18: Include KPI Engine result
+      intentEngineDiagnostics  // Phase 20: Intent Engine diagnostics (DEV ONLY)
     };
   }
 
@@ -535,12 +540,13 @@ export class MetadataAuditEngine {
   /**
    * Classifies a combo as branded, generic, or low_value
    */
-  private static classifyCombo(combo: string, titleTokens: string[]): { type: 'branded' | 'generic' | 'low_value'; relevanceScore: number } {
+  private static classifyCombo(combo: string, titleTokens: string[], activeRuleSet?: MergedRuleSet): { type: 'branded' | 'generic' | 'low_value'; relevanceScore: number } {
     const comboLower = combo.toLowerCase();
     const comboWords = comboLower.split(' ');
 
     // Calculate average relevance score of combo words
-    const avgRelevance = comboWords.reduce((sum, word) => sum + this.getTokenRelevance(word), 0) / comboWords.length;
+    // Phase 20: Use activeRuleSet for vertical-specific token relevance
+    const avgRelevance = comboWords.reduce((sum, word) => sum + this.getTokenRelevance(word, activeRuleSet), 0) / comboWords.length;
 
     // Low-value: Average relevance score is 0, or contains low-value patterns
     const lowValuePatterns = [
@@ -583,14 +589,16 @@ export class MetadataAuditEngine {
     titleTokens: string[],
     subtitleTokens: string[],
     stopwords: Set<string>,
-    metadata?: ScrapedMetadata  // Optional metadata for brand intelligence (Phase 5)
+    metadata?: ScrapedMetadata,  // Optional metadata for brand intelligence (Phase 5)
+    activeRuleSet?: MergedRuleSet  // Phase 20: Optional activeRuleSet for vertical-specific token relevance
   ): UnifiedMetadataAuditResult['comboCoverage'] {
     // Use V2 engine for enhanced combo generation
+    // Phase 20: Pass activeRuleSet to getTokenRelevance for vertical-specific scoring
     const allEnhancedCombos = generateEnhancedCombos({
       titleTokens,
       subtitleTokens,
       stopwords,
-      getTokenRelevance: this.getTokenRelevance.bind(this),
+      getTokenRelevance: (token: string) => this.getTokenRelevance(token, activeRuleSet),
       minLength: 2,
       maxLength: 4
     });
@@ -607,14 +615,15 @@ export class MetadataAuditEngine {
     const allCombinedCombos = valuable.map(c => c.text);
 
     // Classify combos for UI display (V2.1 compatibility)
+    // Phase 20: Pass activeRuleSet for vertical-specific token relevance scoring
     const titleCombosClassified = titleOnly.map(combo => ({
       text: combo.text,
-      ...this.classifyCombo(combo.text, titleTokens)
+      ...this.classifyCombo(combo.text, titleTokens, activeRuleSet)
     }));
 
     const subtitleNewCombosClassified = subtitleIncremental.map(combo => ({
       text: combo.text,
-      ...this.classifyCombo(combo.text, titleTokens)
+      ...this.classifyCombo(combo.text, titleTokens, activeRuleSet)
     }));
 
     const lowValueCombos = lowValue.map(combo => ({

@@ -23,6 +23,8 @@ import { userExperienceShieldService, LoadingState } from '@/services/user-exper
 import { asoSearchService } from '@/services/aso-search.service';
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch';
 import { usePermissions } from '@/hooks/usePermissions';
+import { MarketSelector } from '@/components/AppManagement/MarketSelector';
+import { DEFAULT_MARKET, type MarketCode } from '@/config/markets';
 
 interface MetadataImporterProps {
   onImportSuccess: (data: ScrapedMetadata, organizationId: string) => void;
@@ -41,6 +43,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
   const [lastError, setLastError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'auto' | 'keyword' | 'brand' | 'url'>('auto');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [selectedMarket, setSelectedMarket] = useState<MarketCode>(DEFAULT_MARKET); // GB by default
 
   // App selection modal state
   const [showAppSelection, setShowAppSelection] = useState(false);
@@ -169,12 +172,14 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
 
     try {
       console.log('📤 [METADATA-IMPORTER] Calling bulletproof asoSearchService.search...');
+      console.log(`🌍 [METADATA-IMPORTER] Searching in market: ${selectedMarket.toUpperCase()}`);
 
       const searchResult = await asoSearchService.search(input, {
         organizationId,
         includeIntelligence: true,
         cacheResults: true,
         debugMode: process.env.NODE_ENV === 'development',
+        country: selectedMarket, // Pass selected market to search
         onLoadingUpdate: (state: LoadingState) => {
           setLoadingState(state);
           console.log('🛡️ [UX-SHIELD] Loading state update:', state);
@@ -186,7 +191,7 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       // Enhanced success message with recovery info
       const { searchContext } = searchResult;
       let successMessage = `Successfully imported ${searchResult.targetApp.name}`;
-      
+
       if (searchContext.source === 'cache') {
         successMessage += ' from cache';
       } else if (searchContext.source === 'fallback') {
@@ -194,11 +199,11 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       } else if (searchContext.source === 'similar') {
         successMessage += ' using similar match';
       }
-      
+
       if (searchContext.backgroundRetries > 0) {
         successMessage += ` (${searchContext.backgroundRetries} automatic retries)`;
       }
-      
+
       successMessage += ` in ${searchContext.responseTime}ms`;
 
       toast({
@@ -219,7 +224,17 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
       // Debug-gated log for fresh metadata with privacy-safe digest
       debug('METADATA-IMPORT', 'Using fresh metadata', metadataDigest(searchResult.targetApp));
 
-      onImportSuccess(searchResult.targetApp, organizationId);
+      // ENTERPRISE FIX: Override metadata.locale with searchContext.country
+      // This ensures the audit page displays the correct market (the one we searched)
+      // instead of the app's primary locale from App Store API
+      const metadataWithCorrectMarket = {
+        ...searchResult.targetApp,
+        locale: searchContext.country // Override with searched market (e.g., 'gb' not 'us')
+      };
+
+      console.log(`🌍 [MARKET-FIX] Overriding locale: ${searchResult.targetApp.locale} → ${searchContext.country}`);
+
+      onImportSuccess(metadataWithCorrectMarket, organizationId);
 
       // Phase E: Invalidate queries after successful import to force fresh data
       queryClient.invalidateQueries({ queryKey: ['metadata', searchResult.targetApp.appId] });
@@ -301,12 +316,21 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
         source: (selectedApp as any)._source
       });
 
+      // ENTERPRISE FIX: Override metadata.locale with selected market
+      // When user selects from multiple apps, ensure locale matches the searched market
+      const metadataWithCorrectMarket = {
+        ...selectedApp,
+        locale: selectedMarket // Override with selected market from dropdown
+      };
+
+      console.log(`🌍 [MARKET-FIX] Manual selection - setting locale: ${selectedMarket}`);
+
       toast({
         title: 'App Selected! 🎉',
         description: `Successfully imported ${selectedApp.name}`,
       });
 
-      onImportSuccess(selectedApp, organizationId!);
+      onImportSuccess(metadataWithCorrectMarket, organizationId!);
 
       // Phase E: Invalidate queries after manual app selection
       queryClient.invalidateQueries({ queryKey: ['metadata', selectedApp.appId] });
@@ -631,6 +655,22 @@ export const MetadataImporter: React.FC<MetadataImporterProps> = ({ onImportSucc
             </div>
             <p className="text-xs text-zinc-500 mt-2">
               {getSearchTypeDescription()}
+            </p>
+          </div>
+
+          {/* Market Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
+              App Store Market
+            </label>
+            <MarketSelector
+              value={selectedMarket}
+              onChange={setSelectedMarket}
+              disabled={isImporting}
+              placeholder="🇬🇧 United Kingdom"
+            />
+            <p className="text-xs text-zinc-500 mt-2">
+              Select the App Store market to search and fetch metadata from (default: United Kingdom)
             </p>
           </div>
           

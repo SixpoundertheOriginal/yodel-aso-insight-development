@@ -9,8 +9,7 @@
  * This hook is used in the Audit History View to display timeline and trends.
  */
 
-import { useQuery } from '@tantml:function_calls>
-<invoke name="supabase">
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   BibleAuditSnapshot,

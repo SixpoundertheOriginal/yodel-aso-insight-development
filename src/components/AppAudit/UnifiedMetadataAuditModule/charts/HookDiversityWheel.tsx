@@ -4,7 +4,7 @@
  * Multi-segment donut chart showing messaging hook distribution.
  * Maps combos into 6 psychological hook categories to assess messaging diversity.
  *
- * Uses existing comboCoverage + keyword data - NO backend changes.
+ * Phase 20: Now Bible-powered using hookClassifier with vertical-specific patterns
  */
 
 import React, { useMemo } from 'react';
@@ -13,8 +13,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { Target } from 'lucide-react';
 import type { ClassifiedCombo } from '../types';
 import { getTooltipConfig } from './InsightTooltip';
+import { classifyHook, HOOK_CATEGORY_META, type HookCategory } from '@/engine/asoBible/utils/hookClassifier';
+import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 
-interface HookCategory {
+interface HookCategoryData {
   name: string;
   value: number;
   color: string;
@@ -30,95 +32,58 @@ interface HookDiversityWheelProps {
     titleKeywords: string[];
     subtitleNewKeywords: string[];
   };
+  /** Optional active rule set for vertical-specific hook patterns */
+  activeRuleSet?: MergedRuleSet;
 }
 
 /**
- * Hook categories with color palette
+ * Classify combo into hook category using Bible Engine
+ * Wrapper for the Bible-powered hookClassifier
  */
-const HOOK_CATEGORIES = {
-  learning: { color: '#22d3ee', description: 'Educational, skill-building' },    // cyan-400
-  outcome: { color: '#10b981', description: 'Results, benefits, achievements' }, // emerald-500
-  status: { color: '#a855f7', description: 'Authority, prestige, recognition' }, // purple-500
-  ease: { color: '#f59e0b', description: 'Simple, quick, effortless' },         // amber-500
-  time: { color: '#3b82f6', description: 'Speed, efficiency, time-saving' },    // blue-500
-  trust: { color: '#ec4899', description: 'Safety, reliability, proven' },     // pink-500
-};
-
-/**
- * Classify combo into hook category based on keywords
- */
-const classifyHook = (combo: ClassifiedCombo): string | null => {
-  const text = combo.text.toLowerCase();
-
-  // Learning / Educational
-  if (text.match(/learn|study|master|practice|improve|develop|skill|course|lesson|training|tutorial/)) {
-    return 'learning';
-  }
-
-  // Outcome / Benefit
-  if (text.match(/speak|fluent|proficient|achieve|results|success|become|transform|unlock/)) {
-    return 'outcome';
-  }
-
-  // Status / Authority
-  if (text.match(/best|top|#1|leading|premium|professional|expert|advanced|pro|elite/)) {
-    return 'status';
-  }
-
-  // Ease of use
-  if (text.match(/easy|simple|quick|effortless|intuitive|user.?friendly|convenient|hassle.?free/)) {
-    return 'ease';
-  }
-
-  // Time to result
-  if (text.match(/fast|rapid|instant|minutes|days|hours|speed|accelerate|boost/)) {
-    return 'time';
-  }
-
-  // Trust / Safety
-  if (text.match(/trusted|proven|safe|reliable|secure|certified|guaranteed|verified|official/)) {
-    return 'trust';
-  }
-
-  return null;
+const classifyComboHook = (
+  combo: ClassifiedCombo,
+  activeRuleSet?: MergedRuleSet
+): HookCategory | null => {
+  return classifyHook(combo.text, activeRuleSet);
 };
 
 export const HookDiversityWheel: React.FC<HookDiversityWheelProps> = ({
   comboCoverage,
   keywordCoverage,
+  activeRuleSet,
 }) => {
-  const data: HookCategory[] = useMemo(() => {
+  const data: HookCategoryData[] = useMemo(() => {
     const titleCombos = comboCoverage.titleCombosClassified || [];
     const subtitleCombos = comboCoverage.subtitleNewCombosClassified || [];
     const allCombos = [...titleCombos, ...subtitleCombos];
 
-    // Count by hook category
-    const counts = {
-      learning: 0,
-      outcome: 0,
-      status: 0,
-      ease: 0,
-      time: 0,
-      trust: 0,
+    // Count by hook category using Bible-powered classifier
+    const counts: Record<HookCategory, number> = {
+      learning_educational: 0,
+      outcome_benefit: 0,
+      status_authority: 0,
+      ease_of_use: 0,
+      time_to_result: 0,
+      trust_safety: 0,
     };
 
     allCombos.forEach(combo => {
-      const hook = classifyHook(combo);
-      if (hook && hook in counts) {
-        counts[hook as keyof typeof counts]++;
+      const hook = classifyComboHook(combo, activeRuleSet);
+      if (hook) {
+        counts[hook]++;
       }
     });
 
-    // Convert to chart data
-    return Object.entries(counts)
-      .map(([key, value]) => ({
-        name: key.charAt(0).toUpperCase() + key.slice(1),
+    // Convert to chart data using Bible metadata
+    return (Object.entries(counts) as [HookCategory, number][])
+      .map(([category, value]) => ({
+        name: HOOK_CATEGORY_META[category].label,
         value,
-        color: HOOK_CATEGORIES[key as keyof typeof HOOK_CATEGORIES].color,
-        description: HOOK_CATEGORIES[key as keyof typeof HOOK_CATEGORIES].description,
+        color: HOOK_CATEGORY_META[category].color,
+        description: HOOK_CATEGORY_META[category].description,
       }))
       .filter(item => item.value > 0); // Only show non-zero categories
-  }, [comboCoverage]);
+  }, [comboCoverage, activeRuleSet]);
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
 

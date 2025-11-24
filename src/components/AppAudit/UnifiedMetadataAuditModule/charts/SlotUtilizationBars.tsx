@@ -1,7 +1,7 @@
 /**
  * Slot Utilization Stacked Bars
  *
- * Stacked bar chart showing token type distribution across Title, Subtitle, Keyword Field.
+ * Stacked bar chart showing token type distribution across Title, Subtitle, Description.
  * Categories: Core, Learning, Generic, Filler, Duplicates, Unused space.
  *
  * Uses existing keywordCoverage data - NO backend changes.
@@ -31,6 +31,8 @@ interface SlotUtilizationBarsProps {
     subtitleIgnoredCount?: number;
     descriptionIgnoredCount?: number;
   };
+  /** Platform - iOS excludes Description from ranking analysis */
+  platform?: 'ios' | 'android';
 }
 
 /**
@@ -61,7 +63,12 @@ const estimateTokenDistribution = (
 
 export const SlotUtilizationBars: React.FC<SlotUtilizationBarsProps> = ({
   keywordCoverage,
+  platform = 'ios',
 }) => {
+  // iOS: Description does NOT impact App Store search ranking
+  // Only Title and Subtitle are indexed for keyword ranking
+  const includeDescription = platform === 'android';
+
   const data: SlotData[] = useMemo(() => {
     const titleDist = estimateTokenDistribution(
       keywordCoverage.titleKeywords,
@@ -73,12 +80,7 @@ export const SlotUtilizationBars: React.FC<SlotUtilizationBarsProps> = ({
       keywordCoverage.subtitleIgnoredCount || 0
     );
 
-    const keywordFieldDist = estimateTokenDistribution(
-      keywordCoverage.descriptionNewKeywords,
-      keywordCoverage.descriptionIgnoredCount || 0
-    );
-
-    return [
+    const slots: SlotData[] = [
       {
         slot: 'Title',
         core: titleDist.core,
@@ -97,17 +99,28 @@ export const SlotUtilizationBars: React.FC<SlotUtilizationBarsProps> = ({
         duplicates: subtitleDist.duplicates,
         unused: subtitleDist.unused,
       },
-      {
-        slot: 'Keyword Field',
-        core: keywordFieldDist.core,
-        learning: keywordFieldDist.learning,
-        generic: keywordFieldDist.generic,
-        filler: keywordFieldDist.filler,
-        duplicates: keywordFieldDist.duplicates,
-        unused: keywordFieldDist.unused,
-      },
     ];
-  }, [keywordCoverage]);
+
+    // Only include Description for Android (where it impacts ranking)
+    if (includeDescription) {
+      const descriptionDist = estimateTokenDistribution(
+        keywordCoverage.descriptionNewKeywords,
+        keywordCoverage.descriptionIgnoredCount || 0
+      );
+
+      slots.push({
+        slot: 'Description',
+        core: descriptionDist.core,
+        learning: descriptionDist.learning,
+        generic: descriptionDist.generic,
+        filler: descriptionDist.filler,
+        duplicates: descriptionDist.duplicates,
+        unused: descriptionDist.unused,
+      });
+    }
+
+    return slots;
+  }, [keywordCoverage, includeDescription]);
 
   return (
     <Card className="relative bg-black/40 border border-zinc-800/50 rounded-xl shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
@@ -123,8 +136,13 @@ export const SlotUtilizationBars: React.FC<SlotUtilizationBarsProps> = ({
           SLOT UTILIZATION
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-          Token type distribution across metadata slots
+          Token type distribution across {platform === 'ios' ? 'ranking metadata slots' : 'metadata slots'}
         </p>
+        {!includeDescription && (
+          <p className="text-[10px] text-yellow-400/80 mt-1 leading-relaxed">
+            ⓘ Description excluded — iOS App Store does not index description for keyword ranking
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="pt-0">

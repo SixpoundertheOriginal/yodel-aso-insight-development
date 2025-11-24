@@ -9,7 +9,7 @@
  * - Fallback: Legacy Autocomplete Intelligence (for migration compatibility)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +17,7 @@ import { ChevronDown, ChevronUp, Target, TrendingUp, Search, ShoppingCart, Alert
 import type { IntentSignals } from '@/services/intent-intelligence.service';
 import type { SearchIntentCoverageResult } from '@/engine/asoBible/searchIntentCoverageEngine';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
+import { getMixedKeywordExamples, normalizeVertical } from '@/services/intent-keyword-examples.service';
 
 interface SearchIntentCoverageCardProps {
   /** Bible-driven coverage data (Phase 17 - PRIMARY) */
@@ -30,6 +31,14 @@ interface SearchIntentCoverageCardProps {
 
   /** Keywords for this element */
   keywords: string[];
+
+  /** App category for vertical-specific recommendations (Phase 21) */
+  appCategory?: string;
+
+  /** Comparison mode: baseline coverage to compare against */
+  baselineCoverage?: SearchIntentCoverageResult | null;
+  /** Comparison mode: is this a competitor? */
+  isCompetitor?: boolean;
 }
 
 /**
@@ -85,10 +94,47 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
   intentSignals,
   elementType,
   keywords,
+  appCategory,
+  baselineCoverage = null,
+  isCompetitor = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [verticalExamples, setVerticalExamples] = useState<string[]>([]);
 
   const elementDisplayName = elementType === 'title' ? 'Title' : 'Subtitle';
+
+  // Helper: Calculate delta for comparison
+  const getDelta = (competitorValue: number | undefined, baselineValue: number | undefined) => {
+    if (!isCompetitor || !baselineCoverage || competitorValue === undefined || baselineValue === undefined) {
+      return null;
+    }
+    const delta = competitorValue - baselineValue;
+    return {
+      value: delta,
+      label: delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1),
+      isPositive: delta > 0,
+      isNeutral: Math.abs(delta) < 0.5
+    };
+  };
+
+  // Phase 21: Fetch vertical-specific examples on mount
+  useEffect(() => {
+    const fetchExamples = async () => {
+      const vertical = normalizeVertical(appCategory);
+      console.log(`[INTENT-COVERAGE] Fetching examples for vertical: ${vertical} (from category: ${appCategory})`);
+
+      const examples = await getMixedKeywordExamples(vertical, ['informational', 'commercial', 'transactional'], 3);
+
+      if (examples.length > 0) {
+        console.log(`[INTENT-COVERAGE] Loaded ${examples.length} examples:`, examples);
+        setVerticalExamples(examples);
+      } else {
+        console.warn(`[INTENT-COVERAGE] No examples found for vertical: ${vertical}`);
+      }
+    };
+
+    fetchExamples();
+  }, [appCategory]);
 
   // Phase 17: Prefer Bible-driven coverage, fall back to legacy Autocomplete Intelligence
   const usingBibleCoverage = !!bibleCoverage;
@@ -156,6 +202,13 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
   const DominantIcon = getIntentIcon(dominantIntent);
   const coverageColor = getCoverageScoreColor(coverageScore);
 
+  // Calculate deltas for comparison mode
+  const coverageScoreDelta = getDelta(coverageScore, baselineCoverage?.score);
+  const navigationalDelta = getDelta(distribution.navigational, baselineCoverage?.distributionPercentage.navigational);
+  const informationalDelta = getDelta(distribution.informational, baselineCoverage?.distributionPercentage.informational);
+  const commercialDelta = getDelta(distribution.commercial, baselineCoverage?.distributionPercentage.commercial);
+  const transactionalDelta = getDelta(distribution.transactional, baselineCoverage?.distributionPercentage.transactional);
+
   // Detect empty states
   const hasIntentData =
     navigationalKeywords.length > 0 ||
@@ -211,6 +264,21 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
             <Badge variant="outline" className={`text-sm px-3 py-1 ${coverageColor}`}>
               {coverageScore}/100
             </Badge>
+            {/* Coverage Delta */}
+            {coverageScoreDelta && (
+              <Badge
+                variant="outline"
+                className={`text-xs font-mono px-2 py-0.5 ${
+                  coverageScoreDelta.isNeutral
+                    ? 'border-zinc-500/40 text-zinc-400'
+                    : coverageScoreDelta.isPositive
+                    ? 'border-green-500/40 text-green-400'
+                    : 'border-red-500/40 text-red-400'
+                }`}
+              >
+                {coverageScoreDelta.isPositive ? '↑' : '↓'} {coverageScoreDelta.label}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -258,11 +326,22 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                     No Search Intent Found
                   </p>
                   <p className="text-xs text-zinc-300 leading-relaxed mb-3">
-                    Your {elementDisplayName.toLowerCase()} metadata does not contain discovery, commercial, transactional or learning keywords.
+                    Your {elementDisplayName.toLowerCase()} metadata does not contain discovery, commercial, transactional or informational keywords.
                   </p>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    💡 Consider adding phrases like <span className="text-yellow-300 font-medium">'learn spanish'</span>, <span className="text-yellow-300 font-medium">'language lessons'</span>, or <span className="text-yellow-300 font-medium">'best language app'</span> to broaden search coverage.
-                  </p>
+                  {verticalExamples.length > 0 ? (
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      💡 Consider adding phrases like {verticalExamples.map((example, idx) => (
+                        <span key={example}>
+                          <span className="text-yellow-300 font-medium">'{example}'</span>
+                          {idx < verticalExamples.length - 1 ? ', ' : ''}
+                        </span>
+                      ))} to broaden search coverage.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      💡 Consider adding informational keywords (e.g., "how to", "learn", "guide") and transactional keywords (e.g., "best", "top", "free") to broaden search coverage.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -295,8 +374,24 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                   <Target className="h-3 w-3 text-purple-400" />
                   <div className="text-xs text-zinc-500 uppercase">Navigational</div>
                 </div>
-                <div className="text-lg font-bold text-purple-400">
-                  {Math.round(distribution.navigational)}%
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-bold text-purple-400">
+                    {Math.round(distribution.navigational)}%
+                  </div>
+                  {navigationalDelta && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-mono px-1.5 py-0.5 ${
+                        navigationalDelta.isNeutral
+                          ? 'border-zinc-500/40 text-zinc-400'
+                          : navigationalDelta.isPositive
+                          ? 'border-green-500/40 text-green-400'
+                          : 'border-red-500/40 text-red-400'
+                      }`}
+                    >
+                      {navigationalDelta.isPositive ? '↑' : '↓'} {navigationalDelta.label}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Brand searches</p>
               </div>
@@ -307,10 +402,26 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                   <Search className="h-3 w-3 text-blue-400" />
                   <div className="text-xs text-zinc-500 uppercase">Informational</div>
                 </div>
-                <div className="text-lg font-bold text-blue-400">
-                  {Math.round(distribution.informational)}%
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-bold text-blue-400">
+                    {Math.round(distribution.informational)}%
+                  </div>
+                  {informationalDelta && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-mono px-1.5 py-0.5 ${
+                        informationalDelta.isNeutral
+                          ? 'border-zinc-500/40 text-zinc-400'
+                          : informationalDelta.isPositive
+                          ? 'border-green-500/40 text-green-400'
+                          : 'border-red-500/40 text-red-400'
+                      }`}
+                    >
+                      {informationalDelta.isPositive ? '↑' : '↓'} {informationalDelta.label}
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-xs text-zinc-500 mt-1">Discovery/learning</p>
+                <p className="text-xs text-zinc-500 mt-1">Discovery</p>
               </div>
 
               {/* Commercial */}
@@ -319,8 +430,24 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                   <TrendingUp className="h-3 w-3 text-emerald-400" />
                   <div className="text-xs text-zinc-500 uppercase">Commercial</div>
                 </div>
-                <div className="text-lg font-bold text-emerald-400">
-                  {Math.round(distribution.commercial)}%
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-bold text-emerald-400">
+                    {Math.round(distribution.commercial)}%
+                  </div>
+                  {commercialDelta && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-mono px-1.5 py-0.5 ${
+                        commercialDelta.isNeutral
+                          ? 'border-zinc-500/40 text-zinc-400'
+                          : commercialDelta.isPositive
+                          ? 'border-green-500/40 text-green-400'
+                          : 'border-red-500/40 text-red-400'
+                      }`}
+                    >
+                      {commercialDelta.isPositive ? '↑' : '↓'} {commercialDelta.label}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Comparison/evaluation</p>
               </div>
@@ -331,8 +458,24 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
                   <ShoppingCart className="h-3 w-3 text-orange-400" />
                   <div className="text-xs text-zinc-500 uppercase">Transactional</div>
                 </div>
-                <div className="text-lg font-bold text-orange-400">
-                  {Math.round(distribution.transactional)}%
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-bold text-orange-400">
+                    {Math.round(distribution.transactional)}%
+                  </div>
+                  {transactionalDelta && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-mono px-1.5 py-0.5 ${
+                        transactionalDelta.isNeutral
+                          ? 'border-zinc-500/40 text-zinc-400'
+                          : transactionalDelta.isPositive
+                          ? 'border-green-500/40 text-green-400'
+                          : 'border-red-500/40 text-red-400'
+                      }`}
+                    >
+                      {transactionalDelta.isPositive ? '↑' : '↓'} {transactionalDelta.label}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Download intent</p>
               </div>

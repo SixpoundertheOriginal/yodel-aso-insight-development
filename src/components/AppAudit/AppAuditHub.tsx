@@ -6,21 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isDebugTarget } from '@/lib/debugTargets';
 import { debug, metadataDigest } from '@/lib/logging';
-import { RefreshCw, Download, FileSpreadsheet, Sparkles, Loader2 } from 'lucide-react';
+import { RefreshCw, Download, FileSpreadsheet, Sparkles, Loader2, Bookmark } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
 import { MetadataWorkspace } from '../AsoAiHub/MetadataCopilot/MetadataWorkspace';
-import { CompetitiveKeywordAnalysis } from './CompetitiveKeywordAnalysis';
-import { EnhancedOverviewTab } from './ElementAnalysis/EnhancedOverviewTab';
-import { ExecutiveSummaryPanel, RiskAssessmentPanel } from './NarrativeModules';
-import { SlideViewPanel } from './SlideView';
 import { KeywordDisabledPlaceholder } from './KeywordDisabledPlaceholder';
 import { MonitorAppButton } from './MonitorAppButton';
+import { MarketSwitcher } from './MarketSwitcher';
+import { MarketSelector } from '@/components/AppManagement/MarketSelector';
 import { useEnhancedAppAudit } from '@/hooks/useEnhancedAppAudit';
 import { useMonitoredAudit } from '@/hooks/useMonitoredAudit';
 import { useSaveMonitoredApp } from '@/hooks/useMonitoredAppForAudit';
 import { usePersistAuditSnapshot } from '@/hooks/usePersistAuditSnapshot';
+import { useMarketManagement } from '@/hooks/useMarketManagement';
+import { AppStoreIntegrationService } from '@/services/appstore-integration.service';
+import { MarketCacheService } from '@/services/marketCache.service';
 import { ScrapedMetadata } from '@/types/aso';
 import { toast } from 'sonner';
 import { AUDIT_KEYWORDS_ENABLED, isTabVisible } from '@/config/auditFeatureFlags';
@@ -28,6 +29,7 @@ import { getScoreLabel } from '@/lib/scoringUtils';
 import { useEffect, useRef } from 'react';
 import { AUDIT_METADATA_V2_ENABLED } from '@/config/metadataFeatureFlags';
 import { AuditV2View } from './AuditV2View';
+import type { MarketCode } from '@/config/markets';
 
 // Feature flag: Hide metadata editor blocks in ASO AI Audit
 // Does NOT affect Metadata Copilot page (/aso-ai-hub/metadata-copilot)
@@ -47,8 +49,27 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
   monitoredAppId
 }) => {
   const [importedMetadata, setImportedMetadata] = useState<ScrapedMetadata | null>(null);
-  const [activeTab, setActiveTab] = useState('import');
+  const [activeTab, setActiveTab] = useState('audit-v2');
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<MarketCode | null>(null);
+  const [appMarkets, setAppMarkets] = useState<any[]>([]);
+  const [isChangingMarket, setIsChangingMarket] = useState(false);
+
+  // Internal state to track newly monitored app (for auto-switching to monitored mode)
+  const [internalMonitoredAppId, setInternalMonitoredAppId] = useState<string | null>(null);
+
+  // Determine effective mode and app ID (internal state overrides props)
+  const effectiveMode = internalMonitoredAppId ? 'monitored' : mode;
+  const effectiveMonitoredAppId = internalMonitoredAppId || monitoredAppId;
+
+  // Callback when app is successfully monitored (to auto-switch to monitored mode)
+  const handleAppMonitored = (monitoredAppId: string) => {
+    console.log('[AppAuditHub] App monitored, switching to monitored mode:', monitoredAppId);
+    setInternalMonitoredAppId(monitoredAppId);
+  };
+
+  // Market management for loading markets
+  const { getAppMarkets } = useMarketManagement();
 
   // ========================================================================
   // MONITORED MODE: Fetch cached audit data
@@ -58,9 +79,74 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
     isLoading: isLoadingMonitored,
     error: monitoredError
   } = useMonitoredAudit(
-    mode === 'monitored' ? monitoredAppId : undefined,
-    mode === 'monitored' ? organizationId : undefined
+    effectiveMode === 'monitored' ? effectiveMonitoredAppId : undefined,
+    effectiveMode === 'monitored' ? organizationId : undefined,
+    selectedMarket || undefined
   );
+
+  // Load markets when in monitored mode
+  useEffect(() => {
+    if (effectiveMode === 'monitored' && effectiveMonitoredAppId) {
+      loadMarkets();
+    }
+  }, [effectiveMode, effectiveMonitoredAppId]);
+
+  const loadMarkets = async () => {
+    if (!effectiveMonitoredAppId) return;
+
+    const markets = await getAppMarkets(effectiveMonitoredAppId);
+    setAppMarkets(markets);
+
+    // Auto-select first market if none selected
+    if (!selectedMarket && markets.length > 0) {
+      setSelectedMarket(markets[0].market_code as MarketCode);
+    }
+  };
+
+  const handleMarketChange = async (market: MarketCode) => {
+    if (mode === 'monitored') {
+      // Monitored mode: just switch to the cached market
+      setSelectedMarket(market);
+      sessionStorage.setItem(`audit-market-${monitoredAppId}`, market);
+      toast.success(`Switched to ${market.toUpperCase()} market`);
+    } else if (mode === 'live' && importedMetadata) {
+      // Live mode: re-fetch app metadata from new market
+      setIsChangingMarket(true);
+      try {
+        console.log(`🌍 [MARKET-CHANGE] Re-fetching app from ${market.toUpperCase()} market`);
+
+        const result = await AppStoreIntegrationService.searchApp(
+          importedMetadata.appId,
+          organizationId,
+          market
+        );
+
+        if (!result.success || !result.data?.[0]) {
+          throw new Error(result.error || 'Failed to fetch app from new market');
+        }
+
+        const newMetadata = result.data[0];
+
+        // Update metadata with new market data
+        setImportedMetadata(null); // Force re-render
+        setImportedMetadata({
+          ...newMetadata,
+          locale: market
+        } as ScrapedMetadata);
+
+        // Update selected market and persist
+        setSelectedMarket(market);
+        sessionStorage.setItem(`audit-market-${importedMetadata.appId}`, market);
+
+        toast.success(`Switched to ${market.toUpperCase()} market and refreshed data`);
+      } catch (error: any) {
+        console.error('[MARKET-CHANGE] Failed to re-fetch app:', error);
+        toast.error(`Failed to switch market: ${error.message}`);
+      } finally {
+        setIsChangingMarket(false);
+      }
+    }
+  };
 
   const { mutate: rerunAudit, isPending: isRerunning } = useSaveMonitoredApp();
 
@@ -77,6 +163,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
     auditData,
     isLoading,
     isRefreshing,
+    isAuditRunning,
     lastUpdated,
     refreshAudit,
     generateAuditReport
@@ -84,7 +171,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
     organizationId,
     appId: importedMetadata?.appId,
     metadata: importedMetadata,
-    enabled: mode === 'live' && !!importedMetadata // Only enable in live mode
+    enabled: effectiveMode === 'live' && !!importedMetadata // Only enable in live mode
   });
 
   // ========================================================================
@@ -92,7 +179,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
   // ========================================================================
   useEffect(() => {
     if (
-      mode === 'live' &&
+      effectiveMode === 'live' &&
       auditData &&
       importedMetadata &&
       !isPersisting &&
@@ -127,7 +214,12 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
     setImportedMetadata(null);
     setImportedMetadata(metadata);
 
-    setActiveTab('slide-view'); // Show comprehensive deck-ready slide view first
+    // Set market from imported metadata (persisted per app)
+    const marketFromMetadata = (metadata.locale as MarketCode) || 'gb';
+    setSelectedMarket(marketFromMetadata);
+    sessionStorage.setItem(`audit-market-${metadata.appId}`, marketFromMetadata);
+
+    setActiveTab('audit-v2'); // Show Audit V2 as default
     toast.success(`Started comprehensive audit for ${metadata.name}`);
 
     // Share scraped data with unified page
@@ -403,7 +495,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
   }
 
   // Determine which metadata to use for rendering
-  const displayMetadata: ScrapedMetadata = mode === 'monitored' && monitoredAuditData
+  const displayMetadata: ScrapedMetadata = effectiveMode === 'monitored' && monitoredAuditData
     ? (() => {
         const { monitoredApp, metadataCache } = monitoredAuditData;
         return {
@@ -483,6 +575,30 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Market Switcher - Show in both live and monitored modes */}
+          {mode === 'monitored' && appMarkets.length > 0 && selectedMarket && (
+            <MarketSwitcher
+              markets={appMarkets}
+              selectedMarket={selectedMarket}
+              onMarketChange={handleMarketChange}
+            />
+          )}
+
+          {/* Live mode market switcher - single market selector */}
+          {mode === 'live' && importedMetadata && selectedMarket && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-400">Market:</span>
+              <MarketSelector
+                value={selectedMarket}
+                onChange={handleMarketChange}
+                disabled={isChangingMarket || isRefreshing || isAuditRunning}
+              />
+              {isChangingMarket && (
+                <Loader2 className="h-4 w-4 animate-spin text-yodel-orange" />
+              )}
+            </div>
+          )}
+
           {mode === 'monitored' ? (
             <Button
               onClick={handleRerunMonitoredAudit}
@@ -506,20 +622,43 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
 
-              {/* Monitor App Button (live mode only) */}
-              <MonitorAppButton
-                app_id={displayMetadata.appId}
-                platform="ios"
-                app_name={displayMetadata.name}
-                locale={displayMetadata.locale}
-                bundle_id={displayMetadata.appId}
-                app_icon_url={displayMetadata.icon}
-                developer_name={displayMetadata.sellerName || displayMetadata.developer}
-                category={displayMetadata.applicationCategory}
-                primary_country={displayMetadata.locale}
-                metadata={displayMetadata}
-                auditData={auditData} // Pass audit data for high-quality snapshot
-              />
+              {/* Monitor App Button (live mode only) - GATED BY AUDIT COMPLETION */}
+              {isAuditRunning ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="border-emerald-400/30 text-emerald-400"
+                >
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating Audit...
+                </Button>
+              ) : auditData ? (
+                <MonitorAppButton
+                  app_id={displayMetadata.appId}
+                  platform="ios"
+                  app_name={displayMetadata.name}
+                  locale={displayMetadata.locale}
+                  bundle_id={displayMetadata.appId}
+                  app_icon_url={displayMetadata.icon}
+                  developer_name={displayMetadata.sellerName || displayMetadata.developer}
+                  category={displayMetadata.applicationCategory}
+                  primary_country={displayMetadata.locale}
+                  metadata={displayMetadata}
+                  auditData={auditData} // ✅ Guaranteed to exist
+                  onMonitored={handleAppMonitored} // ✅ Auto-switch to monitored mode
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="border-emerald-400/30 text-emerald-400 opacity-50"
+                >
+                  <Bookmark className="h-4 w-4 mr-2" />
+                  Waiting for Audit...
+                </Button>
+              )}
             </>
           )}
 
@@ -550,34 +689,18 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
           AUDIT_KEYWORDS_ENABLED
             ? 'grid-cols-11'
             : (() => {
-                const baseTabCount = 3; // slide-view, executive-summary, overview
                 const metadataTabCount = ENABLE_METADATA_BLOCKS_IN_AUDIT ? 1 : 0;
                 const auditV2TabCount = AUDIT_METADATA_V2_ENABLED ? 1 : 0;
-                const totalCols = baseTabCount + metadataTabCount + auditV2TabCount;
+                const totalCols = metadataTabCount + auditV2TabCount;
                 return `grid-cols-${totalCols}`;
               })()
         } bg-zinc-900 border-zinc-800`}>
-          {isTabVisible('slide-view') && (
-            <TabsTrigger value="slide-view" className="flex items-center space-x-1">
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Slide View</span>
-            </TabsTrigger>
-          )}
-          {isTabVisible('executive-summary') && (
-            <TabsTrigger value="executive-summary" className="flex items-center space-x-1">
-              <Sparkles className="h-4 w-4" />
-              <span>Summary</span>
-            </TabsTrigger>
-          )}
-          {isTabVisible('overview') && (
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-          )}
           {/* Metadata tab: Hidden in ASO AI Audit when ENABLE_METADATA_BLOCKS_IN_AUDIT=false */}
           {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
           {ENABLE_METADATA_BLOCKS_IN_AUDIT && isTabVisible('metadata') && (
             <TabsTrigger value="metadata">Metadata</TabsTrigger>
           )}
-          {/* Audit V2 tab: New unified metadata audit module (feature-flagged) */}
+          {/* Audit V2 tab: New unified metadata audit module (default view) */}
           {AUDIT_METADATA_V2_ENABLED && isTabVisible('audit-v2') && (
             <TabsTrigger value="audit-v2" className="flex items-center space-x-1">
               <Sparkles className="h-4 w-4 text-emerald-400" />
@@ -585,31 +708,6 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
             </TabsTrigger>
           )}
         </TabsList>
-
-        <TabsContent value="slide-view" className="space-y-6">
-          <SlideViewPanel
-            metadata={importedMetadata!}
-            auditData={auditData}
-            organizationId={organizationId}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="executive-summary" className="space-y-6">
-          <ExecutiveSummaryPanel
-            narrative={auditData?.narratives?.executiveSummary || null}
-            overallScore={auditData?.overallScore || 0}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="overview" className="space-y-6">
-          <EnhancedOverviewTab
-            metadata={importedMetadata}
-            competitorData={auditData?.competitorAnalysis}
-            isLoading={isLoading}
-          />
-        </TabsContent>
 
         {/* Metadata tab: Hidden in ASO AI Audit when ENABLE_METADATA_BLOCKS_IN_AUDIT=false */}
         {/* Does NOT affect Metadata Copilot page - that uses MetadataWorkspace directly */}
@@ -627,8 +725,9 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
           <TabsContent value="audit-v2" className="space-y-6">
             <AuditV2View
               metadata={displayMetadata}
-              monitored_app_id={mode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
+              monitored_app_id={effectiveMode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
               mode={mode}
+              organizationId={organizationId}
             />
           </TabsContent>
         )}

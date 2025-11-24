@@ -1,21 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout } from '@/layouts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Smartphone, 
-  Search, 
-  BarChart3, 
-  ExternalLink, 
-  Edit3, 
-  Trash2, 
+import {
+  Smartphone,
+  Search,
+  BarChart3,
+  ExternalLink,
+  Edit3,
+  Trash2,
   ToggleLeft,
   ToggleRight,
   MoreVertical,
-  Plus
+  Plus,
+  Globe
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,14 +30,25 @@ import { useAppManagement } from '@/hooks/useAppManagement';
 import { AppUsageDashboard } from '@/components/AppManagement/AppUsageDashboard';
 import { AppManagementModal } from '@/components/AppManagement/AppManagementModal';
 import { AuditLogViewer } from '@/components/AppManagement/AuditLogViewer';
+import { AddMarketModal } from '@/components/AppManagement/AddMarketModal';
+import { RemoveMarketModal } from '@/components/AppManagement/RemoveMarketModal';
+import { useMarketManagement, type MonitoredAppMarket } from '@/hooks/useMarketManagement';
+import { formatMarketCompact, type MarketCode } from '@/config/markets';
 
 const AppsPage: React.FC = () => {
   const { apps, selectedApp, setSelectedApp, isLoading } = useApp();
   const { deleteApp, toggleAppStatus, canAddApp } = useAppManagement();
-  
+  const { getAppMarkets } = useMarketManagement();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingApp, setEditingApp] = useState<any>(null);
+
+  // Market management state
+  const [addMarketModalOpen, setAddMarketModalOpen] = useState(false);
+  const [removeMarketModalOpen, setRemoveMarketModalOpen] = useState(false);
+  const [selectedAppForMarkets, setSelectedAppForMarkets] = useState<any>(null);
+  const [appMarkets, setAppMarkets] = useState<Record<string, MonitoredAppMarket[]>>({});
 
   const handleAddApp = () => {
     setModalMode('create');
@@ -59,6 +71,43 @@ const AppsPage: React.FC = () => {
   const handleToggleStatus = (appId: string, currentStatus: boolean) => {
     toggleAppStatus({ appId, isActive: !currentStatus });
   };
+
+  const handleAddMarket = (app: any) => {
+    setSelectedAppForMarkets(app);
+    setAddMarketModalOpen(true);
+  };
+
+  const handleRemoveMarket = (app: any) => {
+    setSelectedAppForMarkets(app);
+    setRemoveMarketModalOpen(true);
+  };
+
+  const handleMarketAdded = () => {
+    // Refresh markets for this app
+    if (selectedAppForMarkets?.id) {
+      loadMarketsForApp(selectedAppForMarkets.id);
+    }
+  };
+
+  const handleMarketRemoved = () => {
+    // Refresh markets for this app
+    if (selectedAppForMarkets?.id) {
+      loadMarketsForApp(selectedAppForMarkets.id);
+    }
+  };
+
+  // Load markets for an app
+  const loadMarketsForApp = async (appId: string) => {
+    const markets = await getAppMarkets(appId);
+    setAppMarkets((prev) => ({ ...prev, [appId]: markets }));
+  };
+
+  // Load markets for all apps on mount
+  useEffect(() => {
+    apps.forEach((app) => {
+      loadMarketsForApp(app.id);
+    });
+  }, [apps]);
 
   if (isLoading) {
     return (
@@ -189,7 +238,22 @@ const AppsPage: React.FC = () => {
                                 )}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-border" />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddMarket(app);
+                              }}>
+                                <Globe className="h-4 w-4 mr-2" />
+                                Add Market
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMarket(app);
+                              }}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Remove Market
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-border" />
+                              <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteApp(app.id);
@@ -206,7 +270,7 @@ const AppsPage: React.FC = () => {
                     </CardHeader>
                     
                     <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary" className="bg-muted text-muted-foreground">
                           {app.platform}
                         </Badge>
@@ -214,6 +278,27 @@ const AppsPage: React.FC = () => {
                           <Badge variant="outline" className="border-border text-muted-foreground">
                             {app.category}
                           </Badge>
+                        )}
+
+                        {/* Market badges */}
+                        {appMarkets[app.id] && appMarkets[app.id].length > 0 && (
+                          <>
+                            <div className="h-4 w-px bg-zinc-700" />
+                            {appMarkets[app.id].slice(0, 3).map((market) => (
+                              <Badge
+                                key={market.market_code}
+                                variant="outline"
+                                className="border-emerald-400/30 text-emerald-400 text-xs"
+                              >
+                                {formatMarketCompact(market.market_code)}
+                              </Badge>
+                            ))}
+                            {appMarkets[app.id].length > 3 && (
+                              <Badge variant="outline" className="border-zinc-600 text-zinc-400 text-xs">
+                                +{appMarkets[app.id].length - 3}
+                              </Badge>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -284,6 +369,28 @@ const AppsPage: React.FC = () => {
           app={editingApp}
           mode={modalMode}
         />
+
+        {/* Add Market Modal */}
+        {selectedAppForMarkets && (
+          <AddMarketModal
+            isOpen={addMarketModalOpen}
+            onClose={() => setAddMarketModalOpen(false)}
+            app={selectedAppForMarkets}
+            existingMarkets={(appMarkets[selectedAppForMarkets.id] || []).map((m) => m.market_code as MarketCode)}
+            onMarketAdded={handleMarketAdded}
+          />
+        )}
+
+        {/* Remove Market Modal */}
+        {selectedAppForMarkets && (
+          <RemoveMarketModal
+            isOpen={removeMarketModalOpen}
+            onClose={() => setRemoveMarketModalOpen(false)}
+            app={selectedAppForMarkets}
+            markets={appMarkets[selectedAppForMarkets.id] || []}
+            onMarketRemoved={handleMarketRemoved}
+          />
+        )}
       </div>
     </MainLayout>
   );

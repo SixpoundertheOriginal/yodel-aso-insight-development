@@ -24,7 +24,7 @@ interface MetadataOpportunityDeltaChartProps {
   intentCoverageScore: number;
   metadataDimensionScores: {
     relevance: number;
-    learning: number;
+    discovery: number;
     structure: number;
     brandBalance: number;
   };
@@ -51,7 +51,7 @@ export const MetadataOpportunityDeltaChart: React.FC<MetadataOpportunityDeltaCha
       { label: 'Intent Coverage', value: 100 - intentCoverageScore, color: '' },
       { label: 'Keyword Coverage', value: 100 - keywordCoverageScore, color: '' },
       { label: 'Combo Quality', value: 100 - comboCoverageScore, color: '' },
-      { label: 'Learning Hooks', value: 100 - metadataDimensionScores.learning, color: '' },
+      { label: 'Discovery Coverage', value: 100 - metadataDimensionScores.discovery, color: '' },
       { label: 'Relevance', value: 100 - metadataDimensionScores.relevance, color: '' },
       { label: 'Structure', value: 100 - metadataDimensionScores.structure, color: '' },
       { label: 'Brand Balance', value: 100 - metadataDimensionScores.brandBalance, color: '' },

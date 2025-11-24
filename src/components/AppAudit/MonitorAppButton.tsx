@@ -59,6 +59,12 @@ export interface MonitorAppButtonProps {
    * instead of generating a placeholder audit on the server.
    */
   auditData?: EnhancedAuditData | null;
+
+  /**
+   * Callback when app is successfully monitored
+   * Receives the monitored app ID
+   */
+  onMonitored?: (monitoredAppId: string) => void;
 }
 
 export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
@@ -73,7 +79,8 @@ export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
   primary_country = 'us',
   className,
   metadata,
-  auditData
+  auditData,
+  onMonitored
 }) => {
   const { profile } = useUserProfile();
   const organizationId = profile?.organization_id;
@@ -155,6 +162,13 @@ export const MonitorAppButton: React.FC<MonitorAppButtonProps> = ({
           opportunityCount: auditData.opportunityCount
         }
       } : undefined
+    }, {
+      onSuccess: (response) => {
+        // Call onMonitored callback if provided
+        if (onMonitored && response.data?.monitoredApp?.id) {
+          onMonitored(response.data.monitoredApp.id);
+        }
+      }
     });
   };
 

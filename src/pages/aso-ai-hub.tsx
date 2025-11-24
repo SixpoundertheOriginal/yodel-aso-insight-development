@@ -4,7 +4,7 @@ import { MainLayout } from '@/layouts';
 import { AsoAiHubProvider } from '@/context/AsoAiHubContext';
 import { WorkflowProvider } from '@/context/WorkflowContext';
 import { AppAuditHub } from '@/components/AppAudit/AppAuditHub';
-import { MonitoredAppsWidget } from '@/components/AppAudit/MonitoredAppsWidget';
+import { MonitoredAppsDropdown } from '@/components/AppAudit/MonitoredAppsDropdown';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
@@ -27,6 +27,8 @@ const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
     dataContext.organizationId
   );
+  // In monitored mode, we always have an app loaded
+  const [hasAppLoaded, setHasAppLoaded] = useState<boolean>(mode === 'monitored');
 
   // Route-level access control - properly map user role
   const currentUserRole: UserRole = isSuperAdmin ? 'super_admin' :
@@ -82,6 +84,15 @@ const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
               <p className="text-zinc-400 text-lg max-w-4xl mx-auto leading-relaxed">
                 Run a complete ASO audit using real Store data, metadata intelligence, and competitor signals.
               </p>
+
+              {/* Monitored Apps Dropdown - Show when no app loaded and in live mode */}
+              {mode === 'live' && !hasAppLoaded && (selectedOrgId || dataContext.organizationId) && (
+                <div className="flex justify-center mt-4">
+                  <MonitoredAppsDropdown
+                    organizationId={(selectedOrgId || dataContext.organizationId) as string}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Super Admin Organization Selector */}
@@ -93,20 +104,13 @@ const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
               />
             )}
 
-            {/* Monitored Apps Widget - Only show in live audit mode */}
-            {mode === 'live' && (selectedOrgId || dataContext.organizationId) && (
-              <MonitoredAppsWidget
-                organizationId={(selectedOrgId || dataContext.organizationId) as string}
-                maxApps={6}
-              />
-            )}
-
             {/* Main Audit Hub */}
             {(selectedOrgId || dataContext.organizationId) ? (
               <AppAuditHub
                 organizationId={(selectedOrgId || dataContext.organizationId) as string}
                 mode={mode}
                 monitoredAppId={monitoredAppId}
+                onAppScraped={() => setHasAppLoaded(true)}
               />
             ) : dataContext.canAccessAllOrgs ? (
               <div className="text-center py-12 bg-zinc-900/30 rounded-lg border border-zinc-800">

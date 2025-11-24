@@ -198,6 +198,7 @@ export function useSaveMonitoredApp() {
 
 /**
  * Hook to fetch all audit-enabled monitored apps for workspace
+ * Joins with aso_audit_snapshots to get the latest Audit V2 score
  */
 export function useAuditEnabledApps(organizationId: string | undefined) {
   return useQuery({
@@ -205,7 +206,8 @@ export function useAuditEnabledApps(organizationId: string | undefined) {
     queryFn: async () => {
       if (!organizationId) return [];
 
-      const { data, error } = await supabase
+      // Fetch monitored apps
+      const { data: apps, error } = await supabase
         .from('monitored_apps')
         .select('*')
         .eq('organization_id', organizationId)
@@ -218,7 +220,29 @@ export function useAuditEnabledApps(organizationId: string | undefined) {
         throw error;
       }
 
-      return (data || []) as MonitoredAppWithAudit[];
+      if (!apps || apps.length === 0) return [];
+
+      // Fetch latest V2 snapshot for each app
+      const appsWithV2Score = await Promise.all(
+        apps.map(async (app) => {
+          const { data: snapshot } = await supabase
+            .from('aso_audit_snapshots')
+            .select('overall_score, created_at')
+            .eq('monitored_app_id', app.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            ...app,
+            // Use Audit V2 score from snapshot if available, fallback to legacy score
+            latest_audit_score: snapshot?.overall_score ?? app.latest_audit_score,
+            latest_audit_at: snapshot?.created_at ?? app.latest_audit_at,
+          };
+        })
+      );
+
+      return appsWithV2Score as MonitoredAppWithAudit[];
     },
     enabled: Boolean(organizationId)
   });

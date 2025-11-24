@@ -18,6 +18,7 @@ interface AuditV2ViewProps {
   metadata: ScrapedMetadata;
   monitored_app_id?: number | string;
   mode?: 'live' | 'monitored';
+  organizationId?: string;
 }
 
 /**
@@ -30,13 +31,15 @@ interface AuditV2ViewProps {
  * - Keyword and combo coverage visualization
  * - Top recommendations prioritized by impact
  * - Benchmark comparisons with category percentiles
+ * - Competitive intelligence (when targetAppId and organizationId provided)
  *
  * Scoring is performed client-side using MetadataAuditEngine (no API calls).
  */
 export const AuditV2View: React.FC<AuditV2ViewProps> = ({
   metadata,
   monitored_app_id,
-  mode = 'live'
+  mode = 'live',
+  organizationId,
 }) => {
   // Validate metadata
   if (!metadata) {
@@ -99,6 +102,8 @@ export const AuditV2View: React.FC<AuditV2ViewProps> = ({
         {/* Main Audit Module */}
         <UnifiedMetadataAuditModule
           metadata={metadata}
+          targetAppId={monitored_app_id ? String(monitored_app_id) : undefined}
+          organizationId={organizationId}
         />
       </div>
     </div>

@@ -51,6 +51,24 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
     const lowValueCombos = comboCoverage.lowValueCombos || [];
     const allCombos = [...titleCombos, ...subtitleCombos];
 
+    // Debug logging (DEV ONLY)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DiscoveryFootprintMap] Title combos:', titleCombos.length);
+      console.log('[DiscoveryFootprintMap] Subtitle combos:', subtitleCombos.length);
+      console.log('[DiscoveryFootprintMap] Low-value combos:', lowValueCombos.length);
+      console.log('[DiscoveryFootprintMap] Total valuable combos:', allCombos.length);
+      if (allCombos.length > 0) {
+        console.log('[DiscoveryFootprintMap] Sample combo:', allCombos[0]);
+        console.log('[DiscoveryFootprintMap] Intent class distribution:', {
+          learning: allCombos.filter(c => c.intentClass === 'learning').length,
+          outcome: allCombos.filter(c => c.intentClass === 'outcome').length,
+          brand: allCombos.filter(c => c.intentClass === 'brand').length,
+          noise: allCombos.filter(c => c.intentClass === 'noise').length,
+          undefined: allCombos.filter(c => !c.intentClass).length,
+        });
+      }
+    }
+
     // Count by intent class
     let learningCount = 0;
     let outcomeCount = 0;
@@ -59,6 +77,7 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
 
     allCombos.forEach(combo => {
       // Phase 16.8: Use intentClass from Intent Engine (Phase 16.7)
+      // Phase 20.1: Fixed to properly handle all intent classes
       if (combo.intentClass) {
         // Intent Engine classification available
         if (combo.intentClass === 'learning') {
@@ -68,8 +87,12 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
         } else if (combo.intentClass === 'brand') {
           brandCount++;
         } else if (combo.intentClass === 'noise') {
-          // Noise combos are not counted in discovery footprint
-          // They're handled separately in lowValueCombos
+          // Phase 20.1: Don't skip noise combos - count them as generic
+          // Noise combos with type='generic' should still appear in footprint
+          if (combo.type === 'generic') {
+            genericCount++;
+          }
+          // Noise combos with type='low_value' are handled in lowValueCombos array
         }
       } else {
         // Fallback: Use legacy type field if intentClass not populated
@@ -129,7 +152,7 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
           DISCOVERY FOOTPRINT
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-          Combo distribution by search intent — learning drives discovery, brand supports retention
+          Combo distribution by search intent — informational keywords drive discovery, branded terms support retention
         </p>
       </CardHeader>
 
@@ -161,7 +184,7 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
               }}
               iconType="circle"
             />
-            <Bar dataKey="learning" stackId="a" fill={INTENT_COLORS.learning} name="Learning" />
+            <Bar dataKey="learning" stackId="a" fill={INTENT_COLORS.learning} name="Informational" />
             <Bar dataKey="outcome" stackId="a" fill={INTENT_COLORS.outcome} name="Outcome" />
             <Bar dataKey="generic" stackId="a" fill={INTENT_COLORS.generic} name="Generic" />
             <Bar dataKey="brand" stackId="a" fill={INTENT_COLORS.brand} name="Brand" />
@@ -173,7 +196,7 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
         <div className="mt-4 grid grid-cols-5 gap-2 text-center">
           <div>
             <div className="text-lg font-mono font-bold text-cyan-400">{data[0].learning}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Learning</div>
+            <div className="text-[10px] text-zinc-500 uppercase">Informational</div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-emerald-500">{data[0].outcome}</div>

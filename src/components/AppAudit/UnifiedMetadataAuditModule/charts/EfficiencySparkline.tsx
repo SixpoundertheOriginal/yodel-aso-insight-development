@@ -1,7 +1,7 @@
 /**
  * Efficiency Sparkline
  *
- * Compact sparkline showing keyword efficiency for Title, Subtitle, Keyword Field.
+ * Compact sparkline showing keyword efficiency for Title, Subtitle, Description.
  * Efficiency = meaningfulTokens / totalPossibleTokens
  *
  * Uses existing keywordCoverage data - NO backend changes.
@@ -24,6 +24,8 @@ interface EfficiencySparklineProps {
     subtitleNewKeywords: string[];
     descriptionNewKeywords: string[];
   };
+  /** Platform - iOS excludes Description from ranking analysis */
+  platform?: 'ios' | 'android';
 }
 
 /**
@@ -50,13 +52,17 @@ const getEfficiencyColor = (efficiency: number): string => {
 
 export const EfficiencySparkline: React.FC<EfficiencySparklineProps> = ({
   keywordCoverage,
+  platform = 'ios',
 }) => {
+  // iOS: Description does NOT impact App Store search ranking
+  // Only Title and Subtitle are indexed for keyword ranking
+  const includeDescription = platform === 'android';
+
   const data: EfficiencyData[] = useMemo(() => {
     const titleEfficiency = calculateEfficiency(keywordCoverage.titleKeywords);
     const subtitleEfficiency = calculateEfficiency(keywordCoverage.subtitleNewKeywords);
-    const keywordFieldEfficiency = calculateEfficiency(keywordCoverage.descriptionNewKeywords);
 
-    return [
+    const slots: EfficiencyData[] = [
       {
         slot: 'Title',
         efficiency: titleEfficiency,
@@ -67,13 +73,20 @@ export const EfficiencySparkline: React.FC<EfficiencySparklineProps> = ({
         efficiency: subtitleEfficiency,
         color: getEfficiencyColor(subtitleEfficiency),
       },
-      {
-        slot: 'KW Field',
-        efficiency: keywordFieldEfficiency,
-        color: getEfficiencyColor(keywordFieldEfficiency),
-      },
     ];
-  }, [keywordCoverage]);
+
+    // Only include Description for Android (where it impacts ranking)
+    if (includeDescription) {
+      const descriptionEfficiency = calculateEfficiency(keywordCoverage.descriptionNewKeywords);
+      slots.push({
+        slot: 'Description',
+        efficiency: descriptionEfficiency,
+        color: getEfficiencyColor(descriptionEfficiency),
+      });
+    }
+
+    return slots;
+  }, [keywordCoverage, includeDescription]);
 
   return (
     <Card className="relative bg-black/40 border border-zinc-800/50 rounded-xl shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
@@ -89,8 +102,13 @@ export const EfficiencySparkline: React.FC<EfficiencySparklineProps> = ({
           KEYWORD EFFICIENCY
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-          Meaningful keyword ratio per slot
+          Meaningful keyword ratio per {platform === 'ios' ? 'ranking slot' : 'slot'}
         </p>
+        {!includeDescription && (
+          <p className="text-[10px] text-yellow-400/80 mt-1 leading-relaxed">
+            ⓘ Description excluded — iOS App Store does not index description for keyword ranking
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="pt-0">

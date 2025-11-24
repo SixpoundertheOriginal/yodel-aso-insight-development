@@ -22,6 +22,10 @@ interface ElementDetailCardProps {
   metadata: ScrapedMetadata;
   /** Phase 17: Bible-driven intent coverage (optional) */
   auditResult?: UnifiedMetadataAuditResult;
+  /** Comparison mode: baseline audit to compare against */
+  baselineAudit?: UnifiedMetadataAuditResult | null;
+  /** Comparison mode: is this a competitor? */
+  isCompetitor?: boolean;
 }
 
 export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
@@ -29,6 +33,8 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   elementDisplayName,
   metadata: rawMetadata,
   auditResult,
+  baselineAudit = null,
+  isCompetitor = false,
 }) => {
   // Title and Subtitle always start expanded, Description starts collapsed
   const initiallyExpanded = elementResult.element === 'title' || elementResult.element === 'subtitle';
@@ -38,6 +44,24 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
 
   // Check if this is the description element (conversion only)
   const isConversionElement = element === 'description';
+
+  // Calculate delta for comparison mode
+  const getDelta = (competitorValue: number | undefined, baselineValue: number | undefined) => {
+    if (!isCompetitor || !baselineAudit || competitorValue === undefined || baselineValue === undefined) {
+      return null;
+    }
+    const delta = competitorValue - baselineValue;
+    return {
+      value: delta,
+      label: delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1),
+      isPositive: delta > 0,
+      isNeutral: Math.abs(delta) < 0.5
+    };
+  };
+
+  // Get baseline element score based on element type
+  const baselineScore = baselineAudit?.elements?.[element]?.score;
+  const scoreDelta = getDelta(score, baselineScore);
 
   // Get the actual text content for this element
   const elementText = element === 'title'
@@ -116,15 +140,31 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
               {elementMetadata.characterUsage}/{elementMetadata.maxCharacters} CHARS • {charUsagePercent}%
             </div>
-            <Badge 
-              variant="outline" 
-              className={`text-xl font-mono font-normal px-4 py-1 ${scoreColor}`}
-              style={{
-                clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-              }}
-            >
-              {score}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`text-xl font-mono font-normal px-4 py-1 ${scoreColor}`}
+                style={{
+                  clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+                }}
+              >
+                {score}
+              </Badge>
+              {scoreDelta && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs font-mono px-2 py-0.5 ${
+                    scoreDelta.isNeutral
+                      ? 'border-zinc-500/40 text-zinc-400'
+                      : scoreDelta.isPositive
+                      ? 'border-green-500/40 text-green-400'
+                      : 'border-red-500/40 text-red-400'
+                  }`}
+                >
+                  {scoreDelta.isPositive ? '↑' : '↓'} {scoreDelta.label}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
@@ -152,24 +192,12 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
               </div>
 
               {/* Metadata Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+              <div className="grid grid-cols-1 gap-3 pt-2">
                 <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
                   <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Characters</div>
                   <div className="text-sm text-zinc-300 font-mono">
                     {elementMetadata.characterUsage} / {elementMetadata.maxCharacters}
                   </div>
-                </div>
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Developer</div>
-                  <div className="text-sm text-zinc-300 font-light">{rawMetadata.developer || 'Not available'}</div>
-                </div>
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Category</div>
-                  <div className="text-sm text-zinc-300 font-light">{rawMetadata.applicationCategory || 'Not available'}</div>
-                </div>
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Platform</div>
-                  <div className="text-sm text-zinc-300 font-mono">{platformLocale}</div>
                 </div>
               </div>
             </div>
@@ -391,6 +419,7 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
           {shouldShowIntentCoverage && !isIntentLoading && (
             <div className="pt-2 border-t border-zinc-800">
               <SearchIntentCoverageCard
+                appCategory={rawMetadata.applicationCategory}
                 bibleCoverage={
                   element === 'title'
                     ? auditResult?.intentCoverage?.title
@@ -401,6 +430,14 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                 intentSignals={intentSignalsForElement}
                 elementType={element as 'title' | 'subtitle'}
                 keywords={elementMetadata.keywords}
+                baselineCoverage={
+                  element === 'title'
+                    ? baselineAudit?.intentCoverage?.title
+                    : element === 'subtitle'
+                    ? baselineAudit?.intentCoverage?.subtitle
+                    : undefined
+                }
+                isCompetitor={isCompetitor}
               />
             </div>
           )}

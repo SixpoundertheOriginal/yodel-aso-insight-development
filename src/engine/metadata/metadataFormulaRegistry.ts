@@ -234,9 +234,9 @@ export const METADATA_FORMULA_REGISTRY: FormulaDefinition[] = [
   },
 
   {
-    id: 'metadata_dimension_learning',
-    label: 'Learning/Discovery Dimension',
-    description: 'Score based on generic combo count (target: 5+ generic combos)',
+    id: 'metadata_dimension_discovery',
+    label: 'Discovery Coverage Dimension',
+    description: 'Score based on generic combo count (target: 5+ generic combos). Generic combos drive organic discovery from non-brand-aware users across all verticals.',
     type: 'threshold_based',
     thresholds: [
       { condition: '>= 5', score: 100, label: 'Excellent' },
@@ -249,7 +249,7 @@ export const METADATA_FORMULA_REGISTRY: FormulaDefinition[] = [
       inputType: 'number',
       group: 'Visualization',
       displayOrder: 2,
-      helpText: 'Generic combos drive discovery from non-brand-aware users',
+      helpText: 'Measures generic keyword coverage that enables discovery across search contexts. Vertical-agnostic metric applicable to gaming, education, finance, etc.',
     },
   },
 
