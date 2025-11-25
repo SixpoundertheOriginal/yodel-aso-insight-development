@@ -17,6 +17,8 @@ import {
   getLatestCompetitorAuditsForApp,
   type AuditCompetitorResult,
 } from '@/services/competitor-audit.service';
+import { attachAuditSnapshotMetadata } from '@/services/competitor-audit.telemetry';
+import { validateCompetitorAudit } from '@/services/competitor-audit.validator';
 import {
   compareWithCompetitors,
   getCachedComparison,
@@ -85,6 +87,13 @@ export function useCompetitorAnalysis(
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const filterValidAudits = useCallback((audits: AuditCompetitorResult[]) => {
+    return audits
+      .map((audit) => validateCompetitorAudit(audit, { context: 'useCompetitorAnalysis' }))
+      .map((audit) => (audit ? attachAuditSnapshotMetadata(audit, audit.snapshotCreatedAt) : null))
+      .filter((audit): audit is AuditCompetitorResult => Boolean(audit));
+  }, []);
+
   // Load competitors from database
   const loadCompetitors = useCallback(async () => {
     try {
@@ -104,11 +113,12 @@ export function useCompetitorAnalysis(
       // If competitors exist, try to load their audits
       if (data && data.length > 0) {
         const audits = await getLatestCompetitorAuditsForApp(targetAppId);
-        setCompetitorAudits(audits);
+        const validAudits = filterValidAudits(audits);
+        setCompetitorAudits(validAudits);
 
         // Try to load cached comparison
-        if (audits.length > 0) {
-          const competitorIds = audits.map((a) => a.competitorId);
+        if (validAudits.length > 0) {
+          const competitorIds = validAudits.map((a) => a.competitorId);
           const cached = await getCachedComparison(targetAppId, competitorIds);
           if (cached) {
             setComparison(cached);
@@ -144,7 +154,9 @@ export function useCompetitorAnalysis(
           forceRefresh
         );
 
-        const successfulAudits = results.filter((r) => !('error' in r)) as AuditCompetitorResult[];
+        const successfulAudits = filterValidAudits(
+          results.filter((r) => !('error' in r)) as AuditCompetitorResult[]
+        );
         const failedCount = results.filter((r) => 'error' in r).length;
 
         if (successfulAudits.length > 0) {
@@ -175,8 +187,9 @@ export function useCompetitorAnalysis(
 
     // Use provided audits or fall back to state
     const auditsToCompare = providedAudits || competitorAudits;
+    const validAudits = filterValidAudits(auditsToCompare);
 
-    if (auditsToCompare.length === 0) {
+    if (validAudits.length === 0) {
       toast.error('No competitor audits available. Please audit competitors first.');
       return;
     }
@@ -187,7 +200,7 @@ export function useCompetitorAnalysis(
 
       // Update state with provided audits if any
       if (providedAudits && providedAudits.length > 0) {
-        setCompetitorAudits(providedAudits);
+        setCompetitorAudits(validAudits);
       }
 
       toast.info('Comparing with competitors...');
@@ -195,7 +208,7 @@ export function useCompetitorAnalysis(
       const result = await compareWithCompetitors({
         targetAppId,
         targetAudit,
-        competitorAudits: auditsToCompare,
+        competitorAudits: validAudits,
         organizationId,
         comparisonType: '1-to-many',
         ruleConfig,

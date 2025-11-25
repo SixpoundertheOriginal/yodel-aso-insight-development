@@ -5,7 +5,7 @@
  * High density = metadata repeats same meaning (over-optimization).
  * Low density = scattered messaging (lack of focus).
  *
- * Uses existing comboCoverage + intent data - NO backend changes.
+ * Enhanced with KPI tooltips for user guidance.
  */
 
 import React, { useMemo } from 'react';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Gauge } from 'lucide-react';
 import type { ClassifiedCombo } from '../types';
+import { KpiTooltip } from '../KpiTooltip';
 
 interface SemanticDensityGaugeProps {
   comboCoverage: {
@@ -123,6 +124,7 @@ export const SemanticDensityGauge: React.FC<SemanticDensityGaugeProps> = ({
         <CardTitle className="text-base font-medium tracking-wide uppercase text-zinc-300 flex items-center gap-2">
           <Gauge className="h-4 w-4 text-yellow-400" />
           SEMANTIC DENSITY
+          <KpiTooltip metricId="semantic_density" iconSize="sm" />
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
           Intent repetition score — balanced messaging vs. over-optimization

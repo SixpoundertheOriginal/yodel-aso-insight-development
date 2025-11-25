@@ -13,6 +13,8 @@ import { detectVertical } from './verticalSignatureEngine';
 import { detectMarket } from './marketSignatureEngine';
 import { mergeRuleSets } from './overrideMergeUtils';
 import { applyLeakDetection } from './leakDetection';
+import { getVerticalById } from './verticalProfiles';
+import { getMarketById } from './marketProfiles';
 
 // Phase 12: DB-driven ruleset infrastructure
 import { DbRulesetService } from '@/services/rulesetStorage/dbRulesetService';
@@ -75,6 +77,12 @@ export const ASO_BIBLE_DB_RULESETS_ENABLED = true;
  * Default: 5 minutes
  */
 export const RULESET_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const DEFAULT_DISCOVERY_THRESHOLDS = {
+  excellent: 5,
+  good: 3,
+  moderate: 1,
+};
 
 // ============================================================================
 // Metadata Interface (Simplified)
@@ -264,8 +272,15 @@ async function loadDbDrivenRuleSet(
       console.log(`[RuleSet Loader] Cache MISS for key=${cacheKey}, loading from DB...`);
     }
 
-    // Step 3: Load DB overrides for all layers
-    const [verticalDbOverrides, marketDbOverrides, clientDbOverrides] = await Promise.all([
+    // Step 3: Load DB overrides for all layers (including Phase 21 template metadata)
+    const [
+      verticalDbOverrides,
+      marketDbOverrides,
+      clientDbOverrides,
+      verticalTemplateMeta,
+      marketTemplateMeta,
+      clientTemplateMeta,
+    ] = await Promise.all([
       // Vertical layer
       verticalId !== 'base'
         ? DbRulesetService.loadAllOverrides({ vertical: verticalId })
@@ -277,6 +292,17 @@ async function loadDbDrivenRuleSet(
       // Client layer (if organizationId exists)
       organizationId
         ? DbRulesetService.loadAllOverrides({ organizationId, appId })
+        : Promise.resolve(null),
+
+      // Phase 21: Vertical Intelligence Layer - Template Metadata
+      verticalId !== 'base'
+        ? DbRulesetService.loadVerticalTemplateMeta(verticalId)
+        : Promise.resolve(null),
+
+      DbRulesetService.loadMarketTemplateMeta(marketId),
+
+      organizationId
+        ? DbRulesetService.loadClientTemplateMeta(organizationId)
         : Promise.resolve(null),
     ]);
 
@@ -334,11 +360,27 @@ async function loadDbDrivenRuleSet(
         hasMarketOverrides: !!marketNormalized,
         hasClientOverrides: !!clientNormalized,
         source: merged.source,
+        hasVerticalTemplate: !!verticalTemplateMeta,
+        hasMarketTemplate: !!marketTemplateMeta,
+        hasClientTemplate: !!clientTemplateMeta,
       });
     }
 
     // Convert to legacy format for Phase 10 compatibility
-    return toLegacyMergedRuleSet(merged);
+    const legacyMerged = toLegacyMergedRuleSet(merged);
+
+    // Phase 21: Include template metadata in the final result
+    if (verticalTemplateMeta) {
+      legacyMerged.verticalTemplateMeta = verticalTemplateMeta;
+    }
+    if (marketTemplateMeta) {
+      legacyMerged.marketTemplateMeta = marketTemplateMeta;
+    }
+    if (clientTemplateMeta) {
+      legacyMerged.clientTemplateMeta = clientTemplateMeta;
+    }
+
+    return legacyMerged;
   } catch (error) {
     // Defensive: If DB query fails, log error and return null (fall back to code-based)
     console.error('[RuleSet Loader] Error loading DB-driven rulesets, falling back to code-based:', error);
@@ -415,10 +457,16 @@ export async function getActiveRuleSet(
     ? mergeDbWithCodeRulesets(codeMerged, dbMergedRuleSet)
     : codeMerged;
 
-  // Step 6: Add vertical/market metadata
+  // Step 6: Add vertical/market metadata (Phase 21: added verticalName and marketName)
   finalMerged.verticalId = verticalDetection.verticalId;
+  finalMerged.verticalName = verticalDetection.vertical.label;
   finalMerged.marketId = marketDetection.marketId;
+  finalMerged.marketName = marketDetection.market.label;
   finalMerged.appId = appMetadata.appId;
+  if (!finalMerged.discoveryThresholds) {
+    finalMerged.discoveryThresholds =
+      verticalDetection.vertical.discoveryThresholds || DEFAULT_DISCOVERY_THRESHOLDS;
+  }
 
   // Step 7: Apply leak detection
   applyLeakDetection(finalMerged, appMetadata);
@@ -567,8 +615,20 @@ export async function getRuleSetForVerticalMarket(
     ? mergeDbWithCodeRulesets(codeMerged, dbMergedRuleSet)
     : codeMerged;
 
+  // Phase 21: Add vertical/market IDs and names
   finalMerged.verticalId = verticalId;
   finalMerged.marketId = marketId;
+
+  // Get vertical and market names from registries
+  const verticalProfile = getVerticalById(verticalId);
+  const marketProfile = getMarketById(marketId);
+
+  if (verticalProfile) {
+    finalMerged.verticalName = verticalProfile.label;
+  }
+  if (marketProfile) {
+    finalMerged.marketName = marketProfile.label;
+  }
 
   return finalMerged;
 }

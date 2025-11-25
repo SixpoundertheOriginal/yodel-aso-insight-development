@@ -302,7 +302,7 @@
       "id": "urgency_signal",
       "familyId": "psychology_alignment",
       "label": "Urgency Signal",
-      "description": "Presence of urgency words (now, today, instantly) - low weight as can be spammy",
+      "description": "Presence of urgency words (now, today, instantly) with diminishing impact (log-based)",
       "weight": 0.5,
       "metricType": "score",
       "minValue": 0,
@@ -315,7 +315,7 @@
       "id": "social_proof_signal",
       "familyId": "psychology_alignment",
       "label": "Social Proof Signal",
-      "description": "Presence of social proof indicators (millions, trusted, top, best)",
+      "description": "Presence of social proof indicators (millions, trusted, top, best) with diminishing returns",
       "weight": 0.6,
       "metricType": "score",
       "minValue": 0,
@@ -365,7 +365,11 @@
         "group": "Intent Coverage",
         "displayOrder": 1,
         "helpText": "Bible-driven classification of informational search keywords",
-        "tags": ["intent", "coverage", "bible"]
+        "tags": [
+          "intent",
+          "coverage",
+          "bible"
+        ]
       }
     },
     {
@@ -387,7 +391,11 @@
         "group": "Intent Coverage",
         "displayOrder": 2,
         "helpText": "Bible-driven classification of commercial search keywords",
-        "tags": ["intent", "coverage", "bible"]
+        "tags": [
+          "intent",
+          "coverage",
+          "bible"
+        ]
       }
     },
     {
@@ -409,7 +417,11 @@
         "group": "Intent Coverage",
         "displayOrder": 3,
         "helpText": "Bible-driven classification of transactional search keywords",
-        "tags": ["intent", "coverage", "bible"]
+        "tags": [
+          "intent",
+          "coverage",
+          "bible"
+        ]
       }
     },
     {
@@ -431,7 +443,11 @@
         "group": "Intent Coverage",
         "displayOrder": 4,
         "helpText": "High noise indicates excessive brand/filler keywords",
-        "tags": ["intent", "noise", "bible"]
+        "tags": [
+          "intent",
+          "noise",
+          "bible"
+        ]
       }
     },
     {
@@ -453,7 +469,11 @@
         "group": "Intent Quality",
         "displayOrder": 5,
         "helpText": "Balanced intent distribution = better metadata coverage",
-        "tags": ["intent", "balance", "bible"]
+        "tags": [
+          "intent",
+          "balance",
+          "bible"
+        ]
       }
     },
     {
@@ -475,7 +495,11 @@
         "group": "Intent Quality",
         "displayOrder": 6,
         "helpText": "Higher diversity = broader search intent coverage",
-        "tags": ["intent", "diversity", "bible"]
+        "tags": [
+          "intent",
+          "diversity",
+          "bible"
+        ]
       }
     },
     {
@@ -497,7 +521,11 @@
         "group": "Intent Quality",
         "displayOrder": 7,
         "helpText": "Identifies missing search intent types",
-        "tags": ["intent", "gap", "bible"]
+        "tags": [
+          "intent",
+          "gap",
+          "bible"
+        ]
       }
     },
     {
@@ -519,7 +547,12 @@
         "group": "Intent Quality",
         "displayOrder": 8,
         "helpText": "Vertical-specific intent alignment (e.g., Learning apps should have high informational intent)",
-        "tags": ["intent", "alignment", "vertical", "bible"]
+        "tags": [
+          "intent",
+          "alignment",
+          "vertical",
+          "bible"
+        ]
       }
     },
     {
@@ -541,7 +574,174 @@
         "group": "Intent Quality",
         "displayOrder": 9,
         "helpText": "Overall intent quality assessment",
-        "tags": ["intent", "quality", "overall", "bible"]
+        "tags": [
+          "intent",
+          "quality",
+          "overall",
+          "bible"
+        ]
+      }
+    },
+    {
+      "id": "vertical_legitimacy_signal",
+      "familyId": "hook_strength",
+      "label": "Vertical Legitimacy Signal",
+      "description": "Presence of vertical-specific legitimacy tokens (e.g., 'certified', 'verified', 'licensed')",
+      "weight": 1.0,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 1,
+        "helpText": "Vertical-specific legitimacy signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "legitimacy",
+          "hook"
+        ]
+      }
+    },
+    {
+      "id": "vertical_speed_signal",
+      "familyId": "hook_strength",
+      "label": "Vertical Speed Signal",
+      "description": "Presence of vertical-specific speed/urgency tokens (e.g., 'instant', 'fast', 'quick')",
+      "weight": 0.8,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 2,
+        "helpText": "Vertical-specific speed/urgency signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "speed",
+          "hook"
+        ]
+      }
+    },
+    {
+      "id": "vertical_benefit_specificity",
+      "familyId": "hook_strength",
+      "label": "Vertical Benefit Specificity",
+      "description": "Presence of vertical-specific concrete benefit tokens (e.g., 'fluency', 'weight loss', 'savings')",
+      "weight": 1.2,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 3,
+        "helpText": "Vertical-specific concrete benefit signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "benefit",
+          "hook"
+        ]
+      }
+    },
+    {
+      "id": "vertical_trust_reassurance",
+      "familyId": "hook_strength",
+      "label": "Vertical Trust Reassurance",
+      "description": "Presence of vertical-specific trust/safety tokens (e.g., 'secure', 'safe', 'trusted')",
+      "weight": 0.7,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 4,
+        "helpText": "Vertical-specific trust/safety signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "trust",
+          "hook"
+        ]
+      }
+    },
+    {
+      "id": "vertical_effort_ratio",
+      "familyId": "psychology_alignment",
+      "label": "Vertical Effort Ratio",
+      "description": "Presence of vertical-specific low-effort tokens (e.g., 'easy', 'simple', 'effortless')",
+      "weight": 1.0,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 5,
+        "helpText": "Vertical-specific low-effort signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "effort",
+          "psychology"
+        ]
+      }
+    },
+    {
+      "id": "vertical_feature_clarity",
+      "familyId": "clarity_structure",
+      "label": "Vertical Feature Clarity",
+      "description": "Presence of vertical-specific feature clarity tokens (e.g., 'lessons', 'workouts', 'recipes')",
+      "weight": 0.9,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Vertical Intelligence",
+        "displayOrder": 6,
+        "helpText": "Vertical-specific feature clarity signals (Phase 21)",
+        "tags": [
+          "vertical",
+          "intelligence",
+          "feature",
+          "clarity"
+        ]
       }
     }
   ]

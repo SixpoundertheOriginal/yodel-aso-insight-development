@@ -29,6 +29,7 @@ import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, AlertCircle, Check, Info } from 'lucide-react';
+import { KpiDiagnosticsPanel } from './KpiDiagnosticsPanel';
 import type { KpiId } from '@/engine/metadata/kpi/kpi.types';
 
 interface KpiDetailPanelProps {
@@ -217,6 +218,8 @@ export function KpiDetailPanel({
             </div>
 
             <Separator />
+
+            <KpiDiagnosticsPanel kpi={kpi} />
 
             {/* Weight Configuration */}
             <div>

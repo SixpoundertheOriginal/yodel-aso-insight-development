@@ -4,7 +4,7 @@
  * Horizontal stacked bar showing combo distribution by intent class.
  * Visualizes metadata's discovery potential across different search intents.
  *
- * Uses existing comboCoverage data - NO backend changes.
+ * Enhanced with KPI tooltips for user guidance.
  */
 
 import React, { useMemo } from 'react';
@@ -12,7 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Map } from 'lucide-react';
 import type { ClassifiedCombo } from '../types';
+import type { IntentDiagnosticsContext } from '@/engine/asoBible/intentEngine';
 import { getTooltipConfig } from './InsightTooltip';
+import { KpiTooltip } from '../KpiTooltip';
 
 interface FootprintData {
   name: string;
@@ -29,6 +31,7 @@ interface DiscoveryFootprintMapProps {
     subtitleNewCombosClassified?: ClassifiedCombo[];
     lowValueCombos?: ClassifiedCombo[];
   };
+  intentDiagnostics?: IntentDiagnosticsContext;
 }
 
 /**
@@ -44,6 +47,7 @@ const INTENT_COLORS = {
 
 export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
   comboCoverage,
+  intentDiagnostics,
 }) => {
   const data: FootprintData[] = useMemo(() => {
     const titleCombos = comboCoverage.titleCombosClassified || [];
@@ -154,6 +158,11 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
           Combo distribution by search intent — informational keywords drive discovery, branded terms support retention
         </p>
+        {intentDiagnostics?.fallbackMode && (
+          <p className="text-[11px] text-amber-300 mt-1">
+            Intent coverage limited — using minimal pattern set until Bible sync completes.
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="pt-0">
@@ -192,27 +201,42 @@ export const DiscoveryFootprintMap: React.FC<DiscoveryFootprintMapProps> = ({
           </BarChart>
         </ResponsiveContainer>
 
-        {/* Stats Summary */}
+        {/* Stats Summary with Tooltips */}
         <div className="mt-4 grid grid-cols-5 gap-2 text-center">
           <div>
             <div className="text-lg font-mono font-bold text-cyan-400">{data[0].learning}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Informational</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 uppercase">
+              <span>Informational</span>
+              <KpiTooltip metricId="informational_intent" iconSize="sm" />
+            </div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-emerald-500">{data[0].outcome}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Outcome</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 uppercase">
+              <span>Outcome</span>
+              <KpiTooltip metricId="outcome_intent" iconSize="sm" />
+            </div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-blue-500">{data[0].generic}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Generic</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 uppercase">
+              <span>Generic</span>
+              <KpiTooltip metricId="generic_intent" iconSize="sm" />
+            </div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-purple-500">{data[0].brand}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Brand</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 uppercase">
+              <span>Brand</span>
+              <KpiTooltip metricId="brand_intent" iconSize="sm" />
+            </div>
           </div>
           <div>
             <div className="text-lg font-mono font-bold text-orange-500">{data[0].lowValue}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Low-Value</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 uppercase">
+              <span>Low-Value</span>
+              <KpiTooltip metricId="low_value_intent" iconSize="sm" />
+            </div>
           </div>
         </div>
       </CardContent>

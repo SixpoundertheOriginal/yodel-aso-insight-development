@@ -25,11 +25,16 @@
  * @see src/engine/asoBible/intentEngine.ts (combo-level classification)
  */
 
-import type { IntentPatternConfig, IntentType } from './intentEngine';
+import type { IntentPatternConfig, IntentType, IntentDiagnosticsContext } from './intentEngine';
 
 // ============================================================================
 // Types
 // ============================================================================
+
+export interface IntentCoverageAncestry {
+  scope: 'base' | 'vertical' | 'market' | 'client';
+  sourceId?: string;
+}
 
 /**
  * Token intent classification result
@@ -102,6 +107,15 @@ export interface CombinedSearchIntentCoverage {
 
   /** Combined distribution percentages */
   combinedDistributionPercentage: IntentDistribution;
+
+  /** Whether intent classification is running in fallback mode (minimal patterns) */
+  fallbackMode?: boolean;
+
+  /** Optional diagnostics populated by metadata audit engine */
+  diagnostics?: IntentDiagnosticsContext;
+
+  /** Optional ancestry metadata describing override scope */
+  ancestry?: IntentCoverageAncestry;
 }
 
 // ============================================================================
@@ -329,6 +343,7 @@ export function computeCombinedSearchIntentCoverage(
     overallScore,
     combinedDistribution,
     combinedDistributionPercentage,
+    fallbackMode,
   };
 }
 

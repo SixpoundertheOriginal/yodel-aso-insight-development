@@ -8,7 +8,6 @@
  */
 
 import type { KpiDefinition, KpiId } from '@/engine/metadata/kpi/kpi.types';
-import type { FormulaDefinition } from '@/engine/metadata/metadataFormulaRegistry';
 
 // ============================================================================
 // Intent & Hook Override Types
@@ -26,6 +25,13 @@ export interface HookPatternOverride {
   pattern: RegExp | string;
   description?: string;
   priority?: number;
+}
+
+export interface DiscoveryThresholds {
+  excellent: number;
+  good: number;
+  moderate: number;
+  poor?: number;
 }
 
 // ============================================================================
@@ -53,7 +59,11 @@ export interface AsoBibleRuleSet {
 
   // Override containers (all optional for partial overrides)
   kpiOverrides?: Partial<Record<KpiId, Partial<KpiDefinition>>>;
-  formulaOverrides?: Partial<Record<string, Partial<FormulaDefinition>>>;
+  /**
+   * Formula component override multipliers.
+   * Key format: either formulaId (overall multiplier) or formulaId.componentId (component-specific).
+   */
+  formulaOverrides?: Record<string, number>;
   intentOverrides?: Record<string, IntentPatternOverride>;
   hookOverrides?: Record<string, HookPatternOverride>;
   recommendationOverrides?: Record<string, RecommendationRuleDefinition>;
@@ -75,6 +85,11 @@ export interface AsoBibleRuleSet {
   source?: 'base' | 'vertical' | 'market' | 'client';
   createdAt?: string;
   updatedAt?: string;
+
+  // Vertical Intelligence Layer (Phase 21)
+  verticalTemplateMeta?: Record<string, any>;
+  marketTemplateMeta?: Record<string, any>;
+  clientTemplateMeta?: Record<string, any>;
 }
 
 // ============================================================================
@@ -93,6 +108,7 @@ export interface VerticalProfile {
 
   // Associated rule set (if exists)
   ruleSetId?: string;
+  discoveryThresholds?: DiscoveryThresholds;
 }
 
 // ============================================================================
@@ -151,9 +167,12 @@ export interface MergedRuleSet extends AsoBibleRuleSet {
 
   // Metadata
   verticalId?: string;
+  verticalName?: string;
   marketId?: string;
+  marketName?: string;
   appId?: string;
   mergedAt: string; // ISO timestamp
+  discoveryThresholds?: DiscoveryThresholds;
 }
 
 // ============================================================================

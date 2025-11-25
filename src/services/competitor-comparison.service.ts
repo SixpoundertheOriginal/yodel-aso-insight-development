@@ -20,6 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import type { AuditCompetitorResult } from './competitor-audit.service';
 import type { GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
+import { computeBrandRatioStats } from '@/engine/metadata/utils/brandNoiseHelpers';
+import { validateCompetitorAudit } from './competitor-audit.validator';
+import { buildAuditTelemetry, type AuditTelemetryEntry } from './competitor-audit.telemetry';
 
 // =====================================================================
 // TYPE DEFINITIONS
@@ -67,6 +70,7 @@ export interface CompetitorComparisonResult {
   // Summary & Recommendations
   summary: ComparisonSummary;
   recommendations: Recommendation[];
+  telemetry: ComparisonTelemetry;
 }
 
 // =====================================================================
@@ -199,6 +203,11 @@ export interface DiscoveryFootprintComparison {
     noise: number;
   };
   insights: string[];
+  telemetry?: {
+    target: FootprintMetrics;
+    competitors: Array<FootprintMetrics & { competitorId: string; competitorName: string }>;
+    averages: FootprintMetrics;
+  };
 }
 
 export interface CharacterUsageComparison {
@@ -252,6 +261,21 @@ export interface Recommendation {
   reasoning: string;
   expectedImpact: string;
   implementationDifficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface ComparisonTelemetry {
+  target: AuditTelemetryEntry;
+  competitors: AuditTelemetryEntry[];
+  fallbackAppIds: string[];
+}
+
+interface FootprintMetrics {
+  learning: number;
+  outcome: number;
+  brand: number;
+  noise: number;
+  lowValue: number;
+  total: number;
 }
 
 // =====================================================================
@@ -404,21 +428,25 @@ function analyzeComboGap(
   targetAudit: UnifiedMetadataAuditResult,
   competitorAudits: AuditCompetitorResult[]
 ): ComboGapAnalysis {
+  const targetStats = targetAudit.comboCoverage?.stats;
   const targetCombos = {
-    total: targetAudit.comboCoverage?.stats?.totalPossible || 0,
-    existing: targetAudit.comboCoverage?.stats?.existing || 0,
-    missing: targetAudit.comboCoverage?.stats?.missing || 0,
-    coverage: targetAudit.comboCoverage?.stats?.coverage || 0,
+    total: targetStats?.total ?? targetStats?.totalPossible ?? 0,
+    existing: targetStats?.existing || 0,
+    missing: targetStats?.missing || 0,
+    coverage: targetStats?.coveragePct ?? targetStats?.coverage ?? 0,
   };
 
-  const competitorComboStats = competitorAudits.map((c) => ({
-    competitorId: c.competitorId,
-    competitorName: c.metadata.name,
-    total: c.auditData.comboCoverage?.stats?.totalPossible || 0,
-    existing: c.auditData.comboCoverage?.stats?.existing || 0,
-    missing: c.auditData.comboCoverage?.stats?.missing || 0,
-    coverage: c.auditData.comboCoverage?.stats?.coverage || 0,
-  }));
+  const competitorComboStats = competitorAudits.map((c) => {
+    const stats = c.auditData.comboCoverage?.stats;
+    return {
+      competitorId: c.competitorId,
+      competitorName: c.metadata.name,
+      total: stats?.total ?? stats?.totalPossible ?? 0,
+      existing: stats?.existing || 0,
+      missing: stats?.missing || 0,
+      coverage: stats?.coveragePct ?? stats?.coverage ?? 0,
+    };
+  });
 
   const averageCompetitor = {
     total: competitorComboStats.reduce((sum, c) => sum + c.total, 0) / competitorComboStats.length || 0,
@@ -597,29 +625,91 @@ function analyzeKeywordOpportunities(
 /**
  * Algorithm 5: Discovery Footprint Comparison
  */
+function extractFootprintMetrics(audit: UnifiedMetadataAuditResult): FootprintMetrics {
+  const titleCombos = audit.comboCoverage?.titleCombosClassified || [];
+  const subtitleCombos = audit.comboCoverage?.subtitleNewCombosClassified || [];
+  const lowValueCombos = audit.comboCoverage?.lowValueCombos || [];
+  const allCombos = [...titleCombos, ...subtitleCombos];
+
+  const metrics: FootprintMetrics = {
+    learning: 0,
+    outcome: 0,
+    brand: 0,
+    noise: 0,
+    lowValue: lowValueCombos.length,
+    total: 0,
+  };
+
+  allCombos.forEach((combo) => {
+    switch (combo.intentClass) {
+      case 'learning':
+        metrics.learning++;
+        break;
+      case 'outcome':
+        metrics.outcome++;
+        break;
+      case 'brand':
+        metrics.brand++;
+        break;
+      case 'noise':
+        metrics.noise++;
+        break;
+      default:
+        if (combo.type === 'branded') {
+          metrics.brand++;
+        } else if (combo.type === 'generic') {
+          metrics.outcome++;
+        } else if (combo.type === 'low_value') {
+          metrics.lowValue++;
+        }
+        break;
+    }
+  });
+
+  metrics.total = metrics.learning + metrics.outcome + metrics.brand + metrics.noise + metrics.lowValue;
+  return metrics;
+}
+
+function averageFootprintMetrics(metrics: FootprintMetrics[]): FootprintMetrics {
+  if (metrics.length === 0) {
+    return { learning: 0, outcome: 0, brand: 0, noise: 0, lowValue: 0, total: 0 };
+  }
+
+  return {
+    learning: metrics.reduce((sum, m) => sum + m.learning, 0) / metrics.length,
+    outcome: metrics.reduce((sum, m) => sum + m.outcome, 0) / metrics.length,
+    brand: metrics.reduce((sum, m) => sum + m.brand, 0) / metrics.length,
+    noise: metrics.reduce((sum, m) => sum + m.noise, 0) / metrics.length,
+    lowValue: metrics.reduce((sum, m) => sum + m.lowValue, 0) / metrics.length,
+    total: metrics.reduce((sum, m) => sum + m.total, 0) / metrics.length,
+  };
+}
+
 function compareDiscoveryFootprint(
   targetAudit: UnifiedMetadataAuditResult,
   competitorAudits: AuditCompetitorResult[]
 ): DiscoveryFootprintComparison {
-  const target = {
-    learning: targetAudit.discoveryFootprint?.learning?.count || 0,
-    outcome: targetAudit.discoveryFootprint?.outcome?.count || 0,
-    brand: targetAudit.discoveryFootprint?.brand?.count || 0,
-    noise: targetAudit.discoveryFootprint?.noise?.count || 0,
-  };
-
-  const competitorFootprints = competitorAudits.map((c) => ({
-    learning: c.auditData.discoveryFootprint?.learning?.count || 0,
-    outcome: c.auditData.discoveryFootprint?.outcome?.count || 0,
-    brand: c.auditData.discoveryFootprint?.brand?.count || 0,
-    noise: c.auditData.discoveryFootprint?.noise?.count || 0,
+  const targetMetrics = extractFootprintMetrics(targetAudit);
+  const competitorMetrics = competitorAudits.map((c) => ({
+    competitorId: c.competitorId,
+    competitorName: c.metadata.name,
+    metrics: extractFootprintMetrics(c.auditData),
   }));
 
+  const averageMetrics = averageFootprintMetrics(competitorMetrics.map((entry) => entry.metrics));
+
+  const target = {
+    learning: targetMetrics.learning,
+    outcome: targetMetrics.outcome,
+    brand: targetMetrics.brand,
+    noise: targetMetrics.noise,
+  };
+
   const averageCompetitor = {
-    learning: competitorFootprints.reduce((sum, c) => sum + c.learning, 0) / competitorFootprints.length || 0,
-    outcome: competitorFootprints.reduce((sum, c) => sum + c.outcome, 0) / competitorFootprints.length || 0,
-    brand: competitorFootprints.reduce((sum, c) => sum + c.brand, 0) / competitorFootprints.length || 0,
-    noise: competitorFootprints.reduce((sum, c) => sum + c.noise, 0) / competitorFootprints.length || 0,
+    learning: averageMetrics.learning,
+    outcome: averageMetrics.outcome,
+    brand: averageMetrics.brand,
+    noise: averageMetrics.noise,
   };
 
   const gaps = {
@@ -649,7 +739,42 @@ function compareDiscoveryFootprint(
     averageCompetitor,
     gaps,
     insights,
+    telemetry: {
+      target: targetMetrics,
+      competitors: competitorMetrics.map((entry) => ({
+        competitorId: entry.competitorId,
+        competitorName: entry.competitorName,
+        ...entry.metrics,
+      })),
+      averages: averageMetrics,
+    },
   };
+}
+
+function neutralizeIntentGap(intentGap: IntentGapAnalysis): void {
+  intentGap.gaps = {
+    informational: 0,
+    commercial: 0,
+    transactional: 0,
+    navigational: 0,
+  };
+  intentGap.insights = [
+    'Intent comparisons neutralized while intent patterns run in fallback mode.',
+    ...intentGap.insights,
+  ];
+}
+
+function annotateFallbackDiscoveryFootprint(discoveryFootprint: DiscoveryFootprintComparison): void {
+  discoveryFootprint.gaps = {
+    learning: 0,
+    outcome: 0,
+    brand: 0,
+    noise: 0,
+  };
+  discoveryFootprint.insights = [
+    'Discovery footprint coverage limited until Bible intent patterns sync (fallback mode detected).',
+    ...discoveryFootprint.insights,
+  ];
 }
 
 /**
@@ -718,20 +843,25 @@ function compareBrandStrength(
   targetAudit: UnifiedMetadataAuditResult,
   competitorAudits: AuditCompetitorResult[]
 ): BrandStrengthComparison {
+  const targetBrandStats = computeBrandRatioStats(
+    targetAudit.comboCoverage?.titleCombosClassified,
+    targetAudit.comboCoverage?.lowValueCombos
+  );
   const target = {
-    brandComboCount: targetAudit.discoveryFootprint?.brand?.count || 0,
-    brandPresence:
-      ((targetAudit.discoveryFootprint?.brand?.count || 0) /
-        (targetAudit.comboCoverage?.stats?.totalPossible || 1)) *
-      100,
+    brandComboCount: targetBrandStats.branded,
+    brandPresence: targetBrandStats.brandRatio * 100,
   };
 
-  const competitorBrand = competitorAudits.map((c) => ({
-    brandComboCount: c.auditData.discoveryFootprint?.brand?.count || 0,
-    brandPresence:
-      ((c.auditData.discoveryFootprint?.brand?.count || 0) / (c.auditData.comboCoverage?.stats?.totalPossible || 1)) *
-      100,
-  }));
+  const competitorBrand = competitorAudits.map((c) => {
+    const stats = computeBrandRatioStats(
+      c.auditData.comboCoverage?.titleCombosClassified,
+      c.auditData.comboCoverage?.lowValueCombos
+    );
+    return {
+      brandComboCount: stats.branded,
+      brandPresence: stats.brandRatio * 100,
+    };
+  });
 
   const averageCompetitor = {
     brandComboCount: competitorBrand.reduce((sum, c) => sum + c.brandComboCount, 0) / competitorBrand.length || 0,
@@ -936,20 +1066,51 @@ export async function compareWithCompetitors(
     targetMetadata,
   } = input;
 
+  const validatedCompetitors = competitorAudits
+    .map((audit) => validateCompetitorAudit(audit, { context: 'compareWithCompetitors' }))
+    .filter((audit): audit is AuditCompetitorResult => Boolean(audit));
+
   console.log(
-    `[CompetitorComparison] Comparing target app against ${competitorAudits.length} competitors`
+    `[CompetitorComparison] Comparing target app against ${validatedCompetitors.length} competitors (requested ${competitorAudits.length})`
   );
+
+  if (validatedCompetitors.length === 0) {
+    throw new Error('No valid competitor audits available for comparison');
+  }
+
+  const targetTelemetry = buildAuditTelemetry(targetAudit, {
+    id: targetAppId,
+    name: targetMetadata.title || 'Target App',
+    snapshotCreatedAt: targetAudit.ruleSetDiagnostics?.snapshotCreatedAt,
+  });
+  const competitorTelemetries = validatedCompetitors.map((c) =>
+    buildAuditTelemetry(c.audit, {
+      id: c.competitorId,
+      name: c.metadata.name,
+      snapshotCreatedAt: c.snapshotCreatedAt,
+    })
+  );
+  const fallbackAppIds = [
+    ...(targetTelemetry.fallbackMode ? [targetTelemetry.id] : []),
+    ...competitorTelemetries.filter((t) => t.fallbackMode).map((t) => t.id),
+  ];
+  const hasFallbackIntentData = fallbackAppIds.length > 0;
 
   const startTime = Date.now();
 
   // Run all 7 comparison algorithms
-  const kpiComparison = compareKPIs(targetAudit, competitorAudits);
-  const intentGap = analyzeIntentGap(targetAudit, competitorAudits);
-  const comboGap = analyzeComboGap(targetAudit, competitorAudits);
-  const keywordOpportunities = analyzeKeywordOpportunities(targetAudit, competitorAudits);
-  const discoveryFootprint = compareDiscoveryFootprint(targetAudit, competitorAudits);
-  const characterUsage = compareCharacterUsage(targetAudit, targetMetadata, competitorAudits);
-  const brandStrength = compareBrandStrength(targetAudit, competitorAudits);
+  const kpiComparison = compareKPIs(targetAudit, validatedCompetitors);
+  const intentGap = analyzeIntentGap(targetAudit, validatedCompetitors);
+  const comboGap = analyzeComboGap(targetAudit, validatedCompetitors);
+  const keywordOpportunities = analyzeKeywordOpportunities(targetAudit, validatedCompetitors);
+  const discoveryFootprint = compareDiscoveryFootprint(targetAudit, validatedCompetitors);
+  const characterUsage = compareCharacterUsage(targetAudit, targetMetadata, validatedCompetitors);
+  const brandStrength = compareBrandStrength(targetAudit, validatedCompetitors);
+
+  if (hasFallbackIntentData) {
+    neutralizeIntentGap(intentGap);
+    annotateFallbackDiscoveryFootprint(discoveryFootprint);
+  }
 
   // Generate summary and recommendations
   const { summary, recommendations } = generateSummaryAndRecommendations(
@@ -967,7 +1128,7 @@ export async function compareWithCompetitors(
 
   const result: CompetitorComparisonResult = {
     targetAppId,
-    competitorIds: competitorAudits.map((c) => c.competitorId),
+    competitorIds: validatedCompetitors.map((c) => c.competitorId),
     comparisonType,
     generatedAt: new Date().toISOString(),
     kpiComparison,
@@ -979,6 +1140,11 @@ export async function compareWithCompetitors(
     brandStrength,
     summary,
     recommendations,
+    telemetry: {
+      target: targetTelemetry,
+      competitors: competitorTelemetries,
+      fallbackAppIds,
+    },
   };
 
   // Store in cache

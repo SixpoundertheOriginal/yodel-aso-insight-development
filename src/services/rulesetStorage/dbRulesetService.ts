@@ -354,6 +354,87 @@ export class DbRulesetService {
   }
 
   /**
+   * Load vertical template metadata from aso_ruleset_vertical
+   *
+   * Phase 21: Vertical Intelligence Layer
+   *
+   * @param verticalId - Vertical ID
+   * @returns Vertical template metadata or null
+   */
+  static async loadVerticalTemplateMeta(verticalId: string): Promise<Record<string, any> | null> {
+    if (!verticalId || verticalId === 'base') {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('aso_ruleset_vertical')
+      .select('vertical_template_meta')
+      .eq('vertical', verticalId)
+      .single();
+
+    if (error) {
+      console.error('[DB Ruleset Service] Error loading vertical template meta:', error);
+      return null;
+    }
+
+    return data?.vertical_template_meta || null;
+  }
+
+  /**
+   * Load market template metadata from aso_ruleset_market
+   *
+   * Phase 21: Vertical Intelligence Layer
+   *
+   * @param marketId - Market ID
+   * @returns Market template metadata or null
+   */
+  static async loadMarketTemplateMeta(marketId: string): Promise<Record<string, any> | null> {
+    if (!marketId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('aso_ruleset_market')
+      .select('market_template_meta')
+      .eq('market', marketId)
+      .single();
+
+    if (error) {
+      console.error('[DB Ruleset Service] Error loading market template meta:', error);
+      return null;
+    }
+
+    return data?.market_template_meta || null;
+  }
+
+  /**
+   * Load client template metadata from aso_ruleset_client
+   *
+   * Phase 21: Vertical Intelligence Layer
+   *
+   * @param organizationId - Organization ID
+   * @returns Client template metadata or null
+   */
+  static async loadClientTemplateMeta(organizationId: string): Promise<Record<string, any> | null> {
+    if (!organizationId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('aso_ruleset_client')
+      .select('client_template_meta')
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (error) {
+      console.error('[DB Ruleset Service] Error loading client template meta:', error);
+      return null;
+    }
+
+    return data?.client_template_meta || null;
+  }
+
+  /**
    * Load all overrides for given scope (vertical/market/client)
    *
    * @param options - Filter options

@@ -43,9 +43,7 @@ export const rewardsRuleSet: AsoBibleRuleSet = {
 
   // Formula overrides (minimal)
   formulaOverrides: {
-    combo_quality: {
-      multiplier: 1.1, // Boost combo quality for earning-related combos
-    },
+    combo_quality: 1.1, // Boost combo quality for earning-related combos
   },
 
   // Intent pattern overrides

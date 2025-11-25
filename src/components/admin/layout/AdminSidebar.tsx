@@ -22,6 +22,7 @@ import {
   Target,
   Wrench,
   Brain,
+  Sparkles,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -66,6 +67,7 @@ const navigationConfig: Record<string, NavigationItem['status']> = {
   'formula-registry': 'ready', // ✅ Phase 14: Formula Registry
   'rule-registry': 'ready', // ✅ Phase 15: Rule Evaluator Registry
   'intent-registry': 'ready', // ✅ Phase 16: Intent Pattern Registry
+  'llm-rules': 'ready', // ✅ LLM Visibility Rules Editor
 };
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPage }) => {
@@ -327,6 +329,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, currentPa
           icon: Brain,
           href: '/admin/aso-bible/intent-registry',
           status: navigationConfig['intent-registry'],
+        },
+        {
+          id: 'llm-rules',
+          label: 'LLM Visibility Rules',
+          icon: Sparkles,
+          href: '/admin/aso-bible/llm-rules',
+          status: navigationConfig['llm-rules'],
         },
       ],
     },

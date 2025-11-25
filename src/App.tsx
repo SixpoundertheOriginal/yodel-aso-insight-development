@@ -70,6 +70,7 @@ const KpiRegistryPage = lazy(() => import("./pages/admin/aso-bible/KpiRegistryPa
 const FormulaRegistryPage = lazy(() => import("./pages/admin/aso-bible/FormulaRegistryPage"));
 const RuleRegistryPage = lazy(() => import("./pages/admin/aso-bible/RuleRegistryPage"));
 const IntentRegistryPage = lazy(() => import("./pages/admin/aso-bible/IntentRegistryPage"));
+const LLMRulesPage = lazy(() => import("./pages/admin/aso-bible/LLMRulesPage"));
 
 // Phase 19: Monitoring & Audit History Pages
 const MonitoredAppsPage = lazy(() => import("./pages/aso-ai-hub/MonitoredAppsPage"));
@@ -314,6 +315,10 @@ function App() {
                           <Route
                             path="/admin/aso-bible/intent-registry"
                             element={<ProtectedRoute><IntentRegistryPage /></ProtectedRoute>}
+                          />
+                          <Route
+                            path="/admin/aso-bible/llm-rules"
+                            element={<ProtectedRoute><LLMRulesPage /></ProtectedRoute>}
                           />
                           <Route
                             path="/smoke-test"

@@ -15,14 +15,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Crown, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, Crown, TrendingUp, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UnifiedMetadataAuditResult } from '../AppAudit/UnifiedMetadataAuditModule/types';
 
 interface CompetitorApp {
   id: string;
   name: string;
-  audit: UnifiedMetadataAuditResult;
+  audit: UnifiedMetadataAuditResult | null;
   isBaseline?: boolean; // Your app
 }
 
@@ -39,7 +39,7 @@ interface KpiRow {
   id: string;
   label: string;
   description?: string;
-  getValue: (audit: UnifiedMetadataAuditResult) => number | string;
+  getValue: (audit: UnifiedMetadataAuditResult | null) => number | string;
   format?: 'score' | 'percentage' | 'count' | 'text';
   expandable?: boolean;
   children?: KpiRow[];
@@ -65,7 +65,7 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       id: 'overall',
       label: 'Overall Metadata Score',
       description: 'Weighted score across all ranking elements',
-      getValue: (audit) => audit.overallScore || 0,
+      getValue: (audit) => audit?.overallScore || 0,
       format: 'score',
     },
     {
@@ -79,19 +79,20 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
         {
           id: 'title_chars',
           label: 'Character Usage',
-          getValue: (audit) => `${audit.elements?.title?.metadata?.characterUsage || 0}/${audit.elements?.title?.metadata?.maxCharacters || 0}`,
+          getValue: (audit) =>
+            `${audit?.elements?.title?.metadata?.characterUsage || 0}/${audit?.elements?.title?.metadata?.maxCharacters || 0}`,
           format: 'text',
         },
         {
           id: 'title_keywords',
           label: 'Keyword Count',
-          getValue: (audit) => audit.elements?.title?.metadata?.keywords?.length || 0,
+          getValue: (audit) => audit?.elements?.title?.metadata?.keywords?.length || 0,
           format: 'count',
         },
         {
           id: 'title_combos',
           label: 'Combo Count',
-          getValue: (audit) => audit.elements?.title?.metadata?.combos?.length || 0,
+          getValue: (audit) => audit?.elements?.title?.metadata?.combos?.length || 0,
           format: 'count',
         },
       ],
@@ -100,26 +101,27 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       id: 'subtitle',
       label: 'Subtitle Score',
       description: '35% of overall ranking weight',
-      getValue: (audit) => audit.elements?.subtitle?.score || 0,
+      getValue: (audit) => audit?.elements?.subtitle?.score || 0,
       format: 'score',
       expandable: true,
       children: [
         {
           id: 'subtitle_chars',
           label: 'Character Usage',
-          getValue: (audit) => `${audit.elements?.subtitle?.metadata?.characterUsage || 0}/${audit.elements?.subtitle?.metadata?.maxCharacters || 0}`,
+          getValue: (audit) =>
+            `${audit?.elements?.subtitle?.metadata?.characterUsage || 0}/${audit?.elements?.subtitle?.metadata?.maxCharacters || 0}`,
           format: 'text',
         },
         {
           id: 'subtitle_keywords',
           label: 'Keyword Count',
-          getValue: (audit) => audit.elements?.subtitle?.metadata?.keywords?.length || 0,
+          getValue: (audit) => audit?.elements?.subtitle?.metadata?.keywords?.length || 0,
           format: 'count',
         },
         {
           id: 'subtitle_combos',
           label: 'Combo Count',
-          getValue: (audit) => audit.elements?.subtitle?.metadata?.combos?.length || 0,
+          getValue: (audit) => audit?.elements?.subtitle?.metadata?.combos?.length || 0,
           format: 'count',
         },
       ],
@@ -128,33 +130,34 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       id: 'keyword_coverage',
       label: 'Keyword Coverage',
       description: 'Unique keywords across ranking elements',
-      getValue: (audit) => (audit.keywordCoverage?.titleKeywords?.length || 0) + (audit.keywordCoverage?.subtitleNewKeywords?.length || 0),
+      getValue: (audit) =>
+        (audit?.keywordCoverage?.titleKeywords?.length || 0) + (audit?.keywordCoverage?.subtitleNewKeywords?.length || 0),
       format: 'count',
     },
     {
       id: 'combo_coverage',
       label: 'Combo Coverage (2-4 words)',
       description: 'Multi-word keyword combinations',
-      getValue: (audit) => audit.comboCoverage?.allCombos?.length || 0,
+      getValue: (audit) => audit?.comboCoverage?.allCombos?.length || 0,
       format: 'count',
       expandable: true,
       children: [
         {
           id: 'combo_2word',
           label: '2-Word Combos',
-          getValue: (audit) => audit.comboCoverage.byLength?.['2']?.length || 0,
+          getValue: (audit) => audit?.comboCoverage?.byLength?.['2']?.length || 0,
           format: 'count',
         },
         {
           id: 'combo_3word',
           label: '3-Word Combos',
-          getValue: (audit) => audit.comboCoverage.byLength?.['3']?.length || 0,
+          getValue: (audit) => audit?.comboCoverage?.byLength?.['3']?.length || 0,
           format: 'count',
         },
         {
           id: 'combo_4word',
           label: '4-Word Combos',
-          getValue: (audit) => audit.comboCoverage.byLength?.['4']?.length || 0,
+          getValue: (audit) => audit?.comboCoverage?.byLength?.['4']?.length || 0,
           format: 'count',
         },
       ],
@@ -164,8 +167,8 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       label: 'Search Intent Coverage',
       description: 'Title + Subtitle intent breadth',
       getValue: (audit) => {
-        const titleScore = audit.intentCoverage?.title?.score || 0;
-        const subtitleScore = audit.intentCoverage?.subtitle?.score || 0;
+        const titleScore = audit?.intentCoverage?.title?.score || 0;
+        const subtitleScore = audit?.intentCoverage?.subtitle?.score || 0;
         return Math.round((titleScore + subtitleScore) / 2);
       },
       format: 'score',
@@ -174,13 +177,13 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
         {
           id: 'intent_title',
           label: 'Title Intent',
-          getValue: (audit) => audit.intentCoverage?.title?.score || 0,
+          getValue: (audit) => audit?.intentCoverage?.title?.score || 0,
           format: 'score',
         },
         {
           id: 'intent_subtitle',
           label: 'Subtitle Intent',
-          getValue: (audit) => audit.intentCoverage?.subtitle?.score || 0,
+          getValue: (audit) => audit?.intentCoverage?.subtitle?.score || 0,
           format: 'score',
         },
       ],
@@ -193,7 +196,7 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       id: 'description',
       label: 'Description Score',
       description: 'Impacts Google Play ranking',
-      getValue: (audit) => audit.elements?.description?.score || 0,
+      getValue: (audit) => audit?.elements?.description?.score || 0,
       format: 'score',
     });
   } else {
@@ -202,7 +205,7 @@ const getKpiRows = (platform: 'ios' | 'android' = 'ios'): KpiRow[] => {
       id: 'description',
       label: 'Description (Conversion Only)',
       description: 'Does NOT impact iOS ranking',
-      getValue: (audit) => audit.elements?.description?.score || 0,
+      getValue: (audit) => audit?.elements?.description?.score || 0,
       format: 'score',
     });
   }
@@ -217,7 +220,25 @@ export const CompetitorComparisonTable: React.FC<CompetitorComparisonTableProps>
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const kpiRows = getKpiRows(platform);
-  const allApps = [baselineApp, ...competitorApps];
+  const allApps = [baselineApp, ...competitorApps].filter((app) => {
+    if (!app.audit) {
+      console.warn('[CompetitorComparisonTable] Skipping app with missing audit data:', app.id);
+      return false;
+    }
+    return true;
+  });
+
+  const fallbackAppNames = allApps
+    .filter((app) => app.audit?.intentCoverage?.diagnostics?.fallbackMode)
+    .map((app) => app.name);
+
+  if (allApps.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        Competitor audit data is not available.
+      </div>
+    );
+  }
 
   const toggleRow = (rowId: string) => {
     setExpandedRows((prev) => {
@@ -255,10 +276,10 @@ export const CompetitorComparisonTable: React.FC<CompetitorComparisonTableProps>
   /**
    * Render a cell value
    */
-  const renderCell = (app: CompetitorApp, row: KpiRow, isBest: boolean) => {
-    const value = row.getValue(app.audit);
-    const numValue = typeof value === 'number' ? value : parseFloat(value as string);
-    const displayValue = row.format === 'score' ? `${value}/100` : value;
+const renderCell = (app: CompetitorApp, row: KpiRow, isBest: boolean) => {
+  const value = row.getValue(app.audit);
+  const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+  const displayValue = row.format === 'score' ? `${value}/100` : value;
 
     const colorClass = row.format === 'score' && !isNaN(numValue) ? getScoreColor(numValue) : '';
 
@@ -350,6 +371,16 @@ export const CompetitorComparisonTable: React.FC<CompetitorComparisonTableProps>
       </CardHeader>
 
       <CardContent className="p-0">
+        {fallbackAppNames.length > 0 && (
+          <div className="px-6 py-3 bg-amber-900/10 border-b border-amber-500/20 text-xs text-amber-200 flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <div>
+              Intent coverage is limited for{' '}
+              <span className="font-semibold text-amber-100">{fallbackAppNames.join(', ')}</span>.
+              KPI penalties have been softened while Bible patterns sync.
+            </div>
+          </div>
+        )}
         {/* Table Container with Horizontal Scroll */}
         <div className="overflow-x-auto">
           <div className="min-w-full">

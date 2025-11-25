@@ -405,6 +405,19 @@ export interface KpiResult {
   /** Human-readable label */
   label: string;
 
+  /** Effective weight applied after overrides */
+  effectiveWeight?: number;
+
+  /** Override multiplier */
+  overrideMultiplier?: number;
+
+  /** Provenance of overrides */
+  provenance?: Array<{
+    scope: 'base' | 'vertical' | 'market' | 'client';
+    multiplier: number;
+    sourceId?: string;
+  }>;
+
   /** Optional: Debug information */
   debug?: {
     minValue: number;

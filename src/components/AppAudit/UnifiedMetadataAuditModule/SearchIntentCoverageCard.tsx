@@ -138,6 +138,7 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
 
   // Phase 17: Prefer Bible-driven coverage, fall back to legacy Autocomplete Intelligence
   const usingBibleCoverage = !!bibleCoverage;
+  const diagnostics = bibleCoverage?.diagnostics;
 
   // Get coverage score (0-100)
   let coverageScore = 0;
@@ -152,7 +153,7 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
   let commercialKeywords: string[] = [];
   let transactionalKeywords: string[] = [];
   let dominantIntent = 'unknown';
-  let fallbackMode = false;
+  let fallbackMode = diagnostics?.fallbackMode || false;
 
   if (usingBibleCoverage) {
     // Phase 17: Use Bible-driven coverage
@@ -163,7 +164,7 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
       commercial: bibleCoverage.distributionPercentage.commercial,
       transactional: bibleCoverage.distributionPercentage.transactional,
     };
-    fallbackMode = bibleCoverage.fallbackMode;
+    fallbackMode = diagnostics?.fallbackMode ?? bibleCoverage.fallbackMode;
 
     // Group tokens by intent type
     navigationalKeywords = bibleCoverage.classifiedTokensList
@@ -288,6 +289,55 @@ export const SearchIntentCoverageCard: React.FC<SearchIntentCoverageCardProps> =
 
       {isExpanded && (
         <CardContent className="space-y-5 pt-6">
+          {fallbackMode && !engineFailure && (
+            <div className="p-4 bg-amber-900/10 border-l-4 border-l-amber-500 border border-amber-400/20 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-300 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-zinc-200 leading-relaxed">
+                  <p className="font-semibold text-amber-300 mb-1">
+                    Fallback Intent Coverage
+                  </p>
+                  <p>
+                    Intent insights are using the minimal fallback patterns. Scores are dampened and may not reflect full discovery breadth until Bible patterns finish syncing.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {diagnostics && !engineFailure && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-300 bg-zinc-900/40 border border-zinc-800/80 rounded-lg p-3">
+              <div>
+                <p className="text-[11px] text-zinc-500 uppercase">Patterns Loaded</p>
+                <p className="font-mono text-sm text-emerald-300">{diagnostics.patternCount}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-zinc-500 uppercase">Cache TTL Remaining</p>
+                <p className="font-mono text-sm text-cyan-300">{diagnostics.ttlSeconds ?? 0}s</p>
+              </div>
+              {diagnostics.loadedScopes && (
+                <div className="sm:col-span-2">
+                  <p className="text-[11px] text-zinc-500 uppercase">Loaded Scope</p>
+                  <p className="text-[12px] text-zinc-300">
+                    {[
+                      diagnostics.loadedScopes.verticalId && `Vertical: ${diagnostics.loadedScopes.verticalId}`,
+                      diagnostics.loadedScopes.marketId && `Market: ${diagnostics.loadedScopes.marketId}`,
+                      diagnostics.loadedScopes.organizationId && `Org: ${diagnostics.loadedScopes.organizationId}`,
+                      diagnostics.loadedScopes.appId && `App: ${diagnostics.loadedScopes.appId}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' • ') || 'Global'}
+                  </p>
+                </div>
+              )}
+              {diagnostics.lastLoadedAt && (
+                <div className="sm:col-span-2">
+                  <p className="text-[11px] text-zinc-500 uppercase">Last Pattern Sync</p>
+                  <p className="text-[12px] text-zinc-300">{new Date(diagnostics.lastLoadedAt).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          )}
           {/* STATE A: ENGINE FAILURE (ALWAYS VISIBLE) */}
           {engineFailure && (
             <div className="p-4 bg-red-900/10 border-l-4 border-l-red-500 border border-red-400/20 rounded-lg">

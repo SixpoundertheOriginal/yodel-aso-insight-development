@@ -9,6 +9,8 @@ import type { ScrapedMetadata } from '@/types/aso';
 import { tokenizeForASO, filterStopwords, analyzeText } from './tokenization';
 import { analyzeCombinations } from '@/modules/metadata-scoring/utils/ngram';
 import { generateEnhancedCombos, filterLowValueCombos, separateCombosBySource } from '@/modules/metadata-scoring/utils/comboEngineV2';
+import { dedupeCombos } from '@/modules/metadata-scoring/utils/comboDedupe';
+import { getCanonicalComboString } from '@/modules/metadata-scoring/utils/comboNormalizer';
 import { getStopwords, getSemanticRules } from '@/modules/metadata-scoring/services/configLoader';
 import { BenchmarkRegistryService } from '@/services/benchmark-registry.service';
 import { BrandIntelligenceService } from '@/services/brand-intelligence.service';
@@ -19,14 +21,19 @@ import {
   type EvaluationContext,
   type ElementScoringResult,
   type UnifiedMetadataAuditResult,
-  type RuleEvaluationResult
+  type RuleEvaluationResult,
+  type RuleAncestry
 } from './metadataScoringRegistry';
+import { getFormulaDefinition, applyFormulaComponentWeightOverride, applyFormulaOutputMultiplier } from './metadataFormulaRegistry';
+import { getRuleConfig } from '@/services/ruleConfigLoader';
+import type { EffectiveRuleConfig } from '@/services/ruleConfigLoader';
 import { generateEnhancedRecommendations, type RecommendationSignals } from './utils/recommendationEngineV2';
 import { getActiveRuleSet } from '@/engine/asoBible/rulesetLoader';
 import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 import { loadIntentPatterns, getIntentPatternCacheDiagnostics } from '@/engine/asoBible/intentEngine';
 import { setIntentPatterns, classifyIntent } from '@/utils/comboIntentClassifier';
 import { computeCombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
+import { generateAllPossibleCombos } from '@/engine/combos/comboGenerationEngine';
 import { KpiEngine } from './kpi/kpiEngine';
 
 /**
@@ -83,6 +90,11 @@ export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet):
 }
 
 export class MetadataAuditEngine {
+  private static readonly DEFAULT_DISCOVERY_THRESHOLDS = {
+    excellent: 5,
+    good: 3,
+    moderate: 1,
+  };
   /**
    * Lightweight semantic relevance scoring for tokens
    * (Delegates to exported function for use in registry)
@@ -109,7 +121,7 @@ export class MetadataAuditEngine {
     }
   ): Promise<UnifiedMetadataAuditResult> {
     // Phase 8: Load active rule set (Base → Vertical → Market → Client)
-    const activeRuleSet = getActiveRuleSet(
+    const activeRuleSet = await getActiveRuleSet(
       {
         appId: metadata.appId,
         category: metadata.applicationCategory,
@@ -190,7 +202,7 @@ export class MetadataAuditEngine {
     };
 
     // Calculate weighted overall score (RANKING elements only: title + subtitle)
-    const overallScore = this.calculateOverallScore(elementResults);
+    const overallScore = this.calculateOverallScore(elementResults, activeRuleSet);
 
     // Build conversion insights from description
     const conversionInsights = this.buildConversionInsights(elementResults.description);
@@ -214,7 +226,8 @@ export class MetadataAuditEngine {
 
     // Phase 17: Search Intent Coverage (Bible-driven, token-level)
     // Uses same intent patterns loaded earlier for combo classification
-    const fallbackMode = intentPatterns.length <= 13; // 13 = minimal fallback patterns
+    const intentDiagnostics = getIntentPatternCacheDiagnostics();
+    const fallbackMode = intentDiagnostics.fallbackMode;
     const intentCoverage = computeCombinedSearchIntentCoverage(
       titleTokens,
       subtitleTokens,
@@ -243,6 +256,7 @@ export class MetadataAuditEngine {
         titleCombosClassified: comboCoverage.titleCombosClassified,
         subtitleNewCombosClassified: comboCoverage.subtitleNewCombosClassified,
         lowValueCombos: comboCoverage.lowValueCombos,
+        stats: comboCoverage.stats,
       },
       intentCoverage,  // Phase 18: Pass Intent Coverage data for Intent Quality KPIs
       activeRuleSet,   // Phase 10: Pass active rule set for weight overrides
@@ -264,7 +278,37 @@ export class MetadataAuditEngine {
     const conversionRecommendations = recommendations.conversionRecommendations;
 
     // Phase 20: Get Intent Engine diagnostics for DEV panel
-    const intentEngineDiagnostics = getIntentPatternCacheDiagnostics();
+    // Attach diagnostics flag to intent coverage for downstream consumers
+    intentCoverage.fallbackMode = intentDiagnostics.fallbackMode;
+    intentCoverage.diagnostics = intentDiagnostics;
+    intentCoverage.ancestry = MetadataAuditEngine.buildIntentCoverageAncestry(
+      intentDiagnostics,
+      activeRuleSet
+    );
+    const ruleSetDiagnostics = {
+      leakWarnings: activeRuleSet.leakWarnings || [],
+      ruleSetSource: activeRuleSet.source,
+      verticalId: activeRuleSet.verticalId,
+      marketId: activeRuleSet.marketId,
+      discoveryThresholdSource: activeRuleSet.discoveryThresholds ? 'ruleset' : 'default',
+      overrideScopesApplied: Object.entries(activeRuleSet.inheritanceChain || {})
+        .filter(([, value]) => Boolean(value))
+        .map(([scope]) => scope),
+    };
+
+    // Phase 21: Build Vertical Context from template metadata
+    const verticalContext = MetadataAuditEngine.buildVerticalContext(activeRuleSet);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Vertical Intelligence] Vertical context built:', {
+        hasVerticalContext: !!verticalContext,
+        verticalId: activeRuleSet.verticalId,
+        verticalName: activeRuleSet.verticalName,
+        hasVerticalTemplate: !!activeRuleSet.verticalTemplateMeta,
+        hasMarketTemplate: !!activeRuleSet.marketTemplateMeta,
+        hasClientTemplate: !!activeRuleSet.clientTemplateMeta,
+      });
+    }
 
     return {
       overallScore,
@@ -276,7 +320,9 @@ export class MetadataAuditEngine {
       conversionInsights,
       intentCoverage,  // Phase 17: Include Search Intent Coverage result
       kpiResult,       // Phase 18: Include KPI Engine result
-      intentEngineDiagnostics  // Phase 20: Intent Engine diagnostics (DEV ONLY)
+      intentEngineDiagnostics: intentDiagnostics,  // Phase 20: Intent Engine diagnostics (DEV ONLY)
+      ruleSetDiagnostics,
+      verticalContext,  // Phase 21: Vertical Intelligence Layer
     };
   }
 
@@ -298,16 +344,26 @@ export class MetadataAuditEngine {
     const ruleResults: RuleEvaluationResult[] = await Promise.all(
       config.rules.map(async rule => {
         try {
-          return await rule.evaluator(text, context);
+          const result = await rule.evaluator(text, context);
+          return await MetadataAuditEngine.attachRuleAncestry(
+            result,
+            rule.id,
+            context.activeRuleSet
+          );
         } catch (error) {
           console.error(`[MetadataAuditEngine] Rule ${rule.id} failed:`, error);
-          return {
+          const fallbackResult: RuleEvaluationResult = {
             ruleId: rule.id,
             passed: false,
             score: 0,
             message: `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`,
             evidence: []
           };
+          return await MetadataAuditEngine.attachRuleAncestry(
+            fallbackResult,
+            rule.id,
+            context.activeRuleSet
+          );
         }
       })
     );
@@ -360,14 +416,227 @@ export class MetadataAuditEngine {
    * Calculates weighted overall metadata score
    */
   private static calculateOverallScore(
-    elementResults: Record<MetadataElement, ElementScoringResult>
+    elementResults: Record<MetadataElement, ElementScoringResult>,
+    activeRuleSet?: MergedRuleSet
   ): number {
-    const weightedSum = METADATA_SCORING_REGISTRY.reduce((total, config) => {
-      const elementResult = elementResults[config.element];
-      return total + (elementResult.score * config.weight);
-    }, 0);
+    const formulaId = 'metadata_overall_score';
+    const formula = getFormulaDefinition(formulaId);
+    const baseComponents = formula?.components ?? [
+      { id: 'title_score', weight: 0.65 },
+      { id: 'subtitle_score', weight: 0.35 },
+    ];
 
-    return Math.round(weightedSum);
+    const adjustedComponents = baseComponents.map(component => {
+      const adjustedWeight = applyFormulaComponentWeightOverride(
+        formulaId,
+        component.id,
+        component.weight,
+        activeRuleSet
+      );
+      return {
+        id: component.id,
+        weight: adjustedWeight,
+      };
+    });
+
+    const weightSum =
+      adjustedComponents.reduce((sum, component) => sum + component.weight, 0) || 1;
+
+    let weightedScore = 0;
+    for (const component of adjustedComponents) {
+      const normalizedWeight = component.weight / weightSum;
+      let elementScore = 0;
+
+      if (component.id === 'title_score') {
+        elementScore = elementResults.title.score;
+      } else if (component.id === 'subtitle_score') {
+        elementScore = elementResults.subtitle.score;
+      } else if (component.id === 'description_score') {
+        elementScore = elementResults.description.score;
+      }
+
+      weightedScore += elementScore * normalizedWeight;
+    }
+
+    const adjustedScore = applyFormulaOutputMultiplier(
+      weightedScore,
+      formulaId,
+      activeRuleSet
+    );
+
+    return Math.round(adjustedScore);
+  }
+
+  private static buildIntentCoverageAncestry(
+    diagnostics: ReturnType<typeof getIntentPatternCacheDiagnostics>,
+    activeRuleSet?: MergedRuleSet
+  ): { scope: 'base' | 'vertical' | 'market' | 'client'; sourceId?: string } {
+    if (diagnostics.fallbackMode) {
+      return {
+        scope: 'base',
+        sourceId: 'fallback_intent_patterns',
+      };
+    }
+
+    if (diagnostics.loadedScopes?.organizationId) {
+      return {
+        scope: 'client',
+        sourceId: diagnostics.loadedScopes.organizationId,
+      };
+    }
+
+    if (diagnostics.loadedScopes?.marketId) {
+      return {
+        scope: 'market',
+        sourceId: diagnostics.loadedScopes.marketId,
+      };
+    }
+
+    if (diagnostics.loadedScopes?.verticalId) {
+      return {
+        scope: 'vertical',
+        sourceId: diagnostics.loadedScopes.verticalId,
+      };
+    }
+
+    return {
+      scope: 'base',
+      sourceId: activeRuleSet?.inheritanceChain?.base?.id,
+    };
+  }
+
+  /**
+   * Build Vertical Context from active rule set template metadata
+   *
+   * Phase 21: Vertical Intelligence Layer
+   *
+   * Merges vertical/market/client template metadata into a single VerticalContext
+   * for consumption by front-end panels.
+   *
+   * @param activeRuleSet - Active merged rule set with template metadata
+   * @returns VerticalContext or undefined if no template metadata exists
+   */
+  private static buildVerticalContext(activeRuleSet?: MergedRuleSet): any | undefined {
+    if (!activeRuleSet) {
+      return undefined;
+    }
+
+    // If no template metadata exists at any level, return undefined
+    const hasTemplateData =
+      activeRuleSet.verticalTemplateMeta ||
+      activeRuleSet.marketTemplateMeta ||
+      activeRuleSet.clientTemplateMeta;
+
+    if (!hasTemplateData) {
+      return undefined;
+    }
+
+    // Deep merge template metadata: vertical → market → client (last wins)
+    const mergedTemplate = {
+      ...(activeRuleSet.verticalTemplateMeta || {}),
+      ...(activeRuleSet.marketTemplateMeta || {}),
+      ...(activeRuleSet.clientTemplateMeta || {}),
+    };
+
+    // Build VerticalContext from merged template
+    const verticalContext: any = {
+      verticalId: activeRuleSet.verticalId || 'base',
+      verticalName: activeRuleSet.verticalName || 'Base',
+      marketId: activeRuleSet.marketId,
+      marketName: activeRuleSet.marketName,
+      ruleSetSource: activeRuleSet.source || 'base',
+    };
+
+    // Include template sections if they exist
+    if (mergedTemplate.overview) {
+      verticalContext.overview = mergedTemplate.overview;
+    }
+
+    if (mergedTemplate.benchmarks) {
+      verticalContext.benchmarks = mergedTemplate.benchmarks;
+    }
+
+    if (mergedTemplate.keyword_clusters) {
+      verticalContext.keyword_clusters = mergedTemplate.keyword_clusters;
+    }
+
+    if (mergedTemplate.conversion_drivers) {
+      verticalContext.conversion_drivers = mergedTemplate.conversion_drivers;
+    }
+
+    if (mergedTemplate.kpi_modifiers) {
+      verticalContext.kpi_modifiers = mergedTemplate.kpi_modifiers;
+    }
+
+    // Build inheritance chain
+    verticalContext.inheritanceChain = {};
+
+    if (activeRuleSet.inheritanceChain?.base) {
+      verticalContext.inheritanceChain.base = {
+        id: activeRuleSet.inheritanceChain.base.id,
+        name: activeRuleSet.inheritanceChain.base.label || 'Base',
+      };
+    }
+
+    if (activeRuleSet.inheritanceChain?.vertical) {
+      verticalContext.inheritanceChain.vertical = {
+        id: activeRuleSet.verticalId || '',
+        name: activeRuleSet.verticalName || '',
+      };
+    }
+
+    if (activeRuleSet.inheritanceChain?.market) {
+      verticalContext.inheritanceChain.market = {
+        id: activeRuleSet.marketId || '',
+        name: activeRuleSet.marketName || '',
+      };
+    }
+
+    if (activeRuleSet.inheritanceChain?.client && activeRuleSet.appId) {
+      verticalContext.inheritanceChain.client = {
+        id: activeRuleSet.appId,
+        name: 'Client',
+      };
+    }
+
+    return verticalContext;
+  }
+
+  private static async attachRuleAncestry(
+    result: RuleEvaluationResult,
+    ruleId: string,
+    activeRuleSet?: MergedRuleSet
+  ): Promise<RuleEvaluationResult> {
+    if (result.ancestry) {
+      return result;
+    }
+
+    const config = await getRuleConfig(ruleId, activeRuleSet);
+    const ancestry = MetadataAuditEngine.resolveRuleAncestry(config, activeRuleSet);
+
+    return {
+      ...result,
+      ancestry,
+    };
+  }
+
+  private static resolveRuleAncestry(
+    config: EffectiveRuleConfig | null,
+    activeRuleSet?: MergedRuleSet
+  ): RuleAncestry {
+    const scope = (config?.override_source as RuleAncestry['scope']) || 'base';
+    const chain = activeRuleSet?.inheritanceChain;
+
+    switch (scope) {
+      case 'client':
+        return { scope, sourceId: chain?.client?.id || activeRuleSet?.appId };
+      case 'market':
+        return { scope, sourceId: chain?.market?.id || activeRuleSet?.marketId };
+      case 'vertical':
+        return { scope, sourceId: chain?.vertical?.id || activeRuleSet?.verticalId };
+      default:
+        return { scope: 'base', sourceId: chain?.base?.id };
+    }
   }
 
   /**
@@ -693,6 +962,29 @@ export class MetadataAuditEngine {
       console.log(`[MetadataAuditEngine] Intent classification applied to ${titleCombosEnriched.length + subtitleCombosEnriched.length} combos`);
     }
 
+    const meaningfulTitleTokens = titleTokens.filter(t => !stopwords.has(t) && t.length > 2);
+    const meaningfulSubtitleTokens = subtitleTokens.filter(t => !stopwords.has(t) && t.length > 2);
+    const possibleCombosRaw = generateAllPossibleCombos(
+      meaningfulTitleTokens,
+      meaningfulSubtitleTokens,
+      {
+        minLength: 2,
+        maxLength: 4,
+        includeTitle: true,
+        includeSubtitle: true,
+        includeCross: true,
+      }
+    );
+    const possibleCombos = dedupeCombos(possibleCombosRaw);
+    const canonicalExisting = new Set(allCombinedCombos.map(combo => getCanonicalComboString(combo)));
+    const missingCombos = possibleCombos.filter(
+      combo => !canonicalExisting.has(getCanonicalComboString(combo))
+    );
+    const totalPossible = possibleCombos.length;
+    const existingCount = canonicalExisting.size;
+    const coveragePct = totalPossible > 0 ? Math.round((existingCount / totalPossible) * 100) : 0;
+    const discoveryThresholds = activeRuleSet?.discoveryThresholds || MetadataAuditEngine.DEFAULT_DISCOVERY_THRESHOLDS;
+
     return {
       totalCombos: valuable.length,
       titleCombos,
@@ -700,7 +992,17 @@ export class MetadataAuditEngine {
       allCombinedCombos,
       titleCombosClassified: titleCombosEnriched,
       subtitleNewCombosClassified: subtitleCombosEnriched,
-      lowValueCombos
+      lowValueCombos,
+      stats: {
+        total: totalPossible,
+        totalPossible,
+        existing: existingCount,
+        missing: missingCombos.length,
+        coveragePct,
+        coverage: coveragePct,
+        thresholds: discoveryThresholds,
+        missingExamples: missingCombos.slice(0, 10),
+      },
     };
   }
 

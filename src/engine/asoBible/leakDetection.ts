@@ -9,7 +9,14 @@
  * Phase 8: Basic detection (warnings only, no blocking)
  */
 
-import type { MergedRuleSet, LeakWarning } from './ruleset.types';
+import type { MergedRuleSet, LeakWarning, AsoBibleRuleSet } from './ruleset.types';
+import { languageLearningRuleSet } from './verticalProfiles/language_learning/ruleset';
+import { rewardsRuleSet } from './verticalProfiles/rewards/ruleset';
+import { financeRuleSet } from './verticalProfiles/finance/ruleset';
+import { datingRuleSet } from './verticalProfiles/dating/ruleset';
+import { productivityRuleSet } from './verticalProfiles/productivity/ruleset';
+import { healthRuleSet } from './verticalProfiles/health/ruleset';
+import { entertainmentRuleSet } from './verticalProfiles/entertainment/ruleset';
 
 // ============================================================================
 // Metadata Interface (Simplified)
@@ -19,6 +26,40 @@ interface AppMetadata {
   category?: string;
   title?: string;
   subtitle?: string;
+}
+
+interface VerticalSignature {
+  id: string;
+  tokens: Set<string>;
+  intents: Set<string>;
+}
+
+const VERTICAL_RULESET_REGISTRY: Record<string, AsoBibleRuleSet> = {
+  language_learning: languageLearningRuleSet,
+  rewards: rewardsRuleSet,
+  finance: financeRuleSet,
+  dating: datingRuleSet,
+  productivity: productivityRuleSet,
+  health: healthRuleSet,
+  entertainment: entertainmentRuleSet,
+};
+
+const VERTICAL_SIGNATURES: VerticalSignature[] = Object.entries(VERTICAL_RULESET_REGISTRY).map(
+  ([id, ruleSet]) => ({
+    id,
+    tokens: new Set(Object.keys(ruleSet.tokenRelevanceOverrides || {})),
+    intents: new Set(Object.keys(ruleSet.intentOverrides || {})),
+  })
+);
+
+function countOverlap<T>(source: Set<T>, target: Set<T>): number {
+  let overlap = 0;
+  target.forEach((value) => {
+    if (source.has(value)) {
+      overlap += 1;
+    }
+  });
+  return overlap;
 }
 
 // ============================================================================
@@ -53,6 +94,10 @@ export function detectVerticalLeak(
   // Check 4: Recommendation template leak
   const recommendationLeaks = detectRecommendationLeak(ruleSet, appMetadata);
   warnings.push(...recommendationLeaks);
+
+  // Check 5: Cross-vertical signature overlap
+  const crossVerticalLeaks = detectCrossVerticalLeak(ruleSet);
+  warnings.push(...crossVerticalLeaks);
 
   return warnings;
 }
@@ -222,6 +267,40 @@ function detectRecommendationLeak(
           recommendationId: id,
           category: appMetadata.category,
           template,
+        },
+      });
+    }
+  }
+
+  return warnings;
+}
+
+function detectCrossVerticalLeak(ruleSet: MergedRuleSet): LeakWarning[] {
+  const warnings: LeakWarning[] = [];
+
+  const tokens = new Set(Object.keys(ruleSet.tokenRelevanceOverrides || {}));
+  const intents = new Set(Object.keys(ruleSet.intentOverrides || {}));
+
+  if (tokens.size === 0 && intents.size === 0) {
+    return warnings;
+  }
+
+  for (const signature of VERTICAL_SIGNATURES) {
+    if (signature.id === ruleSet.verticalId) continue;
+
+    const tokenOverlap = countOverlap(tokens, signature.tokens);
+    const intentOverlap = countOverlap(intents, signature.intents);
+
+    if (tokenOverlap >= 5 || intentOverlap >= 3) {
+      warnings.push({
+        type: 'pattern_leak',
+        severity: tokenOverlap >= 8 || intentOverlap >= 5 ? 'high' : 'medium',
+        message: `Detected ${signature.id} patterns in ${ruleSet.verticalId || 'base'} rule set`,
+        details: {
+          targetVertical: ruleSet.verticalId,
+          conflictingVertical: signature.id,
+          tokenOverlap,
+          intentOverlap,
         },
       });
     }

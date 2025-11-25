@@ -5,6 +5,7 @@
  */
 
 import type { CombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
+import type { LeakWarning } from '@/engine/asoBible/ruleset.types';
 
 export type MetadataElement = 'title' | 'subtitle' | 'description';
 
@@ -70,6 +71,66 @@ export interface ElementScoringResult {
   };
 }
 
+/**
+ * Vertical Context - Vertical Intelligence Layer (Phase 21)
+ *
+ * Provides vertical-specific intelligence for metadata optimization
+ */
+export interface VerticalContext {
+  verticalId: string;
+  verticalName: string;
+  marketId?: string;
+  marketName?: string;
+  ruleSetSource: 'base' | 'vertical' | 'market' | 'client';
+
+  // Template metadata
+  overview?: {
+    category_keywords: string[];
+    discovery_drivers: string[];
+    retention_hooks: string[];
+    description?: string;
+  };
+
+  benchmarks?: {
+    generic_combo_count: { excellent: number; good: number; moderate: number };
+    intent_balance_targets: Record<string, number>;
+    custom?: Record<string, number | { min: number; max: number; target: number }>;
+  };
+
+  keyword_clusters?: Array<{
+    cluster_name: string;
+    keywords: string[];
+    intent_type: string;
+    weight?: number;
+    examples?: string[];
+  }>;
+
+  conversion_drivers?: Array<{
+    hook_category: string;
+    weight_multiplier: number;
+    examples: string[];
+    keywords?: string[];
+  }>;
+
+  kpi_modifiers?: Record<
+    string,
+    {
+      tokens: string[];
+      weight: number;
+      description?: string;
+      enabled?: boolean;
+    }
+  >;
+
+  // Inheritance info
+  inheritanceChain?: {
+    base?: { id: string; name: string };
+    vertical?: { id: string; name: string };
+    market?: { id: string; name: string };
+    client?: { id: string; name: string };
+  };
+}
+
 export interface UnifiedMetadataAuditResult {
   overallScore: number;  // Ranking score only (title + subtitle)
   elements: {
@@ -97,6 +158,20 @@ export interface UnifiedMetadataAuditResult {
     titleCombosClassified?: ClassifiedCombo[];
     subtitleNewCombosClassified?: ClassifiedCombo[];
     lowValueCombos?: ClassifiedCombo[];
+    stats?: {
+      total: number;
+      totalPossible?: number;
+      existing: number;
+      missing: number;
+      coveragePct: number;
+      coverage?: number;
+      thresholds?: {
+        excellent: number;
+        good: number;
+        moderate: number;
+      };
+      missingExamples?: string[];
+    };
   };
   conversionInsights: {
     description: {
@@ -117,6 +192,19 @@ export interface UnifiedMetadataAuditResult {
     fallbackMode: boolean;
     cacheTtlRemaining: number; // seconds until cache expires
   };
+  ruleSetDiagnostics?: {
+    leakWarnings?: LeakWarning[];
+    ruleSetSource?: string;
+    verticalId?: string;
+    marketId?: string;
+    discoveryThresholdSource?: 'ruleset' | 'default';
+    overrideScopesApplied?: string[];
+    snapshotCreatedAt?: string;
+    snapshotAgeMs?: number;
+  };
+
+  // Vertical Intelligence Layer (Phase 21)
+  verticalContext?: VerticalContext;
 }
 
 export interface MetadataAuditV2Response {

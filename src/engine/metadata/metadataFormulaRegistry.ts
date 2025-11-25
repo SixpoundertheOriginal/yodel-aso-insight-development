@@ -309,6 +309,55 @@ export function getFormulasByGroup(group: string): FormulaDefinition[] {
     .sort((a, b) => (a.admin?.displayOrder || 999) - (b.admin?.displayOrder || 999));
 }
 
+const FORMULA_OVERRIDE_MIN = 0.5;
+const FORMULA_OVERRIDE_MAX = 2.0;
+
+function getClampedOverrideMultiplier(value?: number): number | undefined {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+
+  const clamped = Math.min(FORMULA_OVERRIDE_MAX, Math.max(FORMULA_OVERRIDE_MIN, value));
+  if (Math.abs(clamped - 1) < 0.001) {
+    return undefined;
+  }
+
+  return clamped;
+}
+
+function readFormulaOverrideMultiplier(
+  key: string,
+  activeRuleSet?: any
+): number | undefined {
+  return getClampedOverrideMultiplier(activeRuleSet?.formulaOverrides?.[key]);
+}
+
+export function applyFormulaComponentWeightOverride(
+  formulaId: string,
+  componentId: string,
+  baseWeight: number,
+  activeRuleSet?: any
+): number {
+  const overrideKey = `${formulaId}.${componentId}`;
+  const multiplier = readFormulaOverrideMultiplier(overrideKey, activeRuleSet);
+  if (!multiplier) {
+    return baseWeight;
+  }
+  return baseWeight * multiplier;
+}
+
+export function applyFormulaOutputMultiplier(
+  value: number,
+  formulaId: string,
+  activeRuleSet?: any
+): number {
+  const multiplier = readFormulaOverrideMultiplier(formulaId, activeRuleSet);
+  if (!multiplier) {
+    return value;
+  }
+  return value * multiplier;
+}
+
 /**
  * Phase 10: Get formula with vertical/market overrides applied
  *

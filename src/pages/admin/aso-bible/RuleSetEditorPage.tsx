@@ -31,6 +31,8 @@ import { FormulaOverrideEditor } from '@/components/admin/aso-bible/editors/Form
 import { RecommendationTemplateEditor } from '@/components/admin/aso-bible/editors/RecommendationTemplateEditor';
 import { VersionHistoryView } from '@/components/admin/aso-bible/editors/VersionHistoryView';
 import { ScoringModelView } from '@/components/admin/aso-bible/editors/ScoringModelView';
+import { RuleSetAncestryTimeline } from '@/components/admin/aso-bible/rules/RuleSetAncestryTimeline';
+import { RuleSetDiagnosticsPanel } from '@/components/admin/aso-bible/rules/RuleSetDiagnosticsPanel';
 
 export default function RuleSetEditorPage() {
   const { isInternalYodel, isSuperAdmin } = usePermissions();
@@ -210,6 +212,14 @@ export default function RuleSetEditorPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RuleSetAncestryTimeline
+            mergedRuleSet={ruleset.mergedRuleSet}
+            inheritance={ruleset.inheritanceSummary}
+          />
+          <RuleSetDiagnosticsPanel mergedRuleSet={ruleset.mergedRuleSet} />
+        </div>
 
         {/* Tabbed Editor Interface */}
         <Card>

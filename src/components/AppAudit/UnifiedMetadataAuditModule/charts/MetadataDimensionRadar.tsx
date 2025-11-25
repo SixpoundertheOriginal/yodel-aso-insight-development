@@ -4,18 +4,20 @@
  * Radar/spider chart showing metadata dimension scores (0-100).
  * Visualizes balance across relevance, learning, structure, brand balance.
  *
- * Uses existing metadataDimensionScores - NO backend changes.
+ * Enhanced with KPI tooltips for user guidance.
  */
 
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts';
 import { Radar as RadarIcon } from 'lucide-react';
+import { KpiTooltip } from '../KpiTooltip';
 
 interface RadarDataPoint {
   dimension: string;
   score: number;
   fullMark: number;
+  metricId: string; // For tooltip lookup
 }
 
 interface MetadataDimensionRadarProps {
@@ -35,11 +37,11 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
 }) => {
   const data: RadarDataPoint[] = useMemo(() => {
     const points: RadarDataPoint[] = [
-      { dimension: 'Relevance', score: metadataDimensionScores.relevance, fullMark: 100 },
-      { dimension: 'Discovery', score: metadataDimensionScores.discovery, fullMark: 100 },
-      { dimension: 'Structure', score: metadataDimensionScores.structure, fullMark: 100 },
-      { dimension: 'Brand Balance', score: metadataDimensionScores.brandBalance, fullMark: 100 },
-      { dimension: 'Intent Quality', score: metadataDimensionScores.intentQuality, fullMark: 100 },
+      { dimension: 'Relevance', score: metadataDimensionScores.relevance, fullMark: 100, metricId: 'relevance' },
+      { dimension: 'Discovery', score: metadataDimensionScores.discovery, fullMark: 100, metricId: 'discovery_coverage' },
+      { dimension: 'Structure', score: metadataDimensionScores.structure, fullMark: 100, metricId: 'structure' },
+      { dimension: 'Brand Balance', score: metadataDimensionScores.brandBalance, fullMark: 100, metricId: 'brand_balance' },
+      { dimension: 'Intent Quality', score: metadataDimensionScores.intentQuality, fullMark: 100, metricId: 'intent_coverage' },
     ];
 
     // Add optional dimensions if available
@@ -125,6 +127,23 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
               <div className="w-3 h-3 rounded-full bg-cyan-400/60" />
               <span>80+</span>
             </div>
+          </div>
+        </div>
+
+        {/* Dimension Explanations */}
+        <div className="mt-4 pt-4 border-t border-zinc-800/50">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            {data.map((item) => (
+              <div key={item.metricId} className="flex items-center gap-2 text-xs">
+                <span className="text-zinc-400">{item.dimension}:</span>
+                <span className="text-cyan-300 font-mono">{item.score.toFixed(0)}</span>
+                <KpiTooltip
+                  metricId={item.metricId}
+                  currentScore={item.score}
+                  iconSize="sm"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>

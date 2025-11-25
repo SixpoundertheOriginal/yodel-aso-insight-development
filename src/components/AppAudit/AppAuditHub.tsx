@@ -29,6 +29,7 @@ import { getScoreLabel } from '@/lib/scoringUtils';
 import { useEffect, useRef } from 'react';
 import { AUDIT_METADATA_V2_ENABLED } from '@/config/metadataFeatureFlags';
 import { AuditV2View } from './AuditV2View';
+import { LLMOptimizationTab } from './LLMOptimization/LLMOptimizationTab';
 import type { MarketCode } from '@/config/markets';
 
 // Feature flag: Hide metadata editor blocks in ASO AI Audit
@@ -691,7 +692,8 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
             : (() => {
                 const metadataTabCount = ENABLE_METADATA_BLOCKS_IN_AUDIT ? 1 : 0;
                 const auditV2TabCount = AUDIT_METADATA_V2_ENABLED ? 1 : 0;
-                const totalCols = metadataTabCount + auditV2TabCount;
+                const llmOptTabCount = isTabVisible('llm-optimization') ? 1 : 0;
+                const totalCols = metadataTabCount + auditV2TabCount + llmOptTabCount;
                 return `grid-cols-${totalCols}`;
               })()
         } bg-zinc-900 border-zinc-800`}>
@@ -705,6 +707,13 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
             <TabsTrigger value="audit-v2" className="flex items-center space-x-1">
               <Sparkles className="h-4 w-4 text-emerald-400" />
               <span>Audit V2</span>
+            </TabsTrigger>
+          )}
+          {/* LLM Optimization tab: ChatGPT/Claude/Perplexity discoverability */}
+          {isTabVisible('llm-optimization') && (
+            <TabsTrigger value="llm-optimization" className="flex items-center space-x-1">
+              <Sparkles className="h-4 w-4 text-cyan-400" />
+              <span>LLM Optimization</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -728,6 +737,17 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
               monitored_app_id={effectiveMode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
               mode={mode}
               organizationId={organizationId}
+            />
+          </TabsContent>
+        )}
+
+        {/* LLM Optimization tab: ChatGPT/Claude/Perplexity discoverability */}
+        {isTabVisible('llm-optimization') && (
+          <TabsContent value="llm-optimization" className="space-y-6">
+            <LLMOptimizationTab
+              metadata={displayMetadata}
+              organizationId={organizationId}
+              monitoredAppId={effectiveMode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
             />
           </TabsContent>
         )}

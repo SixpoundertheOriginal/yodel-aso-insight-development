@@ -47,7 +47,18 @@ interface DimensionLeader {
 /**
  * Extract 6 key dimensions from audit result
  */
-const extractDimensions = (audit: UnifiedMetadataAuditResult) => {
+const extractDimensions = (audit?: UnifiedMetadataAuditResult | null) => {
+  if (!audit) {
+    return {
+      Overall: 0,
+      Title: 0,
+      Subtitle: 0,
+      Coverage: 0,
+      Combos: 0,
+      Intent: 0,
+    };
+  }
+
   const titleIntentScore = audit.intentCoverage?.title?.score || 0;
   const subtitleIntentScore = audit.intentCoverage?.subtitle?.score || 0;
 
@@ -57,12 +68,12 @@ const extractDimensions = (audit: UnifiedMetadataAuditResult) => {
   const allCombosLength = audit.comboCoverage?.allCombos?.length || 0;
 
   return {
-    'Overall': audit.overallScore || 0,
-    'Title': audit.elements?.title?.score || 0,
-    'Subtitle': audit.elements?.subtitle?.score || 0,
-    'Coverage': Math.round((titleKeywordsLength + subtitleKeywordsLength) / 30 * 100),
-    'Combos': Math.round((allCombosLength / 50) * 100),
-    'Intent': Math.round((titleIntentScore + subtitleIntentScore) / 2),
+    Overall: audit.overallScore || 0,
+    Title: audit.elements?.title?.score || 0,
+    Subtitle: audit.elements?.subtitle?.score || 0,
+    Coverage: Math.round(((titleKeywordsLength + subtitleKeywordsLength) / 30) * 100),
+    Combos: Math.round((allCombosLength / 50) * 100),
+    Intent: Math.round((titleIntentScore + subtitleIntentScore) / 2),
   };
 };
 
@@ -102,7 +113,25 @@ export const CompetitorComparisonSummary: React.FC<CompetitorComparisonSummaryPr
   baselineApp,
   competitorApps,
 }) => {
-  const allApps = [baselineApp, ...competitorApps];
+  const allApps = [baselineApp, ...competitorApps].filter((app) => {
+    if (!app.audit) {
+      console.warn('[CompetitorComparisonSummary] Skipping app with missing audit data:', app.id);
+      return false;
+    }
+    return true;
+  });
+
+  if (allApps.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        Competitor audit data is not available.
+      </div>
+    );
+  }
+
+  const fallbackAppNames = allApps
+    .filter((app) => app.audit?.intentCoverage?.diagnostics?.fallbackMode)
+    .map((app) => app.name);
 
   // Build radar chart data
   const radarData: DimensionScore[] = useMemo(() => {
@@ -156,6 +185,15 @@ export const CompetitorComparisonSummary: React.FC<CompetitorComparisonSummaryPr
 
   return (
     <div className="space-y-4">
+      {fallbackAppNames.length > 0 && (
+        <div className="p-3 bg-amber-900/10 border border-amber-500/20 rounded-lg text-xs text-amber-200 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <div>
+            Intent coverage is operating in fallback mode for{' '}
+            <span className="font-semibold text-amber-100">{fallbackAppNames.join(', ')}</span>. Insights may be limited until Bible patterns sync.
+          </div>
+        </div>
+      )}
       {/* Summary Stats */}
       <Card className="bg-zinc-950/80 border-zinc-800">
         <CardContent className="p-6">

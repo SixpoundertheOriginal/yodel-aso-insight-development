@@ -18,7 +18,6 @@ import type {
   NormalizedTokenOverrides,
   NormalizedHookOverrides,
   NormalizedKpiWeightOverrides,
-  NormalizedFormulaOverrides,
   NormalizedRecommendationTemplates,
 } from './rulesetNormalizer';
 import type { RulesetVersionInfo } from './rulesetVersionManager';
@@ -42,7 +41,7 @@ export interface MergedRuleSet {
     vertical?: string[];
   };
   kpiOverrides?: Record<string, { weight: number }>;
-  formulaOverrides?: Record<string, any>;
+  formulaOverrides?: Record<string, number>;
   recommendationOverrides?: Record<string, { message: string }>;
 
   // Version metadata
@@ -146,29 +145,33 @@ function mergeKpiWeightOverrides(
  * @param layers - Array of normalized rulesets
  * @returns Merged formula overrides
  */
-function mergeFormulaOverrides(...layers: NormalizedRuleSet[]): Record<string, any> {
-  const merged: Record<string, any> = {};
+function mergeFormulaOverrides(...layers: NormalizedRuleSet[]): Record<string, number> {
+  const merged: Record<string, number> = {};
 
-  // Apply layers in order
   for (const layer of layers) {
     for (const [formulaId, override] of Object.entries(layer.formulaOverrides)) {
-      // Deep merge for component weights if present
-      if (!merged[formulaId]) {
-        merged[formulaId] = { ...override };
-      } else {
-        merged[formulaId] = {
-          ...merged[formulaId],
-          ...override,
-          componentWeights: {
-            ...merged[formulaId].componentWeights,
-            ...override.componentWeights,
-          },
-        };
+      const normalizedMultiplier = clampMultiplier(override.multiplier);
+
+      if (normalizedMultiplier !== 1) {
+        merged[formulaId] = normalizedMultiplier;
+      }
+
+      if (override.componentWeights) {
+        for (const [componentId, weightMultiplier] of Object.entries(override.componentWeights)) {
+          merged[`${formulaId}.${componentId}`] = clampMultiplier(weightMultiplier);
+        }
       }
     }
   }
 
   return merged;
+}
+
+function clampMultiplier(value?: number, min = 0.5, max = 2.0): number {
+  if (value === undefined || Number.isNaN(value)) {
+    return 1;
+  }
+  return Math.min(max, Math.max(min, value));
 }
 
 /**

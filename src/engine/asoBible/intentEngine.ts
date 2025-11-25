@@ -85,6 +85,19 @@ export interface IntentCoverageMetrics {
   dominantIntent: IntentType | null;
 }
 
+export interface IntentDiagnosticsContext {
+  fallbackMode: boolean;
+  patternCount: number;
+  ttlSeconds: number;
+  loadedScopes?: {
+    verticalId?: string;
+    marketId?: string;
+    organizationId?: string;
+    appId?: string;
+  };
+  lastLoadedAt?: string;
+}
+
 // ============================================================================
 // Fallback Patterns (Minimal Defaults)
 // ============================================================================
@@ -126,6 +139,14 @@ const FALLBACK_PATTERNS: IntentPatternConfig[] = [
 let cachedPatterns: IntentPatternConfig[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MIN_PATTERN_COUNT_FOR_PRIMARY = FALLBACK_PATTERNS.length;
+let lastLoadedContext: {
+  verticalId?: string;
+  marketId?: string;
+  organizationId?: string;
+  appId?: string;
+  loadedAt?: number;
+} = {};
 
 /**
  * Clear pattern cache
@@ -145,15 +166,29 @@ export function getIntentPatternCacheDiagnostics(): {
   patternsLoaded: number;
   fallbackMode: boolean;
   cacheTtlRemaining: number; // seconds
-} {
+} & IntentDiagnosticsContext {
   const now = Date.now();
   const ttlRemainingMs = cachedPatterns ? Math.max(0, CACHE_TTL_MS - (now - cacheTimestamp)) : 0;
   const ttlRemainingSec = Math.floor(ttlRemainingMs / 1000);
+  const patternCount = cachedPatterns?.length || 0;
+  const fallbackMode = cachedPatterns ? patternCount <= MIN_PATTERN_COUNT_FOR_PRIMARY : true;
+  const lastLoadedAtIso = lastLoadedContext.loadedAt
+    ? new Date(lastLoadedContext.loadedAt).toISOString()
+    : undefined;
 
   return {
-    patternsLoaded: cachedPatterns?.length || 0,
-    fallbackMode: cachedPatterns ? cachedPatterns.length <= 13 : true, // 13 = minimal fallback patterns
+    patternsLoaded: patternCount,
+    fallbackMode,
     cacheTtlRemaining: ttlRemainingSec,
+    patternCount,
+    ttlSeconds: ttlRemainingSec,
+    loadedScopes: {
+      verticalId: lastLoadedContext.verticalId,
+      marketId: lastLoadedContext.marketId,
+      organizationId: lastLoadedContext.organizationId,
+      appId: lastLoadedContext.appId,
+    },
+    lastLoadedAt: lastLoadedAtIso,
   };
 }
 
@@ -210,6 +245,13 @@ export async function loadIntentPatterns(
       // Cache the results
       cachedPatterns = configs;
       cacheTimestamp = now;
+      lastLoadedContext = {
+        verticalId: vertical,
+        marketId: market,
+        organizationId,
+        appId,
+        loadedAt: now,
+      };
 
       return configs;
     } else {
@@ -219,6 +261,13 @@ export async function loadIntentPatterns(
       );
       cachedPatterns = FALLBACK_PATTERNS;
       cacheTimestamp = now;
+      lastLoadedContext = {
+        verticalId: vertical,
+        marketId: market,
+        organizationId,
+        appId,
+        loadedAt: now,
+      };
       return FALLBACK_PATTERNS;
     }
   } catch (error) {
@@ -227,6 +276,13 @@ export async function loadIntentPatterns(
     console.warn('⚠️ [IntentEngine] Using fallback patterns due to DB error');
     cachedPatterns = FALLBACK_PATTERNS;
     cacheTimestamp = now;
+    lastLoadedContext = {
+      verticalId: vertical,
+      marketId: market,
+      organizationId,
+      appId,
+      loadedAt: now,
+    };
     return FALLBACK_PATTERNS;
   }
 }

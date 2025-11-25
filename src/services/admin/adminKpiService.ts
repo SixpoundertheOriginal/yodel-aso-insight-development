@@ -20,6 +20,8 @@ import {
   getFamilyDefinition,
   getKpisByFamily,
 } from '@/services/metadataConfigService';
+import { getRuleSetForVerticalMarket } from '@/engine/asoBible/rulesetLoader';
+import type { MergedRuleSet, AsoBibleRuleSet } from '@/engine/asoBible/ruleset.types';
 import type {
   KpiDefinition,
   KpiFamilyDefinition,
@@ -43,6 +45,14 @@ export interface KpiWithAdminMeta extends KpiDefinition {
 
   /** Override multiplier (if any) */
   overrideMultiplier?: number;
+
+  /** Provenance of overrides (scope + multiplier) */
+  provenance?: Array<{
+    scope: 'base' | 'vertical' | 'market' | 'client';
+    multiplier: number;
+    sourceId?: string;
+    label?: string;
+  }>;
 
   /** Formula ID reference */
   formulaRef?: string;
@@ -110,6 +120,16 @@ export interface UpdateFamilyWeightRequest {
   weight: number;
 }
 
+interface KpiOverrideRecord {
+  id: string;
+  scope: 'base' | 'vertical' | 'market' | 'client';
+  vertical?: string | null;
+  market?: string | null;
+  organization_id?: string | null;
+  kpi_name: string;
+  weight: number;
+}
+
 // ============================================================================
 // Read Operations
 // ============================================================================
@@ -128,35 +148,29 @@ export async function getAllKpisWithAdminMeta(
   organizationId?: string
 ): Promise<KpiWithAdminMeta[]> {
   const baseKpis = getAllKpis();
+  const mergedRuleSet = await loadMergedRuleSetForContext(vertical, market, organizationId);
+  const overrides = await fetchKpiOverrides();
 
-  // Fetch overrides for the given scope (if any)
-  let overrides: any[] = [];
-  if (vertical || market || organizationId) {
-    const { data, error } = await supabase
-      .from('aso_kpi_weight_overrides')
-      .select('*')
-      .eq('vertical', vertical || null)
-      .eq('market', market || null)
-      .eq('organization_id', organizationId || null)
-      .eq('is_active', true);
-
-    if (!error && data) {
-      overrides = data;
-    }
-  }
-
-  // Merge base KPIs with overrides
   return baseKpis.map((kpi) => {
-    const override = overrides.find((o) => o.kpi_name === kpi.id);
+    const resolution = resolveKpiWeight(
+      kpi.id,
+      kpi.weight,
+      mergedRuleSet,
+      overrides,
+      vertical,
+      market,
+      organizationId
+    );
 
     return {
       ...kpi,
-      effectiveWeight: override ? kpi.weight * override.weight : kpi.weight,
-      hasOverride: !!override,
-      overrideMultiplier: override?.weight || 1.0,
-      formulaRef: kpi.admin?.notes || undefined, // TODO: Add formulaRef to KPI definition
-      enabled: true, // TODO: Add enabled flag to DB admin meta
-      experimental: false, // TODO: Add experimental flag to DB admin meta
+      effectiveWeight: resolution.effectiveWeight,
+      hasOverride: resolution.overrideMultiplier !== 1,
+      overrideMultiplier: resolution.overrideMultiplier,
+      provenance: resolution.provenance,
+      formulaRef: kpi.admin?.notes || undefined,
+      enabled: true,
+      experimental: false,
     };
   });
 }
@@ -173,29 +187,24 @@ export async function getKpiWithAdminMeta(
   const baseKpi = getKpiDefinition(kpiId);
   if (!baseKpi) return null;
 
-  // Fetch override
-  let override: any = null;
-  if (vertical || market || organizationId) {
-    const { data, error } = await supabase
-      .from('aso_kpi_weight_overrides')
-      .select('*')
-      .eq('kpi_name', kpiId)
-      .eq('vertical', vertical || null)
-      .eq('market', market || null)
-      .eq('organization_id', organizationId || null)
-      .eq('is_active', true)
-      .single();
-
-    if (!error && data) {
-      override = data;
-    }
-  }
+  const mergedRuleSet = await loadMergedRuleSetForContext(vertical, market, organizationId);
+  const overrides = await fetchKpiOverrides();
+  const resolution = resolveKpiWeight(
+    kpiId,
+    baseKpi.weight,
+    mergedRuleSet,
+    overrides,
+    vertical,
+    market,
+    organizationId
+  );
 
   return {
     ...baseKpi,
-    effectiveWeight: override ? baseKpi.weight * override.weight : baseKpi.weight,
-    hasOverride: !!override,
-    overrideMultiplier: override?.weight || 1.0,
+    effectiveWeight: resolution.effectiveWeight,
+    hasOverride: resolution.overrideMultiplier !== 1,
+    overrideMultiplier: resolution.overrideMultiplier,
+    provenance: resolution.provenance,
     formulaRef: baseKpi.admin?.notes || undefined,
     enabled: true,
     experimental: false,
@@ -243,6 +252,137 @@ export async function getFamilyWithStats(
     hasOverride: false,
     overrideMultiplier: 1.0,
   };
+}
+
+async function loadMergedRuleSetForContext(
+  vertical?: string,
+  market?: string,
+  organizationId?: string
+): Promise<MergedRuleSet | null> {
+  try {
+    if (!vertical && !market && !organizationId) {
+      return await getRuleSetForVerticalMarket('base', 'global');
+    }
+    return await getRuleSetForVerticalMarket(
+      vertical || 'base',
+      market || 'global',
+      organizationId
+    );
+  } catch (error) {
+    console.warn('[Admin KPI] Failed to load merged rule set:', error);
+    return null;
+  }
+}
+
+async function fetchKpiOverrides(): Promise<KpiOverrideRecord[]> {
+  const { data, error } = await supabase
+    .from('aso_kpi_weight_overrides')
+    .select('*')
+    .eq('is_active', true);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as KpiOverrideRecord[];
+}
+
+function resolveKpiWeight(
+  kpiId: KpiId,
+  baseWeight: number,
+  mergedRuleSet: MergedRuleSet | null,
+  overrideRecords: KpiOverrideRecord[],
+  vertical?: string,
+  market?: string,
+  organizationId?: string
+) {
+  const candidates: Array<{
+    scope: 'base' | 'vertical' | 'market' | 'client';
+    multiplier: number;
+    sourceId?: string;
+  }> = [];
+
+  const inheritance = mergedRuleSet?.inheritanceChain;
+  if (inheritance) {
+    addCandidateFromRuleSet(candidates, 'base', inheritance.base, kpiId);
+    addCandidateFromRuleSet(candidates, 'vertical', inheritance.vertical, kpiId);
+    addCandidateFromRuleSet(candidates, 'market', inheritance.market, kpiId);
+    addCandidateFromRuleSet(candidates, 'client', inheritance.client, kpiId);
+  }
+
+  const matchingOverrides = overrideRecords.filter((record) => {
+    if (record.kpi_name !== kpiId) return false;
+
+    if (record.scope === 'client') {
+      return organizationId ? record.organization_id === organizationId : false;
+    }
+    if (record.scope === 'market') {
+      return market ? record.market === market : false;
+    }
+    if (record.scope === 'vertical') {
+      return vertical ? record.vertical === vertical : false;
+    }
+    return false;
+  });
+
+  const dbOverride = matchingOverrides.sort((a, b) => scopePriority(a.scope) - scopePriority(b.scope))[0];
+  if (dbOverride) {
+    candidates.push({
+      scope: dbOverride.scope,
+      multiplier: dbOverride.weight,
+      sourceId: dbOverride.id,
+    });
+  }
+
+  const winner = candidates.sort((a, b) => scopePriority(b.scope) - scopePriority(a.scope))[0];
+  const overrideMultiplier = winner?.multiplier ?? 1;
+  const effectiveWeight = baseWeight * overrideMultiplier;
+  const provenance = [
+    {
+      scope: 'base' as const,
+      multiplier: 1,
+      sourceId: inheritance?.base?.id,
+    },
+  ];
+
+  if (winner && winner.scope !== 'base') {
+    provenance.push(winner);
+  }
+
+  return {
+    effectiveWeight,
+    overrideMultiplier,
+    provenance,
+  };
+}
+
+function addCandidateFromRuleSet(
+  list: Array<{ scope: 'base' | 'vertical' | 'market' | 'client'; multiplier: number; sourceId?: string }>,
+  scope: 'base' | 'vertical' | 'market' | 'client',
+  ruleSet: AsoBibleRuleSet | undefined,
+  kpiId: KpiId
+) {
+  const override = ruleSet?.kpiOverrides?.[kpiId];
+  if (override?.weight) {
+    list.push({
+      scope,
+      multiplier: override.weight,
+      sourceId: ruleSet?.id,
+    });
+  }
+}
+
+function scopePriority(scope: string): number {
+  switch (scope) {
+    case 'client':
+      return 4;
+    case 'market':
+      return 3;
+    case 'vertical':
+      return 2;
+    default:
+      return 1;
+  }
 }
 
 // ============================================================================

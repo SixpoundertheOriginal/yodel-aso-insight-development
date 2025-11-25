@@ -73,11 +73,11 @@ function mergeInto(target: AsoBibleRuleSet, source: AsoBibleRuleSet): void {
     };
   }
 
-  // Merge formula overrides
+  // Merge formula overrides (last scope wins)
   if (source.formulaOverrides) {
     target.formulaOverrides = {
       ...target.formulaOverrides,
-      ...deepMergeObjects(target.formulaOverrides || {}, source.formulaOverrides),
+      ...source.formulaOverrides,
     };
   }
 

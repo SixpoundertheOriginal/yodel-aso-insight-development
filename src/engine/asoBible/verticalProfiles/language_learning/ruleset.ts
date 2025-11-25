@@ -30,10 +30,10 @@ export const languageLearningRuleSet: AsoBibleRuleSet = {
 
   // KPI weight adjustments (minimal)
   kpiOverrides: {
-    intent_alignment: {
+    intent_alignment_score: {
       weight: 1.2, // Boost intent alignment for educational apps
     },
-    hook_strength: {
+    hook_strength_title: {
       weight: 1.1, // Educational hooks are important
     },
   },

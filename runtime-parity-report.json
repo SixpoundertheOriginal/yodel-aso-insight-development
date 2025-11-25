@@ -1,0 +1,927 @@
+{
+  "timestamp": "2025-11-24T23:14:06.788Z",
+  "summary": {
+    "totalVerticals": 8,
+    "totalMarkets": 5,
+    "dbVerticals": 8,
+    "dbMarkets": 5,
+    "issues": 36,
+    "errors": 1,
+    "warnings": 26
+  },
+  "issues": [
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical base: Label mismatch",
+      "details": {
+        "code": "Base (Vertical-Agnostic)",
+        "db": "Base RuleSet"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical base: Description mismatch",
+      "details": {
+        "code": "Fallback vertical for apps that do not match any specific category",
+        "db": "Global defaults for all apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical base: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 1
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical language_learning: Label mismatch",
+      "details": {
+        "code": "Language Learning",
+        "db": "Language Learning Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical language_learning: Description mismatch",
+      "details": {
+        "code": "Language learning apps (e.g., Duolingo, Babbel, Rosetta Stone)",
+        "db": "Overrides for language learning apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical language_learning: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical rewards: Label mismatch",
+      "details": {
+        "code": "Rewards & Cashback",
+        "db": "Rewards & Cashback Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical rewards: Description mismatch",
+      "details": {
+        "code": "Reward and cashback apps (e.g., Mistplay, Fetch Rewards, Rakuten)",
+        "db": "Overrides for rewards and cashback apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical rewards: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 2
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical finance: Label mismatch",
+      "details": {
+        "code": "Finance & Investing",
+        "db": "Finance & Investing Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical finance: Description mismatch",
+      "details": {
+        "code": "Finance and investing apps (e.g., Robinhood, Coinbase, Acorns)",
+        "db": "Overrides for finance and investing apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical finance: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 8,
+          "good": 5,
+          "moderate": 3
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical dating: Label mismatch",
+      "details": {
+        "code": "Dating & Relationships",
+        "db": "Dating Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical dating: Description mismatch",
+      "details": {
+        "code": "Dating and relationship apps (e.g., Tinder, Bumble, Hinge)",
+        "db": "Overrides for dating apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical dating: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 2
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical productivity: Label mismatch",
+      "details": {
+        "code": "Productivity & Task Management",
+        "db": "Productivity Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical productivity: Description mismatch",
+      "details": {
+        "code": "Productivity and task management apps (e.g., Notion, Todoist, Trello)",
+        "db": "Overrides for productivity and task management apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical productivity: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical health: Label mismatch",
+      "details": {
+        "code": "Health & Fitness",
+        "db": "Health & Fitness Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical health: Description mismatch",
+      "details": {
+        "code": "Health and fitness apps (e.g., MyFitnessPal, Headspace, Strava)",
+        "db": "Overrides for health and fitness apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical health: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical entertainment: Label mismatch",
+      "details": {
+        "code": "Entertainment",
+        "db": "Entertainment Vertical"
+      }
+    },
+    {
+      "severity": "info",
+      "category": "vertical",
+      "message": "Vertical entertainment: Description mismatch",
+      "details": {
+        "code": "Entertainment apps (e.g., Netflix, Spotify, YouTube)",
+        "db": "Overrides for entertainment and streaming apps"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "vertical",
+      "message": "Vertical entertainment: Discovery thresholds missing in DB",
+      "details": {
+        "code": {
+          "excellent": 4,
+          "good": 3,
+          "moderate": 1
+        },
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market us: Label mismatch",
+      "details": {
+        "code": "United States",
+        "db": "US Market"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market us: Locales missing in DB",
+      "details": {
+        "code": [
+          "en-US",
+          "en_US",
+          "US"
+        ],
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market uk: Label mismatch",
+      "details": {
+        "code": "United Kingdom",
+        "db": "UK Market"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market uk: Locales missing in DB",
+      "details": {
+        "code": [
+          "en-GB",
+          "en_GB",
+          "GB",
+          "UK"
+        ],
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market ca: Label mismatch",
+      "details": {
+        "code": "Canada",
+        "db": "Canada Market"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market ca: Locales missing in DB",
+      "details": {
+        "code": [
+          "en-CA",
+          "en_CA",
+          "fr-CA",
+          "fr_CA",
+          "CA"
+        ],
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market au: Label mismatch",
+      "details": {
+        "code": "Australia",
+        "db": "Australia Market"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market au: Locales missing in DB",
+      "details": {
+        "code": [
+          "en-AU",
+          "en_AU",
+          "AU"
+        ],
+        "db": null
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market de: Label mismatch",
+      "details": {
+        "code": "Germany",
+        "db": "Germany Market"
+      }
+    },
+    {
+      "severity": "warning",
+      "category": "market",
+      "message": "Market de: Locales missing in DB",
+      "details": {
+        "code": [
+          "de-DE",
+          "de_DE",
+          "de",
+          "DE"
+        ],
+        "db": null
+      }
+    },
+    {
+      "severity": "info",
+      "category": "override",
+      "message": "Found 4 tokens with multiple scope overrides (expected for inheritance)",
+      "details": [
+        {
+          "token": "play",
+          "scopes": [
+            {
+              "scope": "vertical",
+              "vertical": "rewards",
+              "market": null,
+              "relevance": 1
+            },
+            {
+              "scope": "vertical",
+              "vertical": "entertainment",
+              "market": null,
+              "relevance": 3
+            }
+          ]
+        },
+        {
+          "token": "balance",
+          "scopes": [
+            {
+              "scope": "vertical",
+              "vertical": "rewards",
+              "market": null,
+              "relevance": 1
+            },
+            {
+              "scope": "vertical",
+              "vertical": "finance",
+              "market": null,
+              "relevance": 1
+            }
+          ]
+        },
+        {
+          "token": "track",
+          "scopes": [
+            {
+              "scope": "vertical",
+              "vertical": "finance",
+              "market": null,
+              "relevance": 1
+            },
+            {
+              "scope": "vertical",
+              "vertical": "health",
+              "market": null,
+              "relevance": 3
+            },
+            {
+              "scope": "vertical",
+              "vertical": "productivity",
+              "market": null,
+              "relevance": 3
+            }
+          ]
+        },
+        {
+          "token": "goals",
+          "scopes": [
+            {
+              "scope": "vertical",
+              "vertical": "health",
+              "market": null,
+              "relevance": 1
+            },
+            {
+              "scope": "vertical",
+              "vertical": "productivity",
+              "market": null,
+              "relevance": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "severity": "error",
+      "category": "override",
+      "message": "Found 7 duplicate KPI overrides (same kpi_name + scope + vertical + market)",
+      "details": [
+        [
+          "undefined:vertical:language_learning:global",
+          [
+            {
+              "id": "2ff75040-8bd5-464c-9177-8e673a46bcfe",
+              "scope": "vertical",
+              "vertical": "language_learning",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "intent_alignment_score",
+              "weight_multiplier": 1.2,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.413085+00:00",
+              "updated_at": "2025-11-24T23:13:30.413085+00:00"
+            },
+            {
+              "id": "49178c2b-91ce-43c3-9f21-71df382ba5d0",
+              "scope": "vertical",
+              "vertical": "language_learning",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "hook_strength_title",
+              "weight_multiplier": 1.1,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.413085+00:00",
+              "updated_at": "2025-11-24T23:13:30.413085+00:00"
+            }
+          ]
+        ],
+        [
+          "undefined:vertical:rewards:global",
+          [
+            {
+              "id": "684ff04b-8d72-4cdb-ab37-34aa4f6624b7",
+              "scope": "vertical",
+              "vertical": "rewards",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "intent_alignment",
+              "weight_multiplier": 1.2,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.624799+00:00",
+              "updated_at": "2025-11-24T23:13:30.624799+00:00"
+            },
+            {
+              "id": "725d74ed-b14c-402d-92f6-ee218ba112cb",
+              "scope": "vertical",
+              "vertical": "rewards",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "hook_strength",
+              "weight_multiplier": 1.15,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.624799+00:00",
+              "updated_at": "2025-11-24T23:13:30.624799+00:00"
+            },
+            {
+              "id": "94de502f-fb41-4a61-ab33-df20b8bf2c27",
+              "scope": "vertical",
+              "vertical": "rewards",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "brand_balance",
+              "weight_multiplier": 0.8,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.624799+00:00",
+              "updated_at": "2025-11-24T23:13:30.624799+00:00"
+            }
+          ]
+        ],
+        [
+          "undefined:vertical:finance:global",
+          [
+            {
+              "id": "20061a77-08e0-4020-87a5-4ee6bb9e5b0a",
+              "scope": "vertical",
+              "vertical": "finance",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "intent_alignment",
+              "weight_multiplier": 1.15,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.801386+00:00",
+              "updated_at": "2025-11-24T23:13:30.801386+00:00"
+            },
+            {
+              "id": "e6fabcc5-0eab-4010-a75e-74bfc739efda",
+              "scope": "vertical",
+              "vertical": "finance",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "hook_strength",
+              "weight_multiplier": 1.1,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.801386+00:00",
+              "updated_at": "2025-11-24T23:13:30.801386+00:00"
+            }
+          ]
+        ],
+        [
+          "undefined:vertical:dating:global",
+          [
+            {
+              "id": "acb81cf6-5a59-4293-a541-02a25977ef10",
+              "scope": "vertical",
+              "vertical": "dating",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "intent_alignment",
+              "weight_multiplier": 1.2,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.988039+00:00",
+              "updated_at": "2025-11-24T23:13:30.988039+00:00"
+            },
+            {
+              "id": "7b0273e6-0241-4c2d-a79a-1ad1b3aab349",
+              "scope": "vertical",
+              "vertical": "dating",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "hook_strength",
+              "weight_multiplier": 1.15,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:30.988039+00:00",
+              "updated_at": "2025-11-24T23:13:30.988039+00:00"
+            }
+          ]
+        ],
+        [
+          "undefined:vertical:productivity:global",
+          [
+            {
+              "id": "c43ce2e0-ab1c-4704-8b54-ad4c022e3ce3",
+              "scope": "vertical",
+              "vertical": "productivity",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "intent_alignment",
+              "weight_multiplier": 1.2,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:31.161603+00:00",
+              "updated_at": "2025-11-24T23:13:31.161603+00:00"
+            },
+            {
+              "id": "3ee1d6b4-2a56-46f0-a7fa-13b25a8940a8",
+              "scope": "vertical",
+              "vertical": "productivity",
+              "market": null,
+              "organization_id": null,
+              "kpi_id": "hook_strength",
+              "weight_multiplier": 1.1,
+              "notes": null,
+              "version": 1,
+              "is_active": true,
+              "created_at": "2025-11-24T23:13:31.161603+00:00",
+              "updated_at": "2025-11-24T23:13:31.161603+00:00"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "verticalComparison": [
+    {
+      "id": "base",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Base (Vertical-Agnostic)",
+        "db": "Base RuleSet",
+        "match": false
+      },
+      "description": {
+        "code": "Fallback vertical for apps that do not match any specific category",
+        "db": "Global defaults for all apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 1
+        }
+      }
+    },
+    {
+      "id": "language_learning",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Language Learning",
+        "db": "Language Learning Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Language learning apps (e.g., Duolingo, Babbel, Rosetta Stone)",
+        "db": "Overrides for language learning apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        }
+      }
+    },
+    {
+      "id": "rewards",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Rewards & Cashback",
+        "db": "Rewards & Cashback Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Reward and cashback apps (e.g., Mistplay, Fetch Rewards, Rakuten)",
+        "db": "Overrides for rewards and cashback apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 2
+        }
+      }
+    },
+    {
+      "id": "finance",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Finance & Investing",
+        "db": "Finance & Investing Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Finance and investing apps (e.g., Robinhood, Coinbase, Acorns)",
+        "db": "Overrides for finance and investing apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 8,
+          "good": 5,
+          "moderate": 3
+        }
+      }
+    },
+    {
+      "id": "dating",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Dating & Relationships",
+        "db": "Dating Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Dating and relationship apps (e.g., Tinder, Bumble, Hinge)",
+        "db": "Overrides for dating apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 5,
+          "good": 3,
+          "moderate": 2
+        }
+      }
+    },
+    {
+      "id": "productivity",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Productivity & Task Management",
+        "db": "Productivity Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Productivity and task management apps (e.g., Notion, Todoist, Trello)",
+        "db": "Overrides for productivity and task management apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        }
+      }
+    },
+    {
+      "id": "health",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Health & Fitness",
+        "db": "Health & Fitness Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Health and fitness apps (e.g., MyFitnessPal, Headspace, Strava)",
+        "db": "Overrides for health and fitness apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 6,
+          "good": 4,
+          "moderate": 2
+        }
+      }
+    },
+    {
+      "id": "entertainment",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Entertainment",
+        "db": "Entertainment Vertical",
+        "match": false
+      },
+      "description": {
+        "code": "Entertainment apps (e.g., Netflix, Spotify, YouTube)",
+        "db": "Overrides for entertainment and streaming apps"
+      },
+      "discoveryThresholds": {
+        "code": {
+          "excellent": 4,
+          "good": 3,
+          "moderate": 1
+        }
+      }
+    }
+  ],
+  "marketComparison": [
+    {
+      "id": "us",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "United States",
+        "db": "US Market",
+        "match": false
+      },
+      "locales": {
+        "code": [
+          "en-US",
+          "en_US",
+          "US"
+        ]
+      }
+    },
+    {
+      "id": "uk",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "United Kingdom",
+        "db": "UK Market",
+        "match": false
+      },
+      "locales": {
+        "code": [
+          "en-GB",
+          "en_GB",
+          "GB",
+          "UK"
+        ]
+      }
+    },
+    {
+      "id": "ca",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Canada",
+        "db": "Canada Market",
+        "match": false
+      },
+      "locales": {
+        "code": [
+          "en-CA",
+          "en_CA",
+          "fr-CA",
+          "fr_CA",
+          "CA"
+        ]
+      }
+    },
+    {
+      "id": "au",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Australia",
+        "db": "Australia Market",
+        "match": false
+      },
+      "locales": {
+        "code": [
+          "en-AU",
+          "en_AU",
+          "AU"
+        ]
+      }
+    },
+    {
+      "id": "de",
+      "inCode": true,
+      "inDb": true,
+      "label": {
+        "code": "Germany",
+        "db": "Germany Market",
+        "match": false
+      },
+      "locales": {
+        "code": [
+          "de-DE",
+          "de_DE",
+          "de",
+          "DE"
+        ]
+      }
+    }
+  ],
+  "overrideStats": {
+    "tokenOverrides": {
+      "total": 142,
+      "duplicates": 4
+    },
+    "hookOverrides": {
+      "total": 0
+    },
+    "kpiOverrides": {
+      "total": 15,
+      "duplicates": 7
+    },
+    "formulaOverrides": {
+      "total": 0
+    },
+    "stopwordOverrides": {
+      "total": 0
+    },
+    "recommendationOverrides": {}
+  },
+  "recommendations": [
+    "CRITICAL: Fix discovery threshold mismatches - these affect runtime behavior"
+  ]
+}

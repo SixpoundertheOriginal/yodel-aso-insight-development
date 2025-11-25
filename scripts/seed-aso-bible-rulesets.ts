@@ -17,8 +17,8 @@
  * - Uses RLS-compatible patterns
  */
 
-import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
+import { createServerClient } from './supabase-server-client';
 
 // Load environment variables
 config();
@@ -31,6 +31,8 @@ import datingRuleSet from '../src/engine/asoBible/verticalProfiles/dating/rulese
 import productivityRuleSet from '../src/engine/asoBible/verticalProfiles/productivity/ruleset';
 import healthRuleSet from '../src/engine/asoBible/verticalProfiles/health/ruleset';
 import entertainmentRuleSet from '../src/engine/asoBible/verticalProfiles/entertainment/ruleset';
+import { getVerticalById } from '../src/engine/asoBible/verticalProfiles';
+import { getMarketById } from '../src/engine/asoBible/marketProfiles';
 
 // Import market profiles
 import usMarketRuleSet from '../src/engine/asoBible/marketProfiles/us/ruleset';
@@ -45,22 +47,30 @@ import type { AsoBibleRuleSet } from '../src/engine/asoBible/ruleset.types';
 // Configuration
 // ============================================================================
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const supabase = createServerClient();
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('❌ Missing Supabase credentials');
-  console.error('Required: VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY)');
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const seededVerticals: string[] = [];
+const seededMarkets: string[] = [];
 
 // ============================================================================
 // Vertical and Market Profiles
 // ============================================================================
 
-const VERTICAL_PROFILES: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
+const BASE_RULESET: AsoBibleRuleSet = {
+  id: 'base',
+  label: 'Base RuleSet',
+  description: 'Global defaults for all apps',
+  source: 'base',
+  version: '1.0.0',
+  kpiOverrides: {},
+  formulaOverrides: {},
+  intentOverrides: {},
+  hookOverrides: {},
+  recommendationOverrides: {},
+};
+
+const VERTICAL_RULESETS: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
+  { id: 'base', ruleset: BASE_RULESET },
   { id: 'language_learning', ruleset: languageLearningRuleSet },
   { id: 'rewards', ruleset: rewardsRuleSet },
   { id: 'finance', ruleset: financeRuleSet },
@@ -70,7 +80,7 @@ const VERTICAL_PROFILES: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
   { id: 'entertainment', ruleset: entertainmentRuleSet },
 ];
 
-const MARKET_PROFILES: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
+const MARKET_RULESETS: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
   { id: 'us', ruleset: usMarketRuleSet },
   { id: 'uk', ruleset: ukMarketRuleSet },
   { id: 'ca', ruleset: caMarketRuleSet },
@@ -86,24 +96,31 @@ const MARKET_PROFILES: Array<{ id: string; ruleset: AsoBibleRuleSet }> = [
  * Check if a ruleset already exists in the database
  */
 async function rulesetExists(scope: string, vertical?: string, market?: string): Promise<boolean> {
-  const query = supabase
-    .from('aso_ruleset_versions')
+  if (scope === 'vertical') {
+    const { data, error } = await supabase
+      .from('aso_ruleset_vertical')
+      .select('id')
+      .eq('vertical', vertical || 'base')
+      .eq('version', 1)
+      .limit(1);
+
+    if (error) {
+      console.error(`Error checking vertical ruleset existence:`, error);
+      return false;
+    }
+
+    return (data || []).length > 0;
+  }
+
+  const { data, error } = await supabase
+    .from('aso_ruleset_market')
     .select('id')
-    .eq('scope', scope)
+    .eq('market', market || 'global')
+    .eq('version', 1)
     .limit(1);
 
-  if (vertical) query.eq('vertical', vertical);
-  else query.is('vertical', null);
-
-  if (market) query.eq('market', market);
-  else query.is('market', null);
-
-  query.is('organization_id', null);
-
-  const { data, error } = await query;
-
   if (error) {
-    console.error(`Error checking ruleset existence:`, error);
+    console.error(`Error checking market ruleset existence:`, error);
     return false;
   }
 
@@ -115,23 +132,27 @@ async function rulesetExists(scope: string, vertical?: string, market?: string):
  */
 async function createVersionEntry(
   scope: string,
-  vertical?: string,
-  market?: string,
-  organizationId?: string,
-  notes?: string
+  vertical: string | undefined,
+  market: string | undefined,
+  organizationId: string | undefined,
+  rulesetSnapshot: Record<string, any>
 ): Promise<boolean> {
+  const payload = {
+    ruleset_version: 1,
+    vertical_version: scope === 'vertical' ? 1 : null,
+    market_version: scope === 'market' ? 1 : null,
+    client_version: null,
+    kpi_schema_version: 'v1',
+    formula_schema_version: 'v1',
+    vertical: vertical || null,
+    market: market || null,
+    organization_id: organizationId || null,
+    ruleset_snapshot: rulesetSnapshot,
+  };
+
   const { error } = await supabase
     .from('aso_ruleset_versions')
-    .insert({
-      scope,
-      vertical: vertical || null,
-      market: market || null,
-      organization_id: organizationId || null,
-      version: 1,
-      notes: notes || 'Initial seed from code-based defaults',
-      created_by: 'system_seed',
-      is_active: true,
-    });
+    .insert(payload);
 
   if (error) {
     console.error(`Error creating version entry:`, error);
@@ -139,6 +160,37 @@ async function createVersionEntry(
   }
 
   return true;
+}
+
+function buildRulesetSnapshot(params: {
+  scope: 'vertical' | 'market';
+  vertical?: string;
+  market?: string;
+  ruleset: AsoBibleRuleSet;
+}) {
+  const { scope, vertical, market, ruleset } = params;
+  const verticalProfile = vertical ? getVerticalById(vertical) : undefined;
+  const marketProfile = market ? getMarketById(market) : undefined;
+
+  return {
+    scope,
+    vertical,
+    market,
+    label: ruleset.label,
+    description: ruleset.description,
+    discoveryThresholds: verticalProfile?.discoveryThresholds,
+    locales: marketProfile?.locales,
+    overrides: {
+      kpi: ruleset.kpiOverrides || {},
+      formulas: ruleset.formulaOverrides || {},
+      tokens: ruleset.tokenRelevanceOverrides || {},
+      hooks: ruleset.hookOverrides || {},
+      stopwords: ruleset.stopwordOverrides || [],
+      recommendations: ruleset.recommendationOverrides || {},
+    },
+    version: ruleset.version || '1.0.0',
+    seededAt: new Date().toISOString(),
+  };
 }
 
 /**
@@ -249,6 +301,45 @@ async function seedStopwordOverrides(
   return overrides.length;
 }
 
+async function upsertVerticalRecord(verticalId: string, ruleset: AsoBibleRuleSet) {
+  const profile = getVerticalById(verticalId);
+  const payload = {
+    vertical: verticalId,
+    label: ruleset.label || profile?.label || verticalId,
+    description: ruleset.description || profile?.description || null,
+    version: 1,
+    is_active: true,
+  };
+
+  const { error } = await supabase
+    .from('aso_ruleset_vertical')
+    .upsert(payload, { onConflict: 'vertical,version' });
+
+  if (error) {
+    console.error(`Error upserting vertical metadata for ${verticalId}:`, error);
+  }
+}
+
+async function upsertMarketRecord(marketId: string, ruleset: AsoBibleRuleSet) {
+  const profile = getMarketById(marketId);
+  const payload = {
+    market: marketId,
+    label: ruleset.label || profile?.label || marketId.toUpperCase(),
+    description: ruleset.description || profile?.description || null,
+    locale: profile?.locales?.[0] || marketId,
+    version: 1,
+    is_active: true,
+  };
+
+  const { error } = await supabase
+    .from('aso_ruleset_market')
+    .upsert(payload, { onConflict: 'market,version' });
+
+  if (error) {
+    console.error(`Error upserting market metadata for ${marketId}:`, error);
+  }
+}
+
 /**
  * Seed KPI weight overrides
  */
@@ -267,8 +358,8 @@ async function seedKpiOverrides(
     vertical: vertical || null,
     market: market || null,
     organization_id: null,
-    kpi_name: kpiName,
-    weight: data.weight || 1.0,
+    kpi_id: kpiName,
+    weight_multiplier: data.weight || 1.0,
     is_active: true,
     version: 1,
   }));
@@ -298,14 +389,14 @@ async function seedFormulaOverrides(
     return 0;
   }
 
-  const overrides = Object.entries(ruleset.formulaOverrides).map(([component, data]: [string, any]) => ({
+  const overrides = Object.entries(ruleset.formulaOverrides).map(([component, multiplier]: [string, number]) => ({
     scope,
     vertical: vertical || null,
     market: market || null,
     organization_id: null,
     component,
-    multiplier: data.multiplier || 1.0,
-    component_weight: data.component_weight || 1.0,
+    multiplier,
+    component_weight: multiplier,
     is_active: true,
     version: 1,
   }));
@@ -377,13 +468,24 @@ async function seedRuleset(
     return;
   }
 
+  if (scope === 'vertical' && vertical) {
+    await upsertVerticalRecord(vertical, ruleset);
+  } else if (scope === 'market' && market) {
+    await upsertMarketRecord(market, ruleset);
+  }
+
   // Create version entry
   const versionCreated = await createVersionEntry(
     scope,
     vertical,
     market,
     undefined,
-    `Initial seed from ${ruleset.label}`
+    buildRulesetSnapshot({
+      scope,
+      vertical,
+      market,
+      ruleset,
+    })
   );
 
   if (!versionCreated) {
@@ -421,7 +523,7 @@ async function main() {
 
   // Seed vertical profiles
   console.log('📚 Seeding Vertical Profiles...');
-  for (const { id, ruleset } of VERTICAL_PROFILES) {
+  for (const { id, ruleset } of VERTICAL_RULESETS) {
     try {
       const exists = await rulesetExists('vertical', id);
       if (exists) {
@@ -429,6 +531,8 @@ async function main() {
       } else {
         await seedRuleset(id, ruleset, 'vertical', id);
         totalSeeded++;
+
+        seededVerticals.push(id);
       }
     } catch (error) {
       console.error(`❌ Error seeding vertical ${id}:`, error);
@@ -437,7 +541,7 @@ async function main() {
 
   // Seed market profiles
   console.log('\n🌍 Seeding Market Profiles...');
-  for (const { id, ruleset } of MARKET_PROFILES) {
+  for (const { id, ruleset } of MARKET_RULESETS) {
     try {
       const exists = await rulesetExists('market', undefined, id);
       if (exists) {
@@ -445,6 +549,8 @@ async function main() {
       } else {
         await seedRuleset(id, ruleset, 'market', undefined, id);
         totalSeeded++;
+
+        seededMarkets.push(id);
       }
     } catch (error) {
       console.error(`❌ Error seeding market ${id}:`, error);
@@ -456,6 +562,12 @@ async function main() {
   console.log('🎉 Seeding Complete!');
   console.log(`   ✅ Seeded: ${totalSeeded} rulesets`);
   console.log(`   ⏭️  Skipped: ${totalSkipped} rulesets (already exist)`);
+  if (seededVerticals.length > 0) {
+    console.log(`   • Verticals seeded: ${seededVerticals.join(', ')}`);
+  }
+  if (seededMarkets.length > 0) {
+    console.log(`   • Markets seeded: ${seededMarkets.join(', ')}`);
+  }
   console.log('====================================\n');
 
   process.exit(0);

@@ -1,0 +1,255 @@
+{
+  "version": "1.0.0",
+  "description": "Base LLM Visibility Rules - Optimizes app descriptions for ChatGPT, Claude, Perplexity retrieval",
+
+  "weights": {
+    "factual_grounding": 0.25,
+    "semantic_clusters": 0.25,
+    "structure_readability": 0.15,
+    "intent_coverage": 0.15,
+    "snippet_quality": 0.10,
+    "safety_credibility": 0.10
+  },
+
+  "structure_rules": {
+    "required_sections": [
+      "Summary",
+      "Key Features",
+      "How It Works",
+      "Who It's For"
+    ],
+    "max_sentence_length": 28,
+    "min_bullet_points": 3,
+    "ideal_paragraph_length": 4
+  },
+
+  "clusters": {
+    "core_functionality": {
+      "keywords": [
+        "feature",
+        "tool",
+        "function",
+        "capability",
+        "works",
+        "does",
+        "helps",
+        "enables"
+      ],
+      "weight": 1.0
+    },
+    "user_benefits": {
+      "keywords": [
+        "benefit",
+        "advantage",
+        "improve",
+        "enhance",
+        "achieve",
+        "gain",
+        "get",
+        "save",
+        "increase"
+      ],
+      "weight": 0.9
+    },
+    "target_audience": {
+      "keywords": [
+        "for",
+        "designed for",
+        "perfect for",
+        "ideal for",
+        "users",
+        "people",
+        "anyone",
+        "everyone",
+        "age"
+      ],
+      "weight": 0.8
+    },
+    "use_cases": {
+      "keywords": [
+        "when",
+        "use case",
+        "scenario",
+        "situation",
+        "need",
+        "problem",
+        "challenge",
+        "goal"
+      ],
+      "weight": 0.85
+    },
+    "technical_specs": {
+      "keywords": [
+        "offline",
+        "online",
+        "sync",
+        "compatible",
+        "requires",
+        "supports",
+        "works with",
+        "integration"
+      ],
+      "weight": 0.7
+    },
+    "trust_safety": {
+      "keywords": [
+        "safe",
+        "secure",
+        "privacy",
+        "no ads",
+        "family-friendly",
+        "kid-safe",
+        "certified",
+        "verified"
+      ],
+      "weight": 0.8
+    }
+  },
+
+  "factual_rules": {
+    "required_facts": [
+      "core_functionality",
+      "target_audience_or_age_range",
+      "key_features_list",
+      "offline_online_mode"
+    ],
+    "fact_patterns": {
+      "age_range": "\\b(ages?|years? old|\\d+[+]?|toddler|preschool|kids?|children|teens?|adults?)\\b",
+      "offline_mode": "\\b(offline|no (wifi|internet|connection)|airplane mode|download)\\b",
+      "feature_count": "\\b\\d+\\s+(features?|tools?|activities|lessons|exercises)\\b",
+      "compatibility": "\\b(iOS|iPhone|iPad|Android|works? (on|with))\\b"
+    },
+    "avoid_patterns": [
+      {
+        "pattern": "\\b(best|greatest|#1|top|leading|ultimate)\\b",
+        "reason": "Superlatives are subjective and unverifiable by LLMs"
+      },
+      {
+        "pattern": "\\b(guaranteed|promise|ensure|always)\\b",
+        "reason": "Absolute claims are risky and hard to verify"
+      },
+      {
+        "pattern": "\\b(everyone loves|users love|all experts)\\b",
+        "reason": "Generalized claims without data"
+      }
+    ]
+  },
+
+  "intent_rules": {
+    "task_intent": [
+      "help (me|my)",
+      "how to",
+      "learn",
+      "teach",
+      "practice",
+      "improve",
+      "train",
+      "master",
+      "develop",
+      "build"
+    ],
+    "comparison_intent": [
+      "better than",
+      "compared to",
+      "alternative to",
+      "similar to",
+      "like",
+      "vs",
+      "instead of"
+    ],
+    "problem_intent": [
+      "struggling with",
+      "need help",
+      "can't",
+      "difficulty",
+      "challenge",
+      "problem",
+      "issue",
+      "stuck"
+    ],
+    "feature_intent": [
+      "with",
+      "includes",
+      "has",
+      "offers",
+      "provides",
+      "comes with",
+      "features",
+      "supports"
+    ],
+    "safety_intent": [
+      "safe",
+      "secure",
+      "privacy",
+      "no ads",
+      "kid-safe",
+      "parental controls",
+      "family-friendly",
+      "certified"
+    ]
+  },
+
+  "snippet_rules": {
+    "min_snippet_length": 80,
+    "max_snippet_length": 150,
+    "ideal_snippet_count": 5,
+    "snippet_patterns": [
+      {
+        "name": "feature_list",
+        "pattern": "^[•\\-\\*]\\s+.+$",
+        "quality_boost": 0.2
+      },
+      {
+        "name": "benefit_statement",
+        "pattern": "\\b(helps?|enables?|allows?|lets?|makes?)\\b.+\\b(you|your|users?)\\b",
+        "quality_boost": 0.15
+      },
+      {
+        "name": "use_case",
+        "pattern": "\\b(perfect for|ideal for|great for|when you)\\b",
+        "quality_boost": 0.1
+      },
+      {
+        "name": "factual_claim",
+        "pattern": "\\b\\d+\\+?\\s+(features?|lessons|activities|users?|downloads?)\\b",
+        "quality_boost": 0.1
+      }
+    ]
+  },
+
+  "safety_rules": {
+    "forbidden_phrases": [
+      "guaranteed results",
+      "the best app",
+      "all experts agree",
+      "scientifically proven",
+      "doctor recommended",
+      "works 100%",
+      "instant results",
+      "miracle",
+      "revolutionary"
+    ],
+    "risky_patterns": [
+      {
+        "pattern": "\\b(cure|treat|diagnose|medical)\\b",
+        "severity": "critical",
+        "reason": "Medical claims require FDA approval"
+      },
+      {
+        "pattern": "\\b(make money|earn cash|get rich|financial advice)\\b",
+        "severity": "critical",
+        "reason": "Financial claims are regulated"
+      },
+      {
+        "pattern": "\\b(lose weight|diet|weight loss)\\b",
+        "severity": "warning",
+        "reason": "Health claims should be carefully worded"
+      },
+      {
+        "pattern": "\\b(no risk|risk-free|100% safe)\\b",
+        "severity": "warning",
+        "reason": "Absolute safety claims are unverifiable"
+      }
+    ]
+  }
+}

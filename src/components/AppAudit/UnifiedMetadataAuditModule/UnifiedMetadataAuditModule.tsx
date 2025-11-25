@@ -20,6 +20,9 @@ import { EnhancedKeywordComboWorkbench } from '../KeywordComboWorkbench/Enhanced
 import { SearchIntentAnalysisCard } from './SearchIntentAnalysisCard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { MetadataKpiGrid } from '../MetadataKpi';
+import { VerticalOverviewPanel } from './VerticalOverviewPanel';
+import { VerticalBenchmarksPanel } from './VerticalBenchmarksPanel';
+import { VerticalConversionDriversPanel } from './VerticalConversionDriversPanel';
 import { useIntentIntelligence } from '@/hooks/useIntentIntelligence';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 import { MOCK_PIMSLEUR_AUDIT } from './mockAuditResult';
@@ -44,6 +47,13 @@ import {
 } from '@/components/CompetitorAnalysis';
 import { useCompetitorAnalysis } from '@/hooks/useCompetitorAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { computeBrandRatioStats } from '@/engine/metadata/utils/brandNoiseHelpers';
+
+const DEFAULT_DISCOVERY_THRESHOLDS = {
+  excellent: 5,
+  good: 3,
+  moderate: 1,
+};
 
 interface UnifiedMetadataAuditModuleProps {
   metadata: ScrapedMetadata;
@@ -201,22 +211,42 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     const avgElementScore = (titleScore + subtitleScore) / 2;
 
     // Compute brand balance from combos
-    const titleCombos = auditResult.comboCoverage.titleCombosClassified || [];
-    const subtitleCombos = auditResult.comboCoverage.subtitleNewCombosClassified || [];
-    const allCombos = [...titleCombos, ...subtitleCombos];
-    const brandedCount = allCombos.filter(c => c.type === 'branded').length;
-    const genericCount = allCombos.filter(c => c.type === 'generic').length;
-    const totalMeaningful = brandedCount + genericCount;
-    const brandBalance = totalMeaningful > 0
-      ? Math.min(100, (genericCount / totalMeaningful) * 100 + 30) // Weighted toward generic discovery
+    const brandStats = computeBrandRatioStats(
+      [
+        ...(auditResult.comboCoverage.titleCombosClassified || []),
+        ...(auditResult.comboCoverage.subtitleNewCombosClassified || []),
+      ],
+      auditResult.comboCoverage.lowValueCombos
+    );
+    const { branded: brandCount, generic: genericCount, lowValue: noiseCount } = brandStats;
+
+    const brandBalance = brandStats.totalMeaningful > 0
+      ? Math.min(100, brandStats.genericRatio * 100 + 30)
       : 50;
 
     // Phase 18.5: Extract Intent Quality score from KPI Engine
     const intentQualityScore = kpiResult?.families?.intent_quality?.score || 0;
 
+    const coverageStats = auditResult.comboCoverage.stats;
+    let discoveryScore = Math.min(100, genericCount * 15);
+
+    if (coverageStats) {
+      const thresholds = coverageStats.thresholds || DEFAULT_DISCOVERY_THRESHOLDS;
+      const pct = coverageStats.coveragePct || 0;
+      if (pct >= thresholds.excellent) {
+        discoveryScore = 100;
+      } else if (pct >= thresholds.good) {
+        discoveryScore = 75;
+      } else if (pct >= thresholds.moderate) {
+        discoveryScore = 50;
+      } else {
+        discoveryScore = 20;
+      }
+    }
+
     return {
       relevance: avgElementScore, // Average of title + subtitle scores
-      discovery: Math.min(100, genericCount * 15), // Generic combos drive discovery
+      discovery: discoveryScore,
       structure: titleScore, // Title score reflects structure quality
       brandBalance: brandBalance,
       intentQuality: intentQualityScore, // Intent Quality family score from KPI Engine
@@ -316,6 +346,33 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       />
 
       {/* ======================================================================
+          PHASE 21 — VERTICAL INTELLIGENCE LAYER
+          ====================================================================== */}
+      {auditResult.verticalContext && (
+        <div className="space-y-4 mt-6">
+          <div className="relative">
+            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-8 bg-violet-500/40" />
+              VERTICAL INTELLIGENCE LAYER
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-violet-500/40 to-transparent" />
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 -mt-2">
+              Vertical-specific insights, benchmarks, and conversion drivers
+            </p>
+          </div>
+
+          {/* Row 1: Overview + Benchmarks */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <VerticalOverviewPanel verticalContext={auditResult.verticalContext} />
+            <VerticalBenchmarksPanel verticalContext={auditResult.verticalContext} auditResult={auditResult} />
+          </div>
+
+          {/* Row 2: Conversion Drivers */}
+          <VerticalConversionDriversPanel verticalContext={auditResult.verticalContext} auditResult={auditResult} />
+        </div>
+      )}
+
+      {/* ======================================================================
           CHAPTER 1 — METADATA HEALTH
           ====================================================================== */}
       {metadataDimensionScores && (
@@ -343,7 +400,10 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           </div>
 
           {/* Row 2: Discovery Footprint */}
-          <DiscoveryFootprintMap comboCoverage={auditResult.comboCoverage} />
+          <DiscoveryFootprintMap
+            comboCoverage={auditResult.comboCoverage}
+            intentDiagnostics={auditResult.intentCoverage?.diagnostics}
+          />
         </div>
       )}
 
@@ -557,7 +617,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
                   competitorApps={competitorAnalysis.competitorAudits.map((comp) => ({
                     id: comp.competitorId,
                     name: comp.metadata.name || comp.metadata.title,
-                    audit: comp.audit,
+                    audit: comp.audit ?? comp.auditData ?? null,
                   }))}
                 />
 
@@ -572,7 +632,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
                   competitorApps={competitorAnalysis.competitorAudits.map((comp) => ({
                     id: comp.competitorId,
                     name: comp.metadata.name || comp.metadata.title,
-                    audit: comp.audit,
+                    audit: comp.audit ?? comp.auditData ?? null,
                   }))}
                   platform={metadata.platform}
                 />

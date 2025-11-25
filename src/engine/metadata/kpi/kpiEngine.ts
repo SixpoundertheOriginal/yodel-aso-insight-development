@@ -10,6 +10,8 @@
 
 import { tokenizeForASO, analyzeText } from '../tokenization';
 import { getTokenRelevance } from '../metadataAuditEngine';
+import { computeBrandRatioStats, getNoiseSeverity } from '../utils/brandNoiseHelpers';
+import { applyFormulaComponentWeightOverride, applyFormulaOutputMultiplier } from '../metadataFormulaRegistry';
 import kpiRegistryData from './kpi.registry.json';
 import familyRegistryData from './kpi.families.json';
 import type {
@@ -23,6 +25,7 @@ import type {
   KpiId,
   KpiFamilyId,
 } from './kpi.types';
+import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 
 // ============================================================================
 // Constants
@@ -89,6 +92,27 @@ const LANGUAGES = new Set([
   'japanese', 'korean', 'portuguese', 'russian', 'arabic', 'hindi',
 ]);
 
+const INTENT_KPI_IDS = new Set<KpiId>([
+  'informational_intent_coverage_score',
+  'commercial_intent_coverage_score',
+  'transactional_intent_coverage_score',
+  'navigational_noise_ratio',
+  'intent_balance_score',
+  'intent_diversity_score',
+  'intent_gap_index',
+  'intent_alignment_score',
+  'intent_quality_score',
+]);
+
+const INTENT_FALLBACK_NORMALIZED_FLOOR = 50;
+
+type KpiOverrideEntry = {
+  scope: 'base' | 'vertical' | 'market' | 'client';
+  multiplier: number;
+  sourceId?: string;
+};
+const KPI_OVERALL_FORMULA_ID = 'kpi_overall_score';
+
 // ============================================================================
 // Registry Loading
 // ============================================================================
@@ -133,18 +157,14 @@ function applyKpiWeightOverride(
   kpiId: KpiId,
   activeRuleSet?: any
 ): number {
-  const override = activeRuleSet?.kpiOverrides?.[kpiId];
-  if (!override?.weight) {
-    return baseWeight; // No override
-  }
-
-  // Apply multiplier with safety bounds (0.5x - 2.0x)
-  const multiplier = Math.max(0.5, Math.min(2.0, override.weight));
+  const overrideMeta = resolveKpiOverrideProvenance(kpiId, activeRuleSet);
+  const multiplier = Math.max(0.5, Math.min(2.0, overrideMeta.multiplier));
   const adjustedWeight = baseWeight * multiplier;
 
-  // Log override usage (development only)
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[KPI Override] "${kpiId}" weight: ${baseWeight} → ${adjustedWeight} (${multiplier}x, vertical: ${activeRuleSet.verticalId})`);
+  if (process.env.NODE_ENV === 'development' && multiplier !== 1) {
+    console.log(
+      `[KPI Override] "${kpiId}" weight: ${baseWeight} → ${adjustedWeight} (${multiplier}x, scope=${overrideMeta.provenance.at(-1)?.scope})`
+    );
   }
 
   return adjustedWeight;
@@ -167,6 +187,35 @@ function normalizeKpiWeights(weights: Record<string, number>): Record<string, nu
     normalized[key] = value / sum;
   }
   return normalized;
+}
+
+function resolveKpiOverrideProvenance(
+  kpiId: KpiId,
+  activeRuleSet?: MergedRuleSet
+): { multiplier: number; provenance: KpiOverrideEntry[] } {
+  const provenance: KpiOverrideEntry[] = [];
+  provenance.push({ scope: 'base', multiplier: 1, sourceId: activeRuleSet?.inheritanceChain?.base?.id });
+
+  const addEntry = (scope: 'vertical' | 'market' | 'client', ruleset?: any) => {
+    const override = ruleset?.kpiOverrides?.[kpiId];
+    if (override?.weight) {
+      provenance.push({ scope, multiplier: override.weight, sourceId: ruleset?.id });
+    }
+  };
+
+  const chain = activeRuleSet?.inheritanceChain;
+  if (chain) {
+    addEntry('vertical', chain.vertical);
+    addEntry('market', chain.market);
+    addEntry('client', chain.client);
+  }
+
+  const finalMultiplier = activeRuleSet?.kpiOverrides?.[kpiId]?.weight || 1;
+
+  return {
+    multiplier: finalMultiplier,
+    provenance,
+  };
 }
 
 // ============================================================================
@@ -208,15 +257,27 @@ export class KpiEngine {
       brandSignals: input.brandSignals,
       intentSignals: input.intentSignals,
       intentCoverage: input.intentCoverage, // Phase 18: Bible-driven intent coverage
+      activeRuleSet: input.activeRuleSet, // Phase 21: Vertical Intelligence Layer
     });
 
     // Compute all KPIs
     const kpis: Record<KpiId, KpiResult> = {};
     const vector: number[] = [];
 
+    const intentFallbackMode = !!primitives.intentFallbackMode;
+
+    const overrideMetaMap: Record<string, ReturnType<typeof resolveKpiOverrideProvenance>> = {};
+
     for (const kpiDef of KPI_DEFINITIONS) {
       const rawValue = this.computeKpi(kpiDef.id, primitives);
-      const normalized = this.normalizeValue(rawValue, kpiDef);
+      let normalized = this.normalizeValue(rawValue, kpiDef);
+
+      if (intentFallbackMode && INTENT_KPI_IDS.has(kpiDef.id)) {
+        normalized = Math.max(normalized, INTENT_FALLBACK_NORMALIZED_FLOOR);
+      }
+
+       const overrideMeta = resolveKpiOverrideProvenance(kpiDef.id, input.activeRuleSet);
+       overrideMetaMap[kpiDef.id] = overrideMeta;
 
       kpis[kpiDef.id] = {
         id: kpiDef.id,
@@ -224,6 +285,9 @@ export class KpiEngine {
         value: rawValue,
         normalized,
         label: kpiDef.label,
+        effectiveWeight: kpiDef.weight * overrideMeta.multiplier,
+        overrideMultiplier: overrideMeta.multiplier,
+        provenance: overrideMeta.provenance,
       };
 
       vector.push(normalized);
@@ -238,12 +302,12 @@ export class KpiEngine {
       // Phase 10: Apply weight overrides and normalize
       const adjustedWeights: Record<string, number> = {};
       familyKpis.forEach(kpiDef => {
-        const adjustedWeight = applyKpiWeightOverride(
-          kpiDef.weight,
-          kpiDef.id,
-          input.activeRuleSet
-        );
-        adjustedWeights[kpiDef.id] = adjustedWeight;
+        const overrideMeta = overrideMetaMap[kpiDef.id];
+        if (overrideMeta) {
+          adjustedWeights[kpiDef.id] = kpiDef.weight * overrideMeta.multiplier;
+        } else {
+          adjustedWeights[kpiDef.id] = applyKpiWeightOverride(kpiDef.weight, kpiDef.id, input.activeRuleSet);
+        }
       });
 
       // Normalize weights to sum to 1.0
@@ -266,10 +330,28 @@ export class KpiEngine {
     }
 
     // Compute overall score (weighted average of family scores)
+    const adjustedOverallWeights: Record<string, number> = {};
+    FAMILY_DEFINITIONS.forEach(familyDef => {
+      adjustedOverallWeights[familyDef.id] = applyFormulaComponentWeightOverride(
+        KPI_OVERALL_FORMULA_ID,
+        familyDef.id,
+        familyDef.weight,
+        input.activeRuleSet
+      );
+    });
+    const normalizedOverallWeights = normalizeKpiWeights(adjustedOverallWeights);
+
     const overallScore = FAMILY_DEFINITIONS.reduce((sum, familyDef) => {
       const familyResult = families[familyDef.id];
-      return sum + (familyResult.score * familyDef.weight);
+      const weight = normalizedOverallWeights[familyDef.id] ?? familyDef.weight;
+      return sum + (familyResult.score * weight);
     }, 0);
+
+    const adjustedOverallScore = applyFormulaOutputMultiplier(
+      overallScore,
+      KPI_OVERALL_FORMULA_ID,
+      input.activeRuleSet
+    );
 
     // Build result
     return {
@@ -277,7 +359,7 @@ export class KpiEngine {
       vector,
       kpis,
       families,
-      overallScore: Math.round(overallScore * 100) / 100,
+      overallScore: Math.round(adjustedOverallScore * 100) / 100,
       debug: {
         title,
         subtitle,
@@ -285,8 +367,8 @@ export class KpiEngine {
         tokensSubtitle,
         titleHighValueKeywords: primitives.titleHighValueKeywordCount,
         subtitleHighValueKeywords: primitives.subtitleHighValueIncrementalKeywords,
-        brandComboCount: primitives.brandComboCount,
-        genericComboCount: primitives.genericComboCount,
+        brandComboCount: primitives.brandStats?.branded,
+        genericComboCount: primitives.brandStats?.generic,
       },
     };
   }
@@ -306,6 +388,7 @@ export class KpiEngine {
     brandSignals?: any;
     intentSignals?: any;
     intentCoverage?: any; // Phase 18: Bible-driven intent coverage
+    activeRuleSet?: any; // Phase 21: Vertical Intelligence Layer
   }) {
     const {
       title,
@@ -346,17 +429,24 @@ export class KpiEngine {
     // Noise ratios
     const titleNoiseRatio = titleAnalysis.noiseRatio || 0;
     const subtitleNoiseRatio = subtitleAnalysis.noiseRatio || 0;
+    const titleNoiseInfo = getNoiseSeverity(titleNoiseRatio);
+    const subtitleNoiseInfo = getNoiseSeverity(subtitleNoiseRatio);
 
     // Combo metrics
     const titleGenericComboCount = comboCoverage?.titleCombosClassified?.filter((c: any) => c.type === 'generic').length || 0;
     const titleBrandedComboCount = comboCoverage?.titleCombosClassified?.filter((c: any) => c.type === 'branded').length || 0;
     const subtitleIncrementalGenericComboCount = comboCoverage?.subtitleNewCombosClassified?.filter((c: any) => c.type === 'generic').length || 0;
     const lowValueComboCount = comboCoverage?.lowValueCombos?.length || 0;
-    const totalCombos = comboCoverage?.totalCombos || 0;
+    const totalCombos =
+      (comboCoverage?.stats?.existing ??
+        comboCoverage?.totalCombos ??
+        0);
 
     // Brand metrics
-    const brandComboCount = comboCoverage?.titleCombosClassified?.filter((c: any) => c.brandClassification === 'brand').length || 0;
-    const genericComboCount = comboCoverage?.titleCombosClassified?.filter((c: any) => c.brandClassification === 'generic').length || 0;
+    const brandStats = computeBrandRatioStats(
+      comboCoverage?.titleCombosClassified,
+      comboCoverage?.lowValueCombos
+    );
     const brandPresenceTitle = brandSignals?.brandPresenceTitle || 0;
     const brandPresenceSubtitle = brandSignals?.brandPresenceSubtitle || 0;
 
@@ -400,6 +490,7 @@ export class KpiEngine {
     let intentBalanceScore = 0;
     let intentDiversityScore = 0;
     let intentGapIndex = 0;
+    let intentFallbackMode = false;
 
     if (intentCoverage) {
       // Phase 18: Use Bible-driven Intent Coverage (Phase 17)
@@ -411,6 +502,7 @@ export class KpiEngine {
       unclassifiedCount = combined.unclassified || 0;
       totalTokens = navigationalCount + informationalCount + commercialCount + transactionalCount + unclassifiedCount;
       intentCoverageScore = intentCoverage.overallScore || 0;
+      intentFallbackMode = !!intentCoverage.fallbackMode;
 
       // Calculate balance score (entropy-based)
       intentBalanceScore = this.calculateIntentBalanceScore(combined);
@@ -461,12 +553,13 @@ export class KpiEngine {
       subtitleBenefitWords,
       titleMeaningfulTokens: titleMeaningfulTokens.length,
       subtitleMeaningfulTokens: subtitleMeaningfulTokens.length,
+      titleNoiseInfo,
+      subtitleNoiseInfo,
 
       // Brand vs generic
       brandPresenceTitle,
       brandPresenceSubtitle,
-      brandComboCount,
-      genericComboCount,
+      brandStats,
       totalCombos,
 
       // Psychology
@@ -489,6 +582,12 @@ export class KpiEngine {
       intentBalanceScore, // Phase 18: Entropy-based balance
       intentDiversityScore, // Phase 18: Number of distinct intent types
       intentGapIndex, // Phase 18: Missing intent types
+      intentFallbackMode,
+
+      // Phase 21: Vertical Intelligence Layer
+      activeRuleSet: data.activeRuleSet,
+      tokensTitle,
+      tokensSubtitle,
     };
   }
 
@@ -542,11 +641,15 @@ export class KpiEngine {
       case 'subtitle_high_value_incremental_keywords':
         return primitives.subtitleHighValueIncrementalKeywords;
 
-      case 'title_noise_ratio':
-        return primitives.titleNoiseRatio;
+      case 'title_noise_ratio': {
+        const baseScore = Math.max(0, Math.min(100, 100 - primitives.titleNoiseRatio * 100));
+        return Math.max(0, baseScore - primitives.titleNoiseInfo.penalty);
+      }
 
-      case 'subtitle_noise_ratio':
-        return primitives.subtitleNoiseRatio;
+      case 'subtitle_noise_ratio': {
+        const baseScore = Math.max(0, Math.min(100, 100 - primitives.subtitleNoiseRatio * 100));
+        return Math.max(0, baseScore - primitives.subtitleNoiseInfo.penalty);
+      }
 
       case 'title_combo_count_generic':
         return primitives.titleGenericComboCount;
@@ -601,25 +704,24 @@ export class KpiEngine {
         return primitives.brandPresenceSubtitle;
 
       case 'brand_combo_ratio':
-        return primitives.totalCombos > 0
-          ? primitives.brandComboCount / primitives.totalCombos
-          : 0;
+        return primitives.brandStats?.brandRatio || 0;
 
       case 'generic_discovery_combo_ratio':
-        return primitives.totalCombos > 0
-          ? primitives.genericComboCount / primitives.totalCombos
-          : 0;
+        return primitives.brandStats?.genericRatio || 0;
 
       case 'overbranding_indicator':
-        const brandRatio = primitives.totalCombos > 0 ? primitives.brandComboCount / primitives.totalCombos : 0;
-        return brandRatio > 0.7 ? 1 : 0;
+        return primitives.brandStats?.brandRatio > 0.7 ? 1 : 0;
 
       // Psychology Alignment
-      case 'urgency_signal':
-        return Math.min(primitives.urgencyCount * 30, 100);
+      case 'urgency_signal': {
+        const scaled = Math.log(primitives.urgencyCount + 1) * 40;
+        return Math.min(100, Math.round(scaled));
+      }
 
-      case 'social_proof_signal':
-        return Math.min(primitives.socialProofCount * 30, 100);
+      case 'social_proof_signal': {
+        const scaled = Math.log(primitives.socialProofCount + 1) * 40;
+        return Math.min(100, Math.round(scaled));
+      }
 
       case 'benefit_keyword_count':
         return primitives.benefitKeywordCount;
@@ -669,6 +771,49 @@ export class KpiEngine {
       case 'intent_quality_score':
         // Weighted blend of all intent quality metrics
         return this.calculateIntentQualityScore(primitives);
+
+      // Phase 21: Vertical Intelligence Layer - Vertical Modifier KPIs
+      case 'vertical_legitimacy_signal':
+        return this.calculateVerticalModifierScore(
+          'vertical_legitimacy_signal',
+          primitives,
+          primitives.activeRuleSet
+        );
+
+      case 'vertical_speed_signal':
+        return this.calculateVerticalModifierScore(
+          'vertical_speed_signal',
+          primitives,
+          primitives.activeRuleSet
+        );
+
+      case 'vertical_benefit_specificity':
+        return this.calculateVerticalModifierScore(
+          'vertical_benefit_specificity',
+          primitives,
+          primitives.activeRuleSet
+        );
+
+      case 'vertical_trust_reassurance':
+        return this.calculateVerticalModifierScore(
+          'vertical_trust_reassurance',
+          primitives,
+          primitives.activeRuleSet
+        );
+
+      case 'vertical_effort_ratio':
+        return this.calculateVerticalModifierScore(
+          'vertical_effort_ratio',
+          primitives,
+          primitives.activeRuleSet
+        );
+
+      case 'vertical_feature_clarity':
+        return this.calculateVerticalModifierScore(
+          'vertical_feature_clarity',
+          primitives,
+          primitives.activeRuleSet
+        );
 
       default:
         return 0;
@@ -810,6 +955,10 @@ export class KpiEngine {
    * Weighted blend of all intent quality metrics
    */
   private static calculateIntentQualityScore(primitives: any): number {
+    if (primitives.intentFallbackMode) {
+      return INTENT_FALLBACK_NORMALIZED_FLOOR;
+    }
+
     if (primitives.totalTokens === 0) return 0;
 
     // Calculate coverage scores
@@ -840,6 +989,79 @@ export class KpiEngine {
       noiseScore * 0.10;                // 10% weight on noise (inverted)
 
     return Math.round(Math.min(100, qualityScore));
+  }
+
+  /**
+   * Calculate Vertical Modifier KPI score (Phase 21: Vertical Intelligence Layer)
+   *
+   * Formula: count(matched_tokens) * 25 * weight_multiplier, capped at 100
+   *
+   * Tokens are loaded from vertical template metadata's kpi_modifiers section.
+   * Each KPI has its own token list and weight multiplier.
+   *
+   * @param kpiId - KPI ID (e.g., 'vertical_legitimacy_signal')
+   * @param primitives - KPI primitives (includes title/subtitle tokens)
+   * @param activeRuleSet - Active merged rule set with template metadata
+   * @returns Score 0-100
+   */
+  private static calculateVerticalModifierScore(
+    kpiId: string,
+    primitives: any,
+    activeRuleSet?: any
+  ): number {
+    // If no active rule set or no template metadata, return 0
+    if (!activeRuleSet) {
+      return 0;
+    }
+
+    // Merge template metadata: vertical → market → client (last wins)
+    const mergedTemplate = {
+      ...(activeRuleSet.verticalTemplateMeta || {}),
+      ...(activeRuleSet.marketTemplateMeta || {}),
+      ...(activeRuleSet.clientTemplateMeta || {}),
+    };
+
+    // Get kpi_modifiers from merged template
+    const kpiModifiers = mergedTemplate.kpi_modifiers;
+    if (!kpiModifiers || !kpiModifiers[kpiId]) {
+      return 0;
+    }
+
+    const modifier = kpiModifiers[kpiId];
+
+    // Check if modifier is enabled (default: true)
+    if (modifier.enabled === false) {
+      return 0;
+    }
+
+    // Get tokens and weight
+    const tokens = modifier.tokens || [];
+    const weightMultiplier = modifier.weight || 1.0;
+
+    // Clamp weight to 0.5-2.0 range
+    const clampedWeight = Math.max(0.5, Math.min(2.0, weightMultiplier));
+
+    // Get title + subtitle tokens
+    const allTokens = [
+      ...(primitives.tokensTitle || []),
+      ...(primitives.tokensSubtitle || []),
+    ].map((t: string) => t.toLowerCase());
+
+    // Count how many vertical tokens appear in title+subtitle
+    const matchedTokens = tokens.filter((token: string) =>
+      allTokens.includes(token.toLowerCase())
+    );
+
+    const matchCount = matchedTokens.length;
+
+    // Formula: count * 25 * weight, capped at 100
+    const score = Math.min(100, matchCount * 25 * clampedWeight);
+
+    if (process.env.NODE_ENV === 'development' && matchCount > 0) {
+      console.log(`[KPI Engine] ${kpiId}: matched ${matchCount} tokens (${matchedTokens.join(', ')}), score=${score}`);
+    }
+
+    return Math.round(score);
   }
 
   /**

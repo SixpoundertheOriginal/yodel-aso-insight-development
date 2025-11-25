@@ -24,7 +24,10 @@ import {
   type MergedRuleSet,
 } from '@/engine/asoBible/rulesetEngine/rulesetMerger';
 import { buildVersionInfo } from '@/engine/asoBible/rulesetEngine/rulesetVersionManager';
-import { invalidateCachedRuleset } from '@/engine/asoBible/rulesetLoader';
+import {
+  getRuleSetForVerticalMarket,
+  invalidateCachedRuleset,
+} from '@/engine/asoBible/rulesetLoader';
 
 // ============================================================================
 // Types
@@ -73,6 +76,16 @@ export interface RulesetRollbackRequest {
   market?: string;
   organizationId?: string;
   targetVersion: number;
+}
+
+export interface RulesetDetailResponse extends DbRulesetOverridesBundle {
+  mergedRuleSet?: MergedRuleSet | null;
+  inheritanceSummary?: Array<{
+    scope: 'base' | 'vertical' | 'market' | 'client';
+    id?: string;
+    label?: string;
+    description?: string;
+  }>;
 }
 
 export interface AuditLogEntry {
@@ -194,7 +207,7 @@ export class AdminRulesetApi {
     vertical?: string,
     market?: string,
     organizationId?: string
-  ): Promise<DbRulesetOverridesBundle | null> {
+  ): Promise<RulesetDetailResponse | null> {
     try {
       const options = {
         vertical,
@@ -205,6 +218,19 @@ export class AdminRulesetApi {
 
       const overrides = await DbRulesetService.loadAllOverrides(options);
 
+      let mergedRuleSet: MergedRuleSet | null = null;
+      if (vertical || market) {
+        try {
+          mergedRuleSet = await getRuleSetForVerticalMarket(
+            vertical || 'base',
+            market || 'global',
+            organizationId
+          );
+        } catch (error) {
+          console.warn('[Admin API] Failed to load merged ruleset preview:', error);
+        }
+      }
+
       return {
         ...overrides,
         meta: {
@@ -212,6 +238,8 @@ export class AdminRulesetApi {
           market,
           organizationId,
         },
+        mergedRuleSet,
+        inheritanceSummary: buildInheritanceSummary(mergedRuleSet),
       };
     } catch (error) {
       console.error('[Admin API] Error loading ruleset:', error);
@@ -413,4 +441,51 @@ export class AdminRulesetApi {
       return [];
     }
   }
+}
+
+function buildInheritanceSummary(
+  merged?: MergedRuleSet | null
+): RulesetDetailResponse['inheritanceSummary'] {
+  if (!merged) return [];
+
+  const summary: RulesetDetailResponse['inheritanceSummary'] = [];
+  const chain = merged.inheritanceChain || {};
+
+  if (chain.base) {
+    summary.push({
+      scope: 'base',
+      id: chain.base.id,
+      label: chain.base.label,
+      description: chain.base.description,
+    });
+  }
+
+  if (chain.vertical) {
+    summary.push({
+      scope: 'vertical',
+      id: chain.vertical.id,
+      label: chain.vertical.label,
+      description: chain.vertical.description,
+    });
+  }
+
+  if (chain.market) {
+    summary.push({
+      scope: 'market',
+      id: chain.market.id,
+      label: chain.market.label,
+      description: chain.market.description,
+    });
+  }
+
+  if (chain.client) {
+    summary.push({
+      scope: 'client',
+      id: chain.client.id,
+      label: chain.client.label,
+      description: chain.client.description,
+    });
+  }
+
+  return summary;
 }

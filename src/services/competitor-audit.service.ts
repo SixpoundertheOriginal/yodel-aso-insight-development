@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine';
 import { fetchCompetitorMetadata, type CompetitorMetadataResult } from './competitor-metadata.service';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
+import { validateCompetitorAudit } from './competitor-audit.validator';
+import { attachAuditSnapshotMetadata } from './competitor-audit.telemetry';
 
 // =====================================================================
 // TYPE DEFINITIONS
@@ -39,8 +41,10 @@ export interface AuditCompetitorResult {
   competitorId: string;
   metadata: CompetitorMetadataResult;
   auditData: UnifiedMetadataAuditResult;
+  audit: UnifiedMetadataAuditResult;
   overallScore: number;
   cached: boolean; // Was audit pulled from cache?
+  snapshotCreatedAt?: string;
 }
 
 export interface AuditCompetitorError {
@@ -97,14 +101,20 @@ async function getCachedAudit(
 
   console.log(`[CompetitorAudit] ✅ Found cached audit (${data.id}) from ${data.created_at}`);
 
-  return {
+  const result: AuditCompetitorResult = {
     auditId: data.id,
     competitorId: data.competitor_id,
     metadata: data.metadata as CompetitorMetadataResult,
     auditData: data.audit_data as UnifiedMetadataAuditResult,
+    audit: data.audit_data as UnifiedMetadataAuditResult,
     overallScore: data.overall_score || 0,
     cached: true,
+    snapshotCreatedAt: data.created_at,
   };
+
+  attachAuditSnapshotMetadata(result, data.created_at);
+
+  return validateCompetitorAudit(result, { context: 'getCachedAudit' });
 }
 
 /**
@@ -258,14 +268,30 @@ export async function auditCompetitor(
     }
 
     // Step 6: Return result
-    return {
+    const snapshotCreatedAt = new Date().toISOString();
+    const result: AuditCompetitorResult = {
       auditId: storeResult.auditId,
       competitorId,
       metadata,
       auditData,
+      audit: auditData,
       overallScore: auditData.kpis?.overall_score || 0,
       cached: false,
+      snapshotCreatedAt,
     };
+
+    attachAuditSnapshotMetadata(result, snapshotCreatedAt);
+
+    const validated = validateCompetitorAudit(result, { context: 'auditCompetitor' });
+    if (!validated) {
+      return {
+        error: 'Metadata audit failed validation',
+        code: 'AUDIT_FAILED',
+        details: { competitorId, reason: 'validation_failed' },
+      };
+    }
+
+    return validated;
   } catch (error: any) {
     console.error('[CompetitorAudit] ❌ Audit failed:', error);
     return {
@@ -397,14 +423,20 @@ export async function getLatestCompetitorAuditsForApp(
     return [];
   }
 
-  return data.map((audit: any) => ({
-    auditId: audit.id,
-    competitorId: audit.competitor_id,
-    metadata: audit.metadata as CompetitorMetadataResult,
-    auditData: audit.audit_data as UnifiedMetadataAuditResult,
-    overallScore: audit.overall_score || 0,
-    cached: true,
-  }));
+  return data
+    .map((audit: any) => ({
+      auditId: audit.id,
+      competitorId: audit.competitor_id,
+      metadata: audit.metadata as CompetitorMetadataResult,
+      auditData: audit.audit_data as UnifiedMetadataAuditResult,
+      audit: audit.audit_data as UnifiedMetadataAuditResult,
+      overallScore: audit.overall_score || 0,
+      cached: true,
+      snapshotCreatedAt: audit.created_at,
+    }))
+    .map((result) => attachAuditSnapshotMetadata(result, result.snapshotCreatedAt))
+    .map((result) => validateCompetitorAudit(result, { context: 'getLatestCompetitorAuditsForApp' }))
+    .filter((result): result is AuditCompetitorResult => Boolean(result));
 }
 
 /**

@@ -12,6 +12,12 @@
 
 import type { VerticalProfile } from '../ruleset.types';
 
+const DEFAULT_DISCOVERY_THRESHOLDS = {
+  excellent: 5,
+  good: 3,
+  moderate: 1,
+};
+
 // ============================================================================
 // Base Vertical (Fallback)
 // ============================================================================
@@ -22,6 +28,7 @@ const BASE_VERTICAL: VerticalProfile = {
   keywords: [],
   categories: [],
   description: 'Fallback vertical for apps that do not match any specific category',
+  discoveryThresholds: DEFAULT_DISCOVERY_THRESHOLDS,
 };
 
 // ============================================================================
@@ -58,6 +65,11 @@ const LANGUAGE_LEARNING_VERTICAL: VerticalProfile = {
   ],
   categories: ['Education'],
   description: 'Language learning apps (e.g., Duolingo, Babbel, Rosetta Stone)',
+  discoveryThresholds: {
+    excellent: 6,
+    good: 4,
+    moderate: 2,
+  },
 };
 
 // ============================================================================
@@ -88,6 +100,11 @@ const REWARDS_VERTICAL: VerticalProfile = {
   ],
   categories: ['Entertainment', 'Lifestyle'],
   description: 'Reward and cashback apps (e.g., Mistplay, Fetch Rewards, Rakuten)',
+  discoveryThresholds: {
+    excellent: 5,
+    good: 3,
+    moderate: 2,
+  },
 };
 
 // ============================================================================
@@ -122,6 +139,11 @@ const FINANCE_VERTICAL: VerticalProfile = {
   ],
   categories: ['Finance', 'Business'],
   description: 'Finance and investing apps (e.g., Robinhood, Coinbase, Acorns)',
+  discoveryThresholds: {
+    excellent: 8,
+    good: 5,
+    moderate: 3,
+  },
 };
 
 // ============================================================================
@@ -150,6 +172,11 @@ const DATING_VERTICAL: VerticalProfile = {
   ],
   categories: ['Social Networking', 'Lifestyle'],
   description: 'Dating and relationship apps (e.g., Tinder, Bumble, Hinge)',
+  discoveryThresholds: {
+    excellent: 5,
+    good: 3,
+    moderate: 2,
+  },
 };
 
 // ============================================================================
@@ -179,6 +206,11 @@ const PRODUCTIVITY_VERTICAL: VerticalProfile = {
   ],
   categories: ['Productivity', 'Business'],
   description: 'Productivity and task management apps (e.g., Notion, Todoist, Trello)',
+  discoveryThresholds: {
+    excellent: 6,
+    good: 4,
+    moderate: 2,
+  },
 };
 
 // ============================================================================
@@ -211,6 +243,11 @@ const HEALTH_VERTICAL: VerticalProfile = {
   ],
   categories: ['Health & Fitness'],
   description: 'Health and fitness apps (e.g., MyFitnessPal, Headspace, Strava)',
+  discoveryThresholds: {
+    excellent: 6,
+    good: 4,
+    moderate: 2,
+  },
 };
 
 // ============================================================================
@@ -239,6 +276,11 @@ const ENTERTAINMENT_VERTICAL: VerticalProfile = {
   ],
   categories: ['Entertainment'],
   description: 'Entertainment apps (e.g., Netflix, Spotify, YouTube)',
+  discoveryThresholds: {
+    excellent: 4,
+    good: 3,
+    moderate: 1,
+  },
 };
 
 // ============================================================================

@@ -11,11 +11,13 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
+import { KpiTooltip } from '../KpiTooltip';
 
 interface TokenMixData {
   name: string;
   value: number;
   color: string;
+  metricId: string;  // For tooltip lookup
 }
 
 interface TokenMixDonutProps {
@@ -80,12 +82,12 @@ export const TokenMixDonut: React.FC<TokenMixDonutProps> = ({
     }
 
     return [
-      { name: 'Brand', value: mix.brand, color: TOKEN_COLORS.brand },
-      { name: 'Category', value: mix.category, color: TOKEN_COLORS.category },
-      { name: 'Learning', value: mix.learning, color: TOKEN_COLORS.learning },
-      { name: 'Outcome', value: mix.outcome, color: TOKEN_COLORS.outcome },
-      { name: 'Filler', value: mix.filler, color: TOKEN_COLORS.filler },
-      { name: 'Duplicate', value: mix.duplicate, color: TOKEN_COLORS.duplicate },
+      { name: 'Brand', value: mix.brand, color: TOKEN_COLORS.brand, metricId: 'brand_token' },
+      { name: 'Category', value: mix.category, color: TOKEN_COLORS.category, metricId: 'category_token' },
+      { name: 'Learning', value: mix.learning, color: TOKEN_COLORS.learning, metricId: 'learning_token' },
+      { name: 'Outcome', value: mix.outcome, color: TOKEN_COLORS.outcome, metricId: 'outcome_token' },
+      { name: 'Filler', value: mix.filler, color: TOKEN_COLORS.filler, metricId: 'filler_token' },
+      { name: 'Duplicate', value: mix.duplicate, color: TOKEN_COLORS.duplicate, metricId: 'duplicate_token' },
     ].filter(item => item.value > 0);
   }, [keywordCoverage]);
 
@@ -119,7 +121,7 @@ export const TokenMixDonut: React.FC<TokenMixDonutProps> = ({
           TOKEN MIX
         </CardTitle>
         <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-          Keyword type distribution across all metadata
+          Keyword type distribution — balance brand, discovery, and quality keywords
         </p>
       </CardHeader>
 
@@ -161,6 +163,20 @@ export const TokenMixDonut: React.FC<TokenMixDonutProps> = ({
             />
           </PieChart>
         </ResponsiveContainer>
+
+        {/* Token Type Explanations */}
+        <div className="mt-4 pt-4 border-t border-zinc-800/50">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {data.map((item) => (
+              <div key={item.metricId} className="flex items-center gap-2 text-xs">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-zinc-400">{item.name}:</span>
+                <span className="text-zinc-200 font-mono font-medium">{item.value}</span>
+                <KpiTooltip metricId={item.metricId} iconSize="sm" />
+              </div>
+            ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

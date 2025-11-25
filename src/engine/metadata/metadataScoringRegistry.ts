@@ -7,12 +7,16 @@
 
 import type { ScrapedMetadata } from '@/types/aso';
 import type { BenchmarkComparison } from '@/services/benchmark-registry.service';
-import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
+import type { MergedRuleSet, LeakWarning } from '@/engine/asoBible/ruleset.types';
 import type { IntentCoverageData } from '@/engine/asoBible/searchIntentCoverageEngine';
 import type { KpiEngineResult } from './kpi/kpi.types';
 import { tokenizeForASO, analyzeText } from './tokenization';
 import { analyzeCombinations } from '@/modules/metadata-scoring/utils/ngram';
+import { generateAllPossibleCombos } from '@/engine/combos/comboGenerationEngine';
+import { dedupeCombos } from '@/modules/metadata-scoring/utils/comboDedupe';
+import { getCanonicalComboString } from '@/modules/metadata-scoring/utils/comboNormalizer';
 import { getTokenRelevance } from './metadataAuditEngine';
+import { computeBrandRatioStats, getNoiseSeverity } from './utils/brandNoiseHelpers';
 import { getRuleConfig } from '@/services/ruleConfigLoader';
 
 /**
@@ -34,6 +38,11 @@ export interface ClassifiedCombo {
   relevanceScore: number;  // 0-3
 }
 
+export interface RuleAncestry {
+  scope: 'base' | 'vertical' | 'market' | 'client';
+  sourceId?: string;
+}
+
 /**
  * Rule evaluation result
  */
@@ -45,6 +54,7 @@ export interface RuleEvaluationResult {
   penalty?: number;
   message: string;
   evidence?: string[];
+  ancestry?: RuleAncestry;
 }
 
 /**
@@ -157,6 +167,16 @@ export interface UnifiedMetadataAuditResult {
   intentCoverage?: IntentCoverageData;
   // Phase 18: KPI Engine Result (9 Intent Quality KPIs + all other KPI families)
   kpiResult?: KpiEngineResult;
+  ruleSetDiagnostics?: {
+    leakWarnings?: LeakWarning[];
+    ruleSetSource?: string;
+    verticalId?: string;
+    marketId?: string;
+    discoveryThresholdSource?: 'ruleset' | 'default';
+    overrideScopesApplied?: string[];
+    snapshotCreatedAt?: string;
+    snapshotAgeMs?: number;
+  };
 }
 
 /**
@@ -409,15 +429,13 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
           const noiseRatio = analysis.noiseRatio;
           const ignoredCount = analysis.ignored.length;
 
-          let penalty = 0;
-          if (noiseRatio > 0.5) penalty = 30;
-          else if (noiseRatio > 0.3) penalty = 15;
-
+          const noiseSeverity = getNoiseSeverity(noiseRatio);
+          const penalty = noiseSeverity.penalty;
           const score = Math.max(0, 100 - penalty);
 
           return {
             ruleId: 'title_filler_penalty',
-            passed: noiseRatio <= 0.3,
+            passed: noiseSeverity.level !== 'severe',
             score,
             penalty,
             message: `${ignoredCount} filler tokens (${Math.round(noiseRatio * 100)}% noise ratio)`,
@@ -595,12 +613,41 @@ export const METADATA_SCORING_REGISTRY: ElementConfig[] = [
             ? overlapTokens.length / subtitleRelevantTokens.length
             : 0;
 
-          // Less overlap = better complementarity
-          const score = Math.max(0, (1 - overlapRatio) * 100);
+          // Combo-level redundancy using deduped combos (2-4 words)
+          const meaningfulTitleTokens = ctx.titleTokens.filter(t => !ctx.stopwords.has(t) && t.length > 2);
+          const meaningfulSubtitleTokens = ctx.subtitleTokens.filter(t => !ctx.stopwords.has(t) && t.length > 2);
+          const titleCombos = dedupeCombos(
+            generateAllPossibleCombos(meaningfulTitleTokens, [], {
+              minLength: 2,
+              maxLength: 4,
+              includeTitle: true,
+              includeSubtitle: false,
+              includeCross: false,
+            })
+          );
+          const subtitleCombos = dedupeCombos(
+            generateAllPossibleCombos([], meaningfulSubtitleTokens, {
+              minLength: 2,
+              maxLength: 4,
+              includeTitle: false,
+              includeSubtitle: true,
+              includeCross: false,
+            })
+          );
+          const titleCanonicalCombos = new Set(titleCombos.map(getCanonicalComboString));
+          const redundantCombos = subtitleCombos.filter((combo) =>
+            titleCanonicalCombos.has(getCanonicalComboString(combo))
+          );
+          const comboOverlapRatio =
+            subtitleCombos.length > 0 ? redundantCombos.length / subtitleCombos.length : 0;
+
+          // Blend token overlap and combo redundancy
+          const combinedOverlap = (overlapRatio + comboOverlapRatio) / 2;
+          const score = Math.max(0, (1 - combinedOverlap) * 100);
 
           return {
             ruleId: 'subtitle_complementarity',
-            passed: overlapRatio < 0.4,
+            passed: combinedOverlap < 0.4,
             score,
             message: overlapRatio < 0.3
               ? 'Excellent complementarity with title'
