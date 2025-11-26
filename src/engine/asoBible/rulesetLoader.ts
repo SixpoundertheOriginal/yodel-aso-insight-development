@@ -35,6 +35,9 @@ import {
   invalidateRuleset,
 } from './rulesetEngine/rulesetCache';
 
+// Phase 2A: Category detection
+import { CategoryMappingService } from '@/services/asoBible/categoryMappingService';
+
 // Import vertical rulesets
 import { languageLearningRuleSet } from './verticalProfiles/language_learning/ruleset';
 import { rewardsRuleSet } from './verticalProfiles/rewards/ruleset';
@@ -72,6 +75,22 @@ import { deMarketRuleSet } from './marketProfiles/de/ruleset';
 export const ASO_BIBLE_DB_RULESETS_ENABLED = true;
 
 /**
+ * Feature flag: Enable category-based templates (Phase 2A)
+ *
+ * When true:
+ * - Detects category from primaryGenreId (deterministic)
+ * - Loads category template from aso_ruleset_category table
+ * - Merges in inheritance chain: base → category → vertical → market → client
+ *
+ * When false:
+ * - Skips category detection and template loading
+ * - Falls back to: base → vertical → market → client (Phase 21 behavior)
+ *
+ * Default: true (Phase 2A enabled)
+ */
+export const ASO_BIBLE_CATEGORY_TEMPLATES_ENABLED = true;
+
+/**
  * Cache TTL for merged rulesets (milliseconds)
  *
  * Default: 5 minutes
@@ -94,6 +113,9 @@ interface AppMetadata {
   title?: string;
   subtitle?: string;
   description?: string;
+  // Phase 2A: Category detection
+  primaryGenreId?: number;
+  primaryGenreName?: string;
 }
 
 // ============================================================================
@@ -234,15 +256,16 @@ export function loadClientRuleSet(appId?: string): AsoBibleRuleSet | undefined {
 /**
  * Load and merge DB-driven rulesets with caching
  *
- * Pipeline:
- * 1. Build cache key from vertical/market/orgId/appId
+ * Pipeline (Phase 2A enhanced):
+ * 1. Build cache key from category/vertical/market/orgId/appId
  * 2. Check cache → return if hit
- * 3. Load DB overrides for vertical, market, client
+ * 3. Load DB overrides and templates for all layers
  * 4. Normalize each layer (DB rows → NormalizedRuleSet)
  * 5. Load code-based vertical/market rulesets as base
- * 6. Merge: base → vertical (code+DB) → market (code+DB) → client (DB)
+ * 6. Merge: base → category → vertical (code+DB) → market (code+DB) → client (DB)
  * 7. Cache result and return
  *
+ * @param categoryId - Detected category ID (Phase 2A)
  * @param verticalId - Detected vertical ID
  * @param marketId - Detected market ID
  * @param organizationId - Organization ID (optional)
@@ -250,14 +273,15 @@ export function loadClientRuleSet(appId?: string): AsoBibleRuleSet | undefined {
  * @returns Merged ruleset (legacy format for Phase 10 compatibility)
  */
 async function loadDbDrivenRuleSet(
+  categoryId: string | null,
   verticalId: string,
   marketId: string,
   organizationId?: string,
   appId?: string
 ): Promise<MergedRuleSet | null> {
   try {
-    // Step 1: Build cache key
-    const cacheKey = buildCacheKey(verticalId, marketId, organizationId, appId);
+    // Step 1: Build cache key (Phase 2A: include categoryId)
+    const cacheKey = buildCacheKey(verticalId, marketId, organizationId, appId, categoryId);
 
     // Step 2: Check cache
     const cached = getCachedRuleset(cacheKey, RULESET_CACHE_TTL_MS);
@@ -272,11 +296,12 @@ async function loadDbDrivenRuleSet(
       console.log(`[RuleSet Loader] Cache MISS for key=${cacheKey}, loading from DB...`);
     }
 
-    // Step 3: Load DB overrides for all layers (including Phase 21 template metadata)
+    // Step 3: Load DB overrides for all layers (including Phase 21 + Phase 2A template metadata)
     const [
       verticalDbOverrides,
       marketDbOverrides,
       clientDbOverrides,
+      categoryTemplateMeta,
       verticalTemplateMeta,
       marketTemplateMeta,
       clientTemplateMeta,
@@ -292,6 +317,11 @@ async function loadDbDrivenRuleSet(
       // Client layer (if organizationId exists)
       organizationId
         ? DbRulesetService.loadAllOverrides({ organizationId, appId })
+        : Promise.resolve(null),
+
+      // Phase 2A: Category Template Metadata
+      categoryId && ASO_BIBLE_CATEGORY_TEMPLATES_ENABLED
+        ? DbRulesetService.loadCategoryTemplateMeta(categoryId)
         : Promise.resolve(null),
 
       // Phase 21: Vertical Intelligence Layer - Template Metadata
@@ -353,6 +383,7 @@ async function loadDbDrivenRuleSet(
 
     if (process.env.NODE_ENV === 'development') {
       console.log(`[RuleSet Loader] DB-driven ruleset loaded and cached for key=${cacheKey}`, {
+        categoryId,
         verticalId,
         marketId,
         organizationId,
@@ -360,6 +391,7 @@ async function loadDbDrivenRuleSet(
         hasMarketOverrides: !!marketNormalized,
         hasClientOverrides: !!clientNormalized,
         source: merged.source,
+        hasCategoryTemplate: !!categoryTemplateMeta,
         hasVerticalTemplate: !!verticalTemplateMeta,
         hasMarketTemplate: !!marketTemplateMeta,
         hasClientTemplate: !!clientTemplateMeta,
@@ -369,7 +401,10 @@ async function loadDbDrivenRuleSet(
     // Convert to legacy format for Phase 10 compatibility
     const legacyMerged = toLegacyMergedRuleSet(merged);
 
-    // Phase 21: Include template metadata in the final result
+    // Phase 2A + Phase 21: Include template metadata in the final result
+    if (categoryTemplateMeta) {
+      legacyMerged.categoryTemplateMeta = categoryTemplateMeta;
+    }
     if (verticalTemplateMeta) {
       legacyMerged.verticalTemplateMeta = verticalTemplateMeta;
     }
@@ -420,7 +455,15 @@ export async function getActiveRuleSet(
   locale: string = 'en-US',
   organizationId?: string
 ): Promise<MergedRuleSet> {
-  // Step 1: Detect vertical and market
+  // Step 1: Detect category (Phase 2A), vertical, and market
+  let categoryDetection = null;
+  if (ASO_BIBLE_CATEGORY_TEMPLATES_ENABLED) {
+    categoryDetection = CategoryMappingService.detectCategory(
+      appMetadata.primaryGenreId,
+      appMetadata.primaryGenreName
+    );
+  }
+
   const verticalDetection = detectVertical(appMetadata);
   const marketDetection = detectMarket(locale);
 
@@ -430,6 +473,7 @@ export async function getActiveRuleSet(
   if (ASO_BIBLE_DB_RULESETS_ENABLED) {
     try {
       dbMergedRuleSet = await loadDbDrivenRuleSet(
+        categoryDetection?.categoryId || null,
         verticalDetection.verticalId,
         marketDetection.marketId,
         organizationId,
@@ -457,7 +501,13 @@ export async function getActiveRuleSet(
     ? mergeDbWithCodeRulesets(codeMerged, dbMergedRuleSet)
     : codeMerged;
 
-  // Step 6: Add vertical/market metadata (Phase 21: added verticalName and marketName)
+  // Step 6: Add category/vertical/market metadata (Phase 2A + Phase 21)
+  if (categoryDetection) {
+    finalMerged.categoryId = categoryDetection.categoryId;
+    finalMerged.categoryName = categoryDetection.categoryName;
+    finalMerged.categoryConfidence = categoryDetection.confidence;
+    finalMerged.categorySource = categoryDetection.source;
+  }
   finalMerged.verticalId = verticalDetection.verticalId;
   finalMerged.verticalName = verticalDetection.vertical.label;
   finalMerged.marketId = marketDetection.marketId;
@@ -474,6 +524,8 @@ export async function getActiveRuleSet(
   // Log (development only)
   if (process.env.NODE_ENV === 'development') {
     console.log('[RuleSet Loader] Active rule set loaded:', {
+      category: categoryDetection?.categoryId || 'none',
+      categoryConfidence: categoryDetection?.confidence || 'none',
       vertical: verticalDetection.verticalId,
       verticalConfidence: verticalDetection.confidence,
       market: marketDetection.marketId,
@@ -483,6 +535,7 @@ export async function getActiveRuleSet(
       hasVerticalRuleSet: !!verticalRuleSet,
       hasMarketRuleSet: !!marketRuleSet,
       hasDbOverrides: !!dbMergedRuleSet,
+      hasCategoryTemplate: !!finalMerged.categoryTemplateMeta,
       intentOverrides: Object.keys(finalMerged.intentOverrides || {}).length,
       hookOverrides: Object.keys(finalMerged.hookOverrides || {}).length,
       tokenOverrides: Object.keys(finalMerged.tokenRelevanceOverrides || {}).length,

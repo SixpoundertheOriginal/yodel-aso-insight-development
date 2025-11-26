@@ -64,7 +64,7 @@ const KeywordsIntelligencePage: React.FC = () => {
     try { return isDemoOrg ? useDemoSelectedApp() : null } catch { return null }
   })();
   const canAccess = featureEnabledForRole(PLATFORM_FEATURES.KEYWORD_INTELLIGENCE, currentUserRole) || isDemoOrg;
-  if (!canAccess) return <Navigate to="/dashboard" replace />;
+  if (!canAccess) return <Navigate to="/dashboard-v2" replace />;
 
   // Org scope
   const dataContext = useDataAccess();

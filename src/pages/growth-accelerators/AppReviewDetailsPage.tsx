@@ -111,7 +111,7 @@ const AppReviewDetailsPage: React.FC = () => {
 
   // Feature flag gate
   if (!canAccessReviews) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard-v2" replace />;
   }
 
   if (!appId) {

@@ -3,7 +3,8 @@ import { useUserProfile } from './useUserProfile';
 export const useDemoOrgDetection = () => {
   const { profile, isLoading } = useUserProfile();
   const organization = profile?.organizations;
-  const isDemoOrg = Boolean(organization?.settings?.demo_mode) || organization?.slug?.toLowerCase() === 'next';
+  // Demo mode has been removed - always return false
+  const isDemoOrg = false;
 
   return {
     isDemoOrg,

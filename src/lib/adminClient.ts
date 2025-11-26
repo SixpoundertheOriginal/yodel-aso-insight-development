@@ -77,11 +77,9 @@ export async function invokeAdminFunction<T = any>(
     });
 
     // Invoke Supabase Edge Function
+    // Note: apikey header is automatically added by the Supabase client
     const { data, error } = await supabase.functions.invoke(functionName, {
-      body: finalPayload,
-      headers: {
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-      }
+      body: finalPayload
     });
 
     // Check for function invocation error

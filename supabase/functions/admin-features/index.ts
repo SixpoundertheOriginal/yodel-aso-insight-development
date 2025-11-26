@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     // Determine if caller is a super admin
     const { data: isSuperAdmin } = await supabaseAdmin.rpc('is_super_admin', {
-      user_id: user.id,
+      check_user_id: user.id,
     });
 
     const url = new URL(req.url);

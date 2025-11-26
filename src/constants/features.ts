@@ -220,9 +220,11 @@ export const ROLE_FEATURE_DEFAULTS: Record<UserRole, string[]> = {
     ...FEATURE_CATEGORIES.ACCOUNT.features,
   ],
   viewer: [
-    // Basic read-only access
+    // Standard user access (simplified auth - all Yodel Mobile users)
     PLATFORM_FEATURES_ENHANCED.ANALYTICS,
+    PLATFORM_FEATURES_ENHANCED.ASO_AI_HUB,
     PLATFORM_FEATURES_ENHANCED.APP_INTELLIGENCE,
+    PLATFORM_FEATURES_ENHANCED.REVIEWS_PUBLIC_RSS_ENABLED,
     // Account
     ...FEATURE_CATEGORIES.ACCOUNT.features,
   ],

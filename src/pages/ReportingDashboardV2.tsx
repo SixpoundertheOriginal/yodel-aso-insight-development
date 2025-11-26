@@ -3,6 +3,8 @@ import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { usePeriodComparison } from '@/hooks/usePeriodComparison';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAvailableApps } from '@/hooks/useAvailableApps';
+import { useSuperAdmin } from '@/context/SuperAdminContext';
+import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -56,9 +58,18 @@ import {
  */
 export default function ReportingDashboardV2() {
   const { organizationId, availableOrgs, isSuperAdmin } = usePermissions();
+  const { selectedOrganizationId: superAdminSelectedOrg, setSelectedOrganizationId: setSuperAdminOrg } = useSuperAdmin();
+
+  // Compute effective organization ID (super admin selected org or regular user org)
+  const effectiveOrganizationId = useMemo(() => {
+    if (isSuperAdmin) {
+      return superAdminSelectedOrg || null;
+    }
+    return organizationId;
+  }, [isSuperAdmin, superAdminSelectedOrg, organizationId]);
 
   // Find organization name from available orgs
-  const currentOrg = availableOrgs?.find(org => org.id === organizationId);
+  const currentOrg = availableOrgs?.find(org => org.id === effectiveOrganizationId);
   const organizationName = currentOrg?.name || 'Organization';
 
   // ✅ DYNAMIC DATE RANGE: Defaults to last 30 days, updates via DateRangePicker
@@ -81,7 +92,7 @@ export default function ReportingDashboardV2() {
 
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
-    organizationId: organizationId || '',
+    organizationId: effectiveOrganizationId || '',
     dateRange,
     trafficSources: selectedTrafficSources, // Filter by selected traffic sources
     appIds: selectedAppIds // Filter by selected apps
@@ -92,10 +103,10 @@ export default function ReportingDashboardV2() {
     data: comparisonData,
     isLoading: isComparisonLoading
   } = usePeriodComparison(
-    organizationId || '',
+    effectiveOrganizationId || '',
     dateRange,
     selectedAppIds,
-    !!organizationId && !isLoading // Only fetch after main data loads
+    !!effectiveOrganizationId && !isLoading // Only fetch after main data loads
   );
 
   // Log only when data changes
@@ -310,19 +321,39 @@ export default function ReportingDashboardV2() {
     }
   }, [availableApps.length, appsLoading]); // Depend on length and loading state
 
-  // [STATE] No organization ID
-  if (!organizationId) {
+  // [STATE] No organization ID - Super admins see selector, regular users see error
+  if (!effectiveOrganizationId) {
     return (
       <MainLayout>
-        <div className="container mx-auto p-6">
-          <Alert variant="destructive" className="bg-red-900/20 border-red-800">
-            <AlertDescription>
-              <div className="font-semibold mb-2">No Organization Found</div>
-              <div className="text-sm">
-                Your account is not associated with an organization. Please contact support.
+        <div className="container mx-auto p-6 space-y-6">
+          {isSuperAdmin ? (
+            <>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-zinc-100 flex items-center gap-3">
+                  <Activity className="h-8 w-8 text-yodel-orange" />
+                  Analytics Dashboard
+                </h1>
+                <p className="text-zinc-400 mt-1">
+                  Select an organization to view analytics
+                </p>
               </div>
-            </AlertDescription>
-          </Alert>
+
+              <SuperAdminOrganizationSelector
+                selectedOrg={superAdminSelectedOrg}
+                onOrgChange={setSuperAdminOrg}
+                className="max-w-2xl"
+              />
+            </>
+          ) : (
+            <Alert variant="destructive" className="bg-red-900/20 border-red-800">
+              <AlertDescription>
+                <div className="font-semibold mb-2">No Organization Found</div>
+                <div className="text-sm">
+                  Your account is not associated with an organization. Please contact support.
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </MainLayout>
     );
@@ -390,6 +421,15 @@ export default function ReportingDashboardV2() {
 
         {/* MFA Grace Period Banner */}
         <MFAGracePeriodBanner />
+
+        {/* Super Admin Organization Selector */}
+        {isSuperAdmin && (
+          <SuperAdminOrganizationSelector
+            selectedOrg={superAdminSelectedOrg}
+            onOrgChange={setSuperAdminOrg}
+            className="mb-2"
+          />
+        )}
 
         {/* ✅ EXECUTIVE SUMMARY: Template-based insights */}
         {data?.processedData?.traffic_sources && (
@@ -717,7 +757,7 @@ export default function ReportingDashboardV2() {
           </span>
 
           <DashboardAiChat
-            organizationId={organizationId || ''}
+            organizationId={effectiveOrganizationId || ''}
             dateRange={dateRange}
             selectedAppIds={selectedAppIds}
             selectedTrafficSources={selectedTrafficSources}

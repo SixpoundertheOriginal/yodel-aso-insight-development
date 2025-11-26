@@ -9,9 +9,23 @@
  * - Identify existing vs missing combos
  * - Score combos using ASO Bible principles
  * - Recommend strategic combos to add
+ *
+ * Performance Optimization Phase 2.2:
+ * - Max combo limit to prevent excessive generation
+ * - Filter low-value stopwords
+ * - Early termination when limit reached
  */
 
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
+
+// Performance Optimization Phase 2.2: Limits and filters
+const MAX_COMBOS_PER_SOURCE = 500; // Prevent excessive combo generation
+const LOW_VALUE_STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+  'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'be', 'been',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
+  'could', 'may', 'might', 'can', 'must', 'shall'
+]);
 
 export interface GeneratedCombo {
   text: string;
@@ -39,18 +53,39 @@ export interface ComboAnalysis {
 }
 
 /**
- * Generate all possible combinations of n keywords
+ * Performance Optimization Phase 2.2: Filter low-value keywords
  */
-function generateCombinations(keywords: string[], size: number): string[][] {
+function filterLowValueKeywords(keywords: string[]): string[] {
+  return keywords.filter(kw => {
+    const normalized = kw.toLowerCase().trim();
+    return normalized.length > 1 && !LOW_VALUE_STOPWORDS.has(normalized);
+  });
+}
+
+/**
+ * Generate all possible combinations of n keywords
+ * Performance Optimization Phase 2.2: Added max limit for early termination
+ */
+function generateCombinations(keywords: string[], size: number, maxResults: number = Infinity): string[][] {
   const results: string[][] = [];
 
   function backtrack(start: number, current: string[]) {
+    // Phase 2.2: Early termination when max reached
+    if (results.length >= maxResults) {
+      return;
+    }
+
     if (current.length === size) {
       results.push([...current]);
       return;
     }
 
     for (let i = start; i < keywords.length; i++) {
+      // Phase 2.2: Early termination check
+      if (results.length >= maxResults) {
+        break;
+      }
+
       current.push(keywords[i]);
       backtrack(i + 1, current);
       current.pop();
@@ -63,6 +98,7 @@ function generateCombinations(keywords: string[], size: number): string[][] {
 
 /**
  * Generate all possible keyword combinations from title and subtitle
+ * Performance Optimization Phase 2.2: Added filtering and limits
  */
 export function generateAllPossibleCombos(
   titleKeywords: string[],
@@ -83,45 +119,69 @@ export function generateAllPossibleCombos(
     includeCross = true,
   } = options;
 
+  // Phase 2.2: Filter low-value keywords first
+  const filteredTitle = filterLowValueKeywords(titleKeywords);
+  const filteredSubtitle = filterLowValueKeywords(subtitleKeywords);
+
   const allCombos = new Set<string>();
 
+  // Phase 2.2: Track total combos to enforce limit
+  let totalGenerated = 0;
+  const maxTotal = MAX_COMBOS_PER_SOURCE * 3; // Allow for 3 sources (title, subtitle, cross)
+
   // Generate combos from title keywords only
-  if (includeTitle) {
-    for (let length = minLength; length <= Math.min(maxLength, titleKeywords.length); length++) {
-      const combinations = generateCombinations(titleKeywords, length);
+  if (includeTitle && totalGenerated < maxTotal) {
+    const remainingQuota = maxTotal - totalGenerated;
+    for (let length = minLength; length <= Math.min(maxLength, filteredTitle.length); length++) {
+      if (totalGenerated >= maxTotal) break; // Phase 2.2: Early termination
+
+      const combinations = generateCombinations(filteredTitle, length, remainingQuota);
       combinations.forEach(combo => {
         allCombos.add(combo.join(' '));
+        totalGenerated++;
       });
     }
   }
 
   // Generate combos from subtitle keywords only
-  if (includeSubtitle) {
-    for (let length = minLength; length <= Math.min(maxLength, subtitleKeywords.length); length++) {
-      const combinations = generateCombinations(subtitleKeywords, length);
+  if (includeSubtitle && totalGenerated < maxTotal) {
+    const remainingQuota = maxTotal - totalGenerated;
+    for (let length = minLength; length <= Math.min(maxLength, filteredSubtitle.length); length++) {
+      if (totalGenerated >= maxTotal) break; // Phase 2.2: Early termination
+
+      const combinations = generateCombinations(filteredSubtitle, length, remainingQuota);
       combinations.forEach(combo => {
         allCombos.add(combo.join(' '));
+        totalGenerated++;
       });
     }
   }
 
   // Generate cross-element combos (title + subtitle)
-  if (includeCross && titleKeywords.length > 0 && subtitleKeywords.length > 0) {
-    const combinedKeywords = [...titleKeywords, ...subtitleKeywords];
+  if (includeCross && filteredTitle.length > 0 && filteredSubtitle.length > 0 && totalGenerated < maxTotal) {
+    const combinedKeywords = [...filteredTitle, ...filteredSubtitle];
+    const remainingQuota = maxTotal - totalGenerated;
 
     for (let length = minLength; length <= Math.min(maxLength, combinedKeywords.length); length++) {
-      const combinations = generateCombinations(combinedKeywords, length);
+      if (totalGenerated >= maxTotal) break; // Phase 2.2: Early termination
+
+      const combinations = generateCombinations(combinedKeywords, length, remainingQuota);
 
       // Only keep combos that mix keywords from both title and subtitle
       combinations.forEach(combo => {
-        const hasTitleKeyword = combo.some(kw => titleKeywords.includes(kw));
-        const hasSubtitleKeyword = combo.some(kw => subtitleKeywords.includes(kw));
+        const hasTitleKeyword = combo.some(kw => filteredTitle.includes(kw));
+        const hasSubtitleKeyword = combo.some(kw => filteredSubtitle.includes(kw));
 
         if (hasTitleKeyword && hasSubtitleKeyword) {
           allCombos.add(combo.join(' '));
+          totalGenerated++;
         }
       });
     }
+  }
+
+  if (process.env.NODE_ENV === 'development' && totalGenerated > 1000) {
+    console.log(`[Combo Generation] Generated ${totalGenerated} combinations (filtered from potential thousands)`);
   }
 
   return Array.from(allCombos);

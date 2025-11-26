@@ -252,7 +252,7 @@ const ReviewManagementPage: React.FC = () => {
 
   // Feature flag gate - redirect if not accessible
   if (!canAccessReviews) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard-v2" replace />;
   }
 
   // Bulletproof app search functionality

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Auth Status</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .result {
+      background: #2a2a2a;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border-left: 3px solid #ff6b35;
+    }
+    .success { border-left-color: #4ade80; }
+    .error { border-left-color: #ef4444; }
+    button {
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #ff8555;
+    }
+    pre {
+      overflow-x: auto;
+      background: #111;
+      padding: 10px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Auth & Admin Status Test</h1>
+  <div id="output"></div>
+  <button onclick="runTests()">Run Tests</button>
+  <button onclick="testCreateUser()">Test Create User</button>
+
+  <script>
+    const SUPABASE_URL = 'https://bkbcqocpjahewqjmlgvf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYmNxb2NwamFoZXdxam1sZ3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MDcwOTgsImV4cCI6MjA2MjM4MzA5OH0.K00WoAEZNf93P-6r3dCwOZaYah51bYuBPwHtDdW82Ek';
+
+    const { createClient } = supabase;
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function log(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `result ${type}`;
+      div.innerHTML = message;
+      document.getElementById('output').appendChild(div);
+    }
+
+    async function runTests() {
+      document.getElementById('output').innerHTML = '';
+
+      log('<h2>1️⃣ Session Check</h2>');
+      const { data: { session }, error: sessionError } = await client.auth.getSession();
+
+      if (sessionError) {
+        log(`❌ Session error: ${sessionError.message}`, 'error');
+        return;
+      }
+
+      if (!session) {
+        log('❌ No active session. Please login first.', 'error');
+        return;
+      }
+
+      log(`✅ Logged in as: <strong>${session.user.email}</strong>`, 'success');
+      log(`User ID: ${session.user.id}`);
+      log(`Token (first 30 chars): ${session.access_token.slice(0, 30)}...`);
+
+      // Check super admin status
+      log('<h2>2️⃣ Super Admin Check</h2>');
+      const { data: isSuperAdmin, error: adminError } = await client.rpc('is_super_admin');
+
+      if (adminError) {
+        log(`❌ Error checking super admin: ${adminError.message}`, 'error');
+      } else if (isSuperAdmin) {
+        log('✅ <strong>You ARE a Super Admin!</strong>', 'success');
+      } else {
+        log('⚠️ You are NOT a Super Admin', 'error');
+      }
+
+      // Check user roles
+      log('<h2>3️⃣ User Roles & Organizations</h2>');
+      const { data: roles, error: rolesError } = await client
+        .from('user_roles')
+        .select(`
+          role,
+          organization_id,
+          organizations:organization_id(id, name, slug)
+        `)
+        .eq('user_id', session.user.id);
+
+      if (rolesError) {
+        log(`❌ Error fetching roles: ${rolesError.message}`, 'error');
+      } else {
+        log(`Found ${roles?.length || 0} role(s):`);
+        roles?.forEach(r => {
+          log(`  • <strong>${r.role}</strong> in org: ${r.organizations?.name || r.organization_id}`);
+        });
+      }
+
+      // List organizations
+      log('<h2>4️⃣ Organizations</h2>');
+      const { data: orgs, error: orgsError } = await client
+        .from('organizations')
+        .select('id, name, slug')
+        .limit(10);
+
+      if (orgsError) {
+        log(`❌ Error fetching orgs: ${orgsError.message}`, 'error');
+      } else {
+        log(`Found ${orgs?.length || 0} organization(s):`);
+        orgs?.forEach(org => {
+          log(`  • ${org.name} (${org.slug}) - ID: ${org.id}`);
+        });
+      }
+
+      // Test admin-users function - LIST
+      log('<h2>5️⃣ Test admin-users Function (LIST)</h2>');
+      try {
+        const { data, error } = await client.functions.invoke('admin-users', {
+          body: { action: 'list' }
+        });
+
+        if (error) {
+          log(`❌ Function error: ${error.message}`, 'error');
+
+          if (error.context) {
+            try {
+              const text = await error.context.text();
+              log(`Response: <pre>${text}</pre>`, 'error');
+            } catch (e) {}
+          }
+        } else {
+          log(`✅ Function succeeded!`, 'success');
+          log(`Users found: ${data?.data?.length || 0}`);
+          if (data?.data?.length > 0) {
+            log(`<pre>${JSON.stringify(data.data[0], null, 2)}</pre>`);
+          }
+        }
+      } catch (err) {
+        log(`❌ Unexpected error: ${err.message}`, 'error');
+      }
+    }
+
+    async function testCreateUser() {
+      log('<h2>🧪 Test User Creation</h2>');
+
+      // Get Yodel Mobile org
+      const { data: org, error: orgError } = await client
+        .from('organizations')
+        .select('id, name')
+        .eq('slug', 'yodel-mobile')
+        .maybeSingle();
+
+      if (orgError || !org) {
+        log('❌ Could not find Yodel Mobile organization', 'error');
+        return;
+      }
+
+      log(`Using organization: ${org.name} (${org.id})`);
+
+      const testEmail = `test.${Date.now()}@example.com`;
+      const payload = {
+        action: 'create',
+        email: testEmail,
+        first_name: 'Test',
+        last_name: 'User',
+        organization_id: org.id,
+        roles: ['VIEWER'],
+        password: 'TestPassword123!'
+      };
+
+      log(`Creating user: ${testEmail}`);
+      log(`<pre>${JSON.stringify(payload, null, 2)}</pre>`);
+
+      try {
+        const { data, error } = await client.functions.invoke('admin-users', {
+          body: payload
+        });
+
+        if (error) {
+          log(`❌ Create failed: ${error.message}`, 'error');
+
+          if (error.context) {
+            log(`Status: ${error.context.status}`);
+            try {
+              const text = await error.context.text();
+              log(`<pre>${text}</pre>`, 'error');
+            } catch (e) {}
+          }
+        } else {
+          log(`✅ User created successfully!`, 'success');
+          log(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+        }
+      } catch (err) {
+        log(`❌ Unexpected error: ${err.message}`, 'error');
+      }
+    }
+
+    // Auto-run on load
+    window.onload = runTests;
+  </script>
+</body>
+</html>

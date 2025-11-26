@@ -44,6 +44,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSuperAdmin } from '@/context/SuperAdminContext';
+import { SuperAdminOrganizationSelector } from '@/components/SuperAdminOrganizationSelector';
 import { CountryPicker } from '@/components/CountryPicker';
 import { MarketProvider, useMarketData } from '@/contexts/MarketContext';
 import { PlaceholderDataIndicator } from '@/components/PlaceholderDataIndicator';
@@ -389,6 +390,15 @@ const OverviewContent: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Super Admin Organization Selector */}
+              {isSuperAdmin && (
+                <SuperAdminOrganizationSelector
+                  selectedOrg={superAdminSelectedOrg}
+                  onOrgChange={setSuperAdminOrg}
+                  className="mb-6"
+                />
+              )}
 
               {/* Placeholder Data Indicator */}
               <PlaceholderDataIndicator />

@@ -82,7 +82,7 @@ export interface AsoBibleRuleSet {
 
   // Metadata
   version?: string;
-  source?: 'base' | 'vertical' | 'market' | 'client';
+  source?: 'base' | 'category' | 'vertical' | 'market' | 'client';
   createdAt?: string;
   updatedAt?: string;
 
@@ -90,6 +90,9 @@ export interface AsoBibleRuleSet {
   verticalTemplateMeta?: Record<string, any>;
   marketTemplateMeta?: Record<string, any>;
   clientTemplateMeta?: Record<string, any>;
+
+  // Category Intelligence Layer (Phase 2A)
+  categoryTemplateMeta?: Record<string, any>;
 }
 
 // ============================================================================
@@ -154,9 +157,10 @@ export interface MarketDetectionResult {
 // ============================================================================
 
 export interface MergedRuleSet extends AsoBibleRuleSet {
-  // Track inheritance chain
+  // Track inheritance chain (Phase 2A: added category layer)
   inheritanceChain: {
     base?: AsoBibleRuleSet;
+    category?: AsoBibleRuleSet;
     vertical?: AsoBibleRuleSet;
     market?: AsoBibleRuleSet;
     client?: AsoBibleRuleSet;
@@ -165,7 +169,11 @@ export interface MergedRuleSet extends AsoBibleRuleSet {
   // Leak detection warnings
   leakWarnings?: LeakWarning[];
 
-  // Metadata
+  // Metadata (Phase 2A: added category fields)
+  categoryId?: string;
+  categoryName?: string;
+  categoryConfidence?: 'high' | 'medium' | 'low';
+  categorySource?: 'genre_id' | 'genre_name' | 'fallback';
   verticalId?: string;
   verticalName?: string;
   marketId?: string;

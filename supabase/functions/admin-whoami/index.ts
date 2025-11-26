@@ -100,7 +100,6 @@ serve(async (req) => {
     // Resolve active organization as first available (or null)
     const activeOrg = organizations.length > 0 ? organizations[0] : null;
     let features: string[] = [];
-    let is_demo = false;
     if (activeOrg?.id) {
       // features from organization_features table
       const { data: featRows } = await supabase
@@ -108,8 +107,6 @@ serve(async (req) => {
         .select('feature_key, is_enabled')
         .eq('organization_id', activeOrg.id);
       features = (featRows || []).filter(r => r.is_enabled).map(r => r.feature_key);
-      // demo-mode from org.settings or slug
-      is_demo = Boolean(activeOrg.settings?.demo_mode) || (activeOrg.slug || '').toLowerCase() === 'next';
     }
 
     const whoamiData = {
@@ -120,7 +117,6 @@ serve(async (req) => {
       organization_access: isSuperAdmin ? 'all' : 'limited',
       organization: activeOrg,
       org_id: activeOrg?.id || null,
-      is_demo,
       features,
       
       // All organizations for super admin or multi-org users

@@ -72,16 +72,22 @@ export interface ElementScoringResult {
 }
 
 /**
- * Vertical Context - Vertical Intelligence Layer (Phase 21)
+ * Vertical Context - Vertical Intelligence Layer (Phase 21 + Phase 2A)
  *
  * Provides vertical-specific intelligence for metadata optimization
  */
 export interface VerticalContext {
+  // Phase 2A: Category fields
+  categoryId?: string;
+  categoryName?: string;
+  categoryConfidence?: 'high' | 'medium' | 'low';
+  categorySource?: 'genre_id' | 'genre_name' | 'fallback';
+
   verticalId: string;
   verticalName: string;
   marketId?: string;
   marketName?: string;
-  ruleSetSource: 'base' | 'vertical' | 'market' | 'client';
+  ruleSetSource: 'base' | 'category' | 'vertical' | 'market' | 'client';
 
   // Template metadata
   overview?: {
@@ -122,9 +128,10 @@ export interface VerticalContext {
     }
   >;
 
-  // Inheritance info
+  // Inheritance info (Phase 2A: added category layer)
   inheritanceChain?: {
     base?: { id: string; name: string };
+    category?: { id: string; name: string; confidence?: 'high' | 'medium' | 'low' };
     vertical?: { id: string; name: string };
     market?: { id: string; name: string };
     client?: { id: string; name: string };

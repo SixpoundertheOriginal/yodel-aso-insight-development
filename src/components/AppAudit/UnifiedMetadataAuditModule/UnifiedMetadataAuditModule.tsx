@@ -24,6 +24,7 @@ import { VerticalOverviewPanel } from './VerticalOverviewPanel';
 import { VerticalBenchmarksPanel } from './VerticalBenchmarksPanel';
 import { VerticalConversionDriversPanel } from './VerticalConversionDriversPanel';
 import { useIntentIntelligence } from '@/hooks/useIntentIntelligence';
+import { useCachedRuleSet } from '@/hooks/useCachedRuleSet';
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 import { MOCK_PIMSLEUR_AUDIT } from './mockAuditResult';
 import {
@@ -38,7 +39,6 @@ import {
   HookDiversityWheel,
 } from './charts';
 import { IntentEngineDiagnosticsPanel } from './IntentEngineDiagnosticsPanel';
-import { getActiveRuleSet } from '@/engine/asoBible/rulesetLoader';
 import type { MergedRuleSet } from '@/engine/asoBible/ruleset.types';
 import {
   CompetitorManagementPanel,
@@ -108,20 +108,17 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     },
   });
 
-  // Phase 20: Load active rule set for Bible-powered hook classification
-  const activeRuleSet: MergedRuleSet | null = useMemo(() => {
-    if (!metadata) return null;
-    return getActiveRuleSet(
-      {
-        appId: metadata.appId,
-        category: metadata.applicationCategory,
-        title: metadata.title,
-        subtitle: metadata.subtitle,
-        description: metadata.description,
-      },
-      metadata.locale || 'en-US'
-    );
-  }, [metadata]);
+  // Phase 20 + Phase 2A + Phase 1.2: Load active rule set with React Query caching
+  // Performance Optimization: Prevents database hit on every audit evaluation
+  const { data: activeRuleSet, isLoading: isRuleSetLoading } = useCachedRuleSet({
+    appId: metadata?.appId,
+    category: metadata?.applicationCategory,
+    title: metadata?.title,
+    subtitle: metadata?.subtitle,
+    description: metadata?.description,
+    locale: metadata?.locale || 'en-US',
+    enabled: !!metadata,
+  });
 
   useEffect(() => {
     // Use mock data if specified
@@ -138,12 +135,22 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       return;
     }
 
+    // Wait for ruleset to load (Performance Phase 1.2)
+    if (isRuleSetLoading) {
+      setIsLoading(true);
+      return;
+    }
+
     // Phase 15.7: Now async to support Bible config loading
+    // Phase 1.2: Pass cached ruleset to avoid database hit
     const runAudit = async () => {
       setIsLoading(true);
       try {
         // Run client-side scoring engine (now async for Bible integration)
-        const result = await MetadataAuditEngine.evaluate(metadata);
+        // Performance: Pass cached ruleset to skip database query
+        const result = await MetadataAuditEngine.evaluate(metadata, {
+          cachedRuleSet: activeRuleSet || undefined,
+        });
         setAuditResult(result);
         setError(null);
       } catch (err) {
@@ -156,7 +163,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     };
 
     runAudit();
-  }, [metadata, useMockData]);
+  }, [metadata, useMockData, activeRuleSet, isRuleSetLoading]);
 
   // Intent Intelligence Integration (MUST be called on every render - React Hooks Rule)
   // Extract keywords safely, defaulting to empty arrays when auditResult is null

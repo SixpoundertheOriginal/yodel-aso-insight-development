@@ -122,11 +122,45 @@ export interface CombinedSearchIntentCoverage {
 // Pattern Matching (Token-Level)
 // ============================================================================
 
+// Performance Optimization Phase 2.4: Regex Pattern Cache
+// Cache compiled regex patterns to avoid recompiling on each token classification
+const regexPatternCache = new Map<string, RegExp>();
+
+/**
+ * Get or create a compiled regex pattern
+ * Performance Optimization Phase 2.4: Caches compiled patterns to improve performance
+ *
+ * @param pattern - Regex pattern string
+ * @param caseSensitive - Whether pattern is case-sensitive
+ * @returns Compiled RegExp or null if invalid
+ */
+function getCompiledRegex(pattern: string, caseSensitive: boolean): RegExp | null {
+  // Create cache key including case sensitivity flag
+  const cacheKey = `${pattern}::${caseSensitive ? 'cs' : 'ci'}`;
+
+  // Check cache first
+  if (regexPatternCache.has(cacheKey)) {
+    return regexPatternCache.get(cacheKey)!;
+  }
+
+  // Compile and cache
+  try {
+    const flags = caseSensitive ? '' : 'i';
+    const regex = new RegExp(pattern, flags);
+    regexPatternCache.set(cacheKey, regex);
+    return regex;
+  } catch (error) {
+    console.error(`[SearchIntentCoverage] Invalid regex pattern "${pattern}":`, error);
+    return null;
+  }
+}
+
 /**
  * Match a single token against intent patterns
  *
  * Simpler than combo matching - just checks if pattern matches the token
  * Uses same pattern configuration as Intent Engine
+ * Performance Optimization Phase 2.4: Uses cached regex patterns
  *
  * @param token - Token to classify
  * @param patterns - Intent patterns from Intent Engine
@@ -150,14 +184,12 @@ function classifyToken(
 
     // Handle regex vs literal matching
     if (pattern.isRegex) {
-      try {
-        const flags = pattern.caseSensitive ? '' : 'i';
-        const regex = new RegExp(normalizedPattern, flags);
-        matches = regex.test(tokenLower);
-      } catch (error) {
-        console.error(`[SearchIntentCoverage] Invalid regex pattern "${pattern.pattern}":`, error);
-        continue;
+      // Phase 2.4: Use cached regex pattern
+      const regex = getCompiledRegex(normalizedPattern, pattern.caseSensitive || false);
+      if (!regex) {
+        continue; // Invalid pattern, skip
       }
+      matches = regex.test(tokenLower);
     } else {
       // Literal string matching with optional word boundary
       if (pattern.wordBoundary) {

@@ -74,7 +74,7 @@ const PreviewPage: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-300">
         <div className="text-center">
           <p className="text-sm">Preview is disabled.</p>
-          <a href="/dashboard" className="text-teal-400 underline">Go to dashboard</a>
+          <a href="/dashboard-v2" className="text-teal-400 underline">Go to dashboard</a>
         </div>
       </div>
     );

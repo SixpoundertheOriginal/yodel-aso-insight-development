@@ -1,41 +1,45 @@
-/**
- * Check RLS Policies on Organizations Table
- */
+#!/usr/bin/env node
 
 import { createClient } from '@supabase/supabase-js';
-import { existsSync, readdirSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://bkbcqocpjahewqjmlgvf.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = 'https://bkbcqocpjahewqjmlgvf.supabase.co';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found');
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
 });
 
-console.log('🔍 Checking RLS on Organizations Table\n');
+console.log('\n=== Checking RLS Policies ===\n');
 
-// Check migrations
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const migrationsDir = join(__dirname, 'supabase', 'migrations');
+// Query pg_policies for org_feature_entitlements
+const { data, error } = await supabase.rpc('exec_sql', {
+  query: `
+    SELECT 
+      schemaname, 
+      tablename, 
+      policyname, 
+      permissive,
+      roles,
+      cmd,
+      qual,
+      with_check
+    FROM pg_policies 
+    WHERE tablename = 'org_feature_entitlements'
+    ORDER BY policyname;
+  `
+});
 
-if (existsSync(migrationsDir)) {
-  const migrations = readdirSync(migrationsDir)
-    .filter(f => f.includes('20251109000000'))
-    .sort();
-
-  if (migrations.length > 0) {
-    console.log('✅ RLS organizations migration exists:', migrations[0]);
-  } else {
-    console.log('❌ RLS organizations migration NOT found');
-  }
+if (error) {
+  console.error('Error:', error);
+  
+  // Try alternative approach - query directly
+  const { data: policies, error: err2 } = await supabase
+    .from('pg_policies')
+    .select('*')
+    .eq('tablename', 'org_feature_entitlements');
+  
+  console.log('Policies (alternative):', JSON.stringify(policies, null, 2));
+  console.log('Error:', err2);
+} else {
+  console.log('Policies:', JSON.stringify(data, null, 2));
 }
-
-console.log('✅ Check complete');

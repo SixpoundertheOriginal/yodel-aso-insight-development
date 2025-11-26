@@ -354,6 +354,74 @@ export class DbRulesetService {
   }
 
   /**
+   * Load category template metadata from aso_ruleset_category
+   *
+   * Phase 2A: Category-Based RuleSet Assignment
+   *
+   * @param categoryId - Category ID (e.g., 'category_entertainment')
+   * @returns Category template metadata or null
+   */
+  static async loadCategoryTemplateMeta(categoryId: string): Promise<Record<string, any> | null> {
+    if (!categoryId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('aso_ruleset_category')
+      .select('vertical_template_meta')
+      .eq('category_id', categoryId)
+      .single();
+
+    if (error) {
+      console.error('[DB Ruleset Service] Error loading category template meta:', error);
+      return null;
+    }
+
+    return data?.vertical_template_meta || null;
+  }
+
+  /**
+   * Get category by iOS genre ID
+   *
+   * Phase 2A: Category-Based RuleSet Assignment
+   *
+   * @param genreId - iOS App Store genre ID
+   * @returns Category info or null
+   */
+  static async getCategoryByGenreId(genreId: number): Promise<{
+    categoryId: string;
+    categoryName: string;
+    genreId: number;
+    verticalTemplateMeta: Record<string, any> | null;
+  } | null> {
+    if (!genreId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('aso_ruleset_category')
+      .select('category_id, category_name, genre_id, vertical_template_meta')
+      .eq('genre_id', genreId)
+      .single();
+
+    if (error) {
+      console.error('[DB Ruleset Service] Error fetching category by genre ID:', error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      categoryId: data.category_id,
+      categoryName: data.category_name,
+      genreId: data.genre_id,
+      verticalTemplateMeta: data.vertical_template_meta || null,
+    };
+  }
+
+  /**
    * Load vertical template metadata from aso_ruleset_vertical
    *
    * Phase 21: Vertical Intelligence Layer

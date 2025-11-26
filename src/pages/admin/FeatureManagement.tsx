@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { FeatureManagementPanel } from '@/components/admin/features/FeatureManagementPanel';
+import { RolePermissionsPanel } from '@/components/admin/features/RolePermissionsPanel';
 import { UserFeatureOverrideManager } from '@/components/admin/features/UserFeatureOverrideManager';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Settings, Shield, Users, BarChart3 } from 'lucide-react';
+import { Settings, Shield, Users, BarChart3, Key } from 'lucide-react';
 
 export default function FeatureManagement() {
   const { isSuperAdmin } = usePermissions();
@@ -44,10 +45,14 @@ export default function FeatureManagement() {
       </div>
 
       <Tabs defaultValue="organizations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="organizations" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Organizations
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Role Permissions
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -61,6 +66,10 @@ export default function FeatureManagement() {
 
         <TabsContent value="organizations" className="space-y-6">
           <FeatureManagementPanel />
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6">
+          <RolePermissionsPanel />
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">

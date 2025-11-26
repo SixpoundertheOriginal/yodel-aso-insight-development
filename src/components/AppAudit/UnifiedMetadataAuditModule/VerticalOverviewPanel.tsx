@@ -22,11 +22,28 @@ interface VerticalOverviewPanelProps {
 export const VerticalOverviewPanel: React.FC<VerticalOverviewPanelProps> = ({
   verticalContext,
 }) => {
-  const { verticalName, marketName, overview } = verticalContext;
+  const { categoryName, categoryConfidence, verticalName, marketName, overview } = verticalContext;
 
   if (!overview) {
     return null;
   }
+
+  // Phase 2A: Determine confidence badge color
+  const getConfidenceBadge = (confidence?: 'high' | 'medium' | 'low') => {
+    if (!confidence) return null;
+
+    const colors = {
+      high: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50',
+      medium: 'bg-amber-900/40 text-amber-300 border-amber-700/50',
+      low: 'bg-zinc-900/40 text-zinc-400 border-zinc-700/50',
+    };
+
+    return (
+      <span className={`px-1.5 py-0.5 text-[10px] font-mono uppercase border rounded ${colors[confidence]}`}>
+        {confidence}
+      </span>
+    );
+  };
 
   return (
     <Card className="relative bg-black/40 border border-zinc-800/50 rounded-xl shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
@@ -41,7 +58,16 @@ export const VerticalOverviewPanel: React.FC<VerticalOverviewPanelProps> = ({
           <Layers className="h-4 w-4 text-violet-400" />
           VERTICAL OVERVIEW
         </CardTitle>
-        <div className="flex items-center gap-2 mt-2 text-sm">
+        <div className="flex items-center gap-2 mt-2 text-sm flex-wrap">
+          {/* Phase 2A: Category Badge */}
+          {categoryName && (
+            <>
+              <span className="text-zinc-400">Category:</span>
+              <span className="font-semibold text-indigo-400">{categoryName}</span>
+              {getConfidenceBadge(categoryConfidence)}
+              <span className="text-zinc-600">•</span>
+            </>
+          )}
           <span className="text-zinc-400">Vertical:</span>
           <span className="font-semibold text-violet-400">{verticalName}</span>
           {marketName && (

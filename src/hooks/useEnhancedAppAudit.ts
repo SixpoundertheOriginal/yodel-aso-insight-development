@@ -185,17 +185,21 @@ export const useEnhancedAppAudit = ({
       console.log('🔍 [ENHANCED-AUDIT] Starting audit for', metadata?.name,
         AUDIT_KEYWORDS_ENABLED ? '(full mode)' : '(metadata-only mode)');
 
-      // Generate semantic clusters from real keyword data (SKIP if keywords disabled)
-      const clusteringResult = AUDIT_KEYWORDS_ENABLED
-        ? await semanticClusteringService.generateClusters(advancedKI.keywordData, organizationId)
-        : { clusters: [], totalKeywords: 0 };
+      // Performance Optimization Phase 2.1: Parallelize clustering and metadata analysis
+      // These operations are independent and can run concurrently
+      const [clusteringResult, metadataAnalysis] = await Promise.all([
+        // Generate semantic clusters from real keyword data (SKIP if keywords disabled)
+        AUDIT_KEYWORDS_ENABLED
+          ? semanticClusteringService.generateClusters(advancedKI.keywordData, organizationId)
+          : Promise.resolve({ clusters: [], totalKeywords: 0 }),
 
-      // Analyze metadata quality (use empty keyword list if keywords disabled)
-      const metadataAnalysis = await metadataScoringService.analyzeMetadata(
-        metadata!,
-        metadata?.competitorData || [],
-        AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData.map(k => k.keyword) : []
-      );
+        // Analyze metadata quality (use empty keyword list if keywords disabled)
+        metadataScoringService.analyzeMetadata(
+          metadata!,
+          metadata?.competitorData || [],
+          AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData.map(k => k.keyword) : []
+        )
+      ]);
 
       // Calculate enhanced scores using centralized scoring engine
       const metadataScore = metadataAnalysis.scores.overall;
@@ -318,20 +322,8 @@ export const useEnhancedAppAudit = ({
           : Promise.resolve(null)
       };
 
-      const narratives = {
-        executiveSummary: await narrativePromises.executiveSummary,
-        keywordStrategy: await narrativePromises.keywordStrategy,
-        riskAssessment: await narrativePromises.riskAssessment,
-        competitorStory: await narrativePromises.competitorStory
-      };
-
-      console.log('✅ [ENHANCED-AUDIT] Narratives generated:', {
-        executiveSummary: !!narratives.executiveSummary,
-        keywordStrategy: !!narratives.keywordStrategy,
-        riskAssessment: !!narratives.riskAssessment,
-        competitorStory: !!narratives.competitorStory
-      });
-
+      // Performance Optimization Phase 2.3: Non-blocking narrative generation
+      // Show audit results immediately, generate narratives in background
       const enhancedAuditData: EnhancedAuditData = {
         overallScore,
         metadataScore,
@@ -347,13 +339,47 @@ export const useEnhancedAppAudit = ({
         currentKeywords: AUDIT_KEYWORDS_ENABLED ? advancedKI.keywordData.map(k => k.keyword) : [],
         metadataAnalysis,
         recommendations,
-        // NEW: Add narratives and brand risk
-        narratives,
+        // Phase 2.3: Start with null narratives, update when ready
+        narratives: {
+          executiveSummary: null,
+          keywordStrategy: null,
+          riskAssessment: null,
+          competitorStory: null
+        },
         brandRisk
       };
 
+      // Set audit data immediately (non-blocking)
       setAuditData(enhancedAuditData);
       setLastUpdated(new Date());
+
+      console.log('✅ [ENHANCED-AUDIT] Audit completed (scores ready, narratives generating...)');
+
+      // Phase 2.3: Generate narratives in background and update when ready
+      Promise.all([
+        narrativePromises.executiveSummary,
+        narrativePromises.keywordStrategy,
+        narrativePromises.riskAssessment,
+        narrativePromises.competitorStory
+      ]).then(([executiveSummary, keywordStrategy, riskAssessment, competitorStory]) => {
+        console.log('✅ [ENHANCED-AUDIT] Narratives generated:', {
+          executiveSummary: !!executiveSummary,
+          keywordStrategy: !!keywordStrategy,
+          riskAssessment: !!riskAssessment,
+          competitorStory: !!competitorStory
+        });
+
+        // Update audit data with narratives
+        setAuditData(prev => prev ? {
+          ...prev,
+          narratives: {
+            executiveSummary,
+            keywordStrategy,
+            riskAssessment,
+            competitorStory
+          }
+        } : null);
+      });
 
       console.log('✅ [ENHANCED-AUDIT] Audit completed:', {
         overallScore,

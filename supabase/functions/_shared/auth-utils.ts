@@ -28,7 +28,6 @@ export interface AuthContext {
   requestedOrgId?: string;
   hasOrgAccess: boolean;
   features: Record<string, boolean>;
-  isDemo: boolean;
 }
 
 /**
@@ -110,40 +109,38 @@ export async function getOrganizationFeatures(
   supabase: SupabaseClient,
   org_id: string
 ): Promise<Record<string, boolean>> {
+  console.log(`[AUTH-UTILS] getOrganizationFeatures called for org_id: ${org_id}`);
+
+  // Use org_feature_entitlements (new standard table)
   const { data: features, error } = await supabase
-    .from('organization_features')
+    .from('org_feature_entitlements')
     .select('feature_key, is_enabled')
     .eq('organization_id', org_id);
-  
+
   if (error) {
     console.error('[AUTH-UTILS] Failed to get org features:', error);
+    console.error('[AUTH-UTILS] Error details:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    });
     return {};
   }
-  
+
+  console.log(`[AUTH-UTILS] Retrieved ${features?.length || 0} features from org_feature_entitlements`);
+  const enabledCount = features?.filter(f => f.is_enabled).length || 0;
+  console.log(`[AUTH-UTILS] ${enabledCount} features are enabled`);
+
   const featureMap: Record<string, boolean> = {};
   (features || []).forEach(f => featureMap[f.feature_key] = f.is_enabled);
+
+  // Log app_core_access specifically
+  console.log(`[AUTH-UTILS] app_core_access in features: ${featureMap['app_core_access'] === true ? 'YES (enabled)' : featureMap['app_core_access'] === false ? 'NO (disabled)' : 'NOT FOUND'}`);
+
   return featureMap;
 }
 
-/**
- * Check if organization is in demo mode
- */
-export async function isDemoOrganization(
-  supabase: SupabaseClient,
-  org_id: string
-): Promise<boolean> {
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('slug, settings')
-    .eq('id', org_id)
-    .single();
-  
-  if (!org) return false;
-  
-  // Demo mode via settings or slug
-  return Boolean(org.settings?.demo_mode) || 
-         (org.slug || '').toLowerCase() === 'next';
-}
 
 /**
  * Expand organization access via agency relationships
@@ -202,13 +199,11 @@ export async function resolveAuthContext(
     (permissions.org_id === requested_org_id || permissions.is_super_admin) : 
     true;
 
-  // Get organization features and demo status
+  // Get organization features
   let features: Record<string, boolean> = {};
-  let isDemo = false;
-  
+
   if (permissions.org_id) {
     features = await getOrganizationFeatures(supabase, permissions.org_id);
-    isDemo = await isDemoOrganization(supabase, permissions.org_id);
   }
 
   return {
@@ -216,8 +211,7 @@ export async function resolveAuthContext(
     permissions,
     requestedOrgId: requested_org_id,
     hasOrgAccess,
-    features,
-    isDemo
+    features
   };
 }
 
@@ -249,16 +243,61 @@ export function requireOrgAccess(
 
 /**
  * Check if user has access to a specific feature
+ * Implements three-layer access control:
+ * 1. Organization must have the feature enabled
+ * 2. User's role must have permission for the feature
+ * 3. Final access = org AND role (intersection)
  */
-export function hasFeatureAccess(
+export async function hasFeatureAccess(
   authContext: AuthContext,
-  feature_key: string
-): boolean {
+  feature_key: string,
+  supabase: SupabaseClient
+): Promise<boolean> {
+  console.log(`[hasFeatureAccess] Checking feature: ${feature_key} for user: ${authContext.user.id}`);
+
   // Super admin has access to all features
-  if (authContext.permissions.is_super_admin) return true;
-  
-  // Check organization feature flags
-  return authContext.features[feature_key] === true;
+  if (authContext.permissions.is_super_admin) {
+    console.log('[hasFeatureAccess] Super admin - ALLOWED');
+    return true;
+  }
+
+  // Layer 1: Check organization feature entitlements
+  const hasOrgFeature = authContext.features[feature_key] === true;
+  console.log(`[hasFeatureAccess] Layer 1 (Org): ${hasOrgFeature ? 'PASS' : 'FAIL'}`);
+  if (!hasOrgFeature) {
+    console.log(`[hasFeatureAccess] Org does not have feature: ${feature_key} - DENIED`);
+    return false;
+  }
+
+  // Layer 2: Check role-based permissions
+  console.log(`[hasFeatureAccess] Layer 2 (Role): Querying user_role_permissions view...`);
+  const { data: rolePermission, error } = await supabase
+    .from('user_role_permissions')
+    .select('feature_key')
+    .eq('user_id', authContext.user.id)
+    .eq('feature_key', feature_key)
+    .single();
+
+  if (error) {
+    console.error(`[hasFeatureAccess] View query error - code: ${error.code}, message: ${error.message}`);
+    if (error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('[hasFeatureAccess] Unexpected error - DENIED');
+      return false;
+    }
+    console.log('[hasFeatureAccess] No rows returned (PGRST116) - role does not have permission');
+  }
+
+  const hasRolePermission = !!rolePermission;
+  console.log(`[hasFeatureAccess] Layer 2 (Role): ${hasRolePermission ? 'PASS' : 'FAIL'}`);
+
+  if (!hasRolePermission) {
+    console.log(`[hasFeatureAccess] Role ${authContext.permissions.effective_role} does not have permission for: ${feature_key} - DENIED`);
+  } else {
+    console.log(`[hasFeatureAccess] Both layers passed - ALLOWED`);
+  }
+
+  // Return true only if BOTH org has feature AND role has permission
+  return hasRolePermission;
 }
 
 /**

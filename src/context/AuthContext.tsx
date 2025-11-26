@@ -126,6 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      // Clear auth caches before signing out (Performance Optimization Phase 1.1)
+      const { clearAuthCache } = await import('@/services/authz');
+      await clearAuthCache();
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;

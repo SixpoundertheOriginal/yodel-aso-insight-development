@@ -10,7 +10,6 @@ import { useBigQueryAppSelection } from "@/context/BigQueryAppContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
-import GlobalDemoIndicator from "./GlobalDemoIndicator";
 
 const TopBar: React.FC = React.memo(() => {
   const location = useLocation();
@@ -77,7 +76,6 @@ const TopBar: React.FC = React.memo(() => {
             <Heading3 className="text-lg font-semibold text-foreground sm:text-2xl">
               {getPageTitle()}
             </Heading3>
-            <GlobalDemoIndicator />
           </div>
         </div>
 

@@ -5,8 +5,6 @@ import { AsoAiHubProvider } from '@/context/AsoAiHubContext';
 import { WorkflowProvider } from '@/context/WorkflowContext';
 import { AppAuditHub } from '@/components/AppAudit/AppAuditHub';
 import { MonitoredAppsDropdown } from '@/components/AppAudit/MonitoredAppsDropdown';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { useDataAccess } from '@/hooks/useDataAccess';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -51,24 +49,8 @@ const AsoAiHubPage: React.FC<AsoAiHubPageProps> = ({ mode = 'live' }) => {
     setSelectedOrgId(orgId);
   };
 
-  // Get current user's organization
-  const { data: userContext } = useQuery({
-    queryKey: ['user-context'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      return {
-        organizationId: profile?.organization_id || null
-      };
-    },
-  });
+  // Performance Optimization Phase 1.4:
+  // Removed duplicate user context query - organizationId is already available via dataContext.organizationId
 
   return (
     <MainLayout>

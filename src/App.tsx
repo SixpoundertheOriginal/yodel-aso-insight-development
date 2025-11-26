@@ -23,7 +23,7 @@ import Index from "./pages/Index";
 
 // === STATIC IMPORTS (Critical Routes) ===
 // Core dashboard pages imported statically to avoid chunk load failures
-import Dashboard from "./pages/dashboard";
+// NOTE: Old Dashboard component deprecated in favor of ReportingDashboardV2
 import TrafficSources from "./pages/traffic-sources";
 import ConversionAnalysis from "./pages/conversion-analysis";
 import InsightsPage from "./pages/insights";
@@ -115,9 +115,10 @@ function App() {
                           <Route path="/auth/update-password" element={<UpdatePassword />} />
                           <Route path="/no-access" element={<NoAccess />} />
                           <Route path="/" element={<Index />} />
+                          {/* Legacy /dashboard route - redirects to new dashboard-v2 */}
                           <Route
                             path="/dashboard"
-                            element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+                            element={<Navigate to="/dashboard-v2" replace />}
                           />
                           <Route
                             path="/dashboard-v2"
@@ -127,9 +128,10 @@ function App() {
                             path="/dashboard/executive"
                             element={<ProtectedRoute><Overview /></ProtectedRoute>}
                           />
+                          {/* Legacy analytics route - redirects to new dashboard */}
                           <Route
                             path="/dashboard/analytics"
-                            element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+                            element={<Navigate to="/dashboard-v2" replace />}
                           />
                           <Route
                             path="/dashboard/conversion-rate"

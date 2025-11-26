@@ -19,7 +19,7 @@ const SignIn = () => {
 
   // If user is already authenticated, redirect to dashboard
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard-v2" replace />;
   }
 
   return (

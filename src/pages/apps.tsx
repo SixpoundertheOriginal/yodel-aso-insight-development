@@ -325,7 +325,7 @@ const AppsPage: React.FC = () => {
                           className="flex-1 border-zinc-700 hover:bg-zinc-800"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Link to="/dashboard">
+                          <Link to="/dashboard-v2">
                             <BarChart3 className="h-4 w-4 mr-1" />
                             Analytics
                           </Link>

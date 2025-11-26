@@ -629,7 +629,87 @@ serve(async (req) => {
     }
     
     if (action === 'delete') {
-      return json({ error: 'not_implemented', details: 'User deletion not yet implemented' }, 501);
+      console.log('[ADMIN-USERS] POST action=delete - Processing user deletion');
+
+      // Use canonical field extraction
+      const targetUserId = extractUserId(body);
+      if (!targetUserId) {
+        console.error('[ADMIN-USERS] POST action=delete - Validation failure: missing user_id', {
+          body: JSON.stringify(body)
+        });
+        return createErrorResponse('invalid_request', 'user_id is required', 'MISSING_USER_ID', 400, { field: 'user_id' });
+      }
+
+      console.log('[ADMIN-USERS] POST action=delete - Target user ID:', targetUserId);
+
+      // Get user details for authorization check
+      const { data: targetUser, error: userError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name, org_id')
+        .eq('id', targetUserId)
+        .maybeSingle();
+
+      if (userError || !targetUser) {
+        return createErrorResponse('not_found', 'User not found', 'USER_NOT_FOUND', 404, { user_id: targetUserId });
+      }
+
+      console.log('[ADMIN-USERS] POST action=delete - Found user:', targetUser.email);
+
+      // Authorization check - can only delete users in your orgs (or super admin)
+      let allowed = !!isSA;
+      if (!allowed && targetUser.org_id) {
+        const { data: rows } = await supabase.from('user_roles').select('role')
+          .eq('user_id', uid).eq('organization_id', targetUser.org_id);
+        allowed = (rows||[]).some((r:any)=>['ORG_ADMIN','SUPER_ADMIN'].includes(r.role));
+      }
+
+      if (!allowed) {
+        return createErrorResponse('forbidden', 'Insufficient permissions to delete user', 'INSUFFICIENT_PERMISSIONS', 403, { required_role: 'ORG_ADMIN' });
+      }
+
+      console.log('[ADMIN-USERS] POST action=delete - Authorization passed, deleting user...');
+
+      try {
+        // Delete from auth.users (cascade will handle profiles and user_roles)
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+
+        if (deleteError) {
+          console.error('[ADMIN-USERS] POST action=delete - Deletion failed:', deleteError.message);
+          return createErrorResponse('server_error', deleteError.message, 'DELETE_ERROR', 500);
+        }
+
+        // Audit log
+        await auditLog(supabase, {
+          actor_id: uid,
+          actor_role: actorRole,
+          organization_id: targetUser.org_id || undefined,
+          action: 'USER_DELETED',
+          resource_type: 'user',
+          resource_id: targetUserId,
+          old_values: {
+            email: targetUser.email,
+            first_name: targetUser.first_name,
+            last_name: targetUser.last_name,
+            org_id: targetUser.org_id
+          },
+          details: { deleted_by_admin: true }
+        });
+
+        console.log('[ADMIN-USERS] POST action=delete - User deleted successfully:', targetUser.email);
+
+        return json({
+          success: true,
+          data: {
+            deleted: true,
+            user_id: targetUserId,
+            email: targetUser.email
+          }
+        });
+
+      } catch (error) {
+        console.error('[ADMIN-USERS] POST action=delete - Unexpected error:', error);
+        return createErrorResponse('server_error', 'Failed to delete user', 'SERVER_ERROR', 500);
+      }
     }
     
     if (action === 'resetPassword') {

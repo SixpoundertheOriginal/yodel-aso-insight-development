@@ -76,14 +76,12 @@ serve(async (req) => {
 
     const orgId = authContext.permissions.org_id;
     const role = authContext.permissions.normalized_role;
-    const isDemo = authContext.isDemo;
     const features = authContext.features;
 
-    console.log("[AUTHORIZE] Organization context:", { 
-      orgId, 
-      role, 
-      isDemo, 
-      featureCount: Object.keys(features).length 
+    console.log("[AUTHORIZE] Organization context:", {
+      orgId,
+      role,
+      featureCount: Object.keys(features).length
     });
 
     // Step 1: Platform Admin Routes (reserved for super admin only)
@@ -103,12 +101,12 @@ serve(async (req) => {
 
     // Step 2: Base App Access Check (core application entry)
     const coreAppPolicies: Array<{ match: (p: string) => boolean; label: string }> = [
-      { match: (p) => ['/', '/dashboard', '/dashboard/'].some(x => p === x || p.startsWith(x)), label: 'Core App' },
+      { match: (p) => p === '/' || (p.startsWith('/dashboard') && !p.startsWith('/dashboard-v2')), label: 'Core App' },
     ];
-    
+
     for (const pol of coreAppPolicies) {
       if (pol.match(path)) {
-        const hasBaseAccess = hasFeatureAccess(authContext, 'app_core_access');
+        const hasBaseAccess = await hasFeatureAccess(authContext, 'app_core_access', supabase);
         console.log("[AUTHORIZE] CORE APP policy:", { path, hasBaseAccess, role });
         if (hasBaseAccess) {
           return createSuccessResponse({ allow: true, reason: 'core_app_access' });
@@ -122,35 +120,17 @@ serve(async (req) => {
       { match: (p) => ['/analytics', '/analytics/'].some(x => p.startsWith(x)), feature: 'analytics_access', label: 'Analytics' },
       { match: (p) => ['/conversion-analysis', '/conversion', '/cvr'].some(x => p.startsWith(x)), feature: 'analytics_access', label: 'Conversion Analysis' },
       { match: (p) => ['/admin', '/admin/'].some(x => p.startsWith(x) && !p.startsWith('/admin/platform') && !p.startsWith('/admin/organizations')), feature: 'org_admin_access', label: 'Organization Admin' },
+      { match: (p) => ['/aso-ai-hub', '/chatgpt-visibility-audit', '/aso-unified'].some(x => p.startsWith(x)), feature: 'aso_ai_hub', label: 'ASO AI Hub' },
     ];
-    
+
     for (const pol of featureSpecificPolicies) {
       if (pol.match(path)) {
-        const hasFeature = hasFeatureAccess(authContext, pol.feature);
+        const hasFeature = await hasFeatureAccess(authContext, pol.feature, supabase);
         console.log("[AUTHORIZE] FEATURE policy:", { path, feature: pol.feature, hasFeature, role });
         if (hasFeature) {
           return createSuccessResponse({ allow: true, reason: 'feature_enabled' });
         }
         return createErrorResponse('feature_disabled', 403);
-      }
-    }
-
-    // Central policy: Demo sections
-    const demoPolicies: Array<{ match: (p: string) => boolean; feature: string; label: string }> = [
-      { match: (p) => ['/aso-ai-hub', '/chatgpt-visibility-audit', '/aso-unified', '/demo/aso-ai-audit'].some(x => p.startsWith(x)), feature: 'aso_audit_demo', label: 'ASO Audit' },
-      { match: (p) => ['/demo/creative-review'].some(x => p.startsWith(x)), feature: 'creative_review_demo', label: 'Creative Review' },
-      { match: (p) => ['/demo/keyword-insights'].some(x => p.startsWith(x)), feature: 'keyword_insights_demo', label: 'Keyword Insights' },
-    ];
-    
-    for (const pol of demoPolicies) {
-      if (pol.match(path)) {
-        const hasDemoFeature = hasFeatureAccess(authContext, pol.feature);
-        const allow = isDemo && hasDemoFeature;
-        console.log("[AUTHORIZE] DEMO policy:", { path, feature: pol.feature, isDemo, hasDemoFeature, allow });
-        if (allow) {
-          return createSuccessResponse({ allow: true, reason: 'demo_feature_enabled' });
-        }
-        return createErrorResponse('feature_not_enabled_or_not_demo', 403);
       }
     }
 

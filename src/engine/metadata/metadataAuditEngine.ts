@@ -36,10 +36,15 @@ import { computeCombinedSearchIntentCoverage } from '@/engine/asoBible/searchInt
 import { generateAllPossibleCombos } from '@/engine/combos/comboGenerationEngine';
 import { KpiEngine } from './kpi/kpiEngine';
 
+// Performance Optimization Phase 1.3: Token Relevance Cache
+// Memoize token relevance calculations to avoid redundant regex matching
+const tokenRelevanceCache = new Map<string, 0 | 1 | 2 | 3>();
+
 /**
  * Lightweight semantic relevance scoring for tokens (exported for use in registry)
  *
  * Phase 10: Now accepts optional activeRuleSet to support vertical-specific token relevance overrides
+ * Performance Optimization Phase 1.3: Results are cached per token+vertical to avoid redundant regex computation.
  *
  * @param token - Token to evaluate
  * @param activeRuleSet - Optional merged rule set with vertical/market overrides
@@ -52,6 +57,12 @@ import { KpiEngine } from './kpi/kpiEngine';
 export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet): 0 | 1 | 2 | 3 {
   const tokenLower = token.toLowerCase();
 
+  // Phase 1.3: Check cache first to avoid regex computation
+  const cacheKey = `${tokenLower}-${activeRuleSet?.verticalId || 'base'}`;
+  if (tokenRelevanceCache.has(cacheKey)) {
+    return tokenRelevanceCache.get(cacheKey)!;
+  }
+
   // Phase 10: Check for vertical/market token relevance overrides
   if (activeRuleSet?.tokenRelevanceOverrides) {
     const override = activeRuleSet.tokenRelevanceOverrides[tokenLower];
@@ -60,6 +71,8 @@ export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet):
       if (process.env.NODE_ENV === 'development') {
         console.log(`[Token Relevance] Override applied for "${token}": ${override} (vertical: ${activeRuleSet.verticalId})`);
       }
+      // Cache override result
+      tokenRelevanceCache.set(cacheKey, override);
       return override;
     }
   }
@@ -69,6 +82,7 @@ export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet):
   // Level 0: Low-value tokens (numeric, time-bound, generic adjectives)
   const lowValuePatterns = /^(best|top|great|good|new|latest|free|premium|pro|plus|lite|\d+|one|two|three)$/i;
   if (lowValuePatterns.test(tokenLower)) {
+    tokenRelevanceCache.set(cacheKey, 0);
     return 0;
   }
 
@@ -76,16 +90,19 @@ export function getTokenRelevance(token: string, activeRuleSet?: MergedRuleSet):
   const languages = /^(english|spanish|french|german|italian|chinese|japanese|korean|portuguese|russian|arabic|hindi|mandarin)$/i;
   const coreIntentVerbs = /^(learn|speak|study|master|practice|improve|understand|read|write|listen|teach)$/i;
   if (languages.test(tokenLower) || coreIntentVerbs.test(tokenLower)) {
+    tokenRelevanceCache.set(cacheKey, 3);
     return 3;
   }
 
   // Level 2: Strong domain nouns
   const domainNouns = /^(lesson|lessons|course|courses|class|classes|grammar|vocabulary|pronunciation|conversation|fluency|language|languages|learning|app|application|tutorial|training|education|skill|skills|method|techniques|guide)$/i;
   if (domainNouns.test(tokenLower)) {
+    tokenRelevanceCache.set(cacheKey, 2);
     return 2;
   }
 
   // Level 1: Everything else (neutral but valid)
+  tokenRelevanceCache.set(cacheKey, 1);
   return 1;
 }
 
@@ -108,6 +125,7 @@ export class MetadataAuditEngine {
   /**
    * Evaluates all metadata elements and returns unified audit result
    * Phase 15.7: Now async to support Bible config loading
+   * Phase 1.2: Accepts optional pre-loaded ruleset for caching optimization
    *
    * @param metadata - Scraped app metadata from orchestrator
    * @param options - Optional evaluation options
@@ -118,10 +136,12 @@ export class MetadataAuditEngine {
     options?: {
       competitorData?: any[];
       locale?: string;
+      cachedRuleSet?: MergedRuleSet; // Performance Optimization Phase 1.2
     }
   ): Promise<UnifiedMetadataAuditResult> {
     // Phase 8: Load active rule set (Base → Vertical → Market → Client)
-    const activeRuleSet = await getActiveRuleSet(
+    // Phase 1.2: Use cached ruleset if provided to avoid database hit
+    const activeRuleSet = options?.cachedRuleSet || await getActiveRuleSet(
       {
         appId: metadata.appId,
         category: metadata.applicationCategory,
@@ -131,6 +151,11 @@ export class MetadataAuditEngine {
       },
       options?.locale || 'en-US'
     );
+
+    // Log cache usage (development only)
+    if (process.env.NODE_ENV === 'development' && options?.cachedRuleSet) {
+      console.log('[MetadataAuditEngine] Using cached ruleset (Performance Phase 1.2)');
+    }
 
     // Log active rule set (development only)
     if (process.env.NODE_ENV === 'development') {
@@ -302,8 +327,11 @@ export class MetadataAuditEngine {
     if (process.env.NODE_ENV === 'development') {
       console.log('[Vertical Intelligence] Vertical context built:', {
         hasVerticalContext: !!verticalContext,
+        categoryId: activeRuleSet.categoryId,
+        categoryName: activeRuleSet.categoryName,
         verticalId: activeRuleSet.verticalId,
         verticalName: activeRuleSet.verticalName,
+        hasCategoryTemplate: !!activeRuleSet.categoryTemplateMeta,
         hasVerticalTemplate: !!activeRuleSet.verticalTemplateMeta,
         hasMarketTemplate: !!activeRuleSet.marketTemplateMeta,
         hasClientTemplate: !!activeRuleSet.clientTemplateMeta,
@@ -371,8 +399,27 @@ export class MetadataAuditEngine {
     // Calculate weighted element score
     const score = ruleResults.reduce((total, result, index) => {
       const ruleWeight = config.rules[index].weight;
-      return total + (result.score * ruleWeight);
+      const contribution = result.score * ruleWeight;
+
+      // Debug NaN issues
+      if (isNaN(contribution)) {
+        console.error(`[MetadataAuditEngine] NaN detected in ${element} rule ${result.ruleId}:`, {
+          score: result.score,
+          weight: ruleWeight,
+          contribution
+        });
+      }
+
+      return total + contribution;
     }, 0);
+
+    // Final NaN check
+    if (isNaN(score)) {
+      console.error(`[MetadataAuditEngine] Final ${element} score is NaN:`, {
+        ruleResults: ruleResults.map(r => ({ id: r.ruleId, score: r.score })),
+        weights: config.rules.map((r, i) => ({ id: r.id, weight: r.weight }))
+      });
+    }
 
     // Extract recommendations from failed rules
     const recommendations = ruleResults
@@ -521,8 +568,9 @@ export class MetadataAuditEngine {
       return undefined;
     }
 
-    // If no template metadata exists at any level, return undefined
+    // Phase 2A: Include category template in check
     const hasTemplateData =
+      activeRuleSet.categoryTemplateMeta ||
       activeRuleSet.verticalTemplateMeta ||
       activeRuleSet.marketTemplateMeta ||
       activeRuleSet.clientTemplateMeta;
@@ -531,15 +579,19 @@ export class MetadataAuditEngine {
       return undefined;
     }
 
-    // Deep merge template metadata: vertical → market → client (last wins)
+    // Phase 2A: Deep merge template metadata: category → vertical → market → client (last wins)
     const mergedTemplate = {
+      ...(activeRuleSet.categoryTemplateMeta || {}),
       ...(activeRuleSet.verticalTemplateMeta || {}),
       ...(activeRuleSet.marketTemplateMeta || {}),
       ...(activeRuleSet.clientTemplateMeta || {}),
     };
 
-    // Build VerticalContext from merged template
+    // Build VerticalContext from merged template (Phase 2A: added category fields)
     const verticalContext: any = {
+      categoryId: activeRuleSet.categoryId,
+      categoryName: activeRuleSet.categoryName,
+      categoryConfidence: activeRuleSet.categoryConfidence,
       verticalId: activeRuleSet.verticalId || 'base',
       verticalName: activeRuleSet.verticalName || 'Base',
       marketId: activeRuleSet.marketId,
@@ -568,13 +620,21 @@ export class MetadataAuditEngine {
       verticalContext.kpi_modifiers = mergedTemplate.kpi_modifiers;
     }
 
-    // Build inheritance chain
+    // Build inheritance chain (Phase 2A: added category layer)
     verticalContext.inheritanceChain = {};
 
     if (activeRuleSet.inheritanceChain?.base) {
       verticalContext.inheritanceChain.base = {
         id: activeRuleSet.inheritanceChain.base.id,
         name: activeRuleSet.inheritanceChain.base.label || 'Base',
+      };
+    }
+
+    if (activeRuleSet.inheritanceChain?.category && activeRuleSet.categoryId) {
+      verticalContext.inheritanceChain.category = {
+        id: activeRuleSet.categoryId,
+        name: activeRuleSet.categoryName || '',
+        confidence: activeRuleSet.categoryConfidence,
       };
     }
 

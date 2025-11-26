@@ -273,8 +273,13 @@ function calculateHookScore(
   // Apply vertical-specific multipliers to base weights
   const categories = { ...DEFAULT_HOOK_CATEGORIES };
   if (activeRuleSet?.hookOverrides) {
-    Object.entries(activeRuleSet.hookOverrides).forEach(([category, multiplier]) => {
+    Object.entries(activeRuleSet.hookOverrides).forEach(([category, override]) => {
       if (categories[category as HookCategoryType]) {
+        // Phase 2A Fix: Hook overrides can be objects with weight_multiplier property
+        const multiplier = typeof override === 'number'
+          ? override
+          : (override as any)?.weight_multiplier ?? 1.0;
+
         categories[category as HookCategoryType].weight *= multiplier;
 
         // Log override usage (development only)

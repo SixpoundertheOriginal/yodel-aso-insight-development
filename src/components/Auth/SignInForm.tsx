@@ -56,7 +56,7 @@ export function SignInForm() {
       }
 
       // No MFA required, proceed to dashboard
-      navigate('/dashboard');
+      navigate('/dashboard-v2');
     } catch (error) {
       // Error is handled in the auth context
       console.error(error);
@@ -67,7 +67,7 @@ export function SignInForm() {
 
   function handleMFASuccess() {
     setShowMFAVerification(false);
-    navigate('/dashboard');
+    navigate('/dashboard-v2');
   }
 
   function handleMFACancel() {
