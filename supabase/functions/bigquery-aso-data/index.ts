@@ -174,7 +174,7 @@ serve(async (req) => {
   } catch (error) {
     log(requestId, "Invalid JSON payload", error);
     return new Response(
-      JSON.stringify({ error: "Invalid JSON payload" }),
+      JSON.stringify({ success: false, error: "Invalid JSON payload" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -218,7 +218,7 @@ serve(async (req) => {
   if (userError || !user) {
     log(requestId, "Authentication failed");
     return new Response(
-      JSON.stringify({ error: "Authentication required" }),
+      JSON.stringify({ success: false, error: "Authentication required" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -252,7 +252,7 @@ serve(async (req) => {
     if (roleError || !roleData) {
       log(requestId, "[AUTH] Failed to fetch user role", roleError);
       return new Response(
-        JSON.stringify({ error: "Failed to fetch user permissions" }),
+        JSON.stringify({ success: false, error: "Failed to fetch user permissions" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -269,6 +269,7 @@ serve(async (req) => {
       log(requestId, "[SCOPE] SUPER_ADMIN missing organization selection");
       return new Response(
         JSON.stringify({
+          success: false,
           error: "Platform admin must select an organization",
           hint: "Use the organization picker to select an org",
         }),
@@ -419,7 +420,7 @@ serve(async (req) => {
   if (accessError) {
     log(requestId, "[ACCESS] Failed to check app access", accessError);
     return new Response(
-      JSON.stringify({ error: "Failed to validate app access", details: accessError.message }),
+      JSON.stringify({ success: false, error: "Failed to validate app access", details: accessError.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -446,6 +447,7 @@ serve(async (req) => {
     log(requestId, "[ACCESS] No apps accessible for this org");
     return new Response(
       JSON.stringify({
+        success: true,
         data: [],
         scope: {
           organization_id: resolvedOrgId,
@@ -463,7 +465,7 @@ serve(async (req) => {
   if (!requestedDateRange || (!requestedDateRange.start && !requestedDateRange.from)) {
     log(requestId, "Missing date_range.start");
     return new Response(
-      JSON.stringify({ error: "Missing date_range.start" }),
+      JSON.stringify({ success: false, error: "Missing date_range.start" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -471,7 +473,7 @@ serve(async (req) => {
   if (!requestedDateRange.end && !requestedDateRange.to) {
     log(requestId, "Missing date_range.end");
     return new Response(
-      JSON.stringify({ error: "Missing date_range.end" }),
+      JSON.stringify({ success: false, error: "Missing date_range.end" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -520,7 +522,7 @@ serve(async (req) => {
   if (!credentialString) {
     log(requestId, "BIGQUERY_CREDENTIALS env missing");
     return new Response(
-      JSON.stringify({ error: "BigQuery credentials not configured" }),
+      JSON.stringify({ success: false, error: "BigQuery credentials not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -531,7 +533,7 @@ serve(async (req) => {
   } catch (error) {
     log(requestId, "Failed to parse BIGQUERY_CREDENTIALS", error);
     return new Response(
-      JSON.stringify({ error: "Invalid BigQuery credentials format" }),
+      JSON.stringify({ success: false, error: "Invalid BigQuery credentials format" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -545,7 +547,7 @@ serve(async (req) => {
   if (!projectId) {
     log(requestId, "Unable to resolve BigQuery project ID");
     return new Response(
-      JSON.stringify({ error: "BigQuery project ID not configured" }),
+      JSON.stringify({ success: false, error: "BigQuery project ID not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -556,7 +558,7 @@ serve(async (req) => {
   } catch (error) {
     log(requestId, "Failed to obtain Google OAuth token", error);
     return new Response(
-      JSON.stringify({ error: "Failed to authenticate with BigQuery" }),
+      JSON.stringify({ success: false, error: "Failed to authenticate with BigQuery" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -619,7 +621,7 @@ serve(async (req) => {
     const errorText = await bqResponse.text();
     log(requestId, "[BIGQUERY] Query failed", errorText);
     return new Response(
-      JSON.stringify({ error: "BigQuery query failed", details: errorText }),
+      JSON.stringify({ success: false, error: "BigQuery query failed", details: errorText }),
       { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
