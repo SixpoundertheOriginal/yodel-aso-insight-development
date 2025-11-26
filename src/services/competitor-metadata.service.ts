@@ -41,6 +41,9 @@ export interface CompetitorMetadataResult {
   version: string | null;
   developerName: string | null;
   rawResponse: any; // Store full API response for debugging
+  
+  // UI compatibility field (alias for name)
+  title?: string;
 }
 
 export interface CompetitorMetadataError {

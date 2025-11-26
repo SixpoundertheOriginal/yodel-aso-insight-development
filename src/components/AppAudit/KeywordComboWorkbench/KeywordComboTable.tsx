@@ -78,17 +78,16 @@ export const KeywordComboTable: React.FC = () => {
             <TableRow className="border-zinc-800 hover:bg-transparent">
               <TableHead className="w-8"></TableHead>
               <TableHead className="w-8">
-                <Checkbox
-                  checked={allSelected}
-                  indeterminate={someSelected}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      selectAll();
-                    } else {
-                      deselectAll();
-                    }
-                  }}
-                />
+          <Checkbox
+            checked={allSelected ? true : someSelected ? "indeterminate" : false}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                selectAll();
+              } else {
+                deselectAll();
+              }
+            }}
+          />
               </TableHead>
               <SortableHeader column="text">Combo</SortableHeader>
               <SortableHeader column="type">Type</SortableHeader>

@@ -197,7 +197,13 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         subtitle: metadata.subtitle || '',
         platform: 'ios',
         locale: metadata.locale || 'us',
-        comboCoverage: auditResult.comboCoverage,
+        comboCoverage: {
+          ...auditResult.comboCoverage,
+          // Filter lowValueCombos to only type: 'low_value'
+          lowValueCombos: (auditResult.comboCoverage.lowValueCombos || [])
+            .filter(c => c.type === 'low_value')
+            .map(c => ({ text: c.text, type: 'low_value' as const, relevanceScore: c.relevanceScore }))
+        },
         // Phase 18: Pass intent coverage from Search Intent Coverage Engine (Phase 17)
         intentCoverage: auditResult.intentCoverage,
         // Optional: Can add brand + intent signals when available
@@ -671,6 +677,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
                     <UnifiedMetadataAuditModule
                       metadata={{
                         ...competitorAudit.metadata,
+                        url: `https://apps.apple.com/app/id${competitorAudit.metadata.appStoreId}`,
                         title: competitorAudit.metadata.name || competitorAudit.metadata.title,
                         appStoreSubtitle: competitorAudit.metadata.subtitle,
                         subtitle: competitorAudit.metadata.subtitle,

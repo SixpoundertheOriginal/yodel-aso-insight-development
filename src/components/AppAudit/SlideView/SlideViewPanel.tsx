@@ -309,10 +309,7 @@ export const SlideViewPanel: React.FC<SlideViewPanelProps> = ({
         <SectionWrapper icon={Eye} title="Element-by-Element Analysis" iconColor="text-blue-400">
           {AUDIT_METADATA_V2_ENABLED ? (
             <UnifiedMetadataAuditModule
-              app_id={metadata.app_id}
-              platform={metadata.platform}
-              locale={metadata.locale}
-              monitored_app_id={metadata.id}
+              metadata={metadata}
             />
           ) : (
             <EnhancedOverviewTab
