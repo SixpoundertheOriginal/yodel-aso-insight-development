@@ -63,8 +63,14 @@ export function useAvailableApps() {
 
       const startTime = performance.now();
 
-      // Filter by organization ID to avoid fetching all orgs' data
-      // RLS allows access, but we must filter client-side for performance
+      // RLS policy on org_app_access automatically handles:
+      // 1. User's own org apps (organization_id = user's org)
+      // 2. Agency-managed client org apps (via agency_clients join)
+      // 3. Super admin access (all orgs)
+      //
+      // IMPORTANT: Do NOT add .eq('organization_id', ...) filter!
+      // PostgREST applies WHERE before RLS, which breaks agency expansion.
+      // Let RLS policy handle all filtering based on auth.uid()
       if (!organizationId) {
         console.warn('⚠️  [AVAILABLE-APPS] No organization ID available');
         return [];
@@ -73,7 +79,6 @@ export function useAvailableApps() {
       const { data, error } = await supabase
         .from('org_app_access')
         .select('app_id, organization_id, attached_at')
-        .eq('organization_id', organizationId)
         .is('detached_at', null)
         .order('attached_at', { ascending: false });
 
