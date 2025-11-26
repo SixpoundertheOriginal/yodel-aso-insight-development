@@ -145,13 +145,24 @@ export default function ReportingDashboardV2() {
   // - Analytics query can filter without affecting app picker
 
   // ✅ EXTRACT AVAILABLE TRAFFIC SOURCES: Get from response metadata
+  // CRITICAL FIX: Use metadata from hook (contains ALL traffic sources before client-side filtering)
+  // Previously extracted from filtered rawData, causing traffic sources to disappear when filters applied
   const availableTrafficSources = useMemo(() => {
-    // Fallback path: extract from rawData
-    if ((data as any)?.rawData) {
-      const uniqueSources = Array.from(new Set((data as any).rawData.map((row: any) => row.traffic_source).filter(Boolean))) as string[];
+    // Primary: Use metadata from hook (always contains full list)
+    if (data?.availableTrafficSources && data.availableTrafficSources.length > 0) {
+      logger.dashboard(`Using traffic sources from metadata: ${data.availableTrafficSources.length} sources`);
+      return data.availableTrafficSources;
+    }
+
+    // Fallback: Extract from rawData (only if metadata unavailable)
+    // Note: This will be filtered data if app/traffic filters are applied
+    if (data?.rawData) {
+      const uniqueSources = Array.from(new Set(data.rawData.map((row: any) => row.traffic_source).filter(Boolean))) as string[];
+      logger.dashboard(`Fallback: Extracted ${uniqueSources.length} traffic sources from rawData`);
       return uniqueSources;
     }
 
+    logger.dashboard('No traffic sources available');
     return [];
   }, [data]);
 
