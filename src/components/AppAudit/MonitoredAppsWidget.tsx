@@ -38,6 +38,7 @@ export const MonitoredAppsWidget: React.FC<MonitoredAppsWidgetProps> = ({
 
   const handleRefreshApp = (app: any) => {
     refreshApp({
+      organizationId: organizationId,
       app_id: app.app_id,
       platform: app.platform,
       app_name: app.app_name,

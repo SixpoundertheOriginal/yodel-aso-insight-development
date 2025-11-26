@@ -212,6 +212,12 @@ export interface UnifiedMetadataAuditResult {
 
   // Vertical Intelligence Layer (Phase 21)
   verticalContext?: VerticalContext;
+  
+  // KPI Engine results (UI compatibility)
+  kpis?: {
+    overall_score?: number;
+    [key: string]: any;
+  };
 }
 
 export interface MetadataAuditV2Response {

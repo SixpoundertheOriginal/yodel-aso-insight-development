@@ -73,6 +73,10 @@ export interface LLMSnippet {
   section: string;  // Where it came from
   quality_score: number;  // 0-100
   intents_matched?: string[];  // Which user intents this answers
+  
+  // UI compatibility fields
+  id?: string;
+  category?: string;
 }
 
 /**
@@ -86,6 +90,13 @@ export interface ClusterCoverage {
     coverage_score: number;  // 0-100: How well this cluster is represented
     mentions: number;
     examples: string[];  // Sentences that match this cluster
+    
+    // UI compatibility fields
+    cluster_id?: string;
+    cluster_label?: string;
+    importance_weight?: number;
+    matched_keywords?: string[];
+    missing_keywords?: string[];
   }>;
 }
 

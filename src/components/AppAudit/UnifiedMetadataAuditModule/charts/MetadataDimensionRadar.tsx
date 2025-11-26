@@ -46,10 +46,10 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
 
     // Add optional dimensions if available
     if (metadataDimensionScores.compliance !== undefined) {
-      points.push({ dimension: 'Compliance', score: metadataDimensionScores.compliance, fullMark: 100 });
+      points.push({ dimension: 'Compliance', score: metadataDimensionScores.compliance, fullMark: 100, metricId: 'compliance' });
     }
     if (metadataDimensionScores.discoveryCoverage !== undefined) {
-      points.push({ dimension: 'Discovery', score: metadataDimensionScores.discoveryCoverage, fullMark: 100 });
+      points.push({ dimension: 'Discovery', score: metadataDimensionScores.discoveryCoverage, fullMark: 100, metricId: 'discovery' });
     }
 
     return points;

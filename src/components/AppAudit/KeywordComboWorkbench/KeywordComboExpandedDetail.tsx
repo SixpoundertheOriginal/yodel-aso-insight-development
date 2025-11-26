@@ -20,8 +20,7 @@ interface KeywordComboExpandedDetailProps {
 }
 
 export const KeywordComboExpandedDetail: React.FC<KeywordComboExpandedDetailProps> = ({ combo }) => {
-  const stopwordsData = getStopwords();
-  const stopwords = new Set(stopwordsData.stopwords || []);
+  const stopwords = getStopwords(); // Returns Set<string> directly
   const tokenized = tokenizeCombo(combo.text, stopwords);
   const intent = classifyIntent(combo);
 

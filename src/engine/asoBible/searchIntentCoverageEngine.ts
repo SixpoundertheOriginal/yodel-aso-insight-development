@@ -90,6 +90,9 @@ export interface SearchIntentCoverageResult {
 
   /** Whether fallback patterns are being used */
   fallbackMode: boolean;
+  
+  /** UI compatibility - optional diagnostics */
+  diagnostics?: IntentDiagnosticsContext;
 }
 
 /**

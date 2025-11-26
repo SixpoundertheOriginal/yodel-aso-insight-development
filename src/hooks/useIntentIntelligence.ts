@@ -117,6 +117,7 @@ export interface IntentStatistics {
   dominantIntent: 'navigational' | 'informational' | 'commercial' | 'transactional' | null;
   hasIntentData: boolean; // True if any keywords have intent classifications
   engineFailure: boolean; // True if engine failed to classify any keywords
+  coverageScore?: number; // UI compatibility field
 }
 
 /**

@@ -119,7 +119,9 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
               {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED &&
                 'brandClassification' in combo &&
                 combo.brandClassification === 'brand' && (
-                  <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" title={`Brand: ${combo.matchedBrandAlias || 'detected'}`} />
+                  <span title={`Brand: ${combo.matchedBrandAlias || 'detected'}`}>
+                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                  </span>
                 )}
               <Button
                 size="sm"

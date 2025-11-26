@@ -133,7 +133,7 @@ export const LLMClusterCoverageChart: React.FC<LLMClusterCoverageChartProps> = (
 // ============================================================================
 
 interface ClusterItemProps {
-  cluster: ClusterCoverage;
+  cluster: ClusterCoverage['clusters'][number];
   isExpanded: boolean;
   onToggle: () => void;
 }

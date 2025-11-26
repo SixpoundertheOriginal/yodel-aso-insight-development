@@ -43,6 +43,9 @@ export interface MonitoredAppWithAudit {
   latest_audit_score: number | null; // 0-100
   latest_audit_at: string | null;
   metadata_last_refreshed_at: string | null;
+  
+  // Validation state for consistency checking
+  validated_state?: 'pending' | 'validated' | 'failed' | 'valid' | 'invalid' | 'stale' | null;
 
   // Google Play specific
   play_store_package_id: string | null;
