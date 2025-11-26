@@ -19,6 +19,8 @@ export const tacticalEffects = {
       red: 'border-red-400/60',
       blue: 'border-blue-400/60',
       purple: 'border-purple-400/60',
+      cyan: 'border-cyan-400/60',
+      green: 'border-green-400/60',
     },
     animated: 'animate-bracket-pulse',
   },

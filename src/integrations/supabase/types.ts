@@ -66,6 +66,10 @@ export type Database = {
       }
       app_competitors: {
         Row: {
+          audit_count: number | null
+          audit_status:
+            | Database["public"]["Enums"]["competitor_audit_status"]
+            | null
           comparison_context: string | null
           comparison_summary: Json | null
           competitor_app_icon: string | null
@@ -81,12 +85,21 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          is_audit_stale: boolean | null
+          last_audit_at: string | null
+          last_audit_id: string | null
+          last_audit_score: number | null
           last_compared_at: string | null
+          metadata_changed_count: number | null
           organization_id: string
           priority: number | null
           target_app_id: string
         }
         Insert: {
+          audit_count?: number | null
+          audit_status?:
+            | Database["public"]["Enums"]["competitor_audit_status"]
+            | null
           comparison_context?: string | null
           comparison_summary?: Json | null
           competitor_app_icon?: string | null
@@ -102,12 +115,21 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          is_audit_stale?: boolean | null
+          last_audit_at?: string | null
+          last_audit_id?: string | null
+          last_audit_score?: number | null
           last_compared_at?: string | null
+          metadata_changed_count?: number | null
           organization_id: string
           priority?: number | null
           target_app_id: string
         }
         Update: {
+          audit_count?: number | null
+          audit_status?:
+            | Database["public"]["Enums"]["competitor_audit_status"]
+            | null
           comparison_context?: string | null
           comparison_summary?: Json | null
           competitor_app_icon?: string | null
@@ -123,12 +145,24 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          is_audit_stale?: boolean | null
+          last_audit_at?: string | null
+          last_audit_id?: string | null
+          last_audit_score?: number | null
           last_compared_at?: string | null
+          metadata_changed_count?: number | null
           organization_id?: string
           priority?: number | null
           target_app_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "app_competitors_last_audit_id_fkey"
+            columns: ["last_audit_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_audit_snapshots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "app_competitors_organization_id_fkey"
             columns: ["organization_id"]
@@ -154,6 +188,7 @@ export type Database = {
       }
       app_metadata_cache: {
         Row: {
+          _metadata_source: string | null
           app_icon_url: string | null
           app_id: string
           app_json: Json | null
@@ -175,6 +210,7 @@ export type Database = {
           version_hash: string
         }
         Insert: {
+          _metadata_source?: string | null
           app_icon_url?: string | null
           app_id: string
           app_json?: Json | null
@@ -196,6 +232,7 @@ export type Database = {
           version_hash: string
         }
         Update: {
+          _metadata_source?: string | null
           app_icon_url?: string | null
           app_id?: string
           app_json?: Json | null
@@ -454,6 +491,618 @@ export type Database = {
         }
         Relationships: []
       }
+      aso_audit_diffs: {
+        Row: {
+          change_summary: Json
+          combo_count_delta: number | null
+          created_at: string
+          description_changed: boolean
+          from_snapshot_id: string
+          id: string
+          keyword_count_delta: number | null
+          keywords_added: string[] | null
+          keywords_removed: string[] | null
+          kpi_family_deltas: Json | null
+          kpi_overall_score_delta: number | null
+          monitored_app_id: string
+          new_critical_issues: number | null
+          new_recommendations: number | null
+          organization_id: string
+          overall_score_delta: number
+          resolved_critical_issues: number | null
+          subtitle_changed: boolean
+          subtitle_diff: string | null
+          title_changed: boolean
+          title_diff: string | null
+          to_snapshot_id: string
+        }
+        Insert: {
+          change_summary: Json
+          combo_count_delta?: number | null
+          created_at?: string
+          description_changed?: boolean
+          from_snapshot_id: string
+          id?: string
+          keyword_count_delta?: number | null
+          keywords_added?: string[] | null
+          keywords_removed?: string[] | null
+          kpi_family_deltas?: Json | null
+          kpi_overall_score_delta?: number | null
+          monitored_app_id: string
+          new_critical_issues?: number | null
+          new_recommendations?: number | null
+          organization_id: string
+          overall_score_delta: number
+          resolved_critical_issues?: number | null
+          subtitle_changed?: boolean
+          subtitle_diff?: string | null
+          title_changed?: boolean
+          title_diff?: string | null
+          to_snapshot_id: string
+        }
+        Update: {
+          change_summary?: Json
+          combo_count_delta?: number | null
+          created_at?: string
+          description_changed?: boolean
+          from_snapshot_id?: string
+          id?: string
+          keyword_count_delta?: number | null
+          keywords_added?: string[] | null
+          keywords_removed?: string[] | null
+          kpi_family_deltas?: Json | null
+          kpi_overall_score_delta?: number | null
+          monitored_app_id?: string
+          new_critical_issues?: number | null
+          new_recommendations?: number | null
+          organization_id?: string
+          overall_score_delta?: number
+          resolved_critical_issues?: number | null
+          subtitle_changed?: boolean
+          subtitle_diff?: string | null
+          title_changed?: boolean
+          title_diff?: string | null
+          to_snapshot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_audit_diffs_from_snapshot_id_fkey"
+            columns: ["from_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "aso_audit_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_audit_diffs_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_audit_diffs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_audit_diffs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_audit_diffs_to_snapshot_id_fkey"
+            columns: ["to_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "aso_audit_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_audit_snapshots: {
+        Row: {
+          app_id: string
+          audit_hash: string | null
+          audit_result: Json
+          audit_version: string
+          bible_metadata: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          kpi_family_scores: Json | null
+          kpi_overall_score: number | null
+          kpi_result: Json | null
+          kpi_version: string | null
+          locale: string
+          metadata_version_hash: string | null
+          monitored_app_id: string
+          monitored_app_market_id: string | null
+          organization_id: string
+          overall_score: number
+          platform: string
+          source: string
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_id: string
+          audit_hash?: string | null
+          audit_result: Json
+          audit_version?: string
+          bible_metadata?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kpi_family_scores?: Json | null
+          kpi_overall_score?: number | null
+          kpi_result?: Json | null
+          kpi_version?: string | null
+          locale?: string
+          metadata_version_hash?: string | null
+          monitored_app_id: string
+          monitored_app_market_id?: string | null
+          organization_id: string
+          overall_score: number
+          platform: string
+          source?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_id?: string
+          audit_hash?: string | null
+          audit_result?: Json
+          audit_version?: string
+          bible_metadata?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kpi_family_scores?: Json | null
+          kpi_overall_score?: number | null
+          kpi_result?: Json | null
+          kpi_version?: string | null
+          locale?: string
+          metadata_version_hash?: string | null
+          monitored_app_id?: string
+          monitored_app_market_id?: string | null
+          organization_id?: string
+          overall_score?: number
+          platform?: string
+          source?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_audit_snapshots_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_audit_snapshots_monitored_app_market_id_fkey"
+            columns: ["monitored_app_market_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_app_markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_engine_diagnostics: {
+        Row: {
+          app_id: string
+          audit_timestamp: string | null
+          category_confidence: string | null
+          category_source: string | null
+          category_template_loaded: boolean | null
+          created_at: string | null
+          detected_category_id: string | null
+          detected_category_name: string | null
+          detected_vertical_id: string | null
+          detection_time_ms: number | null
+          has_category_vertical_mismatch: boolean | null
+          id: string
+          metadata: Json | null
+          mismatch_reason: string | null
+          primary_genre_id: number | null
+          primary_genre_name: string | null
+          template_load_time_ms: number | null
+          vertical_confidence: number | null
+          vertical_template_loaded: boolean | null
+        }
+        Insert: {
+          app_id: string
+          audit_timestamp?: string | null
+          category_confidence?: string | null
+          category_source?: string | null
+          category_template_loaded?: boolean | null
+          created_at?: string | null
+          detected_category_id?: string | null
+          detected_category_name?: string | null
+          detected_vertical_id?: string | null
+          detection_time_ms?: number | null
+          has_category_vertical_mismatch?: boolean | null
+          id?: string
+          metadata?: Json | null
+          mismatch_reason?: string | null
+          primary_genre_id?: number | null
+          primary_genre_name?: string | null
+          template_load_time_ms?: number | null
+          vertical_confidence?: number | null
+          vertical_template_loaded?: boolean | null
+        }
+        Update: {
+          app_id?: string
+          audit_timestamp?: string | null
+          category_confidence?: string | null
+          category_source?: string | null
+          category_template_loaded?: boolean | null
+          created_at?: string | null
+          detected_category_id?: string | null
+          detected_category_name?: string | null
+          detected_vertical_id?: string | null
+          detection_time_ms?: number | null
+          has_category_vertical_mismatch?: boolean | null
+          id?: string
+          metadata?: Json | null
+          mismatch_reason?: string | null
+          primary_genre_id?: number | null
+          primary_genre_name?: string | null
+          template_load_time_ms?: number | null
+          vertical_confidence?: number | null
+          vertical_template_loaded?: boolean | null
+        }
+        Relationships: []
+      }
+      aso_formula_overrides: {
+        Row: {
+          created_at: string
+          formula_id: string
+          id: string
+          is_active: boolean
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          override_payload: Json
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at: string
+          version: number
+          vertical: string | null
+        }
+        Insert: {
+          created_at?: string
+          formula_id: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          override_payload: Json
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Update: {
+          created_at?: string
+          formula_id?: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          override_payload?: Json
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Relationships: []
+      }
+      aso_hook_pattern_overrides: {
+        Row: {
+          created_at: string
+          hook_category: string
+          id: string
+          is_active: boolean
+          keywords: string[] | null
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at: string
+          version: number
+          vertical: string | null
+          weight_multiplier: number
+        }
+        Insert: {
+          created_at?: string
+          hook_category: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+          weight_multiplier?: number
+        }
+        Update: {
+          created_at?: string
+          hook_category?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+          weight_multiplier?: number
+        }
+        Relationships: []
+      }
+      aso_intent_keyword_examples: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          example_phrase: string
+          id: string
+          intent_type: string
+          is_active: boolean | null
+          language: string | null
+          market: string | null
+          organization_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+          usage_context: string | null
+          vertical: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          example_phrase: string
+          id?: string
+          intent_type: string
+          is_active?: boolean | null
+          language?: string | null
+          market?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          usage_context?: string | null
+          vertical: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          example_phrase?: string
+          id?: string
+          intent_type?: string
+          is_active?: boolean | null
+          language?: string | null
+          market?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          usage_context?: string | null
+          vertical?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_intent_keyword_examples_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_intent_keyword_examples_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_intent_pattern_overrides: {
+        Row: {
+          app_id: string | null
+          base_pattern_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          market: string | null
+          organization_id: string | null
+          priority_override: number | null
+          scope: string
+          updated_at: string | null
+          updated_by: string | null
+          vertical: string | null
+          weight_multiplier: number | null
+        }
+        Insert: {
+          app_id?: string | null
+          base_pattern_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          market?: string | null
+          organization_id?: string | null
+          priority_override?: number | null
+          scope: string
+          updated_at?: string | null
+          updated_by?: string | null
+          vertical?: string | null
+          weight_multiplier?: number | null
+        }
+        Update: {
+          app_id?: string | null
+          base_pattern_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          market?: string | null
+          organization_id?: string | null
+          priority_override?: number | null
+          scope?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          vertical?: string | null
+          weight_multiplier?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_intent_pattern_overrides_base_pattern_id_fkey"
+            columns: ["base_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "aso_intent_patterns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_intent_pattern_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_intent_pattern_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_intent_patterns: {
+        Row: {
+          admin_tags: string[] | null
+          app_id: string | null
+          case_sensitive: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          example: string | null
+          id: string
+          intent_type: string
+          is_active: boolean | null
+          is_regex: boolean | null
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          pattern: string
+          priority: number | null
+          scope: string
+          updated_at: string | null
+          updated_by: string | null
+          version: number | null
+          vertical: string | null
+          weight: number | null
+          word_boundary: boolean | null
+        }
+        Insert: {
+          admin_tags?: string[] | null
+          app_id?: string | null
+          case_sensitive?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          example?: string | null
+          id?: string
+          intent_type: string
+          is_active?: boolean | null
+          is_regex?: boolean | null
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          pattern: string
+          priority?: number | null
+          scope?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
+          vertical?: string | null
+          weight?: number | null
+          word_boundary?: boolean | null
+        }
+        Update: {
+          admin_tags?: string[] | null
+          app_id?: string | null
+          case_sensitive?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          example?: string | null
+          id?: string
+          intent_type?: string
+          is_active?: boolean | null
+          is_regex?: boolean | null
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          pattern?: string
+          priority?: number | null
+          scope?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
+          vertical?: string | null
+          weight?: number | null
+          word_boundary?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_intent_patterns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_intent_patterns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aso_keyword_mapping: {
         Row: {
           created_at: string
@@ -518,6 +1167,51 @@ export type Database = {
           },
         ]
       }
+      aso_kpi_weight_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          kpi_id: string
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at: string
+          version: number
+          vertical: string | null
+          weight_multiplier: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kpi_id: string
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+          weight_multiplier: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kpi_id?: string
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+          weight_multiplier?: number
+        }
+        Relationships: []
+      }
       aso_metrics: {
         Row: {
           app_id: string
@@ -571,6 +1265,637 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      aso_recommendation_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          market: string | null
+          message: string
+          notes: string | null
+          organization_id: string | null
+          recommendation_id: string
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at: string
+          version: number
+          vertical: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          message: string
+          notes?: string | null
+          organization_id?: string | null
+          recommendation_id: string
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          message?: string
+          notes?: string | null
+          organization_id?: string | null
+          recommendation_id?: string
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Relationships: []
+      }
+      aso_rule_admin_metadata: {
+        Row: {
+          admin_description: string | null
+          admin_group: string | null
+          admin_label: string | null
+          created_at: string
+          display_order: number | null
+          example_values: string | null
+          id: string
+          is_editable: boolean
+          is_visible: boolean
+          min_tier: string | null
+          override_id: string
+          override_type: Database["public"]["Enums"]["aso_override_type"]
+          requires_feature_flag: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_description?: string | null
+          admin_group?: string | null
+          admin_label?: string | null
+          created_at?: string
+          display_order?: number | null
+          example_values?: string | null
+          id?: string
+          is_editable?: boolean
+          is_visible?: boolean
+          min_tier?: string | null
+          override_id: string
+          override_type: Database["public"]["Enums"]["aso_override_type"]
+          requires_feature_flag?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_description?: string | null
+          admin_group?: string | null
+          admin_label?: string | null
+          created_at?: string
+          display_order?: number | null
+          example_values?: string | null
+          id?: string
+          is_editable?: boolean
+          is_visible?: boolean
+          min_tier?: string | null
+          override_id?: string
+          override_type?: Database["public"]["Enums"]["aso_override_type"]
+          requires_feature_flag?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      aso_rule_evaluator_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          rule_id: string
+          scope: string
+          severity_override: string | null
+          threshold_high_override: number | null
+          threshold_low_override: number | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+          vertical: string | null
+          weight_multiplier: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          rule_id: string
+          scope?: string
+          severity_override?: string | null
+          threshold_high_override?: number | null
+          threshold_low_override?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          vertical?: string | null
+          weight_multiplier?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          rule_id?: string
+          scope?: string
+          severity_override?: string | null
+          threshold_high_override?: number | null
+          threshold_low_override?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          vertical?: string | null
+          weight_multiplier?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_rule_evaluator_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "aso_rule_evaluator_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_rule_evaluator_overrides_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "aso_rule_evaluators"
+            referencedColumns: ["rule_id"]
+          },
+        ]
+      }
+      aso_rule_evaluators: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deprecated_reason: string | null
+          description: string | null
+          family: string
+          formula_id: string | null
+          help_text: string | null
+          id: string
+          is_active: boolean
+          is_deprecated: boolean
+          kpi_ids: string[] | null
+          name: string
+          notes: string | null
+          rule_id: string
+          scope: string
+          severity_default: string
+          tags: string[] | null
+          threshold_high: number | null
+          threshold_low: number | null
+          updated_at: string
+          updated_by: string | null
+          weight_default: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deprecated_reason?: string | null
+          description?: string | null
+          family: string
+          formula_id?: string | null
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_deprecated?: boolean
+          kpi_ids?: string[] | null
+          name: string
+          notes?: string | null
+          rule_id: string
+          scope: string
+          severity_default?: string
+          tags?: string[] | null
+          threshold_high?: number | null
+          threshold_low?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          weight_default?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deprecated_reason?: string | null
+          description?: string | null
+          family?: string
+          formula_id?: string | null
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_deprecated?: boolean
+          kpi_ids?: string[] | null
+          name?: string
+          notes?: string | null
+          rule_id?: string
+          scope?: string
+          severity_default?: string
+          tags?: string[] | null
+          threshold_high?: number | null
+          threshold_low?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          weight_default?: number
+        }
+        Relationships: []
+      }
+      aso_ruleset_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          actor_role: string | null
+          change_reason: string | null
+          created_at: string
+          diff: Json | null
+          id: string
+          ip_address: unknown
+          market: string | null
+          new_value: Json | null
+          old_value: Json | null
+          organization_id: string | null
+          override_id: string
+          override_type: Database["public"]["Enums"]["aso_override_type"]
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          user_agent: string | null
+          vertical: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
+          change_reason?: string | null
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown
+          market?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          organization_id?: string | null
+          override_id: string
+          override_type: Database["public"]["Enums"]["aso_override_type"]
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          user_agent?: string | null
+          vertical?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
+          change_reason?: string | null
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown
+          market?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          organization_id?: string | null
+          override_id?: string
+          override_type?: Database["public"]["Enums"]["aso_override_type"]
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          user_agent?: string | null
+          vertical?: string | null
+        }
+        Relationships: []
+      }
+      aso_ruleset_category: {
+        Row: {
+          category_id: string
+          category_name: string
+          created_at: string | null
+          description: string | null
+          genre_id: number | null
+          id: string
+          parent_categories: string[] | null
+          updated_at: string | null
+          vertical_template_meta: Json | null
+        }
+        Insert: {
+          category_id: string
+          category_name: string
+          created_at?: string | null
+          description?: string | null
+          genre_id?: number | null
+          id?: string
+          parent_categories?: string[] | null
+          updated_at?: string | null
+          vertical_template_meta?: Json | null
+        }
+        Update: {
+          category_id?: string
+          category_name?: string
+          created_at?: string | null
+          description?: string | null
+          genre_id?: number | null
+          id?: string
+          parent_categories?: string[] | null
+          updated_at?: string | null
+          vertical_template_meta?: Json | null
+        }
+        Relationships: []
+      }
+      aso_ruleset_client: {
+        Row: {
+          app_id: string | null
+          client_template_meta: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          inherit_from_market: string | null
+          inherit_from_vertical: string | null
+          is_active: boolean
+          label: string
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          app_id?: string | null
+          client_template_meta?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          inherit_from_market?: string | null
+          inherit_from_vertical?: string | null
+          is_active?: boolean
+          label: string
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          app_id?: string | null
+          client_template_meta?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          inherit_from_market?: string | null
+          inherit_from_vertical?: string | null
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      aso_ruleset_market: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          locale: string
+          market: string
+          market_template_meta: Json | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          locale: string
+          market: string
+          market_template_meta?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          locale?: string
+          market?: string
+          market_template_meta?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      aso_ruleset_versions: {
+        Row: {
+          app_id: string | null
+          client_version: number | null
+          created_at: string
+          created_by: string | null
+          formula_schema_version: string
+          id: string
+          kpi_schema_version: string
+          market: string | null
+          market_version: number | null
+          organization_id: string | null
+          ruleset_snapshot: Json
+          ruleset_version: number
+          vertical: string | null
+          vertical_version: number | null
+        }
+        Insert: {
+          app_id?: string | null
+          client_version?: number | null
+          created_at?: string
+          created_by?: string | null
+          formula_schema_version: string
+          id?: string
+          kpi_schema_version: string
+          market?: string | null
+          market_version?: number | null
+          organization_id?: string | null
+          ruleset_snapshot: Json
+          ruleset_version: number
+          vertical?: string | null
+          vertical_version?: number | null
+        }
+        Update: {
+          app_id?: string | null
+          client_version?: number | null
+          created_at?: string
+          created_by?: string | null
+          formula_schema_version?: string
+          id?: string
+          kpi_schema_version?: string
+          market?: string | null
+          market_version?: number | null
+          organization_id?: string | null
+          ruleset_snapshot?: Json
+          ruleset_version?: number
+          vertical?: string | null
+          vertical_version?: number | null
+        }
+        Relationships: []
+      }
+      aso_ruleset_vertical: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+          vertical: string
+          vertical_template_meta: Json | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          vertical: string
+          vertical_template_meta?: Json | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          vertical?: string
+          vertical_template_meta?: Json | null
+        }
+        Relationships: []
+      }
+      aso_stopword_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          stopwords: string[]
+          updated_at: string
+          version: number
+          vertical: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          stopwords: string[]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          stopwords?: string[]
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Relationships: []
+      }
+      aso_token_relevance_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          market: string | null
+          notes: string | null
+          organization_id: string | null
+          relevance: number
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          token: string
+          updated_at: string
+          version: number
+          vertical: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          relevance: number
+          scope: Database["public"]["Enums"]["aso_ruleset_scope"]
+          token: string
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          relevance?: number
+          scope?: Database["public"]["Enums"]["aso_ruleset_scope"]
+          token?: string
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -645,6 +1970,7 @@ export type Database = {
           combinations: Json | null
           competitor_overlap: Json | null
           created_at: string
+          deprecated: boolean | null
           id: string
           insights: Json | null
           locale: string
@@ -664,6 +1990,7 @@ export type Database = {
           combinations?: Json | null
           competitor_overlap?: Json | null
           created_at?: string
+          deprecated?: boolean | null
           id?: string
           insights?: Json | null
           locale?: string
@@ -683,6 +2010,7 @@ export type Database = {
           combinations?: Json | null
           competitor_overlap?: Json | null
           created_at?: string
+          deprecated?: boolean | null
           id?: string
           insights?: Json | null
           locale?: string
@@ -1422,6 +2750,201 @@ export type Database = {
           },
         ]
       }
+      competitor_audit_snapshots: {
+        Row: {
+          audit_data: Json
+          combo_coverage_percent: number | null
+          competitor_id: string
+          created_at: string
+          description_char_count: number | null
+          description_score: number | null
+          discovery_brand_count: number | null
+          discovery_learning_count: number | null
+          discovery_noise_count: number | null
+          discovery_outcome_count: number | null
+          error_message: string | null
+          existing_combos: number | null
+          id: string
+          intent_coverage_commercial: number | null
+          intent_coverage_informational: number | null
+          intent_coverage_navigational: number | null
+          intent_coverage_transactional: number | null
+          metadata: Json
+          missing_combos: number | null
+          organization_id: string
+          overall_score: number | null
+          rule_config: Json | null
+          status: string | null
+          subtitle_char_count: number | null
+          subtitle_score: number | null
+          target_app_id: string
+          title_char_count: number | null
+          title_score: number | null
+          total_combos: number | null
+          updated_at: string
+        }
+        Insert: {
+          audit_data: Json
+          combo_coverage_percent?: number | null
+          competitor_id: string
+          created_at?: string
+          description_char_count?: number | null
+          description_score?: number | null
+          discovery_brand_count?: number | null
+          discovery_learning_count?: number | null
+          discovery_noise_count?: number | null
+          discovery_outcome_count?: number | null
+          error_message?: string | null
+          existing_combos?: number | null
+          id?: string
+          intent_coverage_commercial?: number | null
+          intent_coverage_informational?: number | null
+          intent_coverage_navigational?: number | null
+          intent_coverage_transactional?: number | null
+          metadata: Json
+          missing_combos?: number | null
+          organization_id: string
+          overall_score?: number | null
+          rule_config?: Json | null
+          status?: string | null
+          subtitle_char_count?: number | null
+          subtitle_score?: number | null
+          target_app_id: string
+          title_char_count?: number | null
+          title_score?: number | null
+          total_combos?: number | null
+          updated_at?: string
+        }
+        Update: {
+          audit_data?: Json
+          combo_coverage_percent?: number | null
+          competitor_id?: string
+          created_at?: string
+          description_char_count?: number | null
+          description_score?: number | null
+          discovery_brand_count?: number | null
+          discovery_learning_count?: number | null
+          discovery_noise_count?: number | null
+          discovery_outcome_count?: number | null
+          error_message?: string | null
+          existing_combos?: number | null
+          id?: string
+          intent_coverage_commercial?: number | null
+          intent_coverage_informational?: number | null
+          intent_coverage_navigational?: number | null
+          intent_coverage_transactional?: number | null
+          metadata?: Json
+          missing_combos?: number | null
+          organization_id?: string
+          overall_score?: number | null
+          rule_config?: Json | null
+          status?: string | null
+          subtitle_char_count?: number | null
+          subtitle_score?: number | null
+          target_app_id?: string
+          title_char_count?: number | null
+          title_score?: number | null
+          total_combos?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_audit_snapshots_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "app_competitors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitor_audit_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_audit_snapshots_target_app_id_fkey"
+            columns: ["target_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_comparison_cache: {
+        Row: {
+          cache_key: string
+          comparison_config: Json
+          comparison_data: Json
+          computation_time_ms: number | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_stale: boolean | null
+          organization_id: string
+          source_audit_ids: Json
+          target_app_id: string
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          comparison_config?: Json
+          comparison_data: Json
+          computation_time_ms?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_stale?: boolean | null
+          organization_id: string
+          source_audit_ids: Json
+          target_app_id: string
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          comparison_config?: Json
+          comparison_data?: Json
+          computation_time_ms?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_stale?: boolean | null
+          organization_id?: string
+          source_audit_ids?: Json
+          target_app_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_comparison_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "competitor_comparison_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_comparison_cache_target_app_id_fkey"
+            columns: ["target_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_keywords: {
         Row: {
           competitor_app_id: string
@@ -2029,6 +3552,270 @@ export type Database = {
           },
         ]
       }
+      llm_description_snapshots: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          created_by: string | null
+          description_text: string
+          id: string
+          is_active: boolean
+          monitored_app_id: string
+          organization_id: string
+          overall_score: number | null
+          source: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description_text: string
+          id?: string
+          is_active?: boolean
+          monitored_app_id: string
+          organization_id: string
+          overall_score?: number | null
+          source: string
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description_text?: string
+          id?: string
+          is_active?: boolean
+          monitored_app_id?: string
+          organization_id?: string
+          overall_score?: number | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_description_snapshots_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "llm_visibility_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_description_snapshots_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "llm_visibility_latest_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_description_snapshots_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_description_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "llm_description_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      llm_visibility_analysis: {
+        Row: {
+          analysis_duration_ms: number
+          app_store_id: string | null
+          cache_hit: boolean
+          cluster_coverage_json: Json
+          created_at: string
+          description_hash: string
+          description_length: number
+          factual_grounding_score: number
+          findings_json: Json
+          id: string
+          intent_coverage_json: Json
+          intent_coverage_score: number
+          market_id: string | null
+          monitored_app_id: string | null
+          organization_id: string
+          overall_score: number
+          rules_scope: string
+          rules_version: string
+          safety_credibility_score: number
+          semantic_clusters_score: number
+          snippet_quality_score: number
+          snippets_json: Json
+          source_snapshot_id: string | null
+          structure_metrics_json: Json
+          structure_readability_score: number
+          updated_at: string
+          vertical_id: string | null
+        }
+        Insert: {
+          analysis_duration_ms: number
+          app_store_id?: string | null
+          cache_hit?: boolean
+          cluster_coverage_json?: Json
+          created_at?: string
+          description_hash: string
+          description_length: number
+          factual_grounding_score: number
+          findings_json?: Json
+          id?: string
+          intent_coverage_json?: Json
+          intent_coverage_score: number
+          market_id?: string | null
+          monitored_app_id?: string | null
+          organization_id: string
+          overall_score: number
+          rules_scope?: string
+          rules_version?: string
+          safety_credibility_score: number
+          semantic_clusters_score: number
+          snippet_quality_score: number
+          snippets_json?: Json
+          source_snapshot_id?: string | null
+          structure_metrics_json?: Json
+          structure_readability_score: number
+          updated_at?: string
+          vertical_id?: string | null
+        }
+        Update: {
+          analysis_duration_ms?: number
+          app_store_id?: string | null
+          cache_hit?: boolean
+          cluster_coverage_json?: Json
+          created_at?: string
+          description_hash?: string
+          description_length?: number
+          factual_grounding_score?: number
+          findings_json?: Json
+          id?: string
+          intent_coverage_json?: Json
+          intent_coverage_score?: number
+          market_id?: string | null
+          monitored_app_id?: string | null
+          organization_id?: string
+          overall_score?: number
+          rules_scope?: string
+          rules_version?: string
+          safety_credibility_score?: number
+          semantic_clusters_score?: number
+          snippet_quality_score?: number
+          snippets_json?: Json
+          source_snapshot_id?: string | null
+          structure_metrics_json?: Json
+          structure_readability_score?: number
+          updated_at?: string
+          vertical_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_visibility_analysis_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_analysis_source_snapshot_id_fkey"
+            columns: ["source_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "aso_audit_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      llm_visibility_rule_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          market: string | null
+          monitored_app_id: string | null
+          notes: string | null
+          organization_id: string | null
+          rules_override: Json
+          scope: string
+          updated_at: string
+          version: number
+          vertical: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          monitored_app_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          rules_override: Json
+          scope: string
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          market?: string | null
+          monitored_app_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          rules_override?: Json
+          scope?: string
+          updated_at?: string
+          version?: number
+          vertical?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_visibility_rule_overrides_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_rule_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_rule_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metadata_versions: {
         Row: {
           ai_generated: boolean | null
@@ -2142,6 +3929,82 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      monitored_app_markets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_available: boolean
+          keywords: string | null
+          last_fetched_at: string | null
+          market_code: string
+          monitored_app_id: string
+          organization_id: string
+          price_amount: number | null
+          price_currency: string | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_available?: boolean
+          keywords?: string | null
+          last_fetched_at?: string | null
+          market_code: string
+          monitored_app_id: string
+          organization_id: string
+          price_amount?: number | null
+          price_currency?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_available?: boolean
+          keywords?: string | null
+          last_fetched_at?: string | null
+          market_code?: string
+          monitored_app_id?: string
+          organization_id?: string
+          price_amount?: number | null
+          price_currency?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitored_app_markets_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monitored_app_markets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "monitored_app_markets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monitored_app_reviews: {
         Row: {
@@ -2503,6 +4366,61 @@ export type Database = {
           },
         ]
       }
+      org_feature_entitlements: {
+        Row: {
+          created_at: string | null
+          feature_key: string
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_enabled: boolean | null
+          organization_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feature_key: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feature_key?: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_feature_entitlements_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "org_feature_entitlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "org_feature_entitlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_users_backup: {
         Row: {
           created_at: string | null
@@ -2656,6 +4574,39 @@ export type Database = {
           subscription_tier?: string | null
           tier?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_features: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2873,6 +4824,44 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_feature_permissions: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          feature_key: string
+          id: string
+          is_allowed: boolean | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          feature_key: string
+          id?: string
+          is_allowed?: boolean | null
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          feature_key?: string
+          id?: string
+          is_allowed?: boolean | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_feature_key"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["feature_key"]
           },
         ]
       }
@@ -3473,6 +5462,46 @@ export type Database = {
           },
         ]
       }
+      llm_visibility_latest_analysis: {
+        Row: {
+          created_at: string | null
+          description_hash: string | null
+          factual_grounding_score: number | null
+          id: string | null
+          intent_coverage_score: number | null
+          monitored_app_id: string | null
+          organization_id: string | null
+          overall_score: number | null
+          rules_version: string | null
+          safety_credibility_score: number | null
+          semantic_clusters_score: number | null
+          snippet_quality_score: number | null
+          structure_readability_score: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_visibility_analysis_monitored_app_id_fkey"
+            columns: ["monitored_app_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "llm_visibility_analysis_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_app_access_active: {
         Row: {
           app_id: string | null
@@ -3566,6 +5595,42 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_features_view: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          feature_key: string | null
+          feature_name: string | null
+          id: string | null
+          is_enabled: boolean | null
+          organization_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_feature_entitlements_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "org_feature_entitlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "org_feature_entitlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions_unified: {
         Row: {
           effective_role: string | null
@@ -3592,6 +5657,48 @@ export type Database = {
           {
             foreignKeyName: "user_roles_organization_id_fkey"
             columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_role_permissions: {
+        Row: {
+          category: string | null
+          description: string | null
+          feature_key: string | null
+          feature_name: string | null
+          is_allowed: boolean | null
+          organization_id: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_feature_key"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "platform_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "user_roles_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -3757,9 +5864,11 @@ export type Database = {
       }
       check_mfa_required: { Args: { p_user_id: string }; Returns: Json }
       check_org_access: { Args: { target_org_id: string }; Returns: boolean }
+      cleanup_expired_comparison_cache: { Args: never; Returns: number }
       cleanup_expired_competitor_cache: { Args: never; Returns: number }
       cleanup_expired_semantic_insights: { Args: never; Returns: number }
       cleanup_old_refresh_queue_entries: { Args: never; Returns: undefined }
+      count_active_markets: { Args: { app_id: string }; Returns: number }
       create_organization_user: {
         Args: {
           p_email: string
@@ -3773,6 +5882,14 @@ export type Database = {
       deactivate_user: {
         Args: { p_reason?: string; p_user_id: string }
         Returns: Json
+      }
+      generate_comparison_cache_key: {
+        Args: {
+          p_competitor_ids: string[]
+          p_config_hash?: string
+          p_target_app_id: string
+        }
+        Returns: string
       }
       generate_competitive_summary: {
         Args: { p_country?: string; p_target_app_id: string }
@@ -3788,9 +5905,58 @@ export type Database = {
           tier: string
         }[]
       }
+      get_active_markets: {
+        Args: { app_id: string }
+        Returns: {
+          is_available: boolean
+          last_fetched_at: string
+          market_code: string
+          title: string
+        }[]
+      }
       get_cache_age_seconds: {
         Args: { p_monitored_app_id: string }
         Returns: number
+      }
+      get_comparison_cache: {
+        Args: {
+          p_allow_stale?: boolean
+          p_competitor_ids: string[]
+          p_config_hash?: string
+          p_target_app_id: string
+        }
+        Returns: {
+          cache_key: string
+          comparison_config: Json
+          comparison_data: Json
+          computation_time_ms: number | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_stale: boolean | null
+          organization_id: string
+          source_audit_ids: Json
+          target_app_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "competitor_comparison_cache"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_competitor_audit_summary: {
+        Args: { p_target_app_id: string }
+        Returns: {
+          audited_competitors: number
+          avg_score: number
+          failed_audits: number
+          last_audit_time: string
+          never_audited: number
+          stale_audits: number
+          total_competitors: number
+        }[]
       }
       get_competitor_cache_age: {
         Args: {
@@ -3805,7 +5971,74 @@ export type Database = {
           is_fresh: boolean
         }[]
       }
+      get_competitors_needing_audit: {
+        Args: { p_max_age_hours?: number; p_target_app_id: string }
+        Returns: {
+          audit_count: number | null
+          audit_status:
+            | Database["public"]["Enums"]["competitor_audit_status"]
+            | null
+          comparison_context: string | null
+          comparison_summary: Json | null
+          competitor_app_icon: string | null
+          competitor_app_name: string
+          competitor_app_store_id: string
+          competitor_bundle_id: string | null
+          competitor_category: string | null
+          competitor_developer: string | null
+          competitor_rating: number | null
+          competitor_review_count: number | null
+          country: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          is_audit_stale: boolean | null
+          last_audit_at: string | null
+          last_audit_id: string | null
+          last_audit_score: number | null
+          last_compared_at: string | null
+          metadata_changed_count: number | null
+          organization_id: string
+          priority: number | null
+          target_app_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "app_competitors"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_current_user_organization_id: { Args: never; Returns: string }
+      get_effective_intent_patterns: {
+        Args: {
+          p_app_id?: string
+          p_market?: string
+          p_organization_id?: string
+          p_vertical?: string
+        }
+        Returns: {
+          effective_weight: number
+          example: string
+          has_override: boolean
+          intent_type: string
+          is_active: boolean
+          override_source: string
+          pattern: string
+          pattern_id: string
+          priority: number
+        }[]
+      }
+      get_effective_rule_config: {
+        Args: {
+          p_market?: string
+          p_organization_id?: string
+          p_rule_id: string
+          p_vertical?: string
+        }
+        Returns: Json
+      }
       get_impact_level: { Args: { p_score: number }; Returns: string }
       get_keyword_stats: {
         Args: { p_app_id: string }
@@ -3817,6 +6050,92 @@ export type Database = {
           total_estimated_traffic: number
           total_keywords: number
         }[]
+      }
+      get_latest_competitor_audit: {
+        Args: { p_competitor_id: string }
+        Returns: {
+          audit_data: Json
+          combo_coverage_percent: number | null
+          competitor_id: string
+          created_at: string
+          description_char_count: number | null
+          description_score: number | null
+          discovery_brand_count: number | null
+          discovery_learning_count: number | null
+          discovery_noise_count: number | null
+          discovery_outcome_count: number | null
+          error_message: string | null
+          existing_combos: number | null
+          id: string
+          intent_coverage_commercial: number | null
+          intent_coverage_informational: number | null
+          intent_coverage_navigational: number | null
+          intent_coverage_transactional: number | null
+          metadata: Json
+          missing_combos: number | null
+          organization_id: string
+          overall_score: number | null
+          rule_config: Json | null
+          status: string | null
+          subtitle_char_count: number | null
+          subtitle_score: number | null
+          target_app_id: string
+          title_char_count: number | null
+          title_score: number | null
+          total_combos: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "competitor_audit_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_latest_competitor_audits_for_app: {
+        Args: { p_target_app_id: string }
+        Returns: {
+          audit_data: Json
+          combo_coverage_percent: number | null
+          competitor_id: string
+          created_at: string
+          description_char_count: number | null
+          description_score: number | null
+          discovery_brand_count: number | null
+          discovery_learning_count: number | null
+          discovery_noise_count: number | null
+          discovery_outcome_count: number | null
+          error_message: string | null
+          existing_combos: number | null
+          id: string
+          intent_coverage_commercial: number | null
+          intent_coverage_informational: number | null
+          intent_coverage_navigational: number | null
+          intent_coverage_transactional: number | null
+          metadata: Json
+          missing_combos: number | null
+          organization_id: string
+          overall_score: number | null
+          rule_config: Json | null
+          status: string | null
+          subtitle_char_count: number | null
+          subtitle_score: number | null
+          target_app_id: string
+          title_char_count: number | null
+          title_score: number | null
+          total_combos: number | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "competitor_audit_snapshots"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_latest_llm_visibility_score: {
+        Args: { app_id: string }
+        Returns: number
       }
       get_org_apps_with_display_names: {
         Args: { target_org_id: string }
@@ -3869,6 +6188,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      get_user_organization_id: { Args: never; Returns: string }
       grant_org_app_access: {
         Args: {
           p_app_id: string
@@ -3877,10 +6197,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      invalidate_comparison_cache: {
+        Args: { p_target_app_id: string }
+        Returns: number
+      }
       is_cache_fresh: {
         Args: { p_monitored_app_id: string; p_ttl_hours?: number }
         Returns: boolean
       }
+      is_competitor_audit_stale: {
+        Args: { p_competitor_id: string; p_max_age_hours?: number }
+        Returns: boolean
+      }
+      is_internal_yodel_user: { Args: never; Returns: boolean }
       is_super_admin: { Args: { check_user_id?: string }; Returns: boolean }
       is_super_admin_db: { Args: never; Returns: boolean }
       list_organization_users: {
@@ -3894,6 +6223,10 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      llm_description_changed: {
+        Args: { app_id: string; new_description: string; new_hash: string }
+        Returns: boolean
       }
       log_audit_event: {
         Args: {
@@ -3912,6 +6245,8 @@ export type Database = {
         }
         Returns: string
       }
+      mark_competitor_audits_stale: { Args: never; Returns: number }
+      refresh_llm_visibility_cache: { Args: never; Returns: undefined }
       resolve_app_names_to_ids: {
         Args: { app_names: string[]; target_org_id?: string }
         Returns: {
@@ -3978,6 +6313,10 @@ export type Database = {
         Args: { org_id: string }
         Returns: boolean
       }
+      user_has_role_permission: {
+        Args: { check_feature_key: string; check_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -3988,6 +6327,21 @@ export type Database = {
         | "VIEWER"
         | "super_admin"
         | "org_admin"
+      aso_override_type:
+        | "token_relevance"
+        | "intent_pattern"
+        | "hook_pattern"
+        | "stopword"
+        | "kpi_weight"
+        | "formula"
+        | "recommendation"
+      aso_ruleset_scope: "vertical" | "market" | "client"
+      competitor_audit_status:
+        | "never_audited"
+        | "pending"
+        | "completed"
+        | "failed"
+        | "stale"
       monitored_app_validated_state: "valid" | "stale" | "invalid" | "unknown"
     }
     CompositeTypes: {
@@ -4124,6 +6478,23 @@ export const Constants = {
         "VIEWER",
         "super_admin",
         "org_admin",
+      ],
+      aso_override_type: [
+        "token_relevance",
+        "intent_pattern",
+        "hook_pattern",
+        "stopword",
+        "kpi_weight",
+        "formula",
+        "recommendation",
+      ],
+      aso_ruleset_scope: ["vertical", "market", "client"],
+      competitor_audit_status: [
+        "never_audited",
+        "pending",
+        "completed",
+        "failed",
+        "stale",
       ],
       monitored_app_validated_state: ["valid", "stale", "invalid", "unknown"],
     },
