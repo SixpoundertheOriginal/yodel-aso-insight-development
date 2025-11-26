@@ -703,6 +703,7 @@ serve(async (req) => {
   const totalDurationMs = Math.round(performance.now() - startTime);
 
   const responsePayload = {
+    success: true,
     data: rows,
     scope: {
       organization_id: resolvedOrgId,
