@@ -73,13 +73,16 @@ export interface ComboIntentClassification {
 }
 
 /**
- * Intent coverage metrics
+ * Intent coverage metrics (v2.0 extended)
  */
 export interface IntentCoverageMetrics {
   informationalCount: number;
   commercialCount: number;
   transactionalCount: number;
   navigationalCount: number;
+  brandCount?: number;           // v2.0: NEW (same as navigational, preferred term)
+  categoryCount?: number;         // v2.0: NEW
+  featureCount?: number;          // v2.0: NEW
   totalClassified: number;
   coverageScore: number; // 0-100
   dominantIntent: IntentType | null;
@@ -395,11 +398,15 @@ export function classifyComboIntent(
   combo: string,
   patterns: IntentPatternConfig[]
 ): ComboIntentClassification {
+  // v2.0: Initialize all intent types including new ones
   const intentScores: Record<IntentType, number> = {
     informational: 0,
     commercial: 0,
     transactional: 0,
     navigational: 0,
+    brand: 0,        // v2.0: NEW
+    category: 0,     // v2.0: NEW
+    feature: 0,      // v2.0: NEW
   };
 
   const matchedPatterns: string[] = [];

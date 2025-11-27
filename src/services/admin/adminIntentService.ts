@@ -18,7 +18,16 @@ import { supabase } from '@/integrations/supabase/client';
 // Types
 // ============================================================================
 
-export type IntentType = 'informational' | 'commercial' | 'navigational' | 'transactional';
+// v2.0: Expanded from 4 to 7 intent types (Phase 1)
+export type IntentType =
+  | 'informational'   // "learn", "how to", "what is"
+  | 'commercial'      // "best", "top", "compare"
+  | 'navigational'    // LEGACY: brand intent (keeping for backward compatibility)
+  | 'transactional'   // "try", "start", "get", "free", "download"
+  | 'brand'           // NEW v2.0: brand intent (preferred term, same as navigational)
+  | 'category'        // NEW v2.0: "language learning app", "finance app"
+  | 'feature';        // NEW v2.0: "offline mode", "voice recognition"
+
 export type IntentScope = 'base' | 'vertical' | 'market' | 'client' | 'app';
 
 /**
