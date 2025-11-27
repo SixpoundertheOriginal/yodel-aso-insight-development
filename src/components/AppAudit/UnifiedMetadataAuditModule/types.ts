@@ -6,6 +6,7 @@
 
 import type { CombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
 import type { LeakWarning } from '@/engine/asoBible/ruleset.types';
+import type { AppCapabilityMap } from '@/types/auditV2';
 
 export type MetadataElement = 'title' | 'subtitle' | 'description';
 
@@ -212,7 +213,10 @@ export interface UnifiedMetadataAuditResult {
 
   // Vertical Intelligence Layer (Phase 21)
   verticalContext?: VerticalContext;
-  
+
+  // v2.0: Description Intelligence (Phase 2)
+  capabilityMap?: AppCapabilityMap;
+
   // KPI Engine results (UI compatibility)
   kpis?: {
     overall_score?: number;

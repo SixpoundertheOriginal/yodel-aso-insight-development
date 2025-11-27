@@ -12,6 +12,7 @@
 import { detectVertical, type VerticalDetectionResult } from './vertical-detector.ts';
 import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
 import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
+import { extractCapabilities, type AppCapabilityMap } from './description-intelligence.ts';
 
 // ==================== TYPES ====================
 
@@ -72,6 +73,8 @@ export interface UnifiedMetadataAuditResult {
   };
   verticalContext?: VerticalContext;
   intentCoverage?: IntentCoverage;
+  // v2.0: Description Intelligence (Phase 2)
+  capabilityMap?: AppCapabilityMap;
 }
 
 interface ScrapedMetadata {
@@ -653,9 +656,6 @@ export class MetadataAuditEngine {
     // Calculate overall score
     const overallScore = this.calculateOverallScore(elementResults);
 
-    // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
-    const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
-
     // Keyword coverage
     const keywordCoverage = this.analyzeKeywordCoverage(titleTokens, subtitleTokens, descriptionTokens, stopwords);
 
@@ -667,6 +667,14 @@ export class MetadataAuditEngine {
     const intentCoverage = classifyMetadataIntent(titleTokens, subtitleTokens);
     console.log(`[AUDIT-ENGINE] Intent coverage score: ${intentCoverage.coverageScore}/100`);
     console.log(`[AUDIT-ENGINE] Title intent - Info: ${intentCoverage.titleIntent?.informational}%, Commercial: ${intentCoverage.titleIntent?.commercial}%, Trans: ${intentCoverage.titleIntent?.transactional}%`);
+
+    // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
+    const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
+
+    // Phase 2: Extract description capabilities
+    console.log('[AUDIT-ENGINE] Extracting description capabilities...');
+    const capabilityMap = extractCapabilities(metadata.description || '');
+    console.log(`[AUDIT-ENGINE] Capabilities extracted - Features: ${capabilityMap.features.count}, Benefits: ${capabilityMap.benefits.count}, Trust: ${capabilityMap.trust.count}`);
 
     // Build vertical context
     const verticalContext: VerticalContext = {
@@ -687,6 +695,7 @@ export class MetadataAuditEngine {
       comboCoverage,
       verticalContext,
       intentCoverage,
+      capabilityMap,
     };
   }
 
