@@ -32,14 +32,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, currentSession) => {
         // Only log auth events in verbose debug mode
         debugLog.verbose(`Auth state changed: ${event}`, currentSession?.user?.email);
-        
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        
+
+        // If loading was true, set it to false when we get an auth state change
+        if (loading) {
+          setLoading(false);
+        }
+
         // Avoid forcing an immediate token refresh on sign-in.
         // Supabase client handles refresh automatically when needed.
         // Removing the manual refresh prevents spurious 400s in dev tools.
-        
+
         if (event === 'SIGNED_IN') {
           toast({
             title: 'Signed in successfully',
@@ -50,20 +55,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             title: 'Signed out successfully',
             description: 'You have been signed out.',
           });
+        } else if (event === 'TOKEN_REFRESHED') {
+          debugLog.verbose('Token refreshed successfully');
+        } else if (event === 'USER_UPDATED') {
+          debugLog.verbose('User updated');
         }
       }
     );
 
-    // Then check for existing session
+    // Then check for existing session with timeout
+    const sessionCheckTimeout = setTimeout(() => {
+      // If still loading after 5 seconds, force loading to false
+      debugLog.warn('Session check timeout - forcing loading to false');
+      setLoading(false);
+    }, 5000);
+
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       debugLog.verbose('Initial session check', currentSession?.user?.email);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
+      clearTimeout(sessionCheckTimeout);
+    }).catch((error) => {
+      debugLog.error('Failed to get session', error);
+      setLoading(false);
+      clearTimeout(sessionCheckTimeout);
     });
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(sessionCheckTimeout);
     };
   }, [toast]);
 

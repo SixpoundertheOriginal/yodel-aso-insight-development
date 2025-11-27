@@ -48,6 +48,18 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
 
   // Kick off server-side authorization for protected routes
   React.useEffect(() => {
+    // For public routes, immediately set as allowed
+    if (isPublicRoute) {
+      setRouteAllowed(true);
+      return;
+    }
+
+    // If no user and not loading, they're logged out - reset routeAllowed
+    if (!user && !loading) {
+      setRouteAllowed(false);
+      return;
+    }
+
     // Don't call authorize until user and permissions are fully loaded
     // This prevents race condition where Edge Function queries before permissions are ready
     if (!user || permissionsLoading || loading) {
@@ -56,11 +68,6 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
 
     let cancelled = false;
     const run = async () => {
-      // Only check for non-public routes
-      if (isPublicRoute) {
-        setRouteAllowed(true);
-        return;
-      }
       const result = await authorizePath(location.pathname, 'GET');
       if (!cancelled) setRouteAllowed(result.allow);
       if (!result.allow) {
@@ -71,8 +78,24 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
     return () => { cancelled = true; };
   }, [location.pathname, isPublicRoute, user, permissionsLoading, loading]);
 
-  // Show loading during initial auth + server auth
-  if (loading || isLoading || serverAuthLoading || routeAllowed === null) {
+  // Add timeout to prevent infinite loading
+  // If still loading after 10 seconds, treat as session expired
+  React.useEffect(() => {
+    if (!loading && !isLoading && !serverAuthLoading) return;
+
+    const timeout = setTimeout(() => {
+      // Still loading after 10 seconds - likely session issue
+      if (!user) {
+        console.warn('[AppAuthGuard] Auth check timeout - redirecting to sign-in');
+        setRouteAllowed(false);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeout);
+  }, [loading, isLoading, serverAuthLoading, user]);
+
+  // Show loading during initial auth + server auth (but not indefinitely)
+  if ((loading || isLoading || serverAuthLoading) && routeAllowed === null) {
     return <AuthLoadingSpinner />;
   }
 
