@@ -9,6 +9,7 @@
 
 import { detectVertical, type VerticalDetectionResult } from './vertical-detector.ts';
 import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
+import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
 
 // ==================== TYPES ====================
 
@@ -68,6 +69,7 @@ export interface UnifiedMetadataAuditResult {
     allCombinedCombos: string[];
   };
   verticalContext?: VerticalContext;
+  intentCoverage?: IntentCoverage;
 }
 
 interface ScrapedMetadata {
@@ -640,14 +642,20 @@ export class MetadataAuditEngine {
     // Calculate overall score
     const overallScore = this.calculateOverallScore(elementResults);
 
-    // Phase 1: Generate vertical-aware recommendations
-    const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection);
+    // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
+    const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
 
     // Keyword coverage
     const keywordCoverage = this.analyzeKeywordCoverage(titleTokens, subtitleTokens, descriptionTokens, stopwords);
 
     // Combo coverage
     const comboCoverage = this.analyzeComboCoverage(titleTokens, subtitleTokens, stopwords);
+
+    // Phase 2: Classify intent coverage
+    console.log('[AUDIT-ENGINE] Classifying search intent...');
+    const intentCoverage = classifyMetadataIntent(titleTokens, subtitleTokens);
+    console.log(`[AUDIT-ENGINE] Intent coverage score: ${intentCoverage.coverageScore}/100`);
+    console.log(`[AUDIT-ENGINE] Title intent - Info: ${intentCoverage.titleIntent?.informational}%, Commercial: ${intentCoverage.titleIntent?.commercial}%, Trans: ${intentCoverage.titleIntent?.transactional}%`);
 
     // Build vertical context
     const verticalContext: VerticalContext = {
@@ -667,6 +675,7 @@ export class MetadataAuditEngine {
       keywordCoverage,
       comboCoverage,
       verticalContext,
+      intentCoverage,
     };
   }
 
@@ -719,7 +728,8 @@ export class MetadataAuditEngine {
   private static aggregateTopRecommendations(
     elementResults: Record<MetadataElement, ElementScoringResult>,
     verticalRuleSet: VerticalRuleSet | null,
-    verticalDetection: VerticalDetectionResult
+    verticalDetection: VerticalDetectionResult,
+    intentCoverage: IntentCoverage
   ): string[] {
     const allRecs: Array<{ message: string; priority: number; severity: string }> = [];
 
@@ -735,7 +745,48 @@ export class MetadataAuditEngine {
       });
     });
 
-    // 2. Phase 1: Add vertical-specific recommendations from ASO Bible
+    // 2. Phase 2: Add intent-based recommendations
+    if (intentCoverage.titleIntent) {
+      const titleIntent = intentCoverage.titleIntent;
+
+      // Low informational intent (< 20%)
+      if (titleIntent.informational < 20 && verticalDetection.verticalId === 'language_learning') {
+        allRecs.push({
+          message: "[RANKING] Low informational intent detected. Language learning apps benefit from learning-focused keywords like 'learn', 'practice', 'study', or 'master' to improve educational search visibility.",
+          priority: 120,
+          severity: 'warning'
+        });
+      }
+
+      // Low commercial intent (< 15%)
+      if (titleIntent.commercial < 15) {
+        allRecs.push({
+          message: "[RANKING] Consider adding comparative or quality signals like 'best', 'top', or 'leading' to improve commercial intent visibility for users comparing options.",
+          priority: 90,
+          severity: 'info'
+        });
+      }
+
+      // High navigational intent (> 50%) - brand-heavy
+      if (titleIntent.navigational > 50) {
+        allRecs.push({
+          message: "[RANKING] Title is very brand-focused (high navigational intent). Consider adding generic discovery keywords to reach non-brand-aware users.",
+          priority: 110,
+          severity: 'warning'
+        });
+      }
+
+      // Low transactional intent (< 10%)
+      if (titleIntent.transactional < 10 && intentCoverage.coverageScore < 60) {
+        allRecs.push({
+          message: "[RANKING] Low transactional intent. Adding action-oriented keywords like 'free', 'download', or 'get' can improve conversion signals.",
+          priority: 85,
+          severity: 'info'
+        });
+      }
+    }
+
+    // 3. Phase 1: Add vertical-specific recommendations from ASO Bible
     if (verticalRuleSet && verticalRuleSet.recommendations) {
       const metadata = elementResults.title.metadata;
       const titleText = metadata.keywords.join(' ').toLowerCase();
