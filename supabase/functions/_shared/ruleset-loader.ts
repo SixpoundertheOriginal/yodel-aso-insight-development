@@ -22,6 +22,7 @@ export interface VerticalRuleSet {
   label: string;
   recommendations: RecommendationTemplateMap;
   genericPhraseExamples: string[];
+  hookPatterns: string[]; // Vertical-specific hook keywords for description evaluation
 }
 
 // ============================================================================
@@ -193,6 +194,45 @@ const VERTICAL_GENERIC_PHRASES: Record<string, string[]> = {
 };
 
 // ============================================================================
+// Hook Patterns by Vertical (for description hook strength evaluation)
+// ============================================================================
+
+const VERTICAL_HOOK_PATTERNS: Record<string, string[]> = {
+  language_learning: [
+    'learn', 'master', 'speak', 'practice', 'study',
+    'discover', 'improve', 'achieve fluency', 'become fluent', 'unlock'
+  ],
+  rewards: [
+    'earn', 'win', 'get paid', 'cash out', 'redeem',
+    'unlock rewards', 'collect', 'gain', 'achieve', 'claim'
+  ],
+  finance: [
+    'save', 'invest', 'grow', 'build wealth', 'secure',
+    'protect', 'achieve goals', 'track', 'manage', 'plan'
+  ],
+  dating: [
+    'meet', 'match', 'connect', 'find love', 'discover',
+    'chat', 'date', 'build relationships', 'experience', 'explore'
+  ],
+  productivity: [
+    'organize', 'manage', 'plan', 'track', 'achieve',
+    'boost productivity', 'streamline', 'optimize', 'transform', 'simplify'
+  ],
+  health: [
+    'transform', 'achieve goals', 'get fit', 'lose weight', 'build muscle',
+    'improve health', 'track progress', 'workout', 'train', 'reach goals'
+  ],
+  entertainment: [
+    'watch', 'enjoy', 'stream', 'discover', 'explore',
+    'experience', 'unlock', 'access', 'binge', 'immerse'
+  ],
+  base: [
+    'discover', 'experience', 'transform', 'achieve', 'unlock',
+    'explore', 'create', 'build', 'improve', 'enhance'
+  ],
+};
+
+// ============================================================================
 // RuleSet Registry
 // ============================================================================
 
@@ -202,48 +242,56 @@ const VERTICAL_RULESETS: Record<string, VerticalRuleSet> = {
     label: 'Language Learning',
     recommendations: LANGUAGE_LEARNING_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.language_learning,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.language_learning,
   },
   rewards: {
     verticalId: 'rewards',
     label: 'Rewards & Cashback',
     recommendations: REWARDS_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.rewards,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.rewards,
   },
   finance: {
     verticalId: 'finance',
     label: 'Finance & Investing',
     recommendations: FINANCE_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.finance,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.finance,
   },
   dating: {
     verticalId: 'dating',
     label: 'Dating & Relationships',
     recommendations: DATING_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.dating,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.dating,
   },
   productivity: {
     verticalId: 'productivity',
     label: 'Productivity & Task Management',
     recommendations: PRODUCTIVITY_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.productivity,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.productivity,
   },
   health: {
     verticalId: 'health',
     label: 'Health & Fitness',
     recommendations: HEALTH_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.health,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.health,
   },
   entertainment: {
     verticalId: 'entertainment',
     label: 'Entertainment',
     recommendations: ENTERTAINMENT_RECOMMENDATIONS,
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.entertainment,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.entertainment,
   },
   base: {
     verticalId: 'base',
     label: 'Base (Generic)',
     recommendations: {},
     genericPhraseExamples: VERTICAL_GENERIC_PHRASES.base,
+    hookPatterns: VERTICAL_HOOK_PATTERNS.base,
   },
 };
 

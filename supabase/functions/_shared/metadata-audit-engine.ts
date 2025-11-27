@@ -5,6 +5,8 @@
  * Core scoring logic extracted from frontend engine.
  *
  * Phase 1: ASO Bible Integration - Vertical-aware recommendations
+ * Phase 2: Intent Classification Engine - Intent-based recommendations
+ * Phase 3: Vertical-Aware Hook Patterns - Description hook evaluation
  */
 
 import { detectVertical, type VerticalDetectionResult } from './vertical-detector.ts';
@@ -87,6 +89,7 @@ interface EvaluationContext {
   subtitleTokens: string[];
   descriptionTokens: string[];
   stopwords: Set<string>;
+  verticalRuleSet?: VerticalRuleSet | null;
 }
 
 interface RuleConfig {
@@ -504,8 +507,15 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
           }
 
           const firstParagraph = text.split('\n')[0] || '';
-          const hookKeywords = ['discover', 'experience', 'transform', 'achieve', 'unlock'];
-          const hasHookKeyword = hookKeywords.some(k => firstParagraph.toLowerCase().includes(k));
+
+          // Phase 3: Use vertical-specific hook patterns
+          const hookKeywords = ctx.verticalRuleSet?.hookPatterns || [
+            'discover', 'experience', 'transform', 'achieve', 'unlock'
+          ];
+
+          const firstParaLower = firstParagraph.toLowerCase();
+          const matchedHooks = hookKeywords.filter(k => firstParaLower.includes(k.toLowerCase()));
+          const hasHookKeyword = matchedHooks.length > 0;
 
           const score = hasHookKeyword ? 85 : 65;
 
@@ -514,7 +524,7 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
             passed: score >= 70,
             score,
             message: hasHookKeyword ? 'Strong opening hook' : 'Consider adding hook words',
-            evidence: hasHookKeyword ? hookKeywords.filter(k => firstParagraph.toLowerCase().includes(k)) : []
+            evidence: matchedHooks
           };
         }
       },
@@ -628,7 +638,8 @@ export class MetadataAuditEngine {
       titleTokens,
       subtitleTokens,
       descriptionTokens,
-      stopwords
+      stopwords,
+      verticalRuleSet
     };
 
     // Evaluate each element
