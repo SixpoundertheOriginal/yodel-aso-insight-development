@@ -65,14 +65,16 @@ export const KpiTooltip: React.FC<KpiTooltipProps> = ({
           </button>
         </TooltipTrigger>
         <TooltipContent
-          side="top"
-          align="center"
+          side="right"
+          align="start"
+          sideOffset={8}
+          collisionPadding={12}
           className={cn(
-            "max-w-sm p-4 bg-zinc-900 border-zinc-700 text-zinc-100",
-            showFullExplanation && "max-w-md"
+            "max-w-[280px] p-3 bg-zinc-900 border-zinc-700 text-zinc-100 z-50",
+            showFullExplanation && "max-w-[320px]"
           )}
         >
-          <div className="space-y-2 text-sm leading-relaxed whitespace-pre-line">
+          <div className="space-y-2 text-xs leading-relaxed whitespace-pre-line">
             {content}
           </div>
         </TooltipContent>

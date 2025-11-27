@@ -73,77 +73,79 @@ export const MetadataDimensionRadar: React.FC<MetadataDimensionRadarProps> = ({
         </p>
       </CardHeader>
 
-      <CardContent className="pt-0 flex justify-center">
-        <ResponsiveContainer width="100%" height={320}>
-          <RadarChart data={data} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-            <PolarGrid stroke="#3f3f46" strokeOpacity={0.5} />
-            <PolarAngleAxis
-              dataKey="dimension"
-              tick={{ fill: '#a1a1aa', fontSize: 11, fontFamily: 'monospace' }}
-              stroke="#71717a"
-            />
-            <PolarRadiusAxis
-              angle={90}
-              domain={[0, 100]}
-              tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }}
-              stroke="#3f3f46"
-            />
-            <Radar
-              name="Score"
-              dataKey="score"
-              stroke="#22d3ee"
-              fill="#22d3ee"
-              fillOpacity={0.3}
-              strokeWidth={2}
-              dot={{ fill: '#22d3ee', r: 4 }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                border: '1px solid #3f3f46',
-                borderRadius: '8px',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-              }}
-              labelStyle={{ color: '#e4e4e7', fontWeight: 'bold' }}
-              itemStyle={{ color: '#22d3ee' }}
-              formatter={(value: number) => value.toFixed(1)}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+      <CardContent className="pt-0">
+        <div className="w-full">
+          <ResponsiveContainer width="100%" height={320}>
+            <RadarChart data={data} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+              <PolarGrid stroke="#3f3f46" strokeOpacity={0.5} />
+              <PolarAngleAxis
+                dataKey="dimension"
+                tick={{ fill: '#a1a1aa', fontSize: 11, fontFamily: 'monospace' }}
+                stroke="#71717a"
+              />
+              <PolarRadiusAxis
+                angle={90}
+                domain={[0, 100]}
+                tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }}
+                stroke="#3f3f46"
+              />
+              <Radar
+                name="Score"
+                dataKey="score"
+                stroke="#22d3ee"
+                fill="#22d3ee"
+                fillOpacity={0.3}
+                strokeWidth={2}
+                dot={{ fill: '#22d3ee', r: 4 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  border: '1px solid #3f3f46',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                }}
+                labelStyle={{ color: '#e4e4e7', fontWeight: 'bold' }}
+                itemStyle={{ color: '#22d3ee' }}
+                formatter={(value: number) => value.toFixed(1)}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
 
-        {/* Legend */}
-        <div className="mt-4 text-center">
-          <div className="inline-flex items-center gap-4 text-xs text-zinc-500">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <span>&lt; 50</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <span>50-80</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-cyan-400/60" />
-              <span>80+</span>
+          {/* Legend */}
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center gap-4 text-xs text-zinc-500">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                <span>&lt; 50</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                <span>50-80</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-cyan-400/60" />
+                <span>80+</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Dimension Explanations */}
-        <div className="mt-4 pt-4 border-t border-zinc-800/50">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            {data.map((item) => (
-              <div key={item.metricId} className="flex items-center gap-2 text-xs">
-                <span className="text-zinc-400">{item.dimension}:</span>
-                <span className="text-cyan-300 font-mono">{item.score.toFixed(0)}</span>
-                <KpiTooltip
-                  metricId={item.metricId}
-                  currentScore={item.score}
-                  iconSize="sm"
-                />
-              </div>
-            ))}
+          {/* Dimension Explanations */}
+          <div className="mt-4 pt-4 border-t border-zinc-800/50">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {data.map((item) => (
+                <div key={item.metricId} className="flex items-center gap-2 text-xs min-w-0">
+                  <span className="text-zinc-400 whitespace-nowrap">{item.dimension}:</span>
+                  <span className="text-cyan-300 font-mono flex-shrink-0">{item.score.toFixed(0)}</span>
+                  <KpiTooltip
+                    metricId={item.metricId}
+                    currentScore={item.score}
+                    iconSize="sm"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </CardContent>

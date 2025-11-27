@@ -168,10 +168,10 @@ export const TokenMixDonut: React.FC<TokenMixDonutProps> = ({
         <div className="mt-4 pt-4 border-t border-zinc-800/50">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             {data.map((item) => (
-              <div key={item.metricId} className="flex items-center gap-2 text-xs">
+              <div key={item.metricId} className="flex items-center gap-2 text-xs min-w-0">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-zinc-400">{item.name}:</span>
-                <span className="text-zinc-200 font-mono font-medium">{item.value}</span>
+                <span className="text-zinc-400 whitespace-nowrap">{item.name}:</span>
+                <span className="text-zinc-200 font-mono font-medium flex-shrink-0">{item.value}</span>
                 <KpiTooltip metricId={item.metricId} iconSize="sm" />
               </div>
             ))}

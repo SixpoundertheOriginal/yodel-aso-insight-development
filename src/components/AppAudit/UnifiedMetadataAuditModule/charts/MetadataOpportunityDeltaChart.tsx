@@ -174,9 +174,9 @@ export const MetadataOpportunityDeltaChart: React.FC<MetadataOpportunityDeltaCha
 
         {/* KPI Explanations */}
         <div className="mt-4 pt-4 border-t border-zinc-800/50">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             {data.map((item) => (
-              <div key={item.metricId} className="flex items-center gap-2 text-xs">
+              <div key={item.metricId} className="flex items-center gap-2 text-xs min-w-0">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: item.color }}
