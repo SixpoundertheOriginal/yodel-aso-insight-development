@@ -7,6 +7,7 @@
 import type { CombinedSearchIntentCoverage } from '@/engine/asoBible/searchIntentCoverageEngine';
 import type { LeakWarning } from '@/engine/asoBible/ruleset.types';
 import type { AppCapabilityMap } from '@/types/auditV2';
+import type { GapAnalysisResult } from '@/types/gapAnalysis';
 
 export type MetadataElement = 'title' | 'subtitle' | 'description';
 
@@ -216,6 +217,9 @@ export interface UnifiedMetadataAuditResult {
 
   // v2.0: Description Intelligence (Phase 2)
   capabilityMap?: AppCapabilityMap;
+
+  // v2.0: Gap Analysis (Phase 3)
+  gapAnalysis?: GapAnalysisResult;
 
   // KPI Engine results (UI compatibility)
   kpis?: {

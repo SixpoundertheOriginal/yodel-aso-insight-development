@@ -13,6 +13,7 @@ import { detectVertical, type VerticalDetectionResult } from './vertical-detecto
 import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
 import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
 import { extractCapabilities, type AppCapabilityMap } from './description-intelligence.ts';
+import { analyzeCapabilityGaps, type GapAnalysisResult } from './gap-analysis.ts';
 
 // ==================== TYPES ====================
 
@@ -75,6 +76,8 @@ export interface UnifiedMetadataAuditResult {
   intentCoverage?: IntentCoverage;
   // v2.0: Description Intelligence (Phase 2)
   capabilityMap?: AppCapabilityMap;
+  // v2.0: Gap Analysis (Phase 3)
+  gapAnalysis?: GapAnalysisResult;
 }
 
 interface ScrapedMetadata {
@@ -676,6 +679,11 @@ export class MetadataAuditEngine {
     const capabilityMap = extractCapabilities(metadata.description || '');
     console.log(`[AUDIT-ENGINE] Capabilities extracted - Features: ${capabilityMap.features.count}, Benefits: ${capabilityMap.benefits.count}, Trust: ${capabilityMap.trust.count}`);
 
+    // Phase 3: Analyze capability gaps
+    console.log('[AUDIT-ENGINE] Analyzing capability gaps...');
+    const gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
+    console.log(`[AUDIT-ENGINE] Gap analysis - Overall score: ${gapAnalysis.overallGapScore}/100, Total gaps: ${gapAnalysis.totalGaps} (Critical: ${gapAnalysis.criticalGaps}, High: ${gapAnalysis.highGaps})`);
+
     // Build vertical context
     const verticalContext: VerticalContext = {
       verticalId: verticalDetection.verticalId,
@@ -696,6 +704,7 @@ export class MetadataAuditEngine {
       verticalContext,
       intentCoverage,
       capabilityMap,
+      gapAnalysis,
     };
   }
 
