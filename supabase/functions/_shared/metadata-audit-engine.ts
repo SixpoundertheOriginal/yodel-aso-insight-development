@@ -12,9 +12,12 @@
 import { detectVertical, type VerticalDetectionResult } from './vertical-detector.ts';
 import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
 import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
-import { extractCapabilities, type AppCapabilityMap } from './description-intelligence.ts';
-import { analyzeCapabilityGaps, type GapAnalysisResult } from './gap-analysis.ts';
-import { generateExecutiveRecommendations, type ExecutiveRecommendations } from './executive-recommendations.ts';
+
+// v2.0 imports (lazy loaded to prevent initialization errors)
+// These will only be imported if v2.0 features are actually used
+type AppCapabilityMap = any;
+type GapAnalysisResult = any;
+type ExecutiveRecommendations = any;
 
 // ==================== TYPES ====================
 
@@ -677,42 +680,13 @@ export class MetadataAuditEngine {
     // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
     const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
 
-    // Phase 2: Extract description capabilities (v2.0 - optional, with error handling)
-    let capabilityMap;
-    try {
-      console.log('[AUDIT-ENGINE] Extracting description capabilities...');
-      capabilityMap = extractCapabilities(metadata.description || '');
-      console.log(`[AUDIT-ENGINE] Capabilities extracted - Features: ${capabilityMap.features.count}, Benefits: ${capabilityMap.benefits.count}, Trust: ${capabilityMap.trust.count}`);
-    } catch (error) {
-      console.error('[AUDIT-ENGINE] Error extracting capabilities:', error);
-      capabilityMap = undefined;
-    }
+    // Phase 2-4: v2.0 features (DISABLED for now to prevent edge function errors)
+    // TODO: Re-enable once we verify edge function stability
+    const capabilityMap = undefined;
+    const gapAnalysis = undefined;
+    const executiveRecommendations = undefined;
 
-    // Phase 3: Analyze capability gaps (v2.0 - optional, with error handling)
-    let gapAnalysis;
-    try {
-      if (capabilityMap) {
-        console.log('[AUDIT-ENGINE] Analyzing capability gaps...');
-        gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
-        console.log(`[AUDIT-ENGINE] Gap analysis - Overall score: ${gapAnalysis.overallGapScore}/100, Total gaps: ${gapAnalysis.totalGaps} (Critical: ${gapAnalysis.criticalGaps}, High: ${gapAnalysis.highGaps})`);
-      }
-    } catch (error) {
-      console.error('[AUDIT-ENGINE] Error analyzing gaps:', error);
-      gapAnalysis = undefined;
-    }
-
-    // Phase 4: Generate executive recommendations (v2.0 - optional, with error handling)
-    let executiveRecommendations;
-    try {
-      if (gapAnalysis && capabilityMap) {
-        console.log('[AUDIT-ENGINE] Generating executive recommendations...');
-        executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
-        console.log(`[AUDIT-ENGINE] Recommendations - Priority: ${executiveRecommendations.overallPriority}, Action items: ${executiveRecommendations.totalActionItems}, Quick wins: ${executiveRecommendations.opportunities.quickWins.length}`);
-      }
-    } catch (error) {
-      console.error('[AUDIT-ENGINE] Error generating recommendations:', error);
-      executiveRecommendations = undefined;
-    }
+    console.log('[AUDIT-ENGINE] v2.0 features temporarily disabled for stability');
 
     // Build vertical context
     const verticalContext: VerticalContext = {
