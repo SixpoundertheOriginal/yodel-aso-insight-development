@@ -13,11 +13,10 @@ import { detectVertical, type VerticalDetectionResult } from './vertical-detecto
 import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
 import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
 
-// v2.0 imports (lazy loaded to prevent initialization errors)
-// These will only be imported if v2.0 features are actually used
-type AppCapabilityMap = any;
-type GapAnalysisResult = any;
-type ExecutiveRecommendations = any;
+// v2.0 imports - Description Intelligence + Gap Analysis + Executive Recommendations
+import { extractCapabilities, type AppCapabilityMap } from './description-intelligence.ts';
+import { analyzeCapabilityGaps, type GapAnalysisResult } from './gap-analysis.ts';
+import { generateExecutiveRecommendations, type ExecutiveRecommendations } from './executive-recommendations.ts';
 
 // ==================== TYPES ====================
 
@@ -680,13 +679,18 @@ export class MetadataAuditEngine {
     // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
     const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
 
-    // Phase 2-4: v2.0 features (DISABLED for now to prevent edge function errors)
-    // TODO: Re-enable once we verify edge function stability
-    const capabilityMap = undefined;
-    const gapAnalysis = undefined;
-    const executiveRecommendations = undefined;
+    // Phase 2-4: v2.0 features (Description Intelligence + Gap Analysis + Executive Recommendations)
+    console.log('[AUDIT-ENGINE] Extracting app capabilities from description...');
+    const capabilityMap = extractCapabilities(metadata.description || '');
+    console.log(`[AUDIT-ENGINE] Capabilities extracted: ${capabilityMap.features.count} features, ${capabilityMap.benefits.count} benefits, ${capabilityMap.trust.count} trust signals`);
 
-    console.log('[AUDIT-ENGINE] v2.0 features temporarily disabled for stability');
+    console.log('[AUDIT-ENGINE] Analyzing capability gaps...');
+    const gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
+    console.log(`[AUDIT-ENGINE] Gap analysis complete: ${gapAnalysis.totalGaps} gaps found, score: ${gapAnalysis.overallGapScore}/100`);
+
+    console.log('[AUDIT-ENGINE] Generating executive recommendations...');
+    const executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
+    console.log(`[AUDIT-ENGINE] Executive recommendations generated: ${executiveRecommendations.totalActionItems} action items, priority: ${executiveRecommendations.overallPriority}`);
 
     // Build vertical context
     const verticalContext: VerticalContext = {
