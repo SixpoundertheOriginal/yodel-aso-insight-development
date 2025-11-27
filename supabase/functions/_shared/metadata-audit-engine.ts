@@ -14,6 +14,7 @@ import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet 
 import { classifyMetadataIntent, type IntentCoverage } from './intent-classifier.ts';
 import { extractCapabilities, type AppCapabilityMap } from './description-intelligence.ts';
 import { analyzeCapabilityGaps, type GapAnalysisResult } from './gap-analysis.ts';
+import { generateExecutiveRecommendations, type ExecutiveRecommendations } from './executive-recommendations.ts';
 
 // ==================== TYPES ====================
 
@@ -78,6 +79,8 @@ export interface UnifiedMetadataAuditResult {
   capabilityMap?: AppCapabilityMap;
   // v2.0: Gap Analysis (Phase 3)
   gapAnalysis?: GapAnalysisResult;
+  // v2.0: Executive Recommendations (Phase 4)
+  executiveRecommendations?: ExecutiveRecommendations;
 }
 
 interface ScrapedMetadata {
@@ -684,6 +687,11 @@ export class MetadataAuditEngine {
     const gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
     console.log(`[AUDIT-ENGINE] Gap analysis - Overall score: ${gapAnalysis.overallGapScore}/100, Total gaps: ${gapAnalysis.totalGaps} (Critical: ${gapAnalysis.criticalGaps}, High: ${gapAnalysis.highGaps})`);
 
+    // Phase 4: Generate executive recommendations
+    console.log('[AUDIT-ENGINE] Generating executive recommendations...');
+    const executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
+    console.log(`[AUDIT-ENGINE] Recommendations - Priority: ${executiveRecommendations.overallPriority}, Action items: ${executiveRecommendations.totalActionItems}, Quick wins: ${executiveRecommendations.opportunities.quickWins.length}`);
+
     // Build vertical context
     const verticalContext: VerticalContext = {
       verticalId: verticalDetection.verticalId,
@@ -705,6 +713,7 @@ export class MetadataAuditEngine {
       intentCoverage,
       capabilityMap,
       gapAnalysis,
+      executiveRecommendations,
     };
   }
 
