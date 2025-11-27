@@ -9,7 +9,7 @@
  */
 
 import { tokenizeForASO, analyzeText } from '../tokenization';
-import { getTokenRelevance } from '../metadataAuditEngine';
+import { getTokenRelevance } from '../metadataAuditEngine.legacy'; // Only needs getTokenRelevance utility function
 import { computeBrandRatioStats, getNoiseSeverity } from '../utils/brandNoiseHelpers';
 import { applyFormulaComponentWeightOverride, applyFormulaOutputMultiplier } from '../metadataFormulaRegistry';
 import kpiRegistryData from './kpi.registry.json';

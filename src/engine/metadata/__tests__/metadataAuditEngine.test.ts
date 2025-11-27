@@ -4,7 +4,7 @@
  * Minimal unit tests to verify core scoring logic.
  */
 
-import { MetadataAuditEngine } from '../metadataAuditEngine';
+import { MetadataAuditEngine } from '../metadataAuditEngine.legacy'; // Test still uses legacy engine
 import type { ScrapedMetadata } from '@/types/aso';
 
 describe('MetadataAuditEngine', async () => {

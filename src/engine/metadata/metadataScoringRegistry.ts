@@ -15,7 +15,7 @@ import { analyzeCombinations } from '@/modules/metadata-scoring/utils/ngram';
 import { generateAllPossibleCombos } from '@/engine/combos/comboGenerationEngine';
 import { dedupeCombos } from '@/modules/metadata-scoring/utils/comboDedupe';
 import { getCanonicalComboString } from '@/modules/metadata-scoring/utils/comboNormalizer';
-import { getTokenRelevance } from './metadataAuditEngine';
+import { getTokenRelevance } from './metadataAuditEngine.legacy'; // Utility function still needed
 import { computeBrandRatioStats, getNoiseSeverity } from './utils/brandNoiseHelpers';
 import { getRuleConfig } from '@/services/ruleConfigLoader';
 

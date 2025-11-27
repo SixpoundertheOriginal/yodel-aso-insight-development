@@ -22,4 +22,4 @@ export type {
 } from './kpi/kpi.types';
 
 // Metadata Audit Engine (Existing)
-export { MetadataAuditEngine } from './metadataAuditEngine';
+export { MetadataAuditEngine } from './metadataAuditEngine.legacy'; // LEGACY: Migrated to edge function
