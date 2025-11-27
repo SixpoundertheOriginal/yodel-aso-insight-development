@@ -2,14 +2,20 @@
  * Unified Metadata Audit Module
  *
  * Main container for the Metadata Audit V2 UI.
- * Performs client-side scoring using MetadataAuditEngine (no API calls).
+ * Migrated to edge function architecture (2025-11-27)
+ *
+ * ARCHITECTURE CHANGE:
+ * - Previous: Client-side scoring using MetadataAuditEngine
+ * - Current: Server-side scoring via metadata-audit-v2 edge function
+ * - Benefits: Single source of truth, v2.0 features (capabilities, gaps, recommendations)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine';
+// import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine'; // MIGRATED TO EDGE FUNCTION
+import { useMetadataAuditV2 } from '@/hooks/useMetadataAuditV2';
 import { KpiEngine } from '@/engine/metadata/kpi/kpiEngine';
 import type { ScrapedMetadata } from '@/types/aso';
 import type { UnifiedMetadataAuditResult } from './types';
@@ -24,7 +30,7 @@ import { VerticalOverviewPanel } from './VerticalOverviewPanel';
 import { VerticalBenchmarksPanel } from './VerticalBenchmarksPanel';
 import { VerticalConversionDriversPanel } from './VerticalConversionDriversPanel';
 import { useIntentIntelligence } from '@/hooks/useIntentIntelligence';
-import { useCachedRuleSet } from '@/hooks/useCachedRuleSet';
+// import { useCachedRuleSet } from '@/hooks/useCachedRuleSet'; // NO LONGER NEEDED - Edge function handles ruleset server-side
 import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
 import { MOCK_PIMSLEUR_AUDIT } from './mockAuditResult';
 import {
@@ -111,62 +117,65 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     },
   });
 
-  // Phase 20 + Phase 2A + Phase 1.2: Load active rule set with React Query caching
-  // Performance Optimization: Prevents database hit on every audit evaluation
-  const { data: activeRuleSet, isLoading: isRuleSetLoading } = useCachedRuleSet({
-    appId: metadata?.appId,
-    category: metadata?.applicationCategory,
-    title: metadata?.title,
-    subtitle: metadata?.subtitle,
-    description: metadata?.description,
+  // ========================================================================
+  // EDGE FUNCTION INTEGRATION (Migrated 2025-11-27)
+  // ========================================================================
+  // Replaces client-side MetadataAuditEngine with server-side edge function
+  // Edge function provides v2.0 features: capability analysis, gap detection, recommendations
+
+  const {
+    data: edgeAuditResponse,
+    isLoading: isEdgeLoading,
+    error: edgeError,
+  } = useMetadataAuditV2({
+    app_id: metadata?.appId,
+    platform: metadata?.platform || 'ios',
     locale: metadata?.locale || 'en-US',
-    enabled: !!metadata,
+    enabled: !useMockData && !!metadata?.appId,
   });
 
+  // Sync edge function results to local state
   useEffect(() => {
     // Use mock data if specified
     if (useMockData) {
       setAuditResult(MOCK_PIMSLEUR_AUDIT);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
-    // Validate metadata
-    if (!metadata) {
-      setError('No metadata available for audit');
+    // Handle edge function errors
+    if (edgeError) {
+      console.error('[UnifiedMetadataAuditModule] Edge function error:', edgeError);
+      setError(edgeError.message || 'Failed to fetch audit from server');
+      setAuditResult(null);
       setIsLoading(false);
       return;
     }
 
-    // Wait for ruleset to load (Performance Phase 1.2)
-    if (isRuleSetLoading) {
+    // Handle successful edge function response
+    if (edgeAuditResponse?.success && edgeAuditResponse.data) {
+      console.log('[UnifiedMetadataAuditModule] Edge function audit received:', {
+        overallScore: edgeAuditResponse.data.overallScore,
+        hasCapabilityMap: !!edgeAuditResponse.data.capabilityMap,
+        hasGapAnalysis: !!edgeAuditResponse.data.gapAnalysis,
+        hasExecutiveRecommendations: !!edgeAuditResponse.data.executiveRecommendations,
+      });
+      setAuditResult(edgeAuditResponse.data);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Still loading
+    if (isEdgeLoading) {
       setIsLoading(true);
       return;
     }
 
-    // Phase 15.7: Now async to support Bible config loading
-    // Phase 1.2: Pass cached ruleset to avoid database hit
-    const runAudit = async () => {
-      setIsLoading(true);
-      try {
-        // Run client-side scoring engine (now async for Bible integration)
-        // Performance: Pass cached ruleset to skip database query
-        const result = await MetadataAuditEngine.evaluate(metadata, {
-          cachedRuleSet: activeRuleSet || undefined,
-        });
-        setAuditResult(result);
-        setError(null);
-      } catch (err) {
-        console.error('Metadata audit engine failed:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-        setAuditResult(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    runAudit();
-  }, [metadata, useMockData, activeRuleSet, isRuleSetLoading]);
+    // No data yet
+    setIsLoading(false);
+  }, [useMockData, edgeAuditResponse, edgeError, isEdgeLoading]);
 
   // Intent Intelligence Integration (MUST be called on every render - React Hooks Rule)
   // Extract keywords safely, defaulting to empty arrays when auditResult is null
@@ -436,51 +445,18 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       )}
 
       {/* ======================================================================
-          CHAPTER 2 — ASO INTELLIGENCE V2.0
+          ASO INTELLIGENCE V2.0 - MOVED TO CHAPTER 5 (after all other chapters)
           ====================================================================== */}
-      {(auditResult.capabilityMap || auditResult.gapAnalysis || auditResult.executiveRecommendations) && (
-        <div className="space-y-6 mt-8">
-          <div className="relative">
-            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
-              <div className="h-[2px] w-8 bg-purple-500/40" />
-              CHAPTER 2 — ASO INTELLIGENCE V2.0
-              <div className="flex-1 h-[2px] bg-gradient-to-r from-purple-500/40 to-transparent" />
-            </h3>
-            <p className="text-xs text-zinc-500 mb-4 -mt-2">
-              AI-powered capability analysis, gap detection, and executive recommendations
-            </p>
-          </div>
-
-          {/* Phase 2: Description Intelligence - App Capabilities */}
-          {auditResult.capabilityMap && (
-            <AppCapabilitiesSection capabilityMap={auditResult.capabilityMap} />
-          )}
-
-          {/* Phase 3: Gap Analysis */}
-          {auditResult.gapAnalysis && (
-            <GapAnalysisSection
-              gapAnalysis={auditResult.gapAnalysis}
-              verticalName={auditResult.verticalContext?.verticalName}
-            />
-          )}
-
-          {/* Phase 4: Executive Recommendations */}
-          {auditResult.executiveRecommendations && (
-            <ExecutiveRecommendationsSection
-              recommendations={auditResult.executiveRecommendations}
-            />
-          )}
-        </div>
-      )}
+      {/* See CHAPTER 5 below for ASO Intelligence v2.0 sections */}
 
       {/* ======================================================================
-          CHAPTER 3 — RANKING DRIVERS & GAPS
+          CHAPTER 2 — RANKING DRIVERS & GAPS
           ====================================================================== */}
       <div className="space-y-4 mt-6">
         <div className="relative">
           <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
             <div className="h-[2px] w-8 bg-orange-500/40" />
-            CHAPTER 3 — RANKING DRIVERS & GAPS
+            CHAPTER 2 — RANKING DRIVERS & GAPS
             <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
           </h3>
           <p className="text-xs text-zinc-500 mb-4 -mt-2">
@@ -558,13 +534,13 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       </div>
 
       {/* ======================================================================
-          CHAPTER 2 — COVERAGE MECHANICS
+          CHAPTER 3 — COVERAGE MECHANICS
           ====================================================================== */}
       <div className="space-y-4 mt-6">
         <div className="relative">
           <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
             <div className="h-[2px] w-8 bg-emerald-500/40" />
-            CHAPTER 2 — COVERAGE MECHANICS
+            CHAPTER 3 — COVERAGE MECHANICS
             <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
           </h3>
           <p className="text-xs text-zinc-500 mb-4 -mt-2">
@@ -595,7 +571,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         <HookDiversityWheel
           comboCoverage={auditResult.comboCoverage}
           keywordCoverage={auditResult.keywordCoverage}
-          activeRuleSet={activeRuleSet || undefined}
+          activeRuleSet={undefined} // Edge function doesn't return full ruleset (simplified to verticalContext)
         />
 
         {/* Row 4: Enhanced Keyword Combo Workbench (Full Width) */}
@@ -762,6 +738,44 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
                 Click "Audit All" above to analyze competitor metadata using the same ASO Brain engine
               </p>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ======================================================================
+          CHAPTER 5 — ASO INTELLIGENCE
+          ====================================================================== */}
+      {(auditResult.capabilityMap || auditResult.gapAnalysis || auditResult.executiveRecommendations) && (
+        <div className="space-y-6 mt-8">
+          <div className="relative">
+            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-8 bg-purple-500/40" />
+              CHAPTER 5 — ASO INTELLIGENCE
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-purple-500/40 to-transparent" />
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 -mt-2">
+              AI-powered capability analysis, gap detection, and strategic recommendations
+            </p>
+          </div>
+
+          {/* Phase 2: Description Intelligence - App Capabilities */}
+          {auditResult.capabilityMap && (
+            <AppCapabilitiesSection capabilityMap={auditResult.capabilityMap} />
+          )}
+
+          {/* Phase 3: Gap Analysis */}
+          {auditResult.gapAnalysis && (
+            <GapAnalysisSection
+              gapAnalysis={auditResult.gapAnalysis}
+              verticalName={auditResult.verticalContext?.verticalName}
+            />
+          )}
+
+          {/* Phase 4: Executive Recommendations */}
+          {auditResult.executiveRecommendations && (
+            <ExecutiveRecommendationsSection
+              recommendations={auditResult.executiveRecommendations}
+            />
           )}
         </div>
       )}

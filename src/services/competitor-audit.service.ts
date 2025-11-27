@@ -14,7 +14,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine';
+import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine.legacy'; // TODO: Migrate competitor audit to edge function
 import { fetchCompetitorMetadata, type CompetitorMetadataResult } from './competitor-metadata.service';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { validateCompetitorAudit } from './competitor-audit.validator';

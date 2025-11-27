@@ -1,6 +1,29 @@
 /**
- * Metadata Audit Engine
+ * ⚠️ LEGACY: Client-Side Metadata Audit Engine
  *
+ * ==================== MIGRATION NOTICE ====================
+ * THIS FILE IS NO LONGER USED IN PRODUCTION
+ * Migrated to edge function on: 2025-11-27
+ * New location: supabase/functions/_shared/metadata-audit-engine.ts
+ * Frontend now uses: useMetadataAuditV2 hook → metadata-audit-v2 edge function
+ * =========================================================
+ *
+ * REASON FOR MIGRATION:
+ * - Proper SaaS architecture (server-side processing)
+ * - Single source of truth (no code duplication)
+ * - Smaller frontend bundle size
+ * - v2.0 features (capability analysis, gap detection, recommendations)
+ * - Edge function can use service role for database access
+ *
+ * THIS FILE IS PRESERVED FOR:
+ * - Reference during migration issues
+ * - Potential offline mode in future
+ * - Historical documentation
+ * - Emergency rollback if edge function fails
+ *
+ * ⚠️ DO NOT DELETE - DO NOT USE IN NEW CODE ⚠️
+ *
+ * Original Description:
  * Evaluates app metadata using the centralized scoring registry.
  * Pure TypeScript, deterministic, no AI calls.
  */
