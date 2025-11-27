@@ -102,6 +102,11 @@ const INTENT_KPI_IDS = new Set<KpiId>([
   'intent_gap_index',
   'intent_alignment_score',
   'intent_quality_score',
+  // v2.0: New intent KPIs (Phase 1)
+  'safe_transactional_score',
+  'risky_transactional_warning',
+  'category_intent_coverage_score',
+  'feature_intent_coverage_score',
 ]);
 
 const INTENT_FALLBACK_NORMALIZED_FLOOR = 50;
@@ -492,6 +497,15 @@ export class KpiEngine {
     let intentGapIndex = 0;
     let intentFallbackMode = false;
 
+    // v2.0: New intent types (Phase 1)
+    let brandCount = 0;
+    let categoryCount = 0;
+    let featureCount = 0;
+
+    // v2.0: Transactional safety (Phase 1)
+    let safeTransactionalCount = 0;
+    let riskyTransactionalCount = 0;
+
     if (intentCoverage) {
       // Phase 18: Use Bible-driven Intent Coverage (Phase 17)
       const combined = intentCoverage.combinedDistribution;
@@ -500,7 +514,17 @@ export class KpiEngine {
       commercialCount = combined.commercial || 0;
       transactionalCount = combined.transactional || 0;
       unclassifiedCount = combined.unclassified || 0;
-      totalTokens = navigationalCount + informationalCount + commercialCount + transactionalCount + unclassifiedCount;
+
+      // v2.0: New intent types (Phase 1)
+      brandCount = combined.brand || 0;
+      categoryCount = combined.category || 0;
+      featureCount = combined.feature || 0;
+
+      // v2.0: Transactional safety (Phase 1)
+      safeTransactionalCount = combined.transactionalSafe || 0;
+      riskyTransactionalCount = combined.transactionalRisky || 0;
+
+      totalTokens = navigationalCount + informationalCount + commercialCount + transactionalCount + unclassifiedCount + brandCount + categoryCount + featureCount;
       intentCoverageScore = intentCoverage.overallScore || 0;
       intentFallbackMode = !!intentCoverage.fallbackMode;
 
@@ -583,6 +607,15 @@ export class KpiEngine {
       intentDiversityScore, // Phase 18: Number of distinct intent types
       intentGapIndex, // Phase 18: Missing intent types
       intentFallbackMode,
+
+      // v2.0: New intent types (Phase 1)
+      brandCount,
+      categoryCount,
+      featureCount,
+
+      // v2.0: Transactional safety (Phase 1)
+      safeTransactionalCount,
+      riskyTransactionalCount,
 
       // Phase 21: Vertical Intelligence Layer
       activeRuleSet: data.activeRuleSet,
@@ -771,6 +804,34 @@ export class KpiEngine {
       case 'intent_quality_score':
         // Weighted blend of all intent quality metrics
         return this.calculateIntentQualityScore(primitives);
+
+      // v2.0: New intent KPIs (Phase 1)
+      case 'safe_transactional_score': {
+        // Percentage of transactional keywords that are "safe"
+        const totalTransactional = (primitives.safeTransactionalCount || 0) + (primitives.riskyTransactionalCount || 0);
+        if (totalTransactional === 0) return 100; // No transactional = perfect score
+        return ((primitives.safeTransactionalCount || 0) / totalTransactional) * 100;
+      }
+
+      case 'risky_transactional_warning': {
+        // Boolean flag (0 or 1) if risky keywords > 15%
+        const totalTransactional = (primitives.safeTransactionalCount || 0) + (primitives.riskyTransactionalCount || 0);
+        if (totalTransactional === 0) return 0; // No transactional = no warning
+        const riskyPercentage = ((primitives.riskyTransactionalCount || 0) / totalTransactional) * 100;
+        return riskyPercentage > 15 ? 1 : 0;
+      }
+
+      case 'category_intent_coverage_score':
+        // Percentage of tokens classified as category intent
+        return primitives.totalTokens > 0
+          ? ((primitives.categoryCount || 0) / primitives.totalTokens) * 100
+          : 0;
+
+      case 'feature_intent_coverage_score':
+        // Percentage of tokens classified as feature intent
+        return primitives.totalTokens > 0
+          ? ((primitives.featureCount || 0) / primitives.totalTokens) * 100
+          : 0;
 
       // Phase 21: Vertical Intelligence Layer - Vertical Modifier KPIs
       case 'vertical_legitimacy_signal':
