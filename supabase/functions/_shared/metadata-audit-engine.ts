@@ -3,7 +3,12 @@
  *
  * Lightweight version for Edge Functions.
  * Core scoring logic extracted from frontend engine.
+ *
+ * Phase 1: ASO Bible Integration - Vertical-aware recommendations
  */
+
+import { detectVertical, type VerticalDetectionResult } from './vertical-detector.ts';
+import { loadVerticalRuleSet, formatGenericPhraseExamples, type VerticalRuleSet } from './ruleset-loader.ts';
 
 // ==================== TYPES ====================
 
@@ -33,6 +38,14 @@ export interface ElementScoringResult {
   };
 }
 
+export interface VerticalContext {
+  verticalId: string;
+  verticalName: string;
+  confidence: number;
+  matchedSignals: string[];
+  ruleSetSource: 'base' | 'vertical';
+}
+
 export interface UnifiedMetadataAuditResult {
   overallScore: number;
   elements: {
@@ -54,6 +67,7 @@ export interface UnifiedMetadataAuditResult {
     subtitleNewCombos: string[];
     allCombinedCombos: string[];
   };
+  verticalContext?: VerticalContext;
 }
 
 interface ScrapedMetadata {
@@ -590,7 +604,16 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
 
 export class MetadataAuditEngine {
   static evaluate(metadata: ScrapedMetadata): UnifiedMetadataAuditResult {
+    console.log('[AUDIT-ENGINE] Starting metadata audit...');
+
     const stopwords = DEFAULT_STOPWORDS;
+
+    // Phase 1: Detect vertical
+    const verticalDetection = detectVertical(metadata);
+    const verticalRuleSet = loadVerticalRuleSet(verticalDetection.verticalId);
+
+    console.log(`[AUDIT-ENGINE] Vertical detected: ${verticalDetection.verticalId} (${verticalDetection.confidence.toFixed(2)})`);
+    console.log(`[AUDIT-ENGINE] RuleSet loaded: ${verticalRuleSet?.verticalId || 'none'}`);
 
     // Tokenize
     const titleTokens = tokenize(metadata.title || '');
@@ -617,8 +640,8 @@ export class MetadataAuditEngine {
     // Calculate overall score
     const overallScore = this.calculateOverallScore(elementResults);
 
-    // Top recommendations
-    const topRecommendations = this.aggregateTopRecommendations(elementResults);
+    // Phase 1: Generate vertical-aware recommendations
+    const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection);
 
     // Keyword coverage
     const keywordCoverage = this.analyzeKeywordCoverage(titleTokens, subtitleTokens, descriptionTokens, stopwords);
@@ -626,12 +649,24 @@ export class MetadataAuditEngine {
     // Combo coverage
     const comboCoverage = this.analyzeComboCoverage(titleTokens, subtitleTokens, stopwords);
 
+    // Build vertical context
+    const verticalContext: VerticalContext = {
+      verticalId: verticalDetection.verticalId,
+      verticalName: verticalDetection.verticalLabel,
+      confidence: verticalDetection.confidence,
+      matchedSignals: verticalDetection.matchedSignals,
+      ruleSetSource: verticalDetection.verticalId === 'base' ? 'base' : 'vertical',
+    };
+
+    console.log('[AUDIT-ENGINE] Audit complete!');
+
     return {
       overallScore,
       elements: elementResults,
       topRecommendations,
       keywordCoverage,
-      comboCoverage
+      comboCoverage,
+      verticalContext,
     };
   }
 
@@ -681,17 +716,103 @@ export class MetadataAuditEngine {
     return Math.round(weightedSum);
   }
 
-  private static aggregateTopRecommendations(elementResults: Record<MetadataElement, ElementScoringResult>): string[] {
-    const allRecs: Array<{ message: string; priority: number }> = [];
+  private static aggregateTopRecommendations(
+    elementResults: Record<MetadataElement, ElementScoringResult>,
+    verticalRuleSet: VerticalRuleSet | null,
+    verticalDetection: VerticalDetectionResult
+  ): string[] {
+    const allRecs: Array<{ message: string; priority: number; severity: string }> = [];
 
+    // 1. Add basic recommendations from element evaluation
     Object.entries(elementResults).forEach(([element, result]) => {
       result.recommendations.forEach(rec => {
         const priority = 100 - result.score;
-        allRecs.push({ message: `[${element.toUpperCase()}] ${rec}`, priority });
+        allRecs.push({
+          message: `[${element.toUpperCase()}] ${rec}`,
+          priority,
+          severity: 'moderate'
+        });
       });
     });
 
-    return allRecs.sort((a, b) => b.priority - a.priority).slice(0, 5).map(r => r.message);
+    // 2. Phase 1: Add vertical-specific recommendations from ASO Bible
+    if (verticalRuleSet && verticalRuleSet.recommendations) {
+      const metadata = elementResults.title.metadata;
+      const titleText = metadata.keywords.join(' ').toLowerCase();
+      const subtitleText = elementResults.subtitle.metadata.keywords.join(' ').toLowerCase();
+      const combinedText = `${titleText} ${subtitleText}`;
+
+      console.log(`[RECOMMENDATIONS] Checking ${Object.keys(verticalRuleSet.recommendations).length} vertical-specific templates...`);
+
+      // Check each vertical recommendation template
+      Object.values(verticalRuleSet.recommendations).forEach(template => {
+        let shouldAdd = false;
+
+        // Trigger detection logic based on template ID
+        switch (template.id) {
+          case 'missing_learning_hook':
+            shouldAdd = !/(learn|practice|speak|study|master)/i.test(combinedText);
+            break;
+          case 'missing_earning_term':
+            shouldAdd = !/(earn|reward|cash|money|points|win)/i.test(combinedText);
+            break;
+          case 'missing_trust_term':
+            shouldAdd = !/(secure|safe|trust|fdic|insured|bank)/i.test(combinedText);
+            break;
+          case 'missing_social_term':
+            shouldAdd = !/(meet|match|date|chat|connect)/i.test(combinedText);
+            break;
+          case 'missing_action_verb':
+            shouldAdd = !/(organize|plan|track|manage|create|build)/i.test(combinedText);
+            break;
+          case 'missing_fitness_keyword':
+            shouldAdd = !/(fitness|workout|health|wellness|exercise|train)/i.test(combinedText);
+            break;
+          case 'missing_consumption_intent':
+            shouldAdd = !/(watch|play|stream|listen|view)/i.test(combinedText);
+            break;
+          default:
+            // For other templates, add based on severity
+            if (template.severity === 'critical') {
+              shouldAdd = Math.random() < 0.3; // 30% chance for critical
+            }
+        }
+
+        if (shouldAdd) {
+          const priorityBoost = template.severity === 'critical' ? 50 :
+                               template.severity === 'warning' ? 30 : 10;
+
+          // Add vertical-specific phrase examples if available
+          let message = template.message;
+          if (message.includes('generic phrases') || message.includes('e.g.')) {
+            const examples = formatGenericPhraseExamples(verticalDetection.verticalId, 2);
+            if (examples) {
+              message = message.replace(/\(e\.g\.[^)]*\)/, examples);
+            }
+          }
+
+          allRecs.push({
+            message,
+            priority: 85 + priorityBoost,
+            severity: template.severity
+          });
+
+          console.log(`[RECOMMENDATIONS] Added: ${template.id} (${template.severity})`);
+        }
+      });
+    }
+
+    // Sort by priority and severity, return top 8
+    const sorted = allRecs.sort((a, b) => {
+      if (a.severity === 'critical' && b.severity !== 'critical') return -1;
+      if (b.severity === 'critical' && a.severity !== 'critical') return 1;
+      return b.priority - a.priority;
+    });
+
+    const final = sorted.slice(0, 8).map(r => r.message);
+    console.log(`[RECOMMENDATIONS] Returning ${final.length} recommendations (${allRecs.length} total generated)`);
+
+    return final;
   }
 
   private static analyzeKeywordCoverage(
