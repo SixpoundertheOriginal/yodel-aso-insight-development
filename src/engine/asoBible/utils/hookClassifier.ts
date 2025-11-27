@@ -166,7 +166,12 @@ const FALLBACK_PATTERNS: HookPatternMap = {
  * @param patterns - Array of patterns to match against
  * @returns True if any pattern matches
  */
-function matchesAnyPattern(text: string, patterns: string[]): boolean {
+function matchesAnyPattern(text: string, patterns: string[] | undefined): boolean {
+  // Safety check: ensure patterns is an array
+  if (!patterns || !Array.isArray(patterns)) {
+    return false;
+  }
+
   return patterns.some(pattern => {
     // Exact word boundary match
     const regex = new RegExp(`\\b${pattern.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
@@ -188,8 +193,21 @@ export function classifyHook(
   const lowerText = text.toLowerCase();
 
   // Get patterns: use vertical-specific if available, otherwise fallback
-  const patterns: HookPatternMap =
-    activeRuleSet?.hookOverrides || FALLBACK_PATTERNS;
+  // Safety check: ensure hookOverrides is properly structured
+  let patterns: HookPatternMap = FALLBACK_PATTERNS;
+  if (activeRuleSet?.hookOverrides) {
+    // Validate that hookOverrides has the correct structure
+    const overrides = activeRuleSet.hookOverrides;
+    if (
+      overrides &&
+      typeof overrides === 'object' &&
+      Array.isArray(overrides.time_to_result) &&
+      Array.isArray(overrides.trust_safety) &&
+      Array.isArray(overrides.status_authority)
+    ) {
+      patterns = overrides as HookPatternMap;
+    }
+  }
 
   // Check each category in priority order
   // Order matters: more specific categories first to avoid false positives
