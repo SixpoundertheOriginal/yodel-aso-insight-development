@@ -94,21 +94,23 @@ export const AppAuthGuard: React.FC<AppAuthGuardProps> = ({ children }) => {
     return () => clearTimeout(timeout);
   }, [loading, isLoading, serverAuthLoading, user]);
 
-  // Show loading during initial auth + server auth (but not indefinitely)
-  if ((loading || isLoading || serverAuthLoading) && routeAllowed === null) {
-    return <AuthLoadingSpinner />;
-  }
-
   // Allow public routes without auth
   if (isPublicRoute) {
     return <>{children}</>;
   }
 
-  // Redirect unauthenticated users to sign-in
-  if (!isAuthenticated) {
+  // Redirect unauthenticated users to sign-in IMMEDIATELY
+  // Check this BEFORE loading screen to avoid confusing users
+  if (!loading && !isAuthenticated) {
     const intended = location.pathname + location.search;
     sessionStorage.setItem('postLoginRedirect', intended);
     return <Navigate to="/auth/sign-in" replace />;
+  }
+
+  // Show loading ONLY during initial auth check (when loading=true)
+  // Once we know auth status, don't show loading - either redirect or show content
+  if (loading || (isLoading && routeAllowed === null) || (serverAuthLoading && routeAllowed === null)) {
+    return <AuthLoadingSpinner />;
   }
 
   // Show NoAccess for authenticated users without proper access
