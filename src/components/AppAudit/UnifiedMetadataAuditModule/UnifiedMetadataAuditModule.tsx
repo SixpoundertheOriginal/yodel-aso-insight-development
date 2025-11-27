@@ -48,6 +48,9 @@ import {
 import { useCompetitorAnalysis } from '@/hooks/useCompetitorAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { computeBrandRatioStats } from '@/engine/metadata/utils/brandNoiseHelpers';
+import { AppCapabilitiesSection } from './AppCapabilitiesSection';
+import { GapAnalysisSection } from './GapAnalysisSection';
+import { ExecutiveRecommendationsSection } from './ExecutiveRecommendationsSection';
 
 const DEFAULT_DISCOVERY_THRESHOLDS = {
   excellent: 5,
@@ -429,6 +432,44 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
             <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
           </h3>
           <MetadataKpiGrid kpiResult={kpiResult} />
+        </div>
+      )}
+
+      {/* ======================================================================
+          CHAPTER 2 — ASO INTELLIGENCE V2.0
+          ====================================================================== */}
+      {(auditResult.capabilityMap || auditResult.gapAnalysis || auditResult.executiveRecommendations) && (
+        <div className="space-y-6 mt-8">
+          <div className="relative">
+            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-8 bg-purple-500/40" />
+              CHAPTER 2 — ASO INTELLIGENCE V2.0
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-purple-500/40 to-transparent" />
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 -mt-2">
+              AI-powered capability analysis, gap detection, and executive recommendations
+            </p>
+          </div>
+
+          {/* Phase 2: Description Intelligence - App Capabilities */}
+          {auditResult.capabilityMap && (
+            <AppCapabilitiesSection capabilityMap={auditResult.capabilityMap} />
+          )}
+
+          {/* Phase 3: Gap Analysis */}
+          {auditResult.gapAnalysis && (
+            <GapAnalysisSection
+              gapAnalysis={auditResult.gapAnalysis}
+              verticalName={auditResult.verticalContext?.verticalName}
+            />
+          )}
+
+          {/* Phase 4: Executive Recommendations */}
+          {auditResult.executiveRecommendations && (
+            <ExecutiveRecommendationsSection
+              recommendations={auditResult.executiveRecommendations}
+            />
+          )}
         </div>
       )}
 
