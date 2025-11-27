@@ -29,51 +29,16 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
   comboCoverage,
   intentRecommendations = [],
 }) => {
-  // Generate combo-based recommendations for ranking type
-  const comboRecommendations = useMemo(() => {
-    if (type !== 'ranking' || !comboCoverage) return [];
-
-    const comboRecs: string[] = [];
-
-    // Get counts
-    const allCombos = [
-      ...(comboCoverage.titleCombosClassified || []),
-      ...(comboCoverage.subtitleNewCombosClassified || [])
-    ];
-    const brandedCount = allCombos.filter(c => c.type === 'branded').length;
-    const genericCount = allCombos.filter(c => c.type === 'generic').length;
-    const lowValueCount = (comboCoverage.lowValueCombos || []).length;
-
-    // Scenario 1: Branded >> Generic (too brand-focused)
-    if (brandedCount >= 4 && genericCount <= 2) {
-      comboRecs.push(
-        "[RANKING] Strong branded coverage but limited generic discovery combos. Consider adding more generic phrases (e.g. 'learn spanish', 'language lessons', 'speak french') to reach non-brand-aware users."
-      );
-    }
-
-    // Scenario 2: Very few generic combos overall
-    if (genericCount <= 3 && genericCount > 0) {
-      comboRecs.push(
-        "[RANKING] Only a few generic discovery combos detected. Adding more non-branded phrases in title/subtitle can unlock additional search volume."
-      );
-    }
-
-    // Scenario 3: Low-value combos dominate
-    if (lowValueCount >= genericCount && lowValueCount > 0) {
-      comboRecs.push(
-        "[RANKING] A significant share of your combinations are numeric or time-based (e.g. 'in 30 days'). These have limited impact on search. Consider refocusing on intent-driven phrases such as 'learn spanish', 'language lessons', 'speak fluently'."
-      );
-    }
-
-    return comboRecs;
-  }, [type, comboCoverage]);
+  // Phase 4: Removed hardcoded combo recommendations
+  // All recommendations now come from the edge function's ASO Bible integration
+  // which provides vertical-specific, intent-aware recommendations
 
   // Merge, deduplicate, and sort recommendations
   const processedRecommendations = useMemo(() => {
-    // Merge all sources
+    // Merge all sources (edge function recommendations + optional intent recommendations)
     const merged = type === 'ranking'
-      ? [...recommendations, ...comboRecommendations, ...intentRecommendations]
-      : [...recommendations, ...comboRecommendations];
+      ? [...recommendations, ...intentRecommendations]
+      : recommendations;
 
     // Deduplicate based on normalized message
     const deduped = deduplicateRecommendations(merged);
@@ -82,7 +47,7 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({
     const sorted = sortRecommendationsBySeverity(deduped);
 
     return sorted;
-  }, [recommendations, comboRecommendations, intentRecommendations, type]);
+  }, [recommendations, intentRecommendations, type]);
 
   const defaultTitle = type === 'ranking' ? 'ASO Ranking Recommendations' : 'Conversion Recommendations';
   const defaultDescription = type === 'ranking'
