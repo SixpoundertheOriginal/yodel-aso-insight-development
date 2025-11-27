@@ -347,6 +347,21 @@ serve(async (req) => {
     .eq("agency_org_id", resolvedOrgId)
     .eq("is_active", true);
 
+  // 🔍 DIAGNOSTIC: Log agency relationship query result
+  console.log("[AGENCY DIAGNOSTIC]", JSON.stringify({
+    request_id: requestId,
+    user_id: user.id,
+    user_email: user.email,
+    resolved_org_id: resolvedOrgId,
+    agency_query_error: agencyError?.message || null,
+    agency_query_code: agencyError?.code || null,
+    agency_query_details: agencyError?.details || null,
+    agency_query_hint: agencyError?.hint || null,
+    managed_clients_found: managedClients?.length || 0,
+    managed_clients_data: managedClients,
+    client_org_ids: (managedClients || []).map(c => c.client_org_id)
+  }, null, 2));
+
   if (agencyError) {
     log(requestId, "[AGENCY] Error checking agency status", agencyError);
   }
@@ -589,6 +604,7 @@ serve(async (req) => {
     query,
     useLegacySql: false,
     parameterMode: "NAMED",
+    location: "EU", // Dataset is in EU region
     queryParameters: [
       {
         name: "app_ids",
@@ -629,6 +645,24 @@ serve(async (req) => {
   const bqJson = await bqResponse.json();
   const rows = mapBigQueryRows(bqJson.rows);
 
+  // 🔍 DIAGNOSTIC: Log detailed BigQuery response
+  console.log("[BIGQUERY DIAGNOSTIC]", JSON.stringify({
+    request_id: requestId,
+    query_params: {
+      app_ids: appIdsForQuery,
+      start_date: startDate,
+      end_date: endDate,
+      app_count: appIdsForQuery.length
+    },
+    bigquery_response: {
+      total_rows: bqJson.totalRows || '0',
+      rows_returned: rows.length,
+      first_3_rows: rows.slice(0, 3),
+      job_complete: bqJson.jobComplete,
+      cache_hit: bqJson.cacheHit
+    }
+  }, null, 2));
+
   log(requestId, "[BIGQUERY] Query completed", {
     rowCount: rows.length,
     firstRow: rows[0] || null,
@@ -653,6 +687,7 @@ serve(async (req) => {
     query: dimensionsQuery,
     useLegacySql: false,
     parameterMode: "NAMED",
+    location: "EU", // Dataset is in EU region
     queryParameters: [
       {
         name: "all_app_ids",
@@ -690,12 +725,27 @@ serve(async (req) => {
       .map((row: BigQueryRow) => row.f[0]?.v)
       .filter(Boolean) as string[];
 
+    // 🔍 DIAGNOSTIC: Log traffic sources response
+    console.log("[TRAFFIC SOURCES DIAGNOSTIC]", JSON.stringify({
+      request_id: requestId,
+      total_rows: dimensionsJson.totalRows || '0',
+      sources_found: availableTrafficSources.length,
+      sources: availableTrafficSources
+    }, null, 2));
+
     log(requestId, "[BIGQUERY] Available traffic sources fetched", {
       sources: availableTrafficSources,
       count: availableTrafficSources.length,
     });
   } else {
     // Fallback: Extract from current query results if dimensions query fails
+    const errorText = await dimensionsResponse.text();
+    console.log("[TRAFFIC SOURCES ERROR]", JSON.stringify({
+      request_id: requestId,
+      status: dimensionsResponse.status,
+      error: errorText
+    }, null, 2));
+
     log(requestId, "[BIGQUERY] Dimensions query failed, falling back to current results");
     availableTrafficSources = Array.from(
       new Set(rows.map((r: any) => r.traffic_source).filter(Boolean))
