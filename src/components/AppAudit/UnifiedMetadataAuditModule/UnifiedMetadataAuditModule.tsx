@@ -130,7 +130,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   } = useMetadataAuditV2({
     app_id: metadata?.appId,
     platform: metadata?.platform || 'ios',
-    locale: metadata?.locale || 'en-US',
+    locale: metadata?.locale?.split('-')[1]?.toLowerCase() || 'us', // Extract country code from en-US → us
     enabled: !useMockData && !!metadata?.appId,
   });
 
