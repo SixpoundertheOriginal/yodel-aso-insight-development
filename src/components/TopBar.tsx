@@ -59,7 +59,9 @@ const TopBar: React.FC = React.memo(() => {
     '/chatgpt-visibility-audit',
     '/apps'
   ];
-  const isGrowthAcceleratorPage = growthAcceleratorPages.includes(location.pathname);
+  const isGrowthAcceleratorPage = growthAcceleratorPages.some(page =>
+    location.pathname === page || location.pathname.startsWith(page + '/')
+  );
   
   // Auth and system pages
   const authPages = ['/auth/sign-in', '/auth/sign-up', '/'];
