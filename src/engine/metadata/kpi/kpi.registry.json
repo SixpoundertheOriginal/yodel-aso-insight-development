@@ -583,6 +583,115 @@
       }
     },
     {
+      "id": "safe_transactional_score",
+      "familyId": "intent_quality",
+      "label": "Safe Transactional Score",
+      "description": "Percentage of transactional keywords that are 'safe' CTAs (vs risky)",
+      "weight": 1.0,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "higher_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality V2",
+        "displayOrder": 10,
+        "helpText": "Higher score = more 'try/start/get' vs 'free/download/install'",
+        "tags": [
+          "intent",
+          "transactional",
+          "safety",
+          "v2"
+        ]
+      }
+    },
+    {
+      "id": "risky_transactional_warning",
+      "familyId": "intent_quality",
+      "label": "Risky Transactional Warning",
+      "description": "Boolean flag (0 or 1) if risky transactional keywords exceed 15%",
+      "weight": 1.5,
+      "metricType": "flag",
+      "minValue": 0,
+      "maxValue": 1,
+      "direction": "lower_is_better",
+      "admin": {
+        "editable": true,
+        "inputType": "toggle",
+        "group": "Intent Quality V2",
+        "displayOrder": 11,
+        "helpText": "Warning: risky keywords may trigger Apple penalties",
+        "tags": [
+          "intent",
+          "transactional",
+          "warning",
+          "v2"
+        ]
+      }
+    },
+    {
+      "id": "category_intent_coverage_score",
+      "familyId": "intent_quality",
+      "label": "Category Intent Coverage",
+      "description": "Percentage of tokens classified as category intent (app type keywords)",
+      "weight": 1.0,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "target_range",
+      "targetValue": 15,
+      "targetTolerance": 10,
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality V2",
+        "displayOrder": 12,
+        "helpText": "Category keywords like 'language learning app', 'finance app' (target: 10-20%)",
+        "tags": [
+          "intent",
+          "category",
+          "discovery",
+          "v2"
+        ]
+      }
+    },
+    {
+      "id": "feature_intent_coverage_score",
+      "familyId": "intent_quality",
+      "label": "Feature Intent Coverage",
+      "description": "Percentage of tokens classified as feature intent (capability keywords)",
+      "weight": 0.9,
+      "metricType": "score",
+      "minValue": 0,
+      "maxValue": 100,
+      "direction": "target_range",
+      "targetValue": 20,
+      "targetTolerance": 10,
+      "admin": {
+        "editable": true,
+        "inputType": "slider",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "group": "Intent Quality V2",
+        "displayOrder": 13,
+        "helpText": "Feature keywords like 'offline mode', 'voice recognition' (target: 15-25%)",
+        "tags": [
+          "intent",
+          "feature",
+          "capability",
+          "v2"
+        ]
+      }
+    },
+    {
       "id": "vertical_legitimacy_signal",
       "familyId": "hook_strength",
       "label": "Vertical Legitimacy Signal",
