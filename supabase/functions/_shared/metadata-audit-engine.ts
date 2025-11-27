@@ -677,20 +677,42 @@ export class MetadataAuditEngine {
     // Phase 1 & 2: Generate vertical-aware and intent-aware recommendations
     const topRecommendations = this.aggregateTopRecommendations(elementResults, verticalRuleSet, verticalDetection, intentCoverage);
 
-    // Phase 2: Extract description capabilities
-    console.log('[AUDIT-ENGINE] Extracting description capabilities...');
-    const capabilityMap = extractCapabilities(metadata.description || '');
-    console.log(`[AUDIT-ENGINE] Capabilities extracted - Features: ${capabilityMap.features.count}, Benefits: ${capabilityMap.benefits.count}, Trust: ${capabilityMap.trust.count}`);
+    // Phase 2: Extract description capabilities (v2.0 - optional, with error handling)
+    let capabilityMap;
+    try {
+      console.log('[AUDIT-ENGINE] Extracting description capabilities...');
+      capabilityMap = extractCapabilities(metadata.description || '');
+      console.log(`[AUDIT-ENGINE] Capabilities extracted - Features: ${capabilityMap.features.count}, Benefits: ${capabilityMap.benefits.count}, Trust: ${capabilityMap.trust.count}`);
+    } catch (error) {
+      console.error('[AUDIT-ENGINE] Error extracting capabilities:', error);
+      capabilityMap = undefined;
+    }
 
-    // Phase 3: Analyze capability gaps
-    console.log('[AUDIT-ENGINE] Analyzing capability gaps...');
-    const gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
-    console.log(`[AUDIT-ENGINE] Gap analysis - Overall score: ${gapAnalysis.overallGapScore}/100, Total gaps: ${gapAnalysis.totalGaps} (Critical: ${gapAnalysis.criticalGaps}, High: ${gapAnalysis.highGaps})`);
+    // Phase 3: Analyze capability gaps (v2.0 - optional, with error handling)
+    let gapAnalysis;
+    try {
+      if (capabilityMap) {
+        console.log('[AUDIT-ENGINE] Analyzing capability gaps...');
+        gapAnalysis = analyzeCapabilityGaps(capabilityMap, verticalDetection.verticalId);
+        console.log(`[AUDIT-ENGINE] Gap analysis - Overall score: ${gapAnalysis.overallGapScore}/100, Total gaps: ${gapAnalysis.totalGaps} (Critical: ${gapAnalysis.criticalGaps}, High: ${gapAnalysis.highGaps})`);
+      }
+    } catch (error) {
+      console.error('[AUDIT-ENGINE] Error analyzing gaps:', error);
+      gapAnalysis = undefined;
+    }
 
-    // Phase 4: Generate executive recommendations
-    console.log('[AUDIT-ENGINE] Generating executive recommendations...');
-    const executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
-    console.log(`[AUDIT-ENGINE] Recommendations - Priority: ${executiveRecommendations.overallPriority}, Action items: ${executiveRecommendations.totalActionItems}, Quick wins: ${executiveRecommendations.opportunities.quickWins.length}`);
+    // Phase 4: Generate executive recommendations (v2.0 - optional, with error handling)
+    let executiveRecommendations;
+    try {
+      if (gapAnalysis && capabilityMap) {
+        console.log('[AUDIT-ENGINE] Generating executive recommendations...');
+        executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
+        console.log(`[AUDIT-ENGINE] Recommendations - Priority: ${executiveRecommendations.overallPriority}, Action items: ${executiveRecommendations.totalActionItems}, Quick wins: ${executiveRecommendations.opportunities.quickWins.length}`);
+      }
+    } catch (error) {
+      console.error('[AUDIT-ENGINE] Error generating recommendations:', error);
+      executiveRecommendations = undefined;
+    }
 
     // Build vertical context
     const verticalContext: VerticalContext = {
