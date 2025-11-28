@@ -95,13 +95,21 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   // Workbench integration - add combos directly
   const { addCombo, combos } = useKeywordComboStore();
 
-  // Brand override management
+  // Brand override management for Title
   const [brandOverride, setBrandOverride, clearBrandOverride] = useBrandOverride(rawMetadata.appId);
   const [isEditingBrand, setIsEditingBrand] = useState(false);
   const [brandEditValue, setBrandEditValue] = useState('');
 
+  // Brand override management for Subtitle
+  const [brandOverrideSubtitle, setBrandOverrideSubtitle, clearBrandOverrideSubtitle] = useBrandOverride(`${rawMetadata.appId}-subtitle`);
+  const [isEditingSubtitleBrand, setIsEditingSubtitleBrand] = useState(false);
+  const [brandSubtitleEditValue, setBrandSubtitleEditValue] = useState('');
+
   // Editable title management (session-only for now)
   const [editedTitle, setEditedTitle] = useState<string | null>(null);
+
+  // Editable subtitle management (session-only for now)
+  const [editedSubtitle, setEditedSubtitle] = useState<string | null>(null);
 
   // Helper function to create a ClassifiedCombo from keyword
   const createComboFromKeyword = (keyword: string, source: 'title' | 'subtitle'): ClassifiedCombo => {
@@ -220,6 +228,9 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
 
   // Compute display title (original or edited)
   const displayTitle = element === 'title' && editedTitle !== null ? editedTitle : elementText;
+
+  // Compute display subtitle (original or edited)
+  const displaySubtitle = element === 'subtitle' && editedSubtitle !== null ? editedSubtitle : elementText;
 
   // Format platform + locale
   const platformLocale = `iOS • ${rawMetadata.locale || 'en-US'}`;
@@ -372,9 +383,21 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                       Edit Brand
                     </button>
                   )}
+                  {element === 'subtitle' && !isEditingSubtitleBrand && (
+                    <button
+                      onClick={() => {
+                        setIsEditingSubtitleBrand(true);
+                        setBrandSubtitleEditValue(brandOverrideSubtitle || '');
+                      }}
+                      className="flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-emerald-400 transition-colors"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      Edit Brand
+                    </button>
+                  )}
                 </div>
 
-                {/* Brand Edit UI (Title only) */}
+                {/* Brand Edit UI (Title) */}
                 {element === 'title' && isEditingBrand && (
                   <div className="mb-3 p-3 bg-zinc-800/50 rounded border border-orange-500/30">
                     <div className="text-xs text-zinc-400 mb-2">
@@ -418,6 +441,60 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                             clearBrandOverride();
                             setIsEditingBrand(false);
                             toast.success('Brand override cleared');
+                          }}
+                          className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Brand Edit UI (Subtitle) */}
+                {element === 'subtitle' && isEditingSubtitleBrand && (
+                  <div className="mb-3 p-3 bg-zinc-800/50 rounded border border-emerald-500/30">
+                    <div className="text-xs text-zinc-400 mb-2">
+                      Enter the brand portion of your subtitle (if applicable)
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={brandSubtitleEditValue}
+                        onChange={(e) => setBrandSubtitleEditValue(e.target.value)}
+                        placeholder="Brand name..."
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (brandSubtitleEditValue.trim()) {
+                            setBrandOverrideSubtitle(brandSubtitleEditValue.trim());
+                            toast.success(`Subtitle brand set to "${brandSubtitleEditValue.trim()}"`);
+                          }
+                          setIsEditingSubtitleBrand(false);
+                        }}
+                        className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsEditingSubtitleBrand(false)}
+                        className="border-zinc-700 text-zinc-400"
+                      >
+                        Cancel
+                      </Button>
+                      {brandOverrideSubtitle && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            clearBrandOverrideSubtitle();
+                            setIsEditingSubtitleBrand(false);
+                            toast.success('Subtitle brand override cleared');
                           }}
                           className="border-red-500/40 text-red-400 hover:bg-red-500/10"
                         >
@@ -481,12 +558,62 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                       )}
                     </div>
                   </>
-                ) : element !== 'title' ? (
+                ) : element === 'subtitle' && !isEditingSubtitleBrand ? (
+                  <>
+                    <EnhancedTextDisplay
+                      text={displaySubtitle || ''}
+                      type="subtitle"
+                      brandOverride={brandOverrideSubtitle}
+                    />
+
+                    {/* Editable Subtitle Input */}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editedSubtitle !== null ? editedSubtitle : elementText || ''}
+                          onChange={(e) => setEditedSubtitle(e.target.value)}
+                          placeholder="Edit subtitle text..."
+                          className="flex-1 px-3 py-2 bg-zinc-900/50 border border-zinc-700/50 rounded text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 font-light"
+                        />
+                        {editedSubtitle !== null && editedSubtitle !== elementText && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditedSubtitle(null);
+                              toast.success('Subtitle reset to original');
+                            }}
+                            className="border-zinc-700 text-zinc-400 hover:text-zinc-300"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+
+                      {editedSubtitle !== null && editedSubtitle !== elementText && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              toast.info('Re-run Audit feature coming soon!');
+                              // TODO: Implement audit re-run with new subtitle
+                            }}
+                            className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40"
+                          >
+                            Re-run Audit with New Subtitle
+                          </Button>
+                          <span className="text-xs text-zinc-500">
+                            Optional: Recalculate all metrics with edited subtitle
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : element === 'description' ? (
                   <div className="text-sm text-zinc-200 font-light leading-relaxed">
-                    {element === 'description'
-                      ? (elementText && elementText.length > 200
-                          ? `${elementText.slice(0, 200)}...`
-                          : elementText || 'Not available')
+                    {elementText && elementText.length > 200
+                      ? `${elementText.slice(0, 200)}...`
                       : elementText || 'Not available'}
                   </div>
                 ) : null}
