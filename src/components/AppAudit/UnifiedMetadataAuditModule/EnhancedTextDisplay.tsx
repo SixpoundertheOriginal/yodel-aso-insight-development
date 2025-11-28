@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { parseTextIntoSegments, groupKeywordsIntoPhrases, type TextSegment } from '@/utils/brandDetector';
+import { parseTextIntoSegments, type TextSegment } from '@/utils/brandDetector';
 
 interface EnhancedTextDisplayProps {
   text: string;
@@ -62,10 +62,9 @@ export const EnhancedTextDisplay: React.FC<EnhancedTextDisplayProps> = ({
   type,
   brandOverride,
 }) => {
-  // Parse text into segments
+  // Parse text into segments (individual keywords, not grouped)
   const segments = React.useMemo(() => {
-    const parsed = parseTextIntoSegments(text, brandOverride);
-    return groupKeywordsIntoPhrases(parsed);
+    return parseTextIntoSegments(text, brandOverride);
   }, [text, brandOverride]);
 
   if (!text || segments.length === 0) {
