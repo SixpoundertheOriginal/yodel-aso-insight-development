@@ -30,11 +30,8 @@ function getBadgeClasses(segment: TextSegment, elementType: 'title' | 'subtitle'
       return `${baseClasses} bg-orange-500/20 border-orange-500/40 text-orange-300 px-4 py-1.5 text-sm font-medium`;
 
     case 'keyword':
-      // Rounded style, purple for title, emerald for subtitle
-      const keywordColor = elementType === 'title'
-        ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-        : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
-      return `${baseClasses} ${keywordColor} px-3 py-1 text-xs`;
+      // Rounded style, emerald for both title and subtitle
+      return `${baseClasses} bg-emerald-500/20 border-emerald-500/40 text-emerald-300 px-3 py-1 text-xs`;
 
     case 'connector':
     case 'separator':
