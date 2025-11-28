@@ -17,6 +17,7 @@
  */
 
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
+import { filterGenericCombos } from '@/utils/brandFilter';
 
 // Performance Optimization Phase 2.2: Limits and filters
 const MAX_COMBOS_PER_SOURCE = 500; // Prevent excessive combo generation
@@ -256,13 +257,16 @@ function calculateStrategicValue(combo: string, keywords: string[]): number {
 
 /**
  * Generate comprehensive combo analysis
+ *
+ * @param brandName - Optional brand name to filter out branded combos (Phase 1: Brand Filter)
  */
 export function analyzeAllCombos(
   titleKeywords: string[],
   subtitleKeywords: string[],
   titleText: string,
   subtitleText: string,
-  existingClassifiedCombos?: ClassifiedCombo[]
+  existingClassifiedCombos?: ClassifiedCombo[],
+  brandName?: string | null
 ): ComboAnalysis {
   // Generate all possible combos
   const allPossibleComboStrings = generateAllPossibleCombos(
@@ -296,11 +300,17 @@ export function analyzeAllCombos(
     };
   });
 
-  // Split into existing and missing
-  const existingCombos = allPossibleCombos.filter(c => c.exists);
-  const missingCombos = allPossibleCombos.filter(c => !c.exists);
+  // Phase 1: Brand Filter - Remove branded combos from suggestions
+  // Keep existing combos as-is (already in metadata), but filter new suggestions
+  const genericPossibleCombos = brandName
+    ? filterGenericCombos(allPossibleCombos, brandName)
+    : allPossibleCombos;
 
-  // Recommend top missing combos
+  // Split into existing and missing (using filtered generic combos)
+  const existingCombos = genericPossibleCombos.filter(c => c.exists);
+  const missingCombos = genericPossibleCombos.filter(c => !c.exists);
+
+  // Recommend top missing combos (all generic now)
   const recommendedToAdd = missingCombos
     .sort((a, b) => (b.strategicValue || 0) - (a.strategicValue || 0))
     .slice(0, 10)
@@ -311,16 +321,16 @@ export function analyzeAllCombos(
 
   // Calculate stats
   const stats = {
-    totalPossible: allPossibleCombos.length,
+    totalPossible: genericPossibleCombos.length,
     existing: existingCombos.length,
     missing: missingCombos.length,
-    coverage: allPossibleCombos.length > 0
-      ? Math.round((existingCombos.length / allPossibleCombos.length) * 100)
+    coverage: genericPossibleCombos.length > 0
+      ? Math.round((existingCombos.length / genericPossibleCombos.length) * 100)
       : 0,
   };
 
   return {
-    allPossibleCombos,
+    allPossibleCombos: genericPossibleCombos,
     existingCombos,
     missingCombos,
     recommendedToAdd,

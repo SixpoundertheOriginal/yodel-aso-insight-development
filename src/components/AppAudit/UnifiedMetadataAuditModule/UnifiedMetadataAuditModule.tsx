@@ -443,6 +443,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           metadata={{
             title: metadata.title || '',
             subtitle: metadata.subtitle || '',
+            appId: metadata.appId, // For brand override storage
           }}
         />
 

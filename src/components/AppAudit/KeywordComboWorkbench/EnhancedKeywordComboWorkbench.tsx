@@ -23,6 +23,8 @@ import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import { exportCombosToCSV, copyAllCombosToClipboard, exportCombosToXLSX, exportCombosToJSON } from '@/utils/comboExporter';
 import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
 import { toast } from 'sonner';
+import { detectBrand } from '@/utils/brandDetector';
+import { useBrandOverride } from '@/hooks/useBrandOverride';
 
 interface EnhancedKeywordComboWorkbenchProps {
   comboCoverage: UnifiedMetadataAuditResult['comboCoverage'];
@@ -30,6 +32,7 @@ interface EnhancedKeywordComboWorkbenchProps {
   metadata: {
     title: string;
     subtitle: string;
+    appId?: string; // For brand override storage
   };
 }
 
@@ -71,16 +74,23 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     hasSelection,
   } = useWorkbenchSelection();
 
-  // Generate comprehensive combo analysis
+  // Brand detection and override (Phase 1: Brand Filter)
+  const [brandOverride] = useBrandOverride(metadata.appId);
+  const appBrand = useMemo(() => {
+    return brandOverride || detectBrand(metadata.title);
+  }, [metadata.title, brandOverride]);
+
+  // Generate comprehensive combo analysis with brand filtering
   const comboAnalysis = useMemo(() => {
     return analyzeAllCombos(
       keywordCoverage.titleKeywords,
       keywordCoverage.subtitleNewKeywords,
       metadata.title,
       metadata.subtitle,
-      comboCoverage.titleCombosClassified
+      comboCoverage.titleCombosClassified,
+      appBrand  // Phase 1: Pass brand to filter branded combos
     );
-  }, [keywordCoverage, metadata, comboCoverage]);
+  }, [keywordCoverage, metadata, comboCoverage, appBrand]);
 
   // Apply filters
   const filteredCombos = useMemo(() => {
