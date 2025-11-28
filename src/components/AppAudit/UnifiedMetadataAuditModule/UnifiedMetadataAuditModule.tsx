@@ -420,71 +420,69 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         />
       </div>
 
-      {/* ======================================================================
-          CHAPTER 3 — COVERAGE MECHANICS
-          ====================================================================== */}
-      <div className="space-y-4 mt-6">
-        <div className="relative">
-          <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
-            <div className="h-[2px] w-8 bg-emerald-500/40" />
-            CHAPTER 3 — COVERAGE MECHANICS
-            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
-          </h3>
-          <p className="text-xs text-zinc-500 mb-4 -mt-2">
-            Keyword distribution, slot utilization, semantic density, and hook diversity analysis
-          </p>
-        </div>
-
-        {/* Row 1: Slot Utilization */}
-        <SlotUtilizationBars
-          keywordCoverage={auditResult.keywordCoverage}
-          platform={metadata.platform}
-        />
-
-        {/* Row 2: Efficiency Sparkline */}
-        <div className="grid grid-cols-1 gap-4">
-          <EfficiencySparkline
-            keywordCoverage={auditResult.keywordCoverage}
-            platform={metadata.platform}
-          />
-        </div>
-
-        {/* Row 5: Search Intent Analysis (Full Width) */}
-        {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (
-          <SearchIntentAnalysisCard
-            clusters={intentClusters}
-            auditSignals={intentAuditSignals}
-            totalKeywords={intentStatistics.totalKeywords}
-          />
-        )}
-
-        {/* V2.1 Nice-to-Have Charts */}
-        {isV2_1FeatureEnabled('LONG_TAIL_CHART') && auditResult.comboCoverage.titleCombosClassified && (
-          <LongTailDistributionChart
-            combos={[
-              ...(auditResult.comboCoverage.titleCombosClassified || []),
-              ...(auditResult.comboCoverage.subtitleNewCombosClassified || []),
-            ]}
-          />
-        )}
-
-        {isV2_1FeatureEnabled('HEATMAP') && (
-          <SlotUtilizationHeatmap
-            title={metadata.title || ''}
-            subtitle={metadata.subtitle || ''}
-            description={metadata.description || ''}
-            platform={metadata.platform}
-          />
-        )}
-      </div>
-
-      {/* Intent Engine Diagnostics (DEV ONLY) */}
+      {/* Intent Engine Diagnostics (DEV ONLY) - with CHAPTER 3 nested inside */}
       <IntentEngineDiagnosticsPanel
         auditResult={auditResult}
         patternsLoaded={auditResult.intentEngineDiagnostics?.patternsLoaded}
         fallbackMode={auditResult.intentEngineDiagnostics?.fallbackMode}
         cacheTtlRemaining={auditResult.intentEngineDiagnostics?.cacheTtlRemaining}
-      />
+      >
+        {/* CHAPTER 3 — COVERAGE MECHANICS (Nested inside diagnostics panel) */}
+        <div className="space-y-4">
+          <div className="relative">
+            <h4 className="text-sm font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-6 bg-emerald-500/40" />
+              CHAPTER 3 — COVERAGE MECHANICS
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
+            </h4>
+            <p className="text-xs text-zinc-500 mb-4">
+              Keyword distribution, slot utilization, semantic density, and hook diversity analysis
+            </p>
+          </div>
+
+          {/* Row 1: Slot Utilization */}
+          <SlotUtilizationBars
+            keywordCoverage={auditResult.keywordCoverage}
+            platform={metadata.platform}
+          />
+
+          {/* Row 2: Efficiency Sparkline */}
+          <div className="grid grid-cols-1 gap-4">
+            <EfficiencySparkline
+              keywordCoverage={auditResult.keywordCoverage}
+              platform={metadata.platform}
+            />
+          </div>
+
+          {/* Row 5: Search Intent Analysis (Full Width) */}
+          {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (
+            <SearchIntentAnalysisCard
+              clusters={intentClusters}
+              auditSignals={intentAuditSignals}
+              totalKeywords={intentStatistics.totalKeywords}
+            />
+          )}
+
+          {/* V2.1 Nice-to-Have Charts */}
+          {isV2_1FeatureEnabled('LONG_TAIL_CHART') && auditResult.comboCoverage.titleCombosClassified && (
+            <LongTailDistributionChart
+              combos={[
+                ...(auditResult.comboCoverage.titleCombosClassified || []),
+                ...(auditResult.comboCoverage.subtitleNewCombosClassified || []),
+              ]}
+            />
+          )}
+
+          {isV2_1FeatureEnabled('HEATMAP') && (
+            <SlotUtilizationHeatmap
+              title={metadata.title || ''}
+              subtitle={metadata.subtitle || ''}
+              description={metadata.description || ''}
+              platform={metadata.platform}
+            />
+          )}
+        </div>
+      </IntentEngineDiagnosticsPanel>
 
       {/* ======================================================================
           PHASE 21 — VERTICAL INTELLIGENCE LAYER

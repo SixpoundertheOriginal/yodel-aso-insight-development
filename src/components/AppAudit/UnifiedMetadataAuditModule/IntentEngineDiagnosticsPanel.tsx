@@ -21,6 +21,8 @@ interface IntentEngineDiagnosticsProps {
   fallbackMode?: boolean;
   /** Cache TTL remaining in seconds */
   cacheTtlRemaining?: number;
+  /** Children to render in expanded state (e.g., Chapter 3 content) */
+  children?: React.ReactNode;
 }
 
 export const IntentEngineDiagnosticsPanel: React.FC<IntentEngineDiagnosticsProps> = ({
@@ -28,6 +30,7 @@ export const IntentEngineDiagnosticsPanel: React.FC<IntentEngineDiagnosticsProps
   patternsLoaded,
   fallbackMode,
   cacheTtlRemaining,
+  children,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -274,6 +277,13 @@ export const IntentEngineDiagnosticsPanel: React.FC<IntentEngineDiagnosticsProps
           <div className="text-[10px] text-zinc-500 text-center italic mt-2 pt-2 border-t border-zinc-800">
             💡 Check browser console for detailed Intent Engine logs
           </div>
+
+          {/* CHAPTER 3 — COVERAGE MECHANICS (Nested as children) */}
+          {children && (
+            <div className="mt-6 pt-6 border-t border-zinc-800">
+              {children}
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
