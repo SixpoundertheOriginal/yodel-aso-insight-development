@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { detectBrand } from '@/utils/brandDetector';
 import { useBrandOverride } from '@/hooks/useBrandOverride';
 import { NestedCategorySection } from './NestedCategorySection';
+import { StrategicKeywordFrequencyPanel } from './StrategicKeywordFrequencyPanel';
 
 interface EnhancedKeywordComboWorkbenchProps {
   comboCoverage: UnifiedMetadataAuditResult['comboCoverage'];
@@ -456,6 +457,14 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Strategic Keyword Frequency Analysis */}
+        <StrategicKeywordFrequencyPanel
+          combos={[
+            ...(comboCoverage.titleCombosClassified || []),
+            ...(comboCoverage.subtitleNewCombosClassified || []),
+          ]}
+        />
+
         {/* Potential Combinations - Nested by Length > Value */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
