@@ -26,8 +26,8 @@ function getBadgeClasses(segment: TextSegment, elementType: 'title' | 'subtitle'
 
   switch (segment.type) {
     case 'brand':
-      // Hexagon style, orange
-      return `${baseClasses} bg-orange-500/20 border-orange-500/40 text-orange-300 px-4 py-1.5 text-sm font-medium`;
+      // Rounded style, orange, slightly larger and bolder
+      return `${baseClasses} bg-orange-500/20 border-orange-500/40 text-orange-300 px-3 py-1 text-xs font-semibold`;
 
     case 'keyword':
       // Rounded style, emerald for both title and subtitle
@@ -44,14 +44,10 @@ function getBadgeClasses(segment: TextSegment, elementType: 'title' | 'subtitle'
 }
 
 /**
- * Get clip-path style for badge (hexagon for brand, none for others)
+ * Get clip-path style for badge (removed hexagon, all badges are rounded now)
  */
 function getClipPathStyle(segment: TextSegment): React.CSSProperties | undefined {
-  if (segment.type === 'brand') {
-    return {
-      clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-    };
-  }
+  // All badges use default rounded style now
   return undefined;
 }
 
