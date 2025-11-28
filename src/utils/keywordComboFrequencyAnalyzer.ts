@@ -24,6 +24,13 @@ export interface KeywordComboFrequency {
 export function analyzeKeywordComboFrequency(
   combos: ClassifiedCombo[]
 ): KeywordComboFrequency[] {
+  // Debug logging
+  console.log('[KeywordFrequencyAnalyzer] Analyzing combos:', {
+    totalCombos: combos.length,
+    sampleCombo: combos[0],
+    comboTypes: combos.map(c => c.type).slice(0, 5),
+  });
+
   // Map to track keyword stats
   const keywordStats = new Map<string, {
     total: number;
@@ -35,8 +42,9 @@ export function analyzeKeywordComboFrequency(
 
   // Process each combo
   for (const combo of combos) {
-    // Skip noise/low-value combos
-    if (combo.type === 'low_value') continue;
+    // CHANGED: Don't skip low_value combos - we want to analyze ALL combos from existing metadata
+    // The goal is to see which keywords appear most frequently, regardless of type
+    // if (combo.type === 'low_value') continue;
 
     // Extract individual keywords from combo text
     const keywords = combo.text

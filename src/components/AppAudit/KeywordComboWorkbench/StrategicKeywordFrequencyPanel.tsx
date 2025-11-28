@@ -30,7 +30,19 @@ export const StrategicKeywordFrequencyPanel: React.FC<StrategicKeywordFrequencyP
 
   // Analyze keyword frequencies
   const keywordFrequencies = useMemo(() => {
+    console.log('[StrategicKeywordFrequencyPanel] Input combos:', {
+      combosLength: combos.length,
+      firstCombo: combos[0],
+      comboTypes: combos.map(c => c.type).slice(0, 5),
+    });
+
     const allFrequencies = analyzeKeywordComboFrequency(combos);
+
+    console.log('[StrategicKeywordFrequencyPanel] Analysis result:', {
+      frequenciesCount: allFrequencies.length,
+      topKeywords: allFrequencies.slice(0, 5).map(f => ({ keyword: f.keyword, total: f.totalCombos })),
+    });
+
     return topN ? allFrequencies.slice(0, topN) : allFrequencies;
   }, [combos, topN]);
 
@@ -42,8 +54,17 @@ export const StrategicKeywordFrequencyPanel: React.FC<StrategicKeywordFrequencyP
   if (keywordFrequencies.length === 0) {
     return (
       <Card className="bg-zinc-900/50 border-zinc-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-mono tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+            <Target className="h-4 w-4 text-emerald-400" />
+            Strategic Keyword Frequency
+          </CardTitle>
+        </CardHeader>
         <CardContent className="py-8 text-center">
           <p className="text-sm text-zinc-500">No keyword combinations found</p>
+          <p className="text-xs text-zinc-600 mt-2">
+            Combos received: {combos.length} • Check browser console for debug info
+          </p>
         </CardContent>
       </Card>
     );
