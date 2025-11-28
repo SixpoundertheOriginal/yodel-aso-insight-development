@@ -9,7 +9,7 @@
  * - ASO Bible integration
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,10 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Phase 2: Progressive Enhancement state
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhancementError, setEnhancementError] = useState<string | null>(null);
+
   const { setCombos, addCombo, combos } = useKeywordComboStore();
 
   // Workbench selection integration
@@ -81,7 +85,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
   }, [metadata.title, brandOverride]);
 
   // Generate comprehensive combo analysis with brand filtering
-  const comboAnalysis = useMemo(() => {
+  // Phase 1: Client-side instant results (0-100ms)
+  const [comboAnalysis, setComboAnalysis] = useState(() => {
     return analyzeAllCombos(
       keywordCoverage.titleKeywords,
       keywordCoverage.subtitleNewKeywords,
@@ -90,7 +95,111 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       comboCoverage.titleCombosClassified,
       appBrand  // Phase 1: Pass brand to filter branded combos
     );
-  }, [keywordCoverage, metadata, comboCoverage, appBrand]);
+  });
+
+  // Phase 2: Progressive Enhancement - Enhance from server (200-500ms)
+  useEffect(() => {
+    const enhanceFromServer = async () => {
+      if (!metadata.appId) {
+        console.warn('No appId provided, skipping server enhancement');
+        return;
+      }
+
+      setIsEnhancing(true);
+      setEnhancementError(null);
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/keyword-suggestions-enhance`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              appId: metadata.appId,
+              title: metadata.title,
+              subtitle: metadata.subtitle,
+              basicSuggestions: comboAnalysis.allPossibleCombos,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Enhancement failed: ${response.statusText}`);
+        }
+
+        const enhancedData = await response.json();
+
+        // Merge enhanced data into existing combos
+        setComboAnalysis(prev => {
+          const enhancedMap = new Map(
+            enhancedData.suggestions.map((s: any) => [s.text, s])
+          );
+
+          const mergedCombos = prev.allPossibleCombos.map(combo => {
+            const enhanced = enhancedMap.get(combo.text);
+            if (enhanced) {
+              return {
+                ...combo,
+                strategicValue: enhanced.enhancedStrategicValue,
+                searchVolume: enhanced.searchVolumeEstimate,
+                competition: enhanced.competitionLevel,
+              };
+            }
+            return combo;
+          }).filter(combo => {
+            // Filter out competitor-branded combos from server
+            const enhanced = enhancedMap.get(combo.text);
+            return !enhanced || !enhanced.isCompetitorBranded;
+          });
+
+          const existingCombos = mergedCombos.filter(c => c.exists);
+          const missingCombos = mergedCombos.filter(c => !c.exists);
+
+          return {
+            allPossibleCombos: mergedCombos,
+            existingCombos,
+            missingCombos,
+            recommendedToAdd: missingCombos
+              .sort((a, b) => (b.strategicValue || 0) - (a.strategicValue || 0))
+              .slice(0, 10),
+            stats: {
+              ...prev.stats,
+              totalPossible: mergedCombos.length,
+              existing: existingCombos.length,
+              missing: missingCombos.length,
+            },
+          };
+        });
+
+        // Show success message
+        const cacheHit = enhancedData.cached;
+        const competitorFiltered = enhancedData.stats?.competitorBrandedFiltered || 0;
+
+        toast.success(
+          `Suggestions enhanced${cacheHit ? ' (cached)' : ''}! ${
+            competitorFiltered > 0 ? `Filtered ${competitorFiltered} competitor brands.` : ''
+          }`,
+          { duration: 3000 }
+        );
+
+      } catch (error) {
+        console.error('Failed to enhance suggestions:', error);
+        setEnhancementError(error instanceof Error ? error.message : 'Unknown error');
+
+        // Graceful degradation - keep client-side results
+        toast.error('Using basic suggestions (enhancement unavailable)', {
+          duration: 3000,
+        });
+      } finally {
+        setIsEnhancing(false);
+      }
+    };
+
+    enhanceFromServer();
+  }, [metadata.appId, metadata.title, metadata.subtitle]);
 
   // Apply filters
   const filteredCombos = useMemo(() => {
@@ -231,10 +340,23 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
-              <Link2 className="h-4 w-4 text-violet-400" />
-              ENHANCED KEYWORD COMBO WORKBENCH
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
+                <Link2 className="h-4 w-4 text-violet-400" />
+                ENHANCED KEYWORD COMBO WORKBENCH
+              </CardTitle>
+              {/* Phase 2: Enhancement indicator */}
+              {isEnhancing && (
+                <Badge variant="outline" className="animate-pulse border-blue-400/40 text-blue-400 text-xs">
+                  🔄 Enhancing...
+                </Badge>
+              )}
+              {enhancementError && (
+                <Badge variant="outline" className="border-yellow-400/40 text-yellow-400 text-xs">
+                  ⚠️ Basic mode
+                </Badge>
+              )}
+            </div>
             <p className="text-[11px] text-zinc-500 mt-1.5">
               Powered by ASO Bible • All Possible Combinations • Strategic Recommendations
             </p>
