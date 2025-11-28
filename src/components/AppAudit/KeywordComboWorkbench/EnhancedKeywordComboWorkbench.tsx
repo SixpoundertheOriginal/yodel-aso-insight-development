@@ -244,9 +244,39 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
   // Initialize legacy table store (for backwards compatibility)
   React.useEffect(() => {
-    const titleCombos = comboCoverage.titleCombosClassified || [];
-    const subtitleCombos = comboCoverage.subtitleNewCombosClassified || [];
+    console.log('[EnhancedKeywordComboWorkbench] comboCoverage data:', {
+      titleCombosClassifiedLength: comboCoverage.titleCombosClassified?.length || 0,
+      subtitleNewCombosClassifiedLength: comboCoverage.subtitleNewCombosClassified?.length || 0,
+      titleCombosLength: comboCoverage.titleCombos?.length || 0,
+      subtitleNewCombosLength: comboCoverage.subtitleNewCombos?.length || 0,
+    });
+
+    let titleCombos = comboCoverage.titleCombosClassified || [];
+    let subtitleCombos = comboCoverage.subtitleNewCombosClassified || [];
+
+    // FALLBACK: If classified arrays are empty, create ClassifiedCombo objects from string arrays
+    if (titleCombos.length === 0 && comboCoverage.titleCombos && comboCoverage.titleCombos.length > 0) {
+      console.log('[EnhancedKeywordComboWorkbench] Creating ClassifiedCombo objects from titleCombos strings');
+      titleCombos = comboCoverage.titleCombos.map(text => ({
+        text,
+        type: 'generic' as const,
+        relevanceScore: 2,
+        source: 'title' as const,
+      }));
+    }
+
+    if (subtitleCombos.length === 0 && comboCoverage.subtitleNewCombos && comboCoverage.subtitleNewCombos.length > 0) {
+      console.log('[EnhancedKeywordComboWorkbench] Creating ClassifiedCombo objects from subtitleNewCombos strings');
+      subtitleCombos = comboCoverage.subtitleNewCombos.map(text => ({
+        text,
+        type: 'generic' as const,
+        relevanceScore: 2,
+        source: 'subtitle' as const,
+      }));
+    }
+
     const allCombos = [...titleCombos, ...subtitleCombos];
+    console.log('[EnhancedKeywordComboWorkbench] Setting combos to store:', allCombos.length);
     setCombos(allCombos);
   }, [comboCoverage, setCombos]);
 
@@ -459,10 +489,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       <CardContent className="space-y-6">
         {/* Strategic Keyword Frequency Analysis */}
         <StrategicKeywordFrequencyPanel
-          combos={[
-            ...(comboCoverage.titleCombosClassified || []),
-            ...(comboCoverage.subtitleNewCombosClassified || []),
-          ]}
+          combos={combos}
         />
 
         {/* Potential Combinations - Nested by Length > Value */}

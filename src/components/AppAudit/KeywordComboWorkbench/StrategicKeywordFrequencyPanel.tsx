@@ -34,6 +34,7 @@ export const StrategicKeywordFrequencyPanel: React.FC<StrategicKeywordFrequencyP
       combosLength: combos.length,
       firstCombo: combos[0],
       comboTypes: combos.map(c => c.type).slice(0, 5),
+      allComboTexts: combos.map(c => c.text).slice(0, 10),
     });
 
     const allFrequencies = analyzeKeywordComboFrequency(combos);
