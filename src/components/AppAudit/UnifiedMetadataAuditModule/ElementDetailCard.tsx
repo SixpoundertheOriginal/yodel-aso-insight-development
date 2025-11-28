@@ -102,7 +102,6 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
 
   // Editable title management (session-only for now)
   const [editedTitle, setEditedTitle] = useState<string | null>(null);
-  const displayTitle = element === 'title' && editedTitle !== null ? editedTitle : elementText;
 
   // Helper function to create a ClassifiedCombo from keyword
   const createComboFromKeyword = (keyword: string, source: 'title' | 'subtitle'): ClassifiedCombo => {
@@ -218,6 +217,9 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
     : element === 'subtitle'
     ? rawMetadata.subtitle
     : rawMetadata.description;
+
+  // Compute display title (original or edited)
+  const displayTitle = element === 'title' && editedTitle !== null ? editedTitle : elementText;
 
   // Format platform + locale
   const platformLocale = `iOS • ${rawMetadata.locale || 'en-US'}`;
