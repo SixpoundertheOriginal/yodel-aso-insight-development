@@ -13,7 +13,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Link2, Table, Download, Copy, FileJson, FileSpreadsheet, X, ChevronDown, ChevronRight, Plus, CheckCircle } from 'lucide-react';
+import { Link2, Table, Download, Copy, FileJson, FileSpreadsheet, X } from 'lucide-react';
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { analyzeAllCombos, filterCombosByKeyword, type GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
@@ -25,6 +25,7 @@ import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
 import { toast } from 'sonner';
 import { detectBrand } from '@/utils/brandDetector';
 import { useBrandOverride } from '@/hooks/useBrandOverride';
+import { NestedCategorySection } from './NestedCategorySection';
 
 interface EnhancedKeywordComboWorkbenchProps {
   comboCoverage: UnifiedMetadataAuditResult['comboCoverage'];
@@ -48,19 +49,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     minStrategicValue: 0,
     source: 'all',
   });
-
-  // Keyword suggestion expansion state
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    missing: false,
-    highValue: false,
-    mediumValue: false,
-    lowValue: false,
-    longTail: false,
-  });
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
 
   // Phase 2: Progressive Enhancement state
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -303,18 +291,43 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
   const v2_1Enabled = isV2_1FeatureEnabled('COMBO_ENHANCE');
 
   // Calculate keyword suggestions by category
+  // Nested Structure: Length > Value
   const keywordSuggestions = useMemo(() => {
     const all = comboAnalysis.allPossibleCombos;
 
+    // Helper to categorize by value
+    const categorizeByValue = (combos: GeneratedCombo[]) => {
+      return {
+        high: combos.filter(c => (c.strategicValue || 0) >= 70),
+        medium: combos.filter(c => {
+          const val = c.strategicValue || 0;
+          return val >= 50 && val < 70;
+        }),
+        low: combos.filter(c => (c.strategicValue || 0) < 50),
+      };
+    };
+
+    // Group by length first
+    const twoWord = all.filter(c => c.length === 2);
+    const threeWord = all.filter(c => c.length === 3);
+    const fourPlus = all.filter(c => c.length >= 4);
+
     return {
-      missing: all.filter(c => !c.exists),
-      highValue: all.filter(c => (c.strategicValue || 0) >= 70),
-      mediumValue: all.filter(c => {
-        const val = c.strategicValue || 0;
-        return val >= 50 && val < 70;
-      }),
-      lowValue: all.filter(c => (c.strategicValue || 0) < 50 && (c.strategicValue || 0) > 0),
-      longTail: all.filter(c => c.length >= 3),
+      twoWord: {
+        all: twoWord,
+        ...categorizeByValue(twoWord),
+        total: twoWord.length,
+      },
+      threeWord: {
+        all: threeWord,
+        ...categorizeByValue(threeWord),
+        total: threeWord.length,
+      },
+      fourPlus: {
+        all: fourPlus,
+        ...categorizeByValue(fourPlus),
+        total: fourPlus.length,
+      },
     };
   }, [comboAnalysis]);
 
@@ -443,208 +456,45 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Keyword Suggestions */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-zinc-400 uppercase">Keyword Suggestions:</span>
+        {/* Potential Combinations - Nested by Length > Value */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium text-zinc-400 uppercase">Potential Combinations:</span>
             <span className="text-[10px] text-zinc-500">Click to add to workbench</span>
           </div>
 
-          {/* Missing Opportunities */}
-          {keywordSuggestions.missing.length > 0 && (
-            <div className="p-4 bg-orange-500/5 rounded-lg border border-orange-400/20">
-              <div
-                className="flex items-center justify-between cursor-pointer mb-3"
-                onClick={() => toggleSection('missing')}
-              >
-                <div className="flex items-center gap-2">
-                  {expandedSections.missing ? <ChevronDown className="h-4 w-4 text-orange-400" /> : <ChevronRight className="h-4 w-4 text-orange-400" />}
-                  <span className="text-sm font-medium text-orange-300">
-                    🚨 Missing Opportunities ({keywordSuggestions.missing.length})
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {keywordSuggestions.missing.slice(0, expandedSections.missing ? undefined : 10).map((combo, idx) => {
-                  const isAdded = isComboAdded(combo.text);
-                  return (
-                    <Badge
-                      key={idx}
-                      onClick={() => !isAdded && handleAddCombo(combo)}
-                      className={`cursor-pointer transition-all ${
-                        isAdded
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/40 cursor-not-allowed'
-                          : 'bg-orange-500/10 text-orange-300 border-orange-400/30 hover:bg-orange-500/20 hover:scale-105'
-                      }`}
-                    >
-                      {isAdded ? <CheckCircle className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      {combo.text}
-                      {combo.strategicValue !== undefined && (
-                        <span className="ml-1 text-[10px] opacity-70">({combo.strategicValue})</span>
-                      )}
-                    </Badge>
-                  );
-                })}
-              </div>
-              {keywordSuggestions.missing.length > 10 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); toggleSection('missing'); }}
-                  className="mt-3 text-xs text-orange-400 hover:text-orange-300"
-                >
-                  {expandedSections.missing ? 'Show Less' : `View ${keywordSuggestions.missing.length - 10} More`}
-                </Button>
-              )}
-            </div>
-          )}
+          {/* 2-Word Combos */}
+          <NestedCategorySection
+            title="2-Word Combos"
+            icon="⚡"
+            combos={keywordSuggestions.twoWord}
+            total={keywordSuggestions.twoWord.total}
+            lengthType={2}
+            isComboAdded={isComboAdded}
+            onAddCombo={handleAddCombo}
+          />
 
-          {/* High Value */}
-          {keywordSuggestions.highValue.length > 0 && (
-            <div className="p-4 bg-emerald-500/5 rounded-lg border border-emerald-400/20">
-              <div
-                className="flex items-center justify-between cursor-pointer mb-3"
-                onClick={() => toggleSection('highValue')}
-              >
-                <div className="flex items-center gap-2">
-                  {expandedSections.highValue ? <ChevronDown className="h-4 w-4 text-emerald-400" /> : <ChevronRight className="h-4 w-4 text-emerald-400" />}
-                  <span className="text-sm font-medium text-emerald-300">
-                    ⭐ High Value 70+ ({keywordSuggestions.highValue.length})
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {keywordSuggestions.highValue.slice(0, expandedSections.highValue ? undefined : 10).map((combo, idx) => {
-                  const isAdded = isComboAdded(combo.text);
-                  return (
-                    <Badge
-                      key={idx}
-                      onClick={() => !isAdded && handleAddCombo(combo)}
-                      className={`cursor-pointer transition-all ${
-                        isAdded
-                          ? 'bg-emerald-500/40 text-emerald-300 border-emerald-400/60 cursor-not-allowed'
-                          : 'bg-emerald-500/10 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/20 hover:scale-105'
-                      }`}
-                    >
-                      {isAdded ? <CheckCircle className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      {combo.text}
-                      {combo.strategicValue !== undefined && (
-                        <span className="ml-1 text-[10px] opacity-70">({combo.strategicValue})</span>
-                      )}
-                    </Badge>
-                  );
-                })}
-              </div>
-              {keywordSuggestions.highValue.length > 10 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); toggleSection('highValue'); }}
-                  className="mt-3 text-xs text-emerald-400 hover:text-emerald-300"
-                >
-                  {expandedSections.highValue ? 'Show Less' : `View ${keywordSuggestions.highValue.length - 10} More`}
-                </Button>
-              )}
-            </div>
-          )}
+          {/* 3-Word Combos */}
+          <NestedCategorySection
+            title="3-Word Combos"
+            icon="📏"
+            combos={keywordSuggestions.threeWord}
+            total={keywordSuggestions.threeWord.total}
+            lengthType={3}
+            isComboAdded={isComboAdded}
+            onAddCombo={handleAddCombo}
+          />
 
-          {/* Medium Value */}
-          {keywordSuggestions.mediumValue.length > 0 && (
-            <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-400/20">
-              <div
-                className="flex items-center justify-between cursor-pointer mb-3"
-                onClick={() => toggleSection('mediumValue')}
-              >
-                <div className="flex items-center gap-2">
-                  {expandedSections.mediumValue ? <ChevronDown className="h-4 w-4 text-blue-400" /> : <ChevronRight className="h-4 w-4 text-blue-400" />}
-                  <span className="text-sm font-medium text-blue-300">
-                    📊 Medium Value 50-69 ({keywordSuggestions.mediumValue.length})
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {keywordSuggestions.mediumValue.slice(0, expandedSections.mediumValue ? undefined : 10).map((combo, idx) => {
-                  const isAdded = isComboAdded(combo.text);
-                  return (
-                    <Badge
-                      key={idx}
-                      onClick={() => !isAdded && handleAddCombo(combo)}
-                      className={`cursor-pointer transition-all ${
-                        isAdded
-                          ? 'bg-blue-500/40 text-blue-300 border-blue-400/60 cursor-not-allowed'
-                          : 'bg-blue-500/10 text-blue-300 border-blue-400/30 hover:bg-blue-500/20 hover:scale-105'
-                      }`}
-                    >
-                      {isAdded ? <CheckCircle className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      {combo.text}
-                      {combo.strategicValue !== undefined && (
-                        <span className="ml-1 text-[10px] opacity-70">({combo.strategicValue})</span>
-                      )}
-                    </Badge>
-                  );
-                })}
-              </div>
-              {keywordSuggestions.mediumValue.length > 10 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); toggleSection('mediumValue'); }}
-                  className="mt-3 text-xs text-blue-400 hover:text-blue-300"
-                >
-                  {expandedSections.mediumValue ? 'Show Less' : `View ${keywordSuggestions.mediumValue.length - 10} More`}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Long-Tail */}
-          {keywordSuggestions.longTail.length > 0 && (
-            <div className="p-4 bg-purple-500/5 rounded-lg border border-purple-400/20">
-              <div
-                className="flex items-center justify-between cursor-pointer mb-3"
-                onClick={() => toggleSection('longTail')}
-              >
-                <div className="flex items-center gap-2">
-                  {expandedSections.longTail ? <ChevronDown className="h-4 w-4 text-purple-400" /> : <ChevronRight className="h-4 w-4 text-purple-400" />}
-                  <span className="text-sm font-medium text-purple-300">
-                    📏 Long-Tail 3+ ({keywordSuggestions.longTail.length})
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {keywordSuggestions.longTail.slice(0, expandedSections.longTail ? undefined : 10).map((combo, idx) => {
-                  const isAdded = isComboAdded(combo.text);
-                  return (
-                    <Badge
-                      key={idx}
-                      onClick={() => !isAdded && handleAddCombo(combo)}
-                      className={`cursor-pointer transition-all ${
-                        isAdded
-                          ? 'bg-purple-500/40 text-purple-300 border-purple-400/60 cursor-not-allowed'
-                          : 'bg-purple-500/10 text-purple-300 border-purple-400/30 hover:bg-purple-500/20 hover:scale-105'
-                      }`}
-                    >
-                      {isAdded ? <CheckCircle className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                      {combo.text}
-                      {combo.strategicValue !== undefined && (
-                        <span className="ml-1 text-[10px] opacity-70">({combo.strategicValue})</span>
-                      )}
-                    </Badge>
-                  );
-                })}
-              </div>
-              {keywordSuggestions.longTail.length > 10 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); toggleSection('longTail'); }}
-                  className="mt-3 text-xs text-purple-400 hover:text-purple-300"
-                >
-                  {expandedSections.longTail ? 'Show Less' : `View ${keywordSuggestions.longTail.length - 10} More`}
-                </Button>
-              )}
-            </div>
-          )}
+          {/* 4+ Word Combos */}
+          <NestedCategorySection
+            title="4+ Word Combos"
+            icon="📐"
+            combos={keywordSuggestions.fourPlus}
+            total={keywordSuggestions.fourPlus.total}
+            lengthType={4}
+            isComboAdded={isComboAdded}
+            onAddCombo={handleAddCombo}
+          />
         </div>
 
         {/* Element Selection Filter (appears when items selected from element cards) */}

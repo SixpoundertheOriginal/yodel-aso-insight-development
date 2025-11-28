@@ -407,6 +407,19 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         />
       </div>
 
+      {/* Enhanced Keyword Combo Workbench (Full Width) */}
+      <div className="mt-6">
+        <EnhancedKeywordComboWorkbench
+          comboCoverage={auditResult.comboCoverage}
+          keywordCoverage={auditResult.keywordCoverage}
+          metadata={{
+            title: metadata.title || '',
+            subtitle: metadata.subtitle || '',
+            appId: metadata.appId, // For brand override storage
+          }}
+        />
+      </div>
+
       {/* ======================================================================
           CHAPTER 3 — COVERAGE MECHANICS
           ====================================================================== */}
@@ -435,17 +448,6 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
             platform={metadata.platform}
           />
         </div>
-
-        {/* Row 3: Enhanced Keyword Combo Workbench (Full Width) */}
-        <EnhancedKeywordComboWorkbench
-          comboCoverage={auditResult.comboCoverage}
-          keywordCoverage={auditResult.keywordCoverage}
-          metadata={{
-            title: metadata.title || '',
-            subtitle: metadata.subtitle || '',
-            appId: metadata.appId, // For brand override storage
-          }}
-        />
 
         {/* Row 5: Search Intent Analysis (Full Width) */}
         {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (

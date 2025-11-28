@@ -251,14 +251,23 @@ export const KeywordComboTable: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* Density Controls */}
-          <ToggleGroup type="single" value={density} onValueChange={(val) => val && setDensity(val as any)}>
-            <ToggleGroupItem value="compact" className="text-xs px-3 h-8">
+          <ToggleGroup type="single" value={density} onValueChange={(val) => val && setDensity(val as any)} className="gap-1">
+            <ToggleGroupItem
+              value="compact"
+              className="text-xs px-2.5 h-7 rounded-md data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 data-[state=on]:border-violet-500/40"
+            >
               Compact
             </ToggleGroupItem>
-            <ToggleGroupItem value="comfortable" className="text-xs px-3 h-8">
+            <ToggleGroupItem
+              value="comfortable"
+              className="text-xs px-2.5 h-7 rounded-md data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 data-[state=on]:border-violet-500/40"
+            >
               Comfortable
             </ToggleGroupItem>
-            <ToggleGroupItem value="spacious" className="text-xs px-3 h-8">
+            <ToggleGroupItem
+              value="spacious"
+              className="text-xs px-2.5 h-7 rounded-md data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300 data-[state=on]:border-violet-500/40"
+            >
               Spacious
             </ToggleGroupItem>
           </ToggleGroup>
@@ -428,8 +437,8 @@ export const KeywordComboTable: React.FC = () => {
         <Table>
           <TableHeader className="sticky top-0 bg-zinc-900/95 backdrop-blur-sm z-10">
             <TableRow className="border-zinc-800 hover:bg-transparent">
-              <TableHead className="w-8"></TableHead>
-              <TableHead className="w-8">
+              <TableHead className="w-8">#</TableHead>
+              <TableHead className="w-10">
           <Checkbox
             checked={allSelected ? true : someSelected ? "indeterminate" : false}
             onCheckedChange={(checked) => {
@@ -439,6 +448,7 @@ export const KeywordComboTable: React.FC = () => {
                 deselectAll();
               }
             }}
+            className="data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
           />
               </TableHead>
               <SortableHeader column="text" onClick={() => handleSort('text')} sortIcon={getSortIcon('text')}>
@@ -453,7 +463,9 @@ export const KeywordComboTable: React.FC = () => {
                 </SortableHeader>
               )}
               {visibleColumns.priority && (
-                <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Priority</TableHead>
+                <SortableHeader column="relevance" onClick={() => handleSort('relevance')} sortIcon={getSortIcon('relevance')}>
+                  Priority
+                </SortableHeader>
               )}
               {visibleColumns.semantic && (
                 <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Semantic</TableHead>

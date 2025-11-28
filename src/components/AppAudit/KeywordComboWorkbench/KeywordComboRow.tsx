@@ -13,10 +13,9 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Copy, Eye, EyeOff, ChevronDown, ChevronRight, Edit2, Star, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { Copy, Eye, EyeOff, Edit2, Star, CheckCircle, AlertCircle, Sparkles, Trash2 } from 'lucide-react';
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { KeywordComboEditor } from './KeywordComboEditor';
-import { KeywordComboExpandedDetail } from './KeywordComboExpandedDetail';
 import { copyComboToClipboard } from '@/utils/comboExporter';
 import { classifyIntent, getIntentColor } from '@/utils/comboIntentClassifier';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
@@ -42,7 +41,6 @@ interface KeywordComboRowProps {
 }
 
 export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, isSelected, visibleColumns, density = 'comfortable' }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const editingComboIndex = useKeywordComboStore((state) => state.editingComboIndex);
   const setEditingCombo = useKeywordComboStore((state) => state.setEditingCombo);
   const updateCombo = useKeywordComboStore((state) => state.updateCombo);
@@ -110,27 +108,17 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         transition-all duration-200 ease-in-out
         group
       `}>
-        {/* Expand Toggle */}
-        <TableCell className="w-8">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-6 w-6 p-0"
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-zinc-400" />
-            ) : (
-              <ChevronRight className="h-3 w-3 text-zinc-400" />
-            )}
-          </Button>
+        {/* Row Number */}
+        <TableCell className="w-8 text-xs text-zinc-500 font-mono">
+          {index + 1}
         </TableCell>
 
         {/* Selection Checkbox */}
-        <TableCell className="w-8">
+        <TableCell className="w-10">
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => toggleSelection(index)}
+            className="rounded data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
           />
         </TableCell>
 
@@ -317,18 +305,23 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
             >
               {isNoise ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (confirm(`Delete "${combo.text}"?`)) {
+                  // TODO: Implement delete logic via store
+                  console.log('Delete combo:', combo.text);
+                }
+              }}
+              className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              title="Delete combo"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
         </TableCell>
       </TableRow>
-
-      {/* Expanded Detail Row */}
-      {isExpanded && (
-        <TableRow>
-          <TableCell colSpan={12} className="p-0">
-            <KeywordComboExpandedDetail combo={combo} />
-          </TableCell>
-        </TableRow>
-      )}
     </>
   );
 };
