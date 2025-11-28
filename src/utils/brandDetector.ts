@@ -105,14 +105,19 @@ export function extractMeaningfulKeywords(text: string): string[] {
  */
 export function parseTextIntoSegments(
   text: string,
-  brandOverride?: string | null
+  brandOverride?: string | null,
+  disableAutoDetect?: boolean
 ): TextSegment[] {
   if (!text || text.trim().length === 0) {
     return [];
   }
 
   const segments: TextSegment[] = [];
-  const detectedBrand = detectBrand(text, brandOverride);
+
+  // If disableAutoDetect is true, only use brandOverride (don't auto-detect)
+  const detectedBrand = disableAutoDetect
+    ? (brandOverride || null)
+    : detectBrand(text, brandOverride);
 
   let currentIndex = 0;
 

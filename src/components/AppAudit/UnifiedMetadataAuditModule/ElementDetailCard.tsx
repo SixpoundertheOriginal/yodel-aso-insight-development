@@ -95,15 +95,10 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   // Workbench integration - add combos directly
   const { addCombo, combos } = useKeywordComboStore();
 
-  // Brand override management for Title
+  // Brand override management (shared across title and subtitle)
   const [brandOverride, setBrandOverride, clearBrandOverride] = useBrandOverride(rawMetadata.appId);
   const [isEditingBrand, setIsEditingBrand] = useState(false);
   const [brandEditValue, setBrandEditValue] = useState('');
-
-  // Brand override management for Subtitle
-  const [brandOverrideSubtitle, setBrandOverrideSubtitle, clearBrandOverrideSubtitle] = useBrandOverride(`${rawMetadata.appId}-subtitle`);
-  const [isEditingSubtitleBrand, setIsEditingSubtitleBrand] = useState(false);
-  const [brandSubtitleEditValue, setBrandSubtitleEditValue] = useState('');
 
   // Editable title management (session-only for now)
   const [editedTitle, setEditedTitle] = useState<string | null>(null);
@@ -383,18 +378,6 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                       Edit Brand
                     </button>
                   )}
-                  {element === 'subtitle' && !isEditingSubtitleBrand && (
-                    <button
-                      onClick={() => {
-                        setIsEditingSubtitleBrand(true);
-                        setBrandSubtitleEditValue(brandOverrideSubtitle || '');
-                      }}
-                      className="flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-emerald-400 transition-colors"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      Edit Brand
-                    </button>
-                  )}
                 </div>
 
                 {/* Brand Edit UI (Title) */}
@@ -441,60 +424,6 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                             clearBrandOverride();
                             setIsEditingBrand(false);
                             toast.success('Brand override cleared');
-                          }}
-                          className="border-red-500/40 text-red-400 hover:bg-red-500/10"
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Brand Edit UI (Subtitle) */}
-                {element === 'subtitle' && isEditingSubtitleBrand && (
-                  <div className="mb-3 p-3 bg-zinc-800/50 rounded border border-emerald-500/30">
-                    <div className="text-xs text-zinc-400 mb-2">
-                      Enter the brand portion of your subtitle (if applicable)
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={brandSubtitleEditValue}
-                        onChange={(e) => setBrandSubtitleEditValue(e.target.value)}
-                        placeholder="Brand name..."
-                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50"
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (brandSubtitleEditValue.trim()) {
-                            setBrandOverrideSubtitle(brandSubtitleEditValue.trim());
-                            toast.success(`Subtitle brand set to "${brandSubtitleEditValue.trim()}"`);
-                          }
-                          setIsEditingSubtitleBrand(false);
-                        }}
-                        className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditingSubtitleBrand(false)}
-                        className="border-zinc-700 text-zinc-400"
-                      >
-                        Cancel
-                      </Button>
-                      {brandOverrideSubtitle && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            clearBrandOverrideSubtitle();
-                            setIsEditingSubtitleBrand(false);
-                            toast.success('Subtitle brand override cleared');
                           }}
                           className="border-red-500/40 text-red-400 hover:bg-red-500/10"
                         >
@@ -558,12 +487,13 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                       )}
                     </div>
                   </>
-                ) : element === 'subtitle' && !isEditingSubtitleBrand ? (
+                ) : element === 'subtitle' ? (
                   <>
                     <EnhancedTextDisplay
                       text={displaySubtitle || ''}
                       type="subtitle"
-                      brandOverride={brandOverrideSubtitle}
+                      brandOverride={brandOverride}
+                      disableAutoDetect={true}
                     />
 
                     {/* Editable Subtitle Input */}

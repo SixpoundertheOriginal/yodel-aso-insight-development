@@ -15,6 +15,7 @@ interface EnhancedTextDisplayProps {
   text: string;
   type: 'title' | 'subtitle';
   brandOverride?: string | null;
+  disableAutoDetect?: boolean; // For subtitle: only use brandOverride, don't auto-detect
 }
 
 /**
@@ -61,11 +62,15 @@ export const EnhancedTextDisplay: React.FC<EnhancedTextDisplayProps> = ({
   text,
   type,
   brandOverride,
+  disableAutoDetect = false,
 }) => {
   // Parse text into segments (individual keywords, not grouped)
   const segments = React.useMemo(() => {
-    return parseTextIntoSegments(text, brandOverride);
-  }, [text, brandOverride]);
+    // For subtitle with disableAutoDetect, pass empty string to prevent auto-detection
+    // Only use brand if explicitly set by user
+    const brandToUse = disableAutoDetect ? (brandOverride || '') : brandOverride;
+    return parseTextIntoSegments(text, brandToUse, disableAutoDetect);
+  }, [text, brandOverride, disableAutoDetect]);
 
   if (!text || segments.length === 0) {
     return (
