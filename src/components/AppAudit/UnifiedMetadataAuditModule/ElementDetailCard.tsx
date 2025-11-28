@@ -100,6 +100,10 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   const [isEditingBrand, setIsEditingBrand] = useState(false);
   const [brandEditValue, setBrandEditValue] = useState('');
 
+  // Editable title management (session-only for now)
+  const [editedTitle, setEditedTitle] = useState<string | null>(null);
+  const displayTitle = element === 'title' && editedTitle !== null ? editedTitle : elementText;
+
   // Helper function to create a ClassifiedCombo from keyword
   const createComboFromKeyword = (keyword: string, source: 'title' | 'subtitle'): ClassifiedCombo => {
     return {
@@ -424,11 +428,57 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
 
                 {/* Enhanced Badge Display for Title, Plain Text for Others */}
                 {element === 'title' && !isEditingBrand ? (
-                  <EnhancedTextDisplay
-                    text={elementText || ''}
-                    type="title"
-                    brandOverride={brandOverride}
-                  />
+                  <>
+                    <EnhancedTextDisplay
+                      text={displayTitle || ''}
+                      type="title"
+                      brandOverride={brandOverride}
+                    />
+
+                    {/* Editable Title Input */}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editedTitle !== null ? editedTitle : elementText || ''}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          placeholder="Edit title text..."
+                          className="flex-1 px-3 py-2 bg-zinc-900/50 border border-zinc-700/50 rounded text-sm text-zinc-200 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 font-light"
+                        />
+                        {editedTitle !== null && editedTitle !== elementText && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditedTitle(null);
+                              toast.success('Title reset to original');
+                            }}
+                            className="border-zinc-700 text-zinc-400 hover:text-zinc-300"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+
+                      {editedTitle !== null && editedTitle !== elementText && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              toast.info('Re-run Audit feature coming soon!');
+                              // TODO: Implement audit re-run with new title
+                            }}
+                            className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40"
+                          >
+                            Re-run Audit with New Title
+                          </Button>
+                          <span className="text-xs text-zinc-500">
+                            Optional: Recalculate all metrics with edited title
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 ) : element !== 'title' ? (
                   <div className="text-sm text-zinc-200 font-light leading-relaxed">
                     {element === 'description'
