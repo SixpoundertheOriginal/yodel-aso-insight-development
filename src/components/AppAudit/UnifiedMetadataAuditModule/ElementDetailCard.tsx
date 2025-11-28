@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Check, Sparkles, X, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Check, Sparkles, X, CheckCircle, TrendingUp } from 'lucide-react';
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import { RuleResultsTable } from './RuleResultsTable';
 import type { ElementScoringResult, UnifiedMetadataAuditResult, ClassifiedCombo } from './types';
@@ -20,6 +20,46 @@ import { analyzeSubtitleValue } from '@/engine/metadata/utils/subtitleValueAnaly
 import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import { toast } from 'sonner';
+
+// Helper function: Extract meaningful keywords
+function extractMeaningfulKeywords(text: string): Set<string> {
+  const stopwords = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
+    'to', 'was', 'will', 'with', '&',
+  ]);
+
+  const normalized = text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ');
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  return new Set(
+    words.filter((word) => !stopwords.has(word) && word.length >= 2)
+  );
+}
+
+// Helper function: Generate combos from keywords
+function generateSimpleCombos(keywords: string[]): Set<string> {
+  const combos = new Set<string>();
+
+  // 2-word combos
+  for (let i = 0; i < keywords.length - 1; i++) {
+    for (let j = i + 1; j < keywords.length; j++) {
+      combos.add(`${keywords[i]} ${keywords[j]}`);
+      combos.add(`${keywords[j]} ${keywords[i]}`);
+    }
+  }
+
+  // 3-word combos
+  for (let i = 0; i < keywords.length - 2; i++) {
+    for (let j = i + 1; j < keywords.length - 1; j++) {
+      for (let k = j + 1; k < keywords.length; k++) {
+        combos.add(`${keywords[i]} ${keywords[j]} ${keywords[k]}`);
+      }
+    }
+  }
+
+  return combos;
+}
 
 interface ElementDetailCardProps {
   elementResult: ElementScoringResult;
@@ -220,6 +260,19 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
     return null;
   }, [element, rawMetadata.title, elementText, auditResult]);
 
+  // Calculate coverage contribution for title
+  const titleCoverageContribution = React.useMemo(() => {
+    if (element === 'title' && elementText) {
+      const keywords = Array.from(extractMeaningfulKeywords(elementText));
+      const combos = generateSimpleCombos(keywords);
+      return {
+        keywordCount: keywords.length,
+        comboCount: combos.size
+      };
+    }
+    return null;
+  }, [element, elementText]);
+
   return (
     <Card 
       className="group relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed transition-all duration-300 hover:border-orange-500/40 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]"
@@ -312,6 +365,46 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Coverage Contribution (Title) */}
+          {element === 'title' && titleCoverageContribution && (
+            <div className="pb-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-blue-400" />
+                <span className="text-sm font-medium text-zinc-300">
+                  Coverage Contribution
+                </span>
+              </div>
+              <div className="text-sm text-zinc-400">
+                Contributes{' '}
+                <span className="font-medium text-blue-400">{titleCoverageContribution.keywordCount} keywords</span>
+                {' '}+{' '}
+                <span className="font-medium text-violet-400">{titleCoverageContribution.comboCount} combinations</span>
+                {' '}={' '}
+                <span className="font-medium text-zinc-200">{titleCoverageContribution.keywordCount + titleCoverageContribution.comboCount} total search terms</span>
+              </div>
+            </div>
+          )}
+
+          {/* Coverage Contribution (Subtitle) */}
+          {element === 'subtitle' && subtitleValue && (
+            <div className="pb-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                <span className="text-sm font-medium text-zinc-300">
+                  Coverage Contribution
+                </span>
+              </div>
+              <div className="text-sm text-zinc-400">
+                Adds{' '}
+                <span className="font-medium text-blue-400">{subtitleValue.newKeywordCount} new keywords</span>
+                {' '}+{' '}
+                <span className="font-medium text-violet-400">{subtitleValue.newComboCount} cross-element combinations</span>
+                {' '}={' '}
+                <span className="font-medium text-zinc-200">{subtitleValue.newKeywordCount + subtitleValue.newComboCount} new search terms</span>
+              </div>
+            </div>
+          )}
 
           {/* V2.1 Ranking Token Analysis (Title Only) */}
           {element === 'title' && rankingAnalysis && (

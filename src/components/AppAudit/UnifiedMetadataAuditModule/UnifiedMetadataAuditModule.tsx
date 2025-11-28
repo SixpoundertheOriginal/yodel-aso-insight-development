@@ -21,7 +21,6 @@ import type { ScrapedMetadata } from '@/types/aso';
 import type { UnifiedMetadataAuditResult } from './types';
 import { MetadataScoreCard } from './MetadataScoreCard';
 import { ElementDetailCard } from './ElementDetailCard';
-import { KeywordCoverageCard } from './KeywordCoverageCard';
 import { EnhancedKeywordComboWorkbench } from '../KeywordComboWorkbench/EnhancedKeywordComboWorkbench';
 import { SearchIntentAnalysisCard } from './SearchIntentAnalysisCard';
 import { SearchIntentCoverageCard } from './SearchIntentCoverageCard';
@@ -423,18 +422,11 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           </p>
         </div>
 
-        {/* Row 1: Keyword Coverage Card + Slot Utilization */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <KeywordCoverageCard
-            keywordCoverage={auditResult.keywordCoverage}
-            title={metadata.title || ''}
-            subtitle={metadata.subtitle || ''}
-          />
-          <SlotUtilizationBars
-            keywordCoverage={auditResult.keywordCoverage}
-            platform={metadata.platform}
-          />
-        </div>
+        {/* Row 1: Slot Utilization */}
+        <SlotUtilizationBars
+          keywordCoverage={auditResult.keywordCoverage}
+          platform={metadata.platform}
+        />
 
         {/* Row 2: Efficiency Sparkline */}
         <div className="grid grid-cols-1 gap-4">
