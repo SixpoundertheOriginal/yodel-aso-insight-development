@@ -24,6 +24,7 @@ import { ElementDetailCard } from './ElementDetailCard';
 import { KeywordCoverageCard } from './KeywordCoverageCard';
 import { EnhancedKeywordComboWorkbench } from '../KeywordComboWorkbench/EnhancedKeywordComboWorkbench';
 import { SearchIntentAnalysisCard } from './SearchIntentAnalysisCard';
+import { SearchIntentCoverageCard } from './SearchIntentCoverageCard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { MetadataKpiGrid } from '../MetadataKpi';
 import { VerticalOverviewPanel } from './VerticalOverviewPanel';
@@ -57,6 +58,11 @@ import { computeBrandRatioStats } from '@/engine/metadata/utils/brandNoiseHelper
 import { AppCapabilitiesSection } from './AppCapabilitiesSection';
 import { GapAnalysisSection } from './GapAnalysisSection';
 import { ExecutiveRecommendationsSection } from './ExecutiveRecommendationsSection';
+import { RankingOverviewCard } from './RankingOverviewCard';
+import { LongTailDistributionChart } from './LongTailDistributionChart';
+import { SlotUtilizationHeatmap } from './SlotUtilizationHeatmap';
+import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
+import { WorkbenchSelectionProvider } from '@/contexts/WorkbenchSelectionContext';
 
 const DEFAULT_DISCOVERY_THRESHOLDS = {
   excellent: 5,
@@ -325,9 +331,10 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   }
 
   return (
-    <div className="space-y-6">
-      {/* Competitor Header (if in comparison mode) */}
-      {isCompetitor && competitorName && (
+    <WorkbenchSelectionProvider>
+      <div className="space-y-6">
+        {/* Competitor Header (if in comparison mode) */}
+        {isCompetitor && competitorName && (
         <Card className="bg-violet-900/10 border-violet-500/30">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
@@ -361,6 +368,120 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
       {/* Overall Score Card */}
       <MetadataScoreCard auditResult={auditResult} baselineAudit={baselineAudit} isCompetitor={isCompetitor} />
+
+      {/* Element Detail Cards */}
+      <div className="space-y-4">
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          ASO RANKING ELEMENTS
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
+          These elements directly influence App Store search ranking
+        </p>
+
+        {/* V2.1 Ranking Overview - Combined analysis of title + subtitle */}
+        {isV2_1FeatureEnabled('RANKING_BLOCK') && (
+          <RankingOverviewCard
+            title={metadata.title || ''}
+            subtitle={metadata.subtitle || ''}
+            auditResult={auditResult}
+          />
+        )}
+
+        <ElementDetailCard
+          elementResult={auditResult.elements.title}
+          elementDisplayName="Title"
+          metadata={metadata}
+          auditResult={auditResult}
+          baselineAudit={baselineAudit}
+          isCompetitor={isCompetitor}
+        />
+
+        <ElementDetailCard
+          elementResult={auditResult.elements.subtitle}
+          elementDisplayName="Subtitle"
+          metadata={metadata}
+          auditResult={auditResult}
+          baselineAudit={baselineAudit}
+          isCompetitor={isCompetitor}
+        />
+      </div>
+
+      {/* ======================================================================
+          CHAPTER 3 — COVERAGE MECHANICS
+          ====================================================================== */}
+      <div className="space-y-4 mt-6">
+        <div className="relative">
+          <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="h-[2px] w-8 bg-emerald-500/40" />
+            CHAPTER 3 — COVERAGE MECHANICS
+            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
+          </h3>
+          <p className="text-xs text-zinc-500 mb-4 -mt-2">
+            Keyword distribution, slot utilization, semantic density, and hook diversity analysis
+          </p>
+        </div>
+
+        {/* Row 1: Keyword Coverage Card + Slot Utilization */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <KeywordCoverageCard
+            keywordCoverage={auditResult.keywordCoverage}
+            title={metadata.title || ''}
+            subtitle={metadata.subtitle || ''}
+          />
+          <SlotUtilizationBars
+            keywordCoverage={auditResult.keywordCoverage}
+            platform={metadata.platform}
+          />
+        </div>
+
+        {/* Row 2: Efficiency Sparkline */}
+        <div className="grid grid-cols-1 gap-4">
+          <EfficiencySparkline
+            keywordCoverage={auditResult.keywordCoverage}
+            platform={metadata.platform}
+          />
+        </div>
+
+        {/* Row 3: Enhanced Keyword Combo Workbench (Full Width) */}
+        <EnhancedKeywordComboWorkbench
+          comboCoverage={auditResult.comboCoverage}
+          keywordCoverage={auditResult.keywordCoverage}
+          metadata={{
+            title: metadata.title || '',
+            subtitle: metadata.subtitle || '',
+          }}
+        />
+
+        {/* Row 5: Search Intent Analysis (Full Width) */}
+        {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (
+          <SearchIntentAnalysisCard
+            clusters={intentClusters}
+            auditSignals={intentAuditSignals}
+            totalKeywords={intentStatistics.totalKeywords}
+          />
+        )}
+
+        {/* V2.1 Nice-to-Have Charts */}
+        {isV2_1FeatureEnabled('LONG_TAIL_CHART') && auditResult.comboCoverage.titleCombosClassified && (
+          <LongTailDistributionChart
+            combos={[
+              ...(auditResult.comboCoverage.titleCombosClassified || []),
+              ...(auditResult.comboCoverage.subtitleNewCombosClassified || []),
+            ]}
+          />
+        )}
+
+        {isV2_1FeatureEnabled('HEATMAP') && (
+          <SlotUtilizationHeatmap
+            title={metadata.title || ''}
+            subtitle={metadata.subtitle || ''}
+            description={metadata.description || ''}
+            platform={metadata.platform}
+          />
+        )}
+      </div>
 
       {/* Intent Engine Diagnostics (DEV ONLY) */}
       <IntentEngineDiagnosticsPanel
@@ -475,123 +596,6 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           comboCoverage={auditResult.comboCoverage}
           intentRecommendations={intentAuditSignals?.recommendations || []}
         />
-      </div>
-
-      {/* Element Detail Cards */}
-      <div className="space-y-4">
-        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
-          <div className="h-[2px] w-8 bg-orange-500/40" />
-          ASO RANKING ELEMENTS
-          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
-        </h3>
-        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
-          These elements directly influence App Store search ranking
-        </p>
-
-        <ElementDetailCard
-          elementResult={auditResult.elements.title}
-          elementDisplayName="Title"
-          metadata={metadata}
-          auditResult={auditResult}
-          baselineAudit={baselineAudit}
-          isCompetitor={isCompetitor}
-        />
-
-        <ElementDetailCard
-          elementResult={auditResult.elements.subtitle}
-          elementDisplayName="Subtitle"
-          metadata={metadata}
-          auditResult={auditResult}
-          baselineAudit={baselineAudit}
-          isCompetitor={isCompetitor}
-        />
-      </div>
-
-      {/* Conversion Intelligence Section */}
-      <div className="space-y-4">
-        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
-          <div className="h-[2px] w-8 bg-orange-500/40" />
-          💰 CONVERSION INTELLIGENCE
-          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
-        </h3>
-        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
-          Description does NOT influence App Store ranking • Evaluated for conversion quality only
-        </p>
-
-        <ElementDetailCard
-          elementResult={auditResult.elements.description}
-          elementDisplayName="Description (Conversion Only)"
-          metadata={metadata}
-          baselineAudit={baselineAudit}
-          isCompetitor={isCompetitor}
-        />
-
-        {/* Conversion Recommendations */}
-        <RecommendationsPanel
-          recommendations={auditResult.conversionRecommendations || []}
-          type="conversion"
-        />
-      </div>
-
-      {/* ======================================================================
-          CHAPTER 3 — COVERAGE MECHANICS
-          ====================================================================== */}
-      <div className="space-y-4 mt-6">
-        <div className="relative">
-          <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
-            <div className="h-[2px] w-8 bg-emerald-500/40" />
-            CHAPTER 3 — COVERAGE MECHANICS
-            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/40 to-transparent" />
-          </h3>
-          <p className="text-xs text-zinc-500 mb-4 -mt-2">
-            Keyword distribution, slot utilization, semantic density, and hook diversity analysis
-          </p>
-        </div>
-
-        {/* Row 1: Keyword Coverage Card + Slot Utilization */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <KeywordCoverageCard keywordCoverage={auditResult.keywordCoverage} />
-          <SlotUtilizationBars
-            keywordCoverage={auditResult.keywordCoverage}
-            platform={metadata.platform}
-          />
-        </div>
-
-        {/* Row 2: Token Mix + Efficiency + Hook Diversity */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <TokenMixDonut keywordCoverage={auditResult.keywordCoverage} />
-          <EfficiencySparkline
-            keywordCoverage={auditResult.keywordCoverage}
-            platform={metadata.platform}
-          />
-          <SemanticDensityGauge comboCoverage={auditResult.comboCoverage} />
-        </div>
-
-        {/* Row 3: Hook Diversity Wheel */}
-        <HookDiversityWheel
-          comboCoverage={auditResult.comboCoverage}
-          keywordCoverage={auditResult.keywordCoverage}
-          activeRuleSet={undefined} // Edge function doesn't return full ruleset (simplified to verticalContext)
-        />
-
-        {/* Row 4: Enhanced Keyword Combo Workbench (Full Width) */}
-        <EnhancedKeywordComboWorkbench
-          comboCoverage={auditResult.comboCoverage}
-          keywordCoverage={auditResult.keywordCoverage}
-          metadata={{
-            title: metadata.title || '',
-            subtitle: metadata.subtitle || '',
-          }}
-        />
-
-        {/* Row 5: Search Intent Analysis (Full Width) */}
-        {AUTOCOMPLETE_INTELLIGENCE_ENABLED && !isIntentLoading && intentClusters.length > 0 && (
-          <SearchIntentAnalysisCard
-            clusters={intentClusters}
-            auditSignals={intentAuditSignals}
-            totalKeywords={intentStatistics.totalKeywords}
-          />
-        )}
       </div>
 
       {/* ======================================================================
@@ -779,6 +783,147 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           )}
         </div>
       )}
-    </div>
+
+      {/* ======================================================================
+          SEARCH INTENT COVERAGE — TITLE & SUBTITLE
+          ====================================================================== */}
+      {AUTOCOMPLETE_INTELLIGENCE_ENABLED && (
+        <div className="space-y-6 mt-8">
+          <div className="relative">
+            <h3 className="text-base font-mono tracking-wide uppercase text-zinc-300 mb-3 flex items-center gap-2">
+              <div className="h-[2px] w-8 bg-blue-500/40" />
+              SEARCH INTENT COVERAGE
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-blue-500/40 to-transparent" />
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 -mt-2">
+              ASO Bible-driven intent coverage analysis for Title and Subtitle
+            </p>
+          </div>
+
+          {/* Title Search Intent Coverage */}
+          {auditResult.intentCoverage?.title && (
+            <div>
+              <h4 className="text-sm font-medium text-zinc-300 mb-3">Title Search Intent Coverage</h4>
+              <SearchIntentCoverageCard
+                appCategory={metadata.applicationCategory}
+                bibleCoverage={auditResult.intentCoverage.title}
+                intentSignals={intentAuditSignals?.title}
+                elementType="title"
+                keywords={auditResult.keywordCoverage.titleKeywords}
+                baselineCoverage={baselineAudit?.intentCoverage?.title}
+                isCompetitor={isCompetitor}
+              />
+            </div>
+          )}
+
+          {/* Subtitle Search Intent Coverage */}
+          {auditResult.intentCoverage?.subtitle && (
+            <div>
+              <h4 className="text-sm font-medium text-zinc-300 mb-3">Subtitle Search Intent Coverage</h4>
+              <SearchIntentCoverageCard
+                appCategory={metadata.applicationCategory}
+                bibleCoverage={auditResult.intentCoverage.subtitle}
+                intentSignals={intentAuditSignals?.subtitle}
+                elementType="subtitle"
+                keywords={auditResult.keywordCoverage.subtitleNewKeywords}
+                baselineCoverage={baselineAudit?.intentCoverage?.subtitle}
+                isCompetitor={isCompetitor}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ======================================================================
+          💰 CONVERSION INTELLIGENCE
+          ====================================================================== */}
+      <div className="space-y-4 mt-8">
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-orange-500/40" />
+          💰 CONVERSION INTELLIGENCE
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-orange-500/40 to-transparent" />
+        </h3>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
+          Description does NOT influence App Store ranking • Evaluated for conversion quality only
+        </p>
+
+        {/* Description New Keywords */}
+        {auditResult.keywordCoverage.descriptionNewKeywords.length > 0 && (
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="text-sm font-medium text-zinc-300">
+                  Description adds {auditResult.keywordCoverage.descriptionNewKeywords.length} new keywords (conversion only)
+                </span>
+                {auditResult.keywordCoverage.descriptionIgnoredCount !== undefined && auditResult.keywordCoverage.descriptionIgnoredCount > 0 && (
+                  <span className="text-xs text-zinc-500">
+                    • {auditResult.keywordCoverage.descriptionIgnoredCount} ignored
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {auditResult.keywordCoverage.descriptionNewKeywords.slice(0, 5).map((keyword, idx) => (
+                  <Badge
+                    key={idx}
+                    variant="outline"
+                    className="text-xs border-cyan-400/30 text-cyan-400"
+                  >
+                    {keyword}
+                  </Badge>
+                ))}
+                {auditResult.keywordCoverage.descriptionNewKeywords.length > 5 && (
+                  <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-500">
+                    +{auditResult.keywordCoverage.descriptionNewKeywords.length - 5} more
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <ElementDetailCard
+          elementResult={auditResult.elements.description}
+          elementDisplayName="Description (Conversion Only)"
+          metadata={metadata}
+          baselineAudit={baselineAudit}
+          isCompetitor={isCompetitor}
+        />
+
+        {/* Conversion Recommendations */}
+        <RecommendationsPanel
+          recommendations={auditResult.conversionRecommendations || []}
+          type="conversion"
+        />
+      </div>
+
+      {/* ======================================================================
+          ADDITIONAL METRICS
+          ====================================================================== */}
+      <div className="space-y-4 mt-8">
+        <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+          <div className="h-[2px] w-8 bg-zinc-500/40" />
+          ADDITIONAL METRICS
+          <div className="flex-1 h-[2px] bg-gradient-to-r from-zinc-500/40 to-transparent" />
+        </h3>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
+          Supplementary analysis metrics for deeper insights
+        </p>
+
+        {/* Token Mix, Semantic Density, Hook Diversity */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <TokenMixDonut keywordCoverage={auditResult.keywordCoverage} />
+          <SemanticDensityGauge comboCoverage={auditResult.comboCoverage} />
+          <div className="md:col-span-2 lg:col-span-1">
+            <HookDiversityWheel
+              comboCoverage={auditResult.comboCoverage}
+              keywordCoverage={auditResult.keywordCoverage}
+              activeRuleSet={undefined}
+            />
+          </div>
+        </div>
+      </div>
+      </div>
+    </WorkbenchSelectionProvider>
   );
 };

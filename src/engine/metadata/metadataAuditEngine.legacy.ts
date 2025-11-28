@@ -872,7 +872,8 @@ export class MetadataAuditEngine {
     const descriptionIgnoredCount = descriptionTokens.length - descriptionKeywords.length;
     const descriptionNewKeywords = descriptionKeywords.filter(t => !allTitleSubtitleSet.has(t));
 
-    const allUniqueKeywords = new Set([...titleKeywords, ...subtitleKeywords, ...descriptionKeywords]);
+    // Only count title + subtitle keywords for algorithmic visibility (description doesn't impact ranking)
+    const allUniqueKeywords = new Set([...titleKeywords, ...subtitleKeywords]);
 
     // Sort keywords by relevance score (descending)
     const sortByRelevance = (keywords: string[]) =>

@@ -18,7 +18,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { selectUserAgent, getRandomUserAgent } from './_shared/ua.ts';
 import { sanitizeAndTruncate } from './_shared/sanitize.ts';
-import { buildSnapshot, extractSubtitle, validateSubtitle, extractDescription, validateDescription } from './_shared/dom.ts';
+import { buildSnapshot, extractSubtitle, validateSubtitle, extractDescription, validateDescription, extractTitle, extractDeveloper } from './_shared/dom.ts';
 
 // Types
 interface FetchRequest {
@@ -42,6 +42,27 @@ interface HtmlFetchResponse {
   errors: string[];
   error?: string;
   stack?: string;
+  // Enhanced: data source tracking
+  dataSource?: 'html-scrape' | 'itunes-fallback';
+  // Enhanced: extracted metadata for audit
+  name?: string;
+  title?: string;
+  developer?: string;
+}
+
+interface ItunesLookupResponse {
+  resultCount: number;
+  results: Array<{
+    trackId: number;
+    trackName: string;
+    artistName?: string;
+    description?: string;
+    averageUserRating?: number;
+    userRatingCount?: number;
+    artworkUrl512?: string;
+    artworkUrl100?: string;
+    screenshotUrls?: string[];
+  }>;
 }
 
 // Constants
@@ -131,10 +152,13 @@ serve(async (req) => {
 
     // Process successful response
     if (result.ok) {
-      // IMPORTANT: Extract description from RAW HTML BEFORE sanitization
+      // IMPORTANT: Extract ALL metadata from RAW HTML BEFORE sanitization
       // The sanitize step removes ALL <script> tags, including JSON-LD blocks
       const description = extractDescription(result.html);
       const validatedDescription = validateDescription(description) ? description : null;
+
+      const title = extractTitle(result.html);
+      const developer = extractDeveloper(result.html);
 
       // Now sanitize and truncate HTML
       const { sanitized, originalLength } = sanitizeAndTruncate(result.html);
@@ -156,29 +180,68 @@ serve(async (req) => {
         latencyMs,
         uaUsed: result.uaUsed,
         errors,
+        dataSource: 'html-scrape',
+        name: title || undefined,
+        title: title || undefined,
+        developer: developer || undefined,
       };
 
       return jsonResponse(response);
     } else {
-      // Failed response
-      const response: HtmlFetchResponse = {
-        ok: false,
-        appId,
-        country,
-        finalUrl: url,
-        status: result.status,
-        html: '',
-        htmlLength: 0,
-        snapshot: '',
-        subtitle: null,
-        description: null,
-        latencyMs,
-        uaUsed: result.uaUsed,
-        errors: [...errors, result.error || 'Unknown error'],
-        error: result.error,
-      };
+      // HTML scraping failed - try iTunes API fallback
+      console.log('[MAIN] HTML scraping failed, attempting iTunes fallback...');
+      errors.push(`HTML scraping failed: ${result.error}`);
 
-      return jsonResponse(response, { status: result.status >= 500 ? 503 : 400 });
+      try {
+        const itunesData = await fetchViaItunesLookup(appId, country);
+
+        // Return iTunes data (NO subtitle, NO HTML)
+        const response: HtmlFetchResponse = {
+          ok: true,
+          appId,
+          country,
+          finalUrl: url,
+          status: 200,
+          html: '',
+          htmlLength: 0,
+          snapshot: '',
+          subtitle: '', // iTunes API does NOT have subtitle
+          description: itunesData.description || null,
+          latencyMs: Date.now() - startTime,
+          uaUsed: result.uaUsed,
+          errors: [...errors, 'HTML scraping failed, using iTunes API fallback'],
+          dataSource: 'itunes-fallback',
+          name: itunesData.name,
+          title: itunesData.name,
+          developer: itunesData.developer,
+        };
+
+        console.log('[MAIN] ✅ iTunes fallback successful');
+        return jsonResponse(response);
+      } catch (itunesError) {
+        // Both HTML and iTunes failed - return error
+        const errorMsg = itunesError instanceof Error ? itunesError.message : String(itunesError);
+        console.log('[MAIN] ❌ iTunes fallback also failed:', errorMsg);
+
+        const response: HtmlFetchResponse = {
+          ok: false,
+          appId,
+          country,
+          finalUrl: url,
+          status: result.status,
+          html: '',
+          htmlLength: 0,
+          snapshot: '',
+          subtitle: null,
+          description: null,
+          latencyMs: Date.now() - startTime,
+          uaUsed: result.uaUsed,
+          errors: [...errors, result.error || 'Unknown error', `iTunes fallback failed: ${errorMsg}`],
+          error: `HTML scraping and iTunes fallback both failed: ${result.error}`,
+        };
+
+        return jsonResponse(response, { status: result.status >= 500 ? 503 : 400 });
+      }
     }
   } catch (err) {
     const latencyMs = Date.now() - startTime;
@@ -294,6 +357,49 @@ async function fetchWithRetry(
     uaUsed,
     error: lastError,
   };
+}
+
+/**
+ * iTunes Lookup API Fallback
+ * Used when HTML scraping completely fails (all retry attempts exhausted)
+ */
+async function fetchViaItunesLookup(
+  appId: string,
+  country: string
+): Promise<{ name: string; developer: string; description: string }> {
+  console.log('[ITUNES-FALLBACK] Attempting iTunes Lookup API...');
+
+  const url = `https://itunes.apple.com/lookup?id=${appId}&country=${country}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'YodelASO/1.0',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`iTunes Lookup failed: HTTP ${response.status}`);
+  }
+
+  const data: ItunesLookupResponse = await response.json();
+
+  if (!data.results || data.results.length === 0) {
+    throw new Error('App not found in iTunes Lookup API');
+  }
+
+  const app = data.results[0];
+
+  const name = (app.trackName || 'Unknown App').trim();
+  const developer = (app.artistName || 'Unknown Developer').trim();
+  const description = (app.description || '').trim();
+
+  console.log('[ITUNES-FALLBACK] ✅ Fetched from iTunes API:', {
+    name,
+    developer,
+    hasDescription: description.length > 0,
+  });
+
+  return { name, developer, description };
 }
 
 /**

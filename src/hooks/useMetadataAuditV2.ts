@@ -46,7 +46,7 @@ export function useMetadataAuditV2(params: UseMetadataAuditV2Params) {
     queryKey: ['metadata-audit-v2', params],
     queryFn: () => fetchMetadataAuditV2(params),
     enabled: params.enabled !== false && (!!params.app_id || !!params.monitored_app_id),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 1000 * 60 * 5, // 5 minutes cache (formerly cacheTime)
   });
 }

@@ -16,6 +16,37 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { MetadataAuditEngine, type UnifiedMetadataAuditResult } from '../_shared/metadata-audit-engine.ts';
 
+// ==================== UTILITIES ====================
+
+/**
+ * Normalize text by removing invisible Unicode characters and decoding HTML entities
+ */
+function normalizeText(text: string | null | undefined): string {
+  if (!text) return '';
+
+  // First decode HTML entities
+  let decoded = text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+
+  // Then normalize Unicode and whitespace
+  return decoded
+    // Remove zero-width characters
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    // Replace non-breaking spaces with regular spaces
+    .replace(/\u00A0/g, ' ')
+    // Replace other Unicode whitespace with regular spaces
+    .replace(/[\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+    // Collapse multiple spaces into one
+    .replace(/\s+/g, ' ')
+    // Trim leading/trailing whitespace
+    .trim();
+}
+
 // ==================== TYPES ====================
 
 interface MetadataAuditRequest {
@@ -125,11 +156,18 @@ serve(async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (cachedMetadata) {
-        metadata = {
-          name: cachedMetadata.app_name,
+        console.log('[metadata-audit-v2] Found cache entry:', {
+          app_name: cachedMetadata.app_name,
           title: cachedMetadata.title,
           subtitle: cachedMetadata.subtitle,
-          description: cachedMetadata.description,
+          subtitleLength: cachedMetadata.subtitle?.length || 0
+        });
+
+        metadata = {
+          name: normalizeText(cachedMetadata.app_name),
+          title: normalizeText(cachedMetadata.title),
+          subtitle: normalizeText(cachedMetadata.subtitle),
+          description: normalizeText(cachedMetadata.description),
           applicationCategory: cachedMetadata.category
         };
         source = 'metadata_cache';
@@ -144,12 +182,19 @@ serve(async (req: Request): Promise<Response> => {
       console.log('[metadata-audit-v2] Fetching metadata for:', resolvedAppId, resolvedPlatform, resolvedLocale);
 
       if (resolvedPlatform === 'ios') {
-        const metadataUrl = `${supabaseUrl}/functions/v1/appstore-metadata?id=${resolvedAppId}&country=${resolvedLocale}`;
+        // Use enhanced appstore-html-fetch with iTunes fallback
+        const metadataUrl = `${supabaseUrl}/functions/v1/appstore-html-fetch`;
 
         const metadataResponse = await fetch(metadataUrl, {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${supabaseKey}`
-          }
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            appId: resolvedAppId,
+            country: resolvedLocale
+          })
         });
 
         if (!metadataResponse.ok) {
@@ -168,15 +213,39 @@ serve(async (req: Request): Promise<Response> => {
 
         const metadataData = await metadataResponse.json();
 
-        metadata = {
-          name: metadataData.name || metadataData.title,
+        console.log('[metadata-audit-v2] Received from appstore-html-fetch:', {
+          ok: metadataData.ok,
+          dataSource: metadataData.dataSource,
           title: metadataData.title,
           subtitle: metadataData.subtitle,
-          description: metadataData.description,
-          applicationCategory: metadataData.category
+          name: metadataData.name,
+          developer: metadataData.developer,
+          hasDescription: !!metadataData.description
+        });
+
+        if (!metadataData.ok) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: {
+                code: 'METADATA_EXTRACTION_FAILED',
+                message: metadataData.error || 'Failed to extract app metadata',
+                details: { errors: metadataData.errors }
+              }
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        metadata = {
+          name: normalizeText(metadataData.name || metadataData.title || 'Unknown App'),
+          title: normalizeText(metadataData.title || metadataData.name || 'Unknown App'),
+          subtitle: normalizeText(metadataData.subtitle || ''),
+          description: normalizeText(metadataData.description || ''),
+          applicationCategory: undefined // Not available from HTML fetch
         };
 
-        source = 'direct_fetch';
+        source = metadataData.dataSource === 'itunes-fallback' ? 'itunes_fallback' : 'html_scrape';
       } else {
         // Android support can be added later
         return new Response(
@@ -193,7 +262,13 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Run audit engine (Phase 15.7: now async for Bible integration)
-    console.log('[metadata-audit-v2] Running audit engine');
+    console.log('[metadata-audit-v2] Running audit engine with metadata:', {
+      name: metadata.name,
+      title: metadata.title,
+      subtitle: metadata.subtitle,
+      subtitleLength: metadata.subtitle?.length || 0,
+      descriptionLength: metadata.description?.length || 0
+    });
     const auditResult = await MetadataAuditEngine.evaluate(metadata);
 
     const executionTimeMs = Date.now() - startTime;

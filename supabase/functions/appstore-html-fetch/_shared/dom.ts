@@ -124,11 +124,29 @@ function stripHtmlTags(str: string): string {
 
 /**
  * Normalize whitespace in string
+ * Decodes HTML entities, removes invisible Unicode characters, and normalizes whitespace
  */
 function normalizeWhitespace(str: string): string {
-  return str
-    .replace(/\s+/g, ' ')  // Collapse whitespace
-    .replace(/&nbsp;/g, ' ')  // Replace &nbsp;
+  // First decode HTML entities
+  const decoded = str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+
+  // Then normalize Unicode and whitespace
+  return decoded
+    // Remove zero-width characters
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    // Replace non-breaking spaces with regular spaces
+    .replace(/\u00A0/g, ' ')
+    // Replace other Unicode whitespace with regular spaces
+    .replace(/[\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+    // Collapse multiple spaces into one
+    .replace(/\s+/g, ' ')
+    // Trim leading/trailing whitespace
     .trim();
 }
 

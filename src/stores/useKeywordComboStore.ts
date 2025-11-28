@@ -19,6 +19,7 @@ interface KeywordComboState {
   // Combo data (derived from comboCoverage, with client-side edits)
   combos: ClassifiedCombo[];
   setCombos: (combos: ClassifiedCombo[]) => void;
+  addCombo: (combo: ClassifiedCombo) => void;
 
   // Editing state
   editingComboIndex: number | null;
@@ -80,6 +81,14 @@ export const useKeywordComboStore = create<KeywordComboState>()(
 
       // Actions
       setCombos: (combos) => set({ combos }),
+
+      addCombo: (combo) =>
+        set((state) => {
+          // Check if combo already exists
+          const exists = state.combos.some((c) => c.text === combo.text);
+          if (exists) return state;
+          return { combos: [...state.combos, combo] };
+        }),
 
       setEditingCombo: (index) => set({ editingComboIndex: index }),
 

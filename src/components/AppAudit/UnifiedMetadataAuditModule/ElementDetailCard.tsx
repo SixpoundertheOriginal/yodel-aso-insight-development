@@ -4,17 +4,22 @@
  * Expandable card showing detailed analysis for a single metadata element.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Check, Sparkles, X, CheckCircle } from 'lucide-react';
+import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import { RuleResultsTable } from './RuleResultsTable';
-import { SearchIntentCoverageCard } from './SearchIntentCoverageCard';
-import { useIntentCoverage } from '@/hooks/useIntentIntelligence';
-import { AUTOCOMPLETE_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
-import type { ElementScoringResult, UnifiedMetadataAuditResult } from './types';
+import type { ElementScoringResult, UnifiedMetadataAuditResult, ClassifiedCombo } from './types';
 import type { ScrapedMetadata } from '@/types/aso';
+// V2.1 imports
+import { extractRankingTokens, calculateRankingSlotEfficiency } from '@/engine/metadata/utils/rankingTokenExtractor';
+import { analyzeSubtitleValue } from '@/engine/metadata/utils/subtitleValueAnalyzer';
+import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
+import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
+import { toast } from 'sonner';
 
 interface ElementDetailCardProps {
   elementResult: ElementScoringResult;
@@ -40,10 +45,102 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   const initiallyExpanded = elementResult.element === 'title' || elementResult.element === 'subtitle';
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [showAdvancedKeywords, setShowAdvancedKeywords] = useState(false);
+  const [showAllCombos, setShowAllCombos] = useState(false);
+  const [showAllNewCombos, setShowAllNewCombos] = useState(false);
   const { score, ruleResults, recommendations, insights, metadata: elementMetadata, element } = elementResult;
+
+  // Workbench integration - add combos directly
+  const { addCombo, combos } = useKeywordComboStore();
+
+  // Helper function to create a ClassifiedCombo from keyword
+  const createComboFromKeyword = (keyword: string, source: 'title' | 'subtitle'): ClassifiedCombo => {
+    return {
+      text: keyword,
+      type: 'generic',
+      source: source,
+      relevanceScore: 50,
+      length: keyword.split(' ').length,
+    } as ClassifiedCombo;
+  };
+
+  // Check if combo/keyword is already in the table
+  const isInTable = (text: string) => {
+    return combos.some(c => c.text === text);
+  };
+
+  // Handle adding keyword to workbench
+  const handleAddKeyword = (keyword: string, source: 'title' | 'subtitle') => {
+    if (isInTable(keyword)) return;
+    const combo = createComboFromKeyword(keyword, source);
+    addCombo(combo);
+    toast.success(`Added "${keyword}" to workbench`);
+  };
+
+  // Handle adding combo to workbench
+  const handleAddCombo = (comboText: string, comboData: any, source: 'title' | 'subtitle') => {
+    if (isInTable(comboText)) return;
+    const combo: ClassifiedCombo = {
+      text: comboText,
+      type: comboData.type || 'generic',
+      source: source,
+      relevanceScore: comboData.relevanceScore || 50,
+      length: comboText.split(' ').length,
+      ...(comboData.priorityScore && { priorityScore: comboData.priorityScore }),
+      ...(comboData.noiseConfidence && { noiseConfidence: comboData.noiseConfidence }),
+      ...(comboData.strategicValue && { strategicValue: comboData.strategicValue }),
+    } as ClassifiedCombo;
+    addCombo(combo);
+    toast.success(`Added "${comboText}" to workbench`);
+  };
 
   // Check if this is the description element (conversion only)
   const isConversionElement = element === 'description';
+
+  // Get combo details with V2.1 data from auditResult
+  const combosWithDetails = useMemo(() => {
+    if (!elementMetadata.combos || !auditResult) return [];
+
+    // Get classified combos from audit result based on element
+    const classifiedCombos = element === 'title'
+      ? auditResult.comboCoverage?.titleCombosClassified || []
+      : element === 'subtitle'
+      ? auditResult.comboCoverage?.subtitleNewCombosClassified || []
+      : [];
+
+    // Create a map for quick lookup
+    const comboMap = new Map(classifiedCombos.map(c => [c.text, c]));
+
+    // Enrich element combos with classified data
+    return elementMetadata.combos.map(comboText => {
+      const classified = comboMap.get(comboText);
+      if (classified) {
+        return classified;
+      }
+      // Fallback: create basic combo object
+      return {
+        text: comboText,
+        type: 'generic' as const,
+        relevanceScore: 0,
+      };
+    });
+  }, [elementMetadata.combos, auditResult, element]);
+
+  // Helper: Get combo color class based on V2.1 data
+  const getComboColorClass = (combo: any) => {
+    const priorityScore = combo.priorityScore || 0;
+    const noiseConfidence = combo.noiseConfidence || 0;
+
+    if (combo.type === 'high_value' || priorityScore > 70) {
+      return 'border-emerald-400/40 text-emerald-400 hover:bg-emerald-500/10';
+    }
+    if (combo.type === 'brand') {
+      return 'border-blue-400/40 text-blue-400 hover:bg-blue-500/10';
+    }
+    if (combo.type === 'low_value' || noiseConfidence > 50) {
+      return 'border-orange-400/40 text-orange-400 hover:bg-orange-500/10';
+    }
+    return 'border-violet-400/30 text-violet-400 hover:bg-violet-500/10';
+  };
 
   // Calculate delta for comparison mode
   const getDelta = (competitorValue: number | undefined, baselineValue: number | undefined) => {
@@ -86,29 +183,42 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
       ? 'border-yellow-400/30 text-yellow-400'
       : 'border-red-400/30 text-red-400';
 
-  // Intent Intelligence Integration (Title and Subtitle only)
-  const shouldShowIntentCoverage =
-    AUTOCOMPLETE_INTELLIGENCE_ENABLED &&
-    !isConversionElement &&
-    elementMetadata.keywords &&
-    elementMetadata.keywords.length > 0;
+  // V2.1: Ranking token analysis (title only)
+  const rankingAnalysis = React.useMemo(() => {
+    if (element === 'title' && isV2_1FeatureEnabled('RANKING_BLOCK')) {
+      const tokenSet = extractRankingTokens(elementText || '', rawMetadata.subtitle || '');
+      const efficiency = calculateRankingSlotEfficiency(elementText || '', rawMetadata.subtitle || '');
+      return { tokenSet, efficiency };
+    }
+    return null;
+  }, [element, elementText, rawMetadata.subtitle]);
 
-  // Fetch intent coverage data
-  const { coverage: intentCoverage, isLoading: isIntentLoading } = useIntentCoverage(
-    element === 'title' ? elementMetadata.keywords : [],
-    element === 'subtitle' ? elementMetadata.keywords : [],
-    'ios',
-    rawMetadata.locale?.split('-')[1]?.toLowerCase() || 'us',
-    shouldShowIntentCoverage
-  );
+  // V2.1: Subtitle value analysis (subtitle only)
+  const subtitleValue = React.useMemo(() => {
+    if (element === 'subtitle' && isV2_1FeatureEnabled('SUBTITLE_PANEL')) {
+      console.log('[ElementDetailCard] Subtitle value analysis input:', {
+        title: rawMetadata.title,
+        subtitle: elementText,
+        titleCombosClassified: auditResult?.comboCoverage?.titleCombosClassified?.length || 0,
+        subtitleNewCombosClassified: auditResult?.comboCoverage?.subtitleNewCombosClassified?.length || 0,
+        totalCombos: auditResult?.comboCoverage?.totalCombos || 0
+      });
 
-  // Determine which intent signals to show (title or subtitle)
-  const intentSignalsForElement =
-    element === 'title'
-      ? intentCoverage?.title
-      : element === 'subtitle'
-      ? intentCoverage?.subtitle
-      : null;
+      const result = analyzeSubtitleValue(
+        rawMetadata.title || '',
+        elementText || '',
+        auditResult?.comboCoverage?.titleCombosClassified
+      );
+
+      console.log('[ElementDetailCard] Subtitle value analysis result:', {
+        newComboCount: result.newComboCount,
+        newCombosLength: result.newCombos.length
+      });
+
+      return result;
+    }
+    return null;
+  }, [element, rawMetadata.title, elementText, auditResult]);
 
   return (
     <Card 
@@ -203,6 +313,215 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             </div>
           </div>
 
+          {/* V2.1 Ranking Token Analysis (Title Only) */}
+          {element === 'title' && rankingAnalysis && (
+            <div className="pb-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-medium text-zinc-300">
+                  [V2.1] Ranking Token Analysis
+                </span>
+                <Badge variant="outline" className="text-xs border-emerald-400/30 text-emerald-400">
+                  NEW
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                {/* Token breakdown */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Title Keywords</div>
+                    <div className="text-lg font-bold text-blue-400">
+                      {rankingAnalysis.tokenSet.titleTokens.filter(t => !t.isStopword).length}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Stopwords</div>
+                    <div className="text-lg font-bold text-orange-400">
+                      {rankingAnalysis.tokenSet.titleTokens.filter(t => t.isStopword).length}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Efficiency</div>
+                    <div className="text-lg font-bold text-emerald-400">
+                      {rankingAnalysis.efficiency.efficiency}%
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Utilization</div>
+                    <div className="text-lg font-bold text-zinc-300">
+                      {elementMetadata.characterUsage}/30
+                    </div>
+                  </div>
+                </div>
+
+                {/* Token badges */}
+                <div>
+                  <div className="text-xs text-zinc-500 uppercase mb-2">Ranking Tokens</div>
+                  <div className="flex flex-wrap gap-2">
+                    {rankingAnalysis.tokenSet.titleTokens.map((token, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        className={`text-xs ${
+                          token.isStopword
+                            ? 'border-zinc-600/30 text-zinc-500 line-through'
+                            : 'border-blue-400/30 text-blue-400'
+                        }`}
+                      >
+                        {token.text}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* V2.1 Incremental Value Analysis (Subtitle Only) */}
+          {element === 'subtitle' && subtitleValue && (
+            <div className="pb-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-medium text-zinc-300">
+                  [V2.1] Incremental Value Analysis
+                </span>
+                <Badge variant="outline" className="text-xs border-emerald-400/30 text-emerald-400">
+                  NEW
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`text-sm font-bold ${
+                    subtitleValue.synergyScore >= 80
+                      ? 'border-emerald-400/40 text-emerald-400'
+                      : subtitleValue.synergyScore >= 60
+                      ? 'border-blue-400/40 text-blue-400'
+                      : 'border-orange-400/40 text-orange-400'
+                  }`}
+                >
+                  Synergy: {subtitleValue.synergyScore}% ⭐
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                {/* Metrics grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">New Keywords</div>
+                    <div className="text-lg font-bold text-purple-400">
+                      {subtitleValue.newKeywordCount}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Cross-Element Combos</div>
+                    <div className="text-lg font-bold text-violet-400">
+                      {subtitleValue.newComboCount}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Complementarity</div>
+                    <div className="text-lg font-bold text-emerald-400">
+                      {subtitleValue.titleAlignmentScore}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* New keywords */}
+                {subtitleValue.newKeywords.length > 0 && (
+                  <div>
+                    <div className="text-xs text-zinc-500 uppercase mb-2">
+                      New Keywords ({subtitleValue.newKeywords.length})
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {subtitleValue.newKeywords.map((keyword, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="text-xs border-purple-400/30 text-purple-400"
+                        >
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cross-Element Combos - Full List with Selection */}
+                {subtitleValue.newCombos && subtitleValue.newCombos.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-zinc-500 uppercase">
+                        Cross-Element Combos (Title × Subtitle) ({subtitleValue.newComboCount})
+                      </div>
+                      <span className="text-xs text-zinc-500">Click to add to workbench</span>
+                    </div>
+
+                    {/* Combo Badges */}
+                    <div className="flex flex-wrap gap-2">
+                      {(showAllNewCombos ? subtitleValue.newCombos : subtitleValue.newCombos.slice(0, 10)).map((combo, idx) => {
+                        const isAdded = isInTable(combo.text);
+                        const isHighValue = combo.priorityScore && combo.priorityScore > 70;
+                        const hasNoise = combo.noiseConfidence && combo.noiseConfidence > 50;
+
+                        return (
+                          <div key={idx} className="relative group">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs cursor-pointer transition-all ${
+                                isAdded
+                                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 cursor-not-allowed'
+                                  : getComboColorClass(combo) + ' hover:scale-105'
+                              }`}
+                              onClick={() => !isAdded && handleAddCombo(combo.text, combo, 'subtitle')}
+                            >
+                              {isAdded && <CheckCircle className="h-3 w-3 mr-1" />}
+                              {combo.text}
+
+                              {/* Priority Score */}
+                              {combo.priorityScore !== undefined && (
+                                <span className="ml-1 text-[10px] opacity-70 font-mono">
+                                  {combo.priorityScore}
+                                </span>
+                              )}
+
+                              {/* Type Indicators */}
+                              {isHighValue && <Sparkles className="h-3 w-3 ml-1 text-emerald-400" />}
+                              {hasNoise && <AlertCircle className="h-3 w-3 ml-1 text-orange-400" />}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+
+                      {/* Show All / Show Less */}
+                      {subtitleValue.newCombos.length > 10 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAllNewCombos(!showAllNewCombos)}
+                          className="text-xs text-zinc-400 hover:text-zinc-300 h-7"
+                        >
+                          {showAllNewCombos ? (
+                            <>Show Less ↑</>
+                          ) : (
+                            <>Show All ({subtitleValue.newCombos.length - 10} more) ↓</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {subtitleValue.recommendations.length > 0 && (
+                  <div className="p-3 bg-cyan-500/10 border border-cyan-400/30 rounded">
+                    <div className="text-xs text-cyan-400 font-medium mb-2">💡 Optimization Tips</div>
+                    <ul className="text-xs text-zinc-300 space-y-1 list-disc list-inside">
+                      {subtitleValue.recommendations.slice(0, 3).map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Conversion Intelligence Metrics (Description Only) */}
           {isConversionElement && (
             <div>
@@ -272,7 +591,7 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
           )}
 
           {/* Keywords */}
-          {elementMetadata.keywords && elementMetadata.keywords.length > 0 && (
+          {elementMetadata.keywords && elementMetadata.keywords.length > 0 && element !== 'subtitle' && (
             <div>
               {isConversionElement ? (
                 // For description: collapsible advanced view
@@ -309,23 +628,35 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                   )}
                 </div>
               ) : (
-                // For title/subtitle: normal view
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                // For title only: multi-select view (subtitle excluded to avoid duplication with "New Keywords")
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-zinc-300">
                       Keywords ({elementMetadata.keywords.length})
                     </span>
+                    <span className="text-xs text-zinc-500">Click to add to workbench</span>
                   </div>
+
+                  {/* Keyword Badges - Clickable for multi-select */}
                   <div className="flex flex-wrap gap-2">
-                    {elementMetadata.keywords.map((keyword, idx) => (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        className="text-xs border-blue-400/30 text-blue-400"
-                      >
-                        {keyword}
-                      </Badge>
-                    ))}
+                    {elementMetadata.keywords.map((keyword, idx) => {
+                      const isAdded = isInTable(keyword);
+                      return (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className={`text-xs cursor-pointer transition-all ${
+                            isAdded
+                              ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 cursor-not-allowed'
+                              : 'border-blue-400/30 text-blue-400 hover:border-blue-500/50 hover:bg-blue-500/10 hover:scale-105'
+                          }`}
+                          onClick={() => !isAdded && handleAddKeyword(keyword, element as 'title' | 'subtitle')}
+                        >
+                          {isAdded ? <CheckCircle className="h-3 w-3 mr-1" /> : null}
+                          {keyword}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -333,54 +664,112 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
           )}
 
           {/* Combos */}
-          {elementMetadata.combos && elementMetadata.combos.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
+          {elementMetadata.combos && elementMetadata.combos.length > 0 && element !== 'subtitle' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-zinc-300">
                   Combos ({elementMetadata.combos.length})
                 </span>
+                <span className="text-xs text-zinc-500">Click to add to workbench</span>
               </div>
+
+              {/* Combo Badges - Enhanced with V2.1 data */}
               <div className="flex flex-wrap gap-2">
-                {elementMetadata.combos.slice(0, 10).map((combo, idx) => (
-                  <Badge
-                    key={idx}
-                    variant="outline"
-                    className="text-xs border-violet-400/30 text-violet-400"
+                {(showAllCombos ? combosWithDetails : combosWithDetails.slice(0, 10)).map((combo, idx) => {
+                  const isAdded = isInTable(combo.text);
+                  const isHighValue = combo.priorityScore && combo.priorityScore > 70;
+                  const isLowValue = combo.type === 'low_value';
+                  const hasNoise = combo.noiseConfidence && combo.noiseConfidence > 50;
+
+                  return (
+                    <div key={idx} className="relative group">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs cursor-pointer transition-all ${
+                          isAdded
+                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 cursor-not-allowed'
+                            : getComboColorClass(combo) + ' hover:scale-105'
+                        }`}
+                        onClick={() => !isAdded && handleAddCombo(combo.text, combo, element as 'title' | 'subtitle')}
+                      >
+                        {isAdded && <CheckCircle className="h-3 w-3 mr-1" />}
+                        {combo.text}
+
+                        {/* Priority Score Indicator */}
+                        {combo.priorityScore !== undefined && (
+                          <span className="ml-1 text-[10px] opacity-70 font-mono">
+                            {combo.priorityScore}
+                          </span>
+                        )}
+
+                        {/* Type Indicators */}
+                        {isHighValue && <Sparkles className="h-3 w-3 ml-1 text-emerald-400" />}
+                        {hasNoise && <AlertCircle className="h-3 w-3 ml-1 text-orange-400" />}
+                      </Badge>
+                    </div>
+                  );
+                })}
+
+                {/* Show All / Show Less Toggle */}
+                {combosWithDetails.length > 10 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllCombos(!showAllCombos)}
+                    className="text-xs text-zinc-400 hover:text-zinc-300 h-7"
                   >
-                    {combo}
-                  </Badge>
-                ))}
-                {elementMetadata.combos.length > 10 && (
-                  <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-500">
-                    +{elementMetadata.combos.length - 10} more
-                  </Badge>
+                    {showAllCombos ? (
+                      <>Show Less ↑</>
+                    ) : (
+                      <>Show All ({combosWithDetails.length - 10} more) ↓</>
+                    )}
+                  </Button>
                 )}
               </div>
             </div>
           )}
 
           {/* Insights (Passed Rules) */}
-          {insights.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                <span className="text-sm font-medium text-emerald-400">
-                  Insights ({insights.length})
-                </span>
+          {(() => {
+            // Filter out repetitive insights that duplicate information already shown in the card
+            let filteredInsights = insights;
+
+            if (element === 'title') {
+              // Remove keyword and combo count insights for title (already shown in Keywords/Combos sections)
+              filteredInsights = filteredInsights.filter(insight =>
+                !insight.match(/\d+\s+(unique\s+)?keyword/i) &&
+                !insight.match(/\d+\s+combination/i)
+              );
+            } else if (element === 'subtitle') {
+              // Remove new keyword and combo insights for subtitle (already shown in V2.1 section)
+              filteredInsights = filteredInsights.filter(insight =>
+                !insight.match(/\d+\s+new\s+keyword/i) &&
+                !insight.match(/\d+\s+new\s+combination/i)
+              );
+            }
+
+            return filteredInsights.length > 0 ? (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-400">
+                    Insights ({filteredInsights.length})
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {filteredInsights.map((insight, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2 p-2 bg-emerald-900/10 rounded border border-emerald-400/20"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-zinc-300">{insight}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                {insights.map((insight, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2 p-2 bg-emerald-900/10 rounded border border-emerald-400/20"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-zinc-300">{insight}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ) : null;
+          })()}
 
           {/* Recommendations (Failed Rules) */}
           {recommendations.length > 0 && (
@@ -414,33 +803,6 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             </div>
             <RuleResultsTable rules={ruleResults} />
           </div>
-
-          {/* Search Intent Coverage (Title and Subtitle only) */}
-          {shouldShowIntentCoverage && !isIntentLoading && (
-            <div className="pt-2 border-t border-zinc-800">
-              <SearchIntentCoverageCard
-                appCategory={rawMetadata.applicationCategory}
-                bibleCoverage={
-                  element === 'title'
-                    ? auditResult?.intentCoverage?.title
-                    : element === 'subtitle'
-                    ? auditResult?.intentCoverage?.subtitle
-                    : undefined
-                }
-                intentSignals={intentSignalsForElement}
-                elementType={element as 'title' | 'subtitle'}
-                keywords={elementMetadata.keywords}
-                baselineCoverage={
-                  element === 'title'
-                    ? baselineAudit?.intentCoverage?.title
-                    : element === 'subtitle'
-                    ? baselineAudit?.intentCoverage?.subtitle
-                    : undefined
-                }
-                isCompetitor={isCompetitor}
-              />
-            </div>
-          )}
         </CardContent>
       )}
     </Card>

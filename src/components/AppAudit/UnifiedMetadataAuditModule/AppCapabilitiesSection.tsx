@@ -23,13 +23,13 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
   const { features, benefits, trust } = capabilityMap;
 
   return (
-    <Card className="border-blue-200 bg-blue-50/50">
+    <Card className="group relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed transition-all duration-300 hover:border-blue-500/40 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)]">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex items-center gap-2 text-zinc-200">
+          <CheckCircle2 className="h-5 w-5 text-blue-400" />
           📊 App Capabilities Detected
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-zinc-400">
           Capabilities extracted from your app description using ASO Intelligence
         </p>
       </CardHeader>
@@ -37,11 +37,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
         {/* Features */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <h3 className="font-semibold text-sm flex items-center gap-2 text-zinc-200">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               Features Detected
             </h3>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-400/30">
               {features.count} found
             </Badge>
           </div>
@@ -51,11 +51,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
                 <Badge
                   key={idx}
                   variant="secondary"
-                  className="bg-white border border-gray-200"
+                  className="bg-zinc-800/50 border border-zinc-600/50 text-zinc-300"
                 >
                   {feature.text}
                   {feature.category && (
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-xs text-zinc-500">
                       ({feature.category})
                     </span>
                   )}
@@ -63,7 +63,7 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-zinc-500 italic">
               No features detected in description
             </p>
           )}
@@ -72,11 +72,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
         {/* Benefits */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+            <h3 className="font-semibold text-sm flex items-center gap-2 text-zinc-200">
+              <TrendingUp className="h-4 w-4 text-blue-400" />
               Benefits Detected
             </h3>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-400/30">
               {benefits.count} found
             </Badge>
           </div>
@@ -86,11 +86,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
                 <Badge
                   key={idx}
                   variant="secondary"
-                  className="bg-white border border-gray-200"
+                  className="bg-zinc-800/50 border border-zinc-600/50 text-zinc-300"
                 >
                   {benefit.text}
                   {benefit.category && (
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-xs text-zinc-500">
                       ({benefit.category})
                     </span>
                   )}
@@ -98,7 +98,7 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-zinc-500 italic">
               No benefits detected in description
             </p>
           )}
@@ -107,11 +107,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
         {/* Trust Signals */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <Shield className="h-4 w-4 text-purple-600" />
+            <h3 className="font-semibold text-sm flex items-center gap-2 text-zinc-200">
+              <Shield className="h-4 w-4 text-purple-400" />
               Trust Signals
             </h3>
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+            <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-400/30">
               {trust.count} found
             </Badge>
           </div>
@@ -121,11 +121,11 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
                 <Badge
                   key={idx}
                   variant="secondary"
-                  className="bg-white border border-gray-200"
+                  className="bg-zinc-800/50 border border-zinc-600/50 text-zinc-300"
                 >
                   {signal.text}
                   {signal.category && (
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-xs text-zinc-500">
                       ({signal.category})
                     </span>
                   )}
@@ -133,7 +133,7 @@ export const AppCapabilitiesSection: React.FC<AppCapabilitiesSectionProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-zinc-500 italic">
               No trust signals detected in description
             </p>
           )}

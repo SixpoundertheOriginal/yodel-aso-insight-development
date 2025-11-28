@@ -457,3 +457,204 @@ export const AUTOCOMPLETE_INTELLIGENCE_ENABLED = true; // ENABLED - Phase 2 test
  * @see src/services/brand-intelligence.service.ts
  */
 export const AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED = true; // ENABLED - Phase 5 brand classification active
+
+/**
+ * AUDIT_METADATA_V2_1_ENABLED
+ *
+ * Controls rollout of Metadata Audit V2.1 advanced features.
+ *
+ * **Background:**
+ * V2.1 builds on top of V2.0 with frontend-only enhancements:
+ * - Ranking Element Analysis
+ * - Subtitle Value Analysis
+ * - Enhanced Combo Workbench with priority scoring
+ * - Long-Tail Distribution Chart
+ * - Slot Utilization Heatmap
+ *
+ * **When false (default - V2.0 MODE):**
+ * - Uses existing V2.0 UnifiedMetadataAuditModule
+ * - No ranking block, subtitle panel, or enhanced filters
+ * - Legacy combo workbench without priority scoring
+ * - No changes to production behavior
+ *
+ * **When true (V2.1 MODE):**
+ * - Enables all V2.1 features (master toggle)
+ * - Individual features can be controlled with granular flags below
+ * - Frontend-only computation (no backend changes required)
+ * - Backward compatible with existing V2.0 data structures
+ *
+ * **Performance Budget:**
+ * - Maximum +350ms impact on audit computation
+ * - Ranking Block: +100ms
+ * - Subtitle Panel: +50ms
+ * - Combo Enhancements: +100ms
+ * - Charts/Heatmap: +50ms each
+ *
+ * **Rollout Plan:**
+ * 1. Stage 1: 10% (internal testing, monitor performance)
+ * 2. Stage 2: 25% (early adopters, collect feedback)
+ * 3. Stage 3: 50% (majority rollout, validate stability)
+ * 4. Stage 4: 100% (full release, remove flag)
+ *
+ * **Rollback Plan:**
+ * - Instant rollback: Set flag to false (restores V2.0)
+ * - Emergency rollback: Revert commits
+ * - No data loss, no migrations required
+ *
+ * @default false
+ * @since 2025-11-28 Metadata Audit V2.1 Implementation
+ * @see docs/METADATA_AUDIT_V2.1_ARCHITECTURE.md
+ */
+export const AUDIT_METADATA_V2_1_ENABLED = true; // ENABLED - Testing V2.1 features
+
+/**
+ * AUDIT_METADATA_V2_1_RANKING_BLOCK
+ *
+ * Controls Chapter 1: Ranking Elements Panel
+ *
+ * **Features:**
+ * - Ranking token extraction (title + subtitle)
+ * - Slot efficiency analysis
+ * - Duplicate keyword detection
+ * - Ranking distribution map (title vs subtitle)
+ *
+ * **Performance Budget:** +100ms
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_RANKING_BLOCK = true; // ENABLED for testing
+
+/**
+ * AUDIT_METADATA_V2_1_SUBTITLE_PANEL
+ *
+ * Controls Chapter 2: Subtitle Value Panel
+ *
+ * **Features:**
+ * - Incremental keyword analysis (new keywords from subtitle)
+ * - New combo detection
+ * - Title alignment scoring
+ * - Subtitle synergy metrics
+ *
+ * **Performance Budget:** +50ms
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_SUBTITLE_PANEL = true; // ENABLED for testing
+
+/**
+ * AUDIT_METADATA_V2_1_COMBO_ENHANCE
+ *
+ * Controls Chapter 3: Enhanced Combo Workbench
+ *
+ * **Features:**
+ * - Priority scoring column (semantic + length + hybrid + novelty + noise)
+ * - High-value filter (priority_score > 70)
+ * - Brand+Generic filter (hybrid combos)
+ * - Long-tail filter (3+ words)
+ * - Max noise filter (noise_confidence > threshold)
+ * - XLSX export
+ * - JSON export
+ *
+ * **Performance Budget:** +100ms
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_COMBO_ENHANCE = true; // ENABLED for testing
+
+/**
+ * AUDIT_METADATA_V2_1_LONG_TAIL_CHART
+ *
+ * Controls Chapter 4: Long-Tail Distribution Chart (Nice-to-Have)
+ *
+ * **Features:**
+ * - Visualization of long-tail keyword combos (3+ words)
+ * - Combo count by length
+ * - Recharts bar chart
+ *
+ * **Performance Budget:** +50ms
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_LONG_TAIL_CHART = true; // ENABLED for testing
+
+/**
+ * AUDIT_METADATA_V2_1_HEATMAP
+ *
+ * Controls Chapter 5: Slot Utilization Heatmap (Nice-to-Have)
+ *
+ * **Features:**
+ * - Character usage heatmap (title, subtitle, description)
+ * - Efficiency visualization
+ * - Color-coded utilization levels
+ *
+ * **Performance Budget:** +50ms
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_HEATMAP = true; // ENABLED for testing
+
+/**
+ * AUDIT_METADATA_V2_1_BIBLE_INTEGRATION
+ *
+ * Controls ASO Bible Integration (Future/Optional)
+ *
+ * **Features:**
+ * - Contextual keyword suggestions from ASO Bible
+ * - Real-time guidance tooltips
+ * - Best practice recommendations
+ *
+ * **Note:** Requires ASO Bible API integration (not implemented yet)
+ *
+ * @default false
+ */
+export const AUDIT_METADATA_V2_1_BIBLE_INTEGRATION = false;
+
+/**
+ * Helper function to check if V2.1 is enabled
+ */
+export function isV2_1Enabled(): boolean {
+  return AUDIT_METADATA_V2_1_ENABLED;
+}
+
+/**
+ * Helper function to check if a specific V2.1 feature is enabled
+ */
+export function isV2_1FeatureEnabled(
+  feature: 'RANKING_BLOCK' | 'SUBTITLE_PANEL' | 'COMBO_ENHANCE' | 'LONG_TAIL_CHART' | 'HEATMAP' | 'BIBLE_INTEGRATION'
+): boolean {
+  if (!AUDIT_METADATA_V2_1_ENABLED) return false;
+
+  switch (feature) {
+    case 'RANKING_BLOCK':
+      return AUDIT_METADATA_V2_1_RANKING_BLOCK;
+    case 'SUBTITLE_PANEL':
+      return AUDIT_METADATA_V2_1_SUBTITLE_PANEL;
+    case 'COMBO_ENHANCE':
+      return AUDIT_METADATA_V2_1_COMBO_ENHANCE;
+    case 'LONG_TAIL_CHART':
+      return AUDIT_METADATA_V2_1_LONG_TAIL_CHART;
+    case 'HEATMAP':
+      return AUDIT_METADATA_V2_1_HEATMAP;
+    case 'BIBLE_INTEGRATION':
+      return AUDIT_METADATA_V2_1_BIBLE_INTEGRATION;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Get all enabled V2.1 features
+ */
+export function getEnabledV2_1Features(): string[] {
+  if (!AUDIT_METADATA_V2_1_ENABLED) return [];
+
+  const features: string[] = [];
+  if (AUDIT_METADATA_V2_1_RANKING_BLOCK) features.push('RANKING_BLOCK');
+  if (AUDIT_METADATA_V2_1_SUBTITLE_PANEL) features.push('SUBTITLE_PANEL');
+  if (AUDIT_METADATA_V2_1_COMBO_ENHANCE) features.push('COMBO_ENHANCE');
+  if (AUDIT_METADATA_V2_1_LONG_TAIL_CHART) features.push('LONG_TAIL_CHART');
+  if (AUDIT_METADATA_V2_1_HEATMAP) features.push('HEATMAP');
+  if (AUDIT_METADATA_V2_1_BIBLE_INTEGRATION) features.push('BIBLE_INTEGRATION');
+
+  return features;
+}

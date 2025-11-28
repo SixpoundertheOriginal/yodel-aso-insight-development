@@ -121,6 +121,34 @@ interface ElementConfig {
 // ==================== UTILITIES ====================
 
 /**
+ * Normalize text for accurate character counting
+ * Decodes HTML entities, removes invisible characters, and normalizes whitespace
+ */
+function normalizeText(text: string): string {
+  // First decode HTML entities
+  const decoded = text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+
+  // Then normalize Unicode and whitespace
+  return decoded
+    // Remove zero-width characters
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    // Replace non-breaking spaces with regular spaces
+    .replace(/\u00A0/g, ' ')
+    // Replace other Unicode whitespace with regular spaces
+    .replace(/[\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+    // Collapse multiple spaces into one
+    .replace(/\s+/g, ' ')
+    // Trim leading/trailing whitespace
+    .trim();
+}
+
+/**
  * Simple tokenizer
  */
 function tokenize(text: string): string[] {
@@ -215,8 +243,9 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         description: 'Evaluates name memorability',
         weight: 0.35,
         evaluator: (text, ctx) => {
-          const length = text.length;
-          const wordCount = text.split(/\s+/).filter(Boolean).length;
+          const normalizedText = normalizeText(text);
+          const length = normalizedText.length;
+          const wordCount = normalizedText.split(/\s+/).filter(Boolean).length;
 
           let score = 60;
           if (wordCount === 1 && length <= 10) score = 90;
@@ -288,7 +317,8 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         description: 'Character efficiency',
         weight: 0.25,
         evaluator: (text, ctx) => {
-          const charCount = text.length;
+          const normalizedText = normalizeText(text);
+          const charCount = normalizedText.length;
           const usagePercent = (charCount / 30) * 100;
 
           let score = 0;
@@ -394,7 +424,8 @@ const METADATA_SCORING_REGISTRY: ElementConfig[] = [
         description: 'Character efficiency',
         weight: 0.20,
         evaluator: (text, ctx) => {
-          const charCount = text.length;
+          const normalizedText = normalizeText(text);
+          const charCount = normalizedText.length;
           const usagePercent = charCount > 0 ? (charCount / 30) * 100 : 0;
 
           let score = 0;
@@ -746,7 +777,7 @@ export class MetadataAuditEngine {
       recommendations,
       insights,
       metadata: {
-        characterUsage: text.length,
+        characterUsage: normalizeText(text).length,
         maxCharacters: config.maxCharacters,
         keywords,
         combos
@@ -920,7 +951,8 @@ export class MetadataAuditEngine {
     const descriptionKeywords = descriptionTokens.filter(t => !stopwords.has(t) && t.length > 2);
     const descriptionNewKeywords = descriptionKeywords.filter(t => !allTitleSubtitleSet.has(t)).slice(0, 20);
 
-    const allUniqueKeywords = new Set([...titleKeywords, ...subtitleKeywords, ...descriptionKeywords]);
+    // Only count title + subtitle keywords for algorithmic visibility (description doesn't impact ranking)
+    const allUniqueKeywords = new Set([...titleKeywords, ...subtitleKeywords]);
 
     return {
       totalUniqueKeywords: allUniqueKeywords.size,

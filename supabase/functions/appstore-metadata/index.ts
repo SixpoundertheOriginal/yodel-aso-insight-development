@@ -483,15 +483,26 @@ function extractTitle($: cheerio.CheerioAPI): string {
  * Extract subtitle from product page - STRICT selectors only
  */
 function extractSubtitle($: cheerio.CheerioAPI): string {
-  // STRICT: Only product-header__subtitle
-  const element = $('h2.product-header__subtitle, .product-header__subtitle').first();
-  if (element && element.text()) {
-    const subtitle = element.text().trim();
-    console.log(`[EXTRACTION] ✅ Extracted subtitle: "${subtitle}"`);
-    return subtitle;
+  // Apple's current HTML structure uses 'we-truncate' class for subtitles
+  const selectors = [
+    'h2.we-truncate.we-truncate--single-line',  // Current Apple structure
+    'h2.we-truncate',                            // Fallback without full class
+    'h2.product-header__subtitle',               // Legacy structure
+    '.product-header__subtitle'                  // Legacy fallback
+  ];
+
+  for (const selector of selectors) {
+    const element = $(selector).first();
+    if (element && element.text()) {
+      const subtitle = element.text().trim();
+      if (subtitle.length > 0 && subtitle.length < 200) {
+        console.log(`[EXTRACTION] ✅ Extracted subtitle from '${selector}': "${subtitle}"`);
+        return subtitle;
+      }
+    }
   }
 
-  console.log(`[EXTRACTION] ⚠️ No subtitle found`);
+  console.log(`[EXTRACTION] ⚠️ No subtitle found with any selector`);
   return '';
 }
 

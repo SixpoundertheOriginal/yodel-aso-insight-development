@@ -49,29 +49,29 @@ export const ExecutiveRecommendationsSection: React.FC<
   const getPriorityBadge = (priority: 'critical' | 'high' | 'medium' | 'low') => {
     switch (priority) {
       case 'critical':
-        return 'bg-red-100 text-red-700 border-red-300';
+        return 'bg-red-500/10 text-red-400 border-red-400/30';
       case 'high':
-        return 'bg-orange-100 text-orange-700 border-orange-300';
+        return 'bg-orange-500/10 text-orange-400 border-orange-400/30';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-400/30';
       default:
-        return 'bg-green-100 text-green-700 border-green-300';
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30';
     }
   };
 
   return (
-    <Card className="border-purple-200 bg-purple-50/50">
+    <Card className="group relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed transition-all duration-300 hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Compass className="h-5 w-5 text-purple-600" />
+          <CardTitle className="flex items-center gap-2 text-zinc-200">
+            <Compass className="h-5 w-5 text-purple-400" />
             📋 Executive Recommendations
           </CardTitle>
           <Badge variant="outline" className={getPriorityBadge(overallPriority)}>
             {overallPriority.toUpperCase()} PRIORITY
           </Badge>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+        <div className="flex items-center gap-4 text-sm text-zinc-400 mt-2">
           <div className="flex items-center gap-1">
             <Target className="h-4 w-4" />
             {totalActionItems} action items
@@ -88,31 +88,31 @@ export const ExecutiveRecommendationsSection: React.FC<
       <CardContent>
         <Accordion type="single" collapsible defaultValue="whats-wrong" className="space-y-2">
           {/* 1. What's Wrong */}
-          <AccordionItem value="whats-wrong" className="bg-white border rounded-lg">
-            <AccordionTrigger className="px-4 hover:no-underline">
+          <AccordionItem value="whats-wrong" className="bg-zinc-800/30 border border-zinc-700 rounded-lg">
+            <AccordionTrigger className="px-4 hover:no-underline text-zinc-200">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
+                <AlertCircle className="h-5 w-5 text-red-400" />
                 <span className="font-semibold">🔴 WHAT'S WRONG</span>
-                <Badge variant="outline" className="ml-2 bg-red-50 text-red-700 border-red-200">
+                <Badge variant="outline" className="ml-2 bg-red-500/10 text-red-400 border-red-400/30">
                   {whatsWrong.totalIssues} issues
                 </Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-2">
-              <p className="text-sm text-muted-foreground mb-3">{whatsWrong.summary}</p>
+              <p className="text-sm text-zinc-400 mb-3">{whatsWrong.summary}</p>
               {whatsWrong.criticalIssues.length > 0 ? (
                 <div className="space-y-2">
                   {whatsWrong.criticalIssues.map((issue, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm"
+                      className="p-3 bg-red-500/10 border border-red-400/30 rounded-lg text-sm text-zinc-300"
                     >
                       {issue}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-lg text-sm text-emerald-400">
                   ✅ No critical issues detected
                 </div>
               )}
@@ -120,27 +120,27 @@ export const ExecutiveRecommendationsSection: React.FC<
           </AccordionItem>
 
           {/* 2. Opportunities */}
-          <AccordionItem value="opportunities" className="bg-white border rounded-lg">
-            <AccordionTrigger className="px-4 hover:no-underline">
+          <AccordionItem value="opportunities" className="bg-zinc-800/30 border border-zinc-700 rounded-lg">
+            <AccordionTrigger className="px-4 hover:no-underline text-zinc-200">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
                 <span className="font-semibold">🟢 OPPORTUNITIES</span>
-                <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                <Badge variant="outline" className="ml-2 bg-emerald-500/10 text-emerald-400 border-emerald-400/30">
                   {opportunities.totalOpportunities} found
                 </Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-2">
-              <p className="text-sm text-muted-foreground mb-3">{opportunities.summary}</p>
+              <p className="text-sm text-zinc-400 mb-3">{opportunities.summary}</p>
 
               {/* Quick Wins */}
               {opportunities.quickWins.length > 0 && (
                 <div className="space-y-2 mb-4">
-                  <h4 className="font-semibold text-sm text-green-700">⚡ Quick Wins</h4>
+                  <h4 className="font-semibold text-sm text-emerald-400">⚡ Quick Wins</h4>
                   {opportunities.quickWins.map((win, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm"
+                      className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-lg text-sm text-zinc-300"
                     >
                       {win}
                     </div>
@@ -151,11 +151,11 @@ export const ExecutiveRecommendationsSection: React.FC<
               {/* All Opportunities */}
               {opportunities.opportunities.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-gray-700">All Opportunities</h4>
+                  <h4 className="font-semibold text-sm text-zinc-300">All Opportunities</h4>
                   {opportunities.opportunities.map((opp, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                      className="p-3 bg-zinc-700/30 border border-zinc-600/50 rounded-lg text-sm text-zinc-300"
                     >
                       • {opp}
                     </div>
@@ -166,37 +166,37 @@ export const ExecutiveRecommendationsSection: React.FC<
           </AccordionItem>
 
           {/* 3. Direction */}
-          <AccordionItem value="direction" className="bg-white border rounded-lg">
-            <AccordionTrigger className="px-4 hover:no-underline">
+          <AccordionItem value="direction" className="bg-zinc-800/30 border border-zinc-700 rounded-lg">
+            <AccordionTrigger className="px-4 hover:no-underline text-zinc-200">
               <div className="flex items-center gap-2">
-                <Compass className="h-5 w-5 text-blue-600" />
+                <Compass className="h-5 w-5 text-blue-400" />
                 <span className="font-semibold">🎯 DIRECTION</span>
-                <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                <Badge variant="outline" className="ml-2 bg-blue-500/10 text-blue-400 border-blue-400/30">
                   Strategic guidance
                 </Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-4">
-              <p className="text-sm text-muted-foreground mb-3">{direction.summary}</p>
+              <p className="text-sm text-zinc-400 mb-3">{direction.summary}</p>
 
               {/* Strategic Guidance */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-semibold text-sm text-blue-900 mb-2">
+              <div className="p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg">
+                <h4 className="font-semibold text-sm text-blue-400 mb-2">
                   Strategic Guidance
                 </h4>
-                <p className="text-sm text-blue-800">{direction.strategicGuidance}</p>
+                <p className="text-sm text-zinc-300">{direction.strategicGuidance}</p>
               </div>
 
               {/* Action Items */}
               {direction.actionItems.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-gray-700">Action Items</h4>
+                  <h4 className="font-semibold text-sm text-zinc-300">Action Items</h4>
                   {direction.actionItems.map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-white border border-gray-200 rounded-lg text-sm flex items-start gap-2"
+                      className="p-3 bg-zinc-700/30 border border-zinc-600/50 rounded-lg text-sm flex items-start gap-2 text-zinc-300"
                     >
-                      <span className="font-semibold text-blue-600">{idx + 1}.</span>
+                      <span className="font-semibold text-blue-400">{idx + 1}.</span>
                       {item}
                     </div>
                   ))}
@@ -206,21 +206,21 @@ export const ExecutiveRecommendationsSection: React.FC<
           </AccordionItem>
 
           {/* 4. Next Tests */}
-          <AccordionItem value="next-tests" className="bg-white border rounded-lg">
-            <AccordionTrigger className="px-4 hover:no-underline">
+          <AccordionItem value="next-tests" className="bg-zinc-800/30 border border-zinc-700 rounded-lg">
+            <AccordionTrigger className="px-4 hover:no-underline text-zinc-200">
               <div className="flex items-center gap-2">
-                <Beaker className="h-5 w-5 text-purple-600" />
+                <Beaker className="h-5 w-5 text-purple-400" />
                 <span className="font-semibold">🧪 NEXT TESTS</span>
                 {nextTests.placeholder && (
-                  <Badge variant="outline" className="ml-2 bg-purple-50 text-purple-700 border-purple-200">
+                  <Badge variant="outline" className="ml-2 bg-purple-500/10 text-purple-400 border-purple-400/30">
                     Coming in v3.0
                   </Badge>
                 )}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg text-center">
-                <p className="text-sm text-purple-700">{nextTests.summary}</p>
+              <div className="p-4 bg-purple-500/10 border border-purple-400/30 rounded-lg text-center">
+                <p className="text-sm text-purple-300">{nextTests.summary}</p>
               </div>
             </AccordionContent>
           </AccordionItem>

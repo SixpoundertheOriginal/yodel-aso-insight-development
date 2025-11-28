@@ -13,15 +13,78 @@ import type { UnifiedMetadataAuditResult } from './types';
 interface KeywordCoverageCardProps {
   keywordCoverage: UnifiedMetadataAuditResult['keywordCoverage'];
   compact?: boolean; // Compact mode for Workbench integration
+  title?: string; // For calculating long-tail combos
+  subtitle?: string; // For calculating long-tail combos
 }
 
-export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywordCoverage, compact = false }) => {
+// Helper function: Extract meaningful keywords (for combo calculation)
+function extractMeaningfulKeywords(text: string): Set<string> {
+  const stopwords = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
+    'to', 'was', 'will', 'with', '&',
+  ]);
+
+  const normalized = text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ');
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  return new Set(
+    words.filter((word) => !stopwords.has(word) && word.length >= 2)
+  );
+}
+
+// Helper function: Generate combos from keywords
+function generateSimpleCombos(keywords: string[]): Set<string> {
+  const combos = new Set<string>();
+
+  // 2-word combos
+  for (let i = 0; i < keywords.length - 1; i++) {
+    for (let j = i + 1; j < keywords.length; j++) {
+      combos.add(`${keywords[i]} ${keywords[j]}`);
+      combos.add(`${keywords[j]} ${keywords[i]}`); // Both orders
+    }
+  }
+
+  // 3-word combos (limited to avoid explosion)
+  for (let i = 0; i < keywords.length - 2; i++) {
+    for (let j = i + 1; j < keywords.length - 1; j++) {
+      for (let k = j + 1; k < keywords.length; k++) {
+        combos.add(`${keywords[i]} ${keywords[j]} ${keywords[k]}`);
+      }
+    }
+  }
+
+  return combos;
+}
+
+export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({
+  keywordCoverage,
+  compact = false,
+  title = '',
+  subtitle = ''
+}) => {
   const [showAllKeywords, setShowAllKeywords] = useState(false);
 
   // Top tokens to show by default (fewer in compact mode)
   const titleTopTokens = keywordCoverage.titleKeywords.slice(0, compact ? 5 : 7);
   const subtitleTopTokens = keywordCoverage.subtitleNewKeywords.slice(0, compact ? 5 : 7);
-  const descriptionTopTokens = keywordCoverage.descriptionNewKeywords.slice(0, compact ? 3 : 5);
+
+  // Calculate total combinations using V2.1 approach (matches RankingOverviewCard)
+  // Only calculate if title and subtitle are provided
+  const totalCombinations = React.useMemo(() => {
+    if (!title && !subtitle) return 0;
+    const titleKeywords = Array.from(extractMeaningfulKeywords(title));
+    const subtitleKeywords = Array.from(extractMeaningfulKeywords(subtitle));
+    const allKeywords = [...titleKeywords, ...subtitleKeywords];
+    const allCombos = generateSimpleCombos(allKeywords);
+    return allCombos.size;
+  }, [title, subtitle]);
+
+  // Total keyword coverage = short-tail + long-tail
+  const shortTailCount = keywordCoverage.totalUniqueKeywords;
+  const longTailCount = totalCombinations;
+  const totalCoverage = shortTailCount + longTailCount;
+  const showBreakdown = totalCombinations > 0; // Only show breakdown if we have combo data
 
   return (
     <Card className={`relative bg-black/60 backdrop-blur-lg border-zinc-700/70 border-2 border-dashed hover:border-orange-500/40 transition-all duration-300 ${compact ? '' : ''}`}>
@@ -44,7 +107,7 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
               clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
             }}
           >
-            {keywordCoverage.totalUniqueKeywords}
+            {showBreakdown ? totalCoverage : keywordCoverage.totalUniqueKeywords}
           </Badge>
         </div>
       </CardHeader>
@@ -122,39 +185,6 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
           </div>
         </div>
 
-        {/* Description New Keywords (hidden in compact mode) */}
-        {!compact && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Plus className="h-4 w-4 text-cyan-400" />
-            <span className="text-sm font-medium text-zinc-300">
-              Description adds {keywordCoverage.descriptionNewKeywords.length} new keywords (conversion only)
-            </span>
-            {keywordCoverage.descriptionIgnoredCount !== undefined && keywordCoverage.descriptionIgnoredCount > 0 && (
-              <span className="text-xs text-zinc-500">
-                • {keywordCoverage.descriptionIgnoredCount} ignored
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2 pl-6">
-            {descriptionTopTokens.map((keyword, idx) => (
-              <Badge
-                key={idx}
-                variant="outline"
-                className="text-xs border-cyan-400/30 text-cyan-400"
-              >
-                {keyword}
-              </Badge>
-            ))}
-            {keywordCoverage.descriptionNewKeywords.length > 5 && (
-              <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-500">
-                +{keywordCoverage.descriptionNewKeywords.length - 5} more
-              </Badge>
-            )}
-          </div>
-        </div>
-        )}
-
         {/* Advanced View: All Keywords (hidden in compact mode) */}
         {!compact && (
         <div className="pt-3 border-t border-zinc-800">
@@ -224,21 +254,46 @@ export const KeywordCoverageCard: React.FC<KeywordCoverageCardProps> = ({ keywor
         </div>
         )}
 
-        {/* Summary (shortened in compact mode) */}
+        {/* Summary with breakdown */}
         <div className={compact ? 'pt-2' : 'pt-3 space-y-2'}>
-          <p className={compact ? 'text-xs text-zinc-400' : 'text-sm text-zinc-400'}>
-            <span className="font-medium text-zinc-300">
-              {keywordCoverage.totalUniqueKeywords}
-            </span>{' '}
-            {compact ? 'unique keywords' : 'unique keywords across all metadata elements'}.
-            {!compact && keywordCoverage.subtitleNewKeywords.length > 0 && (
-              <span className="text-emerald-400 ml-1">
-                Good incremental value from subtitle!
-              </span>
-            )}
-          </p>
+          {showBreakdown ? (
+            <>
+              <p className={compact ? 'text-xs text-zinc-400' : 'text-sm text-zinc-400'}>
+                <span className="font-medium text-zinc-300">
+                  {totalCoverage} total keywords
+                </span>{' '}
+                from title + subtitle (ranking elements):
+              </p>
+              <div className={compact ? 'text-xs text-zinc-500 space-y-0.5 pl-3' : 'text-sm text-zinc-500 space-y-1 pl-4'}>
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-400">•</span>
+                  <span>
+                    <span className="font-medium text-zinc-300">{shortTailCount}</span> short-tail (individual keywords)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-violet-400">•</span>
+                  <span>
+                    <span className="font-medium text-zinc-300">{longTailCount}</span> long-tail (multi-word combinations)
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className={compact ? 'text-xs text-zinc-400' : 'text-sm text-zinc-400'}>
+              <span className="font-medium text-zinc-300">
+                {keywordCoverage.totalUniqueKeywords}
+              </span>{' '}
+              {compact ? 'unique keywords' : 'unique keywords from title + subtitle (ranking elements)'}.
+            </p>
+          )}
+          {!compact && keywordCoverage.subtitleNewKeywords.length > 0 && (
+            <p className="text-sm text-emerald-400 pt-1">
+              Good incremental value from subtitle!
+            </p>
+          )}
           {!compact && (
-          <p className="text-xs text-zinc-500 italic">
+          <p className="text-xs text-zinc-500 italic pt-1">
             Keywords are sorted by ASO relevance (high-value terms shown first)
           </p>
           )}
