@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Check, Sparkles, X, CheckCircle, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Check, Sparkles, X, CheckCircle, TrendingUp, Edit2 } from 'lucide-react';
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import { RuleResultsTable } from './RuleResultsTable';
 import type { ElementScoringResult, UnifiedMetadataAuditResult, ClassifiedCombo } from './types';
@@ -20,6 +20,9 @@ import { analyzeSubtitleValue } from '@/engine/metadata/utils/subtitleValueAnaly
 import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import { toast } from 'sonner';
+// Enhanced text display
+import { EnhancedTextDisplay } from './EnhancedTextDisplay';
+import { useBrandOverride } from '@/hooks/useBrandOverride';
 
 // Helper function: Extract meaningful keywords
 function extractMeaningfulKeywords(text: string): Set<string> {
@@ -91,6 +94,11 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
 
   // Workbench integration - add combos directly
   const { addCombo, combos } = useKeywordComboStore();
+
+  // Brand override management
+  const [brandOverride, setBrandOverride, clearBrandOverride] = useBrandOverride(rawMetadata.appId);
+  const [isEditingBrand, setIsEditingBrand] = useState(false);
+  const [brandEditValue, setBrandEditValue] = useState('');
 
   // Helper function to create a ClassifiedCombo from keyword
   const createComboFromKeyword = (keyword: string, source: 'title' | 'subtitle'): ClassifiedCombo => {
@@ -342,16 +350,94 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
             <div className="space-y-3">
               {/* Element Text */}
               <div>
-                <div className="text-[10px] text-zinc-500 uppercase mb-1.5 tracking-[0.25em] font-medium">
-                  {element === 'description' ? 'Description Preview' : `Full ${elementDisplayName}`}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-[0.25em] font-medium">
+                    {element === 'description' ? 'Description Preview' : `Full ${elementDisplayName}`}
+                  </div>
+                  {element === 'title' && !isEditingBrand && (
+                    <button
+                      onClick={() => {
+                        setIsEditingBrand(true);
+                        setBrandEditValue(brandOverride || '');
+                      }}
+                      className="flex items-center gap-1.5 text-[10px] text-zinc-400 hover:text-orange-400 transition-colors"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      Edit Brand
+                    </button>
+                  )}
                 </div>
-                <div className="text-sm text-zinc-200 font-light leading-relaxed">
-                  {element === 'description'
-                    ? (elementText && elementText.length > 200
-                        ? `${elementText.slice(0, 200)}...`
-                        : elementText || 'Not available')
-                    : elementText || 'Not available'}
-                </div>
+
+                {/* Brand Edit UI (Title only) */}
+                {element === 'title' && isEditingBrand && (
+                  <div className="mb-3 p-3 bg-zinc-800/50 rounded border border-orange-500/30">
+                    <div className="text-xs text-zinc-400 mb-2">
+                      Enter the brand portion of your app title (e.g., "Inspire" from "Inspire - Self Care & Wellness")
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={brandEditValue}
+                        onChange={(e) => setBrandEditValue(e.target.value)}
+                        placeholder="Brand name..."
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded text-sm text-zinc-200 focus:outline-none focus:border-orange-500/50"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (brandEditValue.trim()) {
+                            setBrandOverride(brandEditValue.trim());
+                            toast.success(`Brand set to "${brandEditValue.trim()}"`);
+                          }
+                          setIsEditingBrand(false);
+                        }}
+                        className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsEditingBrand(false)}
+                        className="border-zinc-700 text-zinc-400"
+                      >
+                        Cancel
+                      </Button>
+                      {brandOverride && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            clearBrandOverride();
+                            setIsEditingBrand(false);
+                            toast.success('Brand override cleared');
+                          }}
+                          className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Enhanced Badge Display for Title, Plain Text for Others */}
+                {element === 'title' && !isEditingBrand ? (
+                  <EnhancedTextDisplay
+                    text={elementText || ''}
+                    type="title"
+                    brandOverride={brandOverride}
+                  />
+                ) : element !== 'title' ? (
+                  <div className="text-sm text-zinc-200 font-light leading-relaxed">
+                    {element === 'description'
+                      ? (elementText && elementText.length > 200
+                          ? `${elementText.slice(0, 200)}...`
+                          : elementText || 'Not available')
+                      : elementText || 'Not available'}
+                  </div>
+                ) : null}
               </div>
 
               {/* Metadata Grid */}
