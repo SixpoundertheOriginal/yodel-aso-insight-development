@@ -31,6 +31,9 @@ interface GapAnalysisPanelsProps {
 
 export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysis }) => {
   const [expandedKeyword, setExpandedKeyword] = useState<string | null>(null);
+  const [showAllMissingKeywords, setShowAllMissingKeywords] = useState(false);
+  const [showAllMissingCombos, setShowAllMissingCombos] = useState(false);
+  const [showAllFrequencyGaps, setShowAllFrequencyGaps] = useState(false);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -152,57 +155,81 @@ export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysi
         </CardHeader>
         <CardContent className="pt-0">
           {gapAnalysis.missingKeywords.length > 0 ? (
-            <div className="rounded-lg border border-zinc-800 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Keyword</TableHead>
-                    <TableHead className="text-center">Competitors</TableHead>
-                    <TableHead className="text-center">Avg Frequency</TableHead>
-                    <TableHead className="text-center">Opportunity</TableHead>
-                    <TableHead className="text-left">Top Competitor</TableHead>
-                    <TableHead className="w-8"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gapAnalysis.missingKeywords.slice(0, 15).map((keyword, index) => (
-                    <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
-                      <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
-                      <TableCell className="font-medium text-zinc-200">{keyword.keyword}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm font-mono text-zinc-300">
-                          {keyword.usedByCompetitors}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm font-mono text-zinc-300">
-                          {keyword.avgFrequency.toFixed(1)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className={getOpportunityColor(keyword.opportunityScore)}>
-                          {keyword.opportunityScore}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
-                        {keyword.topCompetitor}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(keyword.keyword, 'keyword')}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="rounded-lg border border-zinc-800 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Keyword</TableHead>
+                      <TableHead className="text-center">Competitors</TableHead>
+                      <TableHead className="text-center">Avg Frequency</TableHead>
+                      <TableHead className="text-center">Opportunity</TableHead>
+                      <TableHead className="text-left">Top Competitor</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {(showAllMissingKeywords ? gapAnalysis.missingKeywords : gapAnalysis.missingKeywords.slice(0, 15)).map((keyword, index) => (
+                      <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
+                        <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
+                        <TableCell className="font-medium text-zinc-200">{keyword.keyword}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-mono text-zinc-300">
+                            {keyword.usedByCompetitors}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-mono text-zinc-300">
+                            {keyword.avgFrequency.toFixed(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className={getOpportunityColor(keyword.opportunityScore)}>
+                            {keyword.opportunityScore}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
+                          {keyword.topCompetitor}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(keyword.keyword, 'keyword')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {gapAnalysis.missingKeywords.length > 15 && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllMissingKeywords(!showAllMissingKeywords)}
+                    className="border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    {showAllMissingKeywords ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Show All {gapAnalysis.missingKeywords.length} Keywords
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="p-8 text-center">
               <p className="text-zinc-500">No missing keywords found - you're using all competitor keywords!</p>
@@ -231,51 +258,75 @@ export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysi
         </CardHeader>
         <CardContent className="pt-0">
           {gapAnalysis.missingCombos.length > 0 ? (
-            <div className="rounded-lg border border-zinc-800 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Combo</TableHead>
-                    <TableHead className="text-center">Competitors</TableHead>
-                    <TableHead className="text-center">Opportunity</TableHead>
-                    <TableHead className="text-left">Top Competitor</TableHead>
-                    <TableHead className="w-8"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gapAnalysis.missingCombos.slice(0, 15).map((combo, index) => (
-                    <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
-                      <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
-                      <TableCell className="font-medium text-zinc-200">"{combo.combo}"</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm font-mono text-zinc-300">
-                          {combo.usedByCompetitors}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className={getOpportunityColor(combo.opportunityScore)}>
-                          {combo.opportunityScore}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
-                        {combo.topCompetitor}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(combo.combo, 'combo')}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="rounded-lg border border-zinc-800 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Combo</TableHead>
+                      <TableHead className="text-center">Competitors</TableHead>
+                      <TableHead className="text-center">Opportunity</TableHead>
+                      <TableHead className="text-left">Top Competitor</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {(showAllMissingCombos ? gapAnalysis.missingCombos : gapAnalysis.missingCombos.slice(0, 15)).map((combo, index) => (
+                      <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
+                        <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
+                        <TableCell className="font-medium text-zinc-200">"{combo.combo}"</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-mono text-zinc-300">
+                            {combo.usedByCompetitors}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className={getOpportunityColor(combo.opportunityScore)}>
+                            {combo.opportunityScore}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
+                          {combo.topCompetitor}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(combo.combo, 'combo')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {gapAnalysis.missingCombos.length > 15 && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllMissingCombos(!showAllMissingCombos)}
+                    className="border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    {showAllMissingCombos ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Show All {gapAnalysis.missingCombos.length} Combos
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="p-8 text-center">
               <p className="text-zinc-500">No missing combos found - you're using all competitor combinations!</p>
@@ -304,46 +355,70 @@ export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysi
         </CardHeader>
         <CardContent className="pt-0">
           {gapAnalysis.frequencyGaps.length > 0 ? (
-            <div className="rounded-lg border border-zinc-800 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Keyword</TableHead>
-                    <TableHead className="text-center">Your Frequency</TableHead>
-                    <TableHead className="text-center">Competitor Avg</TableHead>
-                    <TableHead className="text-center">Gap</TableHead>
-                    <TableHead className="text-left">Recommendation</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gapAnalysis.frequencyGaps.slice(0, 15).map((gap, index) => (
-                    <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
-                      <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
-                      <TableCell className="font-medium text-zinc-200">{gap.keyword}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm font-mono text-zinc-300">
-                          {gap.targetFrequency}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-sm font-mono text-zinc-300">
-                          {gap.competitorAvgFrequency.toFixed(1)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="border-orange-500/30 text-orange-400 bg-orange-900/10">
-                          +{gap.gap.toFixed(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-zinc-400">
-                        {gap.recommendation}
-                      </TableCell>
+            <>
+              <div className="rounded-lg border border-zinc-800 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Keyword</TableHead>
+                      <TableHead className="text-center">Your Frequency</TableHead>
+                      <TableHead className="text-center">Competitor Avg</TableHead>
+                      <TableHead className="text-center">Gap</TableHead>
+                      <TableHead className="text-left">Recommendation</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {(showAllFrequencyGaps ? gapAnalysis.frequencyGaps : gapAnalysis.frequencyGaps.slice(0, 15)).map((gap, index) => (
+                      <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
+                        <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
+                        <TableCell className="font-medium text-zinc-200">{gap.keyword}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-mono text-zinc-300">
+                            {gap.targetFrequency}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-sm font-mono text-zinc-300">
+                            {gap.competitorAvgFrequency.toFixed(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="border-orange-500/30 text-orange-400 bg-orange-900/10">
+                            +{gap.gap.toFixed(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-zinc-400">
+                          {gap.recommendation}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {gapAnalysis.frequencyGaps.length > 15 && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllFrequencyGaps(!showAllFrequencyGaps)}
+                    className="border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    {showAllFrequencyGaps ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Show All {gapAnalysis.frequencyGaps.length} Gaps
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="p-8 text-center">
               <p className="text-zinc-500">No frequency gaps found - your usage is competitive!</p>
