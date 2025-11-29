@@ -74,6 +74,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
     priority: number;
     lastComparedAt: string | null;
   }>>([]);
+  const [effectiveMonitoredAppId, setEffectiveMonitoredAppId] = useState<string | undefined>(monitoredAppId);
 
   // Get audit data for auto-suggest (use prop if provided, otherwise fetch)
   const { auditResult: fetchedAuditResult } = useMetadataAuditV2({
@@ -103,7 +104,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         targetAppId: metadata.appId,
         competitors,
         organizationId,
-        monitoredAppId, // v2.1: Pass monitored app ID to fetch brand keywords
+        monitoredAppId: effectiveMonitoredAppId, // v2.1: Pass monitored app ID to fetch brand keywords
         targetAudit: auditData, // v2.1: Reuse existing audit (avoid re-audit, ensure consistency)
         forceRefresh, // Bypass cache if refresh requested
         onProgress: (step, progress) => {
@@ -142,7 +143,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
       });
       toast.error(`Analysis failed: ${error.message}`);
     }
-  }, [metadata?.appId, organizationId, monitoredAppId, auditData]);
+  }, [metadata?.appId, organizationId, effectiveMonitoredAppId, auditData]);
 
   // Handler: Competitor removed
   const handleCompetitorRemoved = useCallback((appStoreId: string) => {
@@ -171,15 +172,38 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
     );
   }, []);
 
-  // Auto-load saved competitors when monitored app is available
+  // Auto-load saved competitors when app metadata is available
   useEffect(() => {
     const loadSavedCompetitors = async () => {
-      if (!monitoredAppId || !metadata?.appId) return;
+      if (!metadata?.appId || !organizationId) return;
 
       try {
-        console.log('[CompetitiveIntelligence] Loading saved competitors for', monitoredAppId);
+        // Step 1: Find the monitored_app record for this App Store ID
+        // (It might exist even if monitoredAppId prop wasn't passed)
+        const { data: targetApp, error: targetAppError } = await supabase
+          .from('monitored_apps')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('app_store_id', metadata.appId)
+          .eq('primary_country', 'us')
+          .maybeSingle();
 
-        // Query app_competitors table for this target app
+        if (targetAppError) {
+          console.error('[CompetitiveIntelligence] Error finding target app:', targetAppError);
+          return;
+        }
+
+        if (!targetApp) {
+          console.log('[CompetitiveIntelligence] No monitored_app found for', metadata.appId);
+          return;
+        }
+
+        const resolvedMonitoredAppId = monitoredAppId || targetApp.id;
+        setEffectiveMonitoredAppId(resolvedMonitoredAppId);
+
+        console.log('[CompetitiveIntelligence] Loading saved competitors for', resolvedMonitoredAppId);
+
+        // Step 2: Query app_competitors table for this target app
         const { data: savedCompetitors, error } = await supabase
           .from('app_competitors')
           .select(`
@@ -195,7 +219,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
               developer_name
             )
           `)
-          .eq('target_app_id', monitoredAppId)
+          .eq('target_app_id', resolvedMonitoredAppId)
           .eq('is_active', true)
           .order('priority', { ascending: true })
           .order('last_compared_at', { ascending: false, nullsFirst: false });
@@ -252,7 +276,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
     };
 
     loadSavedCompetitors();
-  }, [monitoredAppId, metadata?.appId, handleStartAnalysis]); // Run when these change
+  }, [metadata?.appId, organizationId, handleStartAnalysis, monitoredAppId]); // Run when these change
 
   // No metadata = show empty state
   if (!metadata || !metadata.appId) {
@@ -580,10 +604,10 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
       </Card>
 
       {/* Competitor List Management */}
-      {monitoredAppId && savedCompetitors.length > 0 && (
+      {effectiveMonitoredAppId && savedCompetitors.length > 0 && (
         <CompetitorList
           competitors={savedCompetitors}
-          monitoredAppId={monitoredAppId}
+          monitoredAppId={effectiveMonitoredAppId}
           organizationId={organizationId}
           onCompetitorRemoved={handleCompetitorRemoved}
           onCompetitorPriorityChanged={handleCompetitorPriorityChanged}
@@ -618,11 +642,11 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
       />
 
       {/* History Dialog */}
-      {monitoredAppId && (
+      {effectiveMonitoredAppId && (
         <HistoryDialog
           open={showHistoryDialog}
           onClose={() => setShowHistoryDialog(false)}
-          monitoredAppId={monitoredAppId}
+          monitoredAppId={effectiveMonitoredAppId}
           organizationId={organizationId}
         />
       )}
