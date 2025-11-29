@@ -133,6 +133,56 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
 
       const cacheMessage = result.cached ? ' (from cache)' : '';
       toast.success(`Analyzed ${result.data.competitors.length} competitors successfully!${cacheMessage}`);
+
+      // Save competitors to database (if we have a monitored app ID)
+      if (effectiveMonitoredAppId) {
+        try {
+          console.log('[CompetitiveIntelligence] Saving competitors to database...');
+
+          // Upsert competitors (update if exists, insert if not)
+          const competitorRecords = competitors.map((competitor) => ({
+            organization_id: organizationId,
+            target_app_id: effectiveMonitoredAppId,
+            competitor_app_store_id: competitor.appStoreId,
+            competitor_app_name: competitor.name,
+            competitor_app_icon: competitor.iconUrl,
+            competitor_developer: competitor.developer,
+            country: 'us', // TODO: Get from target app's country
+            priority: 2, // Default priority (not primary)
+            is_active: true,
+            last_compared_at: new Date().toISOString(),
+          }));
+
+          const { error: upsertError } = await supabase
+            .from('app_competitors')
+            .upsert(competitorRecords, {
+              onConflict: 'organization_id,target_app_id,competitor_app_store_id,country',
+              ignoreDuplicates: false, // Update existing records
+            });
+
+          if (upsertError) {
+            console.error('[CompetitiveIntelligence] Failed to save competitors:', upsertError);
+            // Don't fail the whole flow, just log the error
+          } else {
+            console.log('[CompetitiveIntelligence] ✅ Saved', competitorRecords.length, 'competitors');
+
+            // Update savedCompetitors state with the newly saved competitors
+            const savedCompetitorsData = competitorRecords.map((record, index) => ({
+              relationshipId: '', // Will be filled by auto-load on next render
+              appStoreId: record.competitor_app_store_id,
+              name: record.competitor_app_name,
+              iconUrl: record.competitor_app_icon,
+              developer: record.competitor_developer,
+              priority: record.priority,
+              lastComparedAt: record.last_compared_at,
+            }));
+            setSavedCompetitors(savedCompetitorsData);
+          }
+        } catch (error: any) {
+          console.error('[CompetitiveIntelligence] Error saving competitors:', error);
+          // Don't fail the whole flow
+        }
+      }
     } catch (error: any) {
       console.error('[CompetitiveIntelligence] Analysis error:', error);
       setProgress({
@@ -199,8 +249,8 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
           .from('monitored_apps')
           .select('id')
           .eq('organization_id', organizationId)
-          .eq('app_store_id', metadata.appId)
-          .eq('primary_country', 'us')
+          .eq('app_id', metadata.appId) // Column is named 'app_id', not 'app_store_id'
+          .eq('platform', 'ios')
           .maybeSingle();
 
         console.log('[CompetitiveIntelligence] Monitored app query result:', {
@@ -225,20 +275,18 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         console.log('[CompetitiveIntelligence] Loading saved competitors for', resolvedMonitoredAppId);
 
         // Step 2: Query app_competitors table for this target app
+        // Note: competitor data is stored directly in app_competitors (denormalized)
+        // No join to monitored_apps needed for competitor details
         const { data: savedCompetitors, error } = await supabase
           .from('app_competitors')
           .select(`
             id,
-            competitor_app_id,
+            competitor_app_store_id,
+            competitor_app_name,
+            competitor_app_icon,
+            competitor_developer,
             priority,
-            last_compared_at,
-            monitored_apps!app_competitors_competitor_app_id_fkey (
-              id,
-              app_store_id,
-              app_name,
-              app_icon_url,
-              developer_name
-            )
+            last_compared_at
           `)
           .eq('target_app_id', resolvedMonitoredAppId)
           .eq('is_active', true)
@@ -258,27 +306,23 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         console.log('[CompetitiveIntelligence] Found', savedCompetitors.length, 'saved competitors');
 
         // Transform to SelectedCompetitor format for analysis
-        const competitors: SelectedCompetitor[] = savedCompetitors
-          .filter((sc) => sc.monitored_apps) // Ensure join succeeded
-          .map((sc) => ({
-            appStoreId: (sc.monitored_apps as any).app_store_id,
-            name: (sc.monitored_apps as any).app_name,
-            iconUrl: (sc.monitored_apps as any).app_icon_url || null,
-            developer: (sc.monitored_apps as any).developer_name || null,
-          }));
+        const competitors: SelectedCompetitor[] = savedCompetitors.map((sc) => ({
+          appStoreId: sc.competitor_app_store_id,
+          name: sc.competitor_app_name,
+          iconUrl: sc.competitor_app_icon || null,
+          developer: sc.competitor_developer || null,
+        }));
 
         // Also store full competitor info for CompetitorList component
-        const competitorsWithMetadata = savedCompetitors
-          .filter((sc) => sc.monitored_apps)
-          .map((sc) => ({
-            relationshipId: sc.id,
-            appStoreId: (sc.monitored_apps as any).app_store_id,
-            name: (sc.monitored_apps as any).app_name,
-            iconUrl: (sc.monitored_apps as any).app_icon_url || null,
-            developer: (sc.monitored_apps as any).developer_name || null,
-            priority: sc.priority,
-            lastComparedAt: sc.last_compared_at,
-          }));
+        const competitorsWithMetadata = savedCompetitors.map((sc) => ({
+          relationshipId: sc.id,
+          appStoreId: sc.competitor_app_store_id,
+          name: sc.competitor_app_name,
+          iconUrl: sc.competitor_app_icon || null,
+          developer: sc.competitor_developer || null,
+          priority: sc.priority,
+          lastComparedAt: sc.last_compared_at,
+        }));
 
         setSavedCompetitors(competitorsWithMetadata);
 
