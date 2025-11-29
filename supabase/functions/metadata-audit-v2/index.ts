@@ -116,6 +116,7 @@ serve(async (req: Request): Promise<Response> => {
     let resolvedPlatform = platform || 'ios';
     let resolvedLocale = locale || 'us';
     let source: 'metadata_cache' | 'monitored_app' | 'direct_fetch' = 'direct_fetch';
+    let brandKeywords: string[] | undefined; // v2.1: User-defined brand keywords
 
     // Option 1: Lookup via monitored_app_id
     if (monitored_app_id) {
@@ -144,6 +145,7 @@ serve(async (req: Request): Promise<Response> => {
       resolvedAppId = monitoredApp.app_id;
       resolvedPlatform = monitoredApp.platform;
       resolvedLocale = monitoredApp.locale || 'us';
+      brandKeywords = monitoredApp.brand_keywords || undefined; // v2.1: Load user-defined brand keywords
 
       // Try to load from cache
       const { data: cachedMetadata } = await supabase
@@ -168,7 +170,8 @@ serve(async (req: Request): Promise<Response> => {
           title: normalizeText(cachedMetadata.title),
           subtitle: normalizeText(cachedMetadata.subtitle),
           description: normalizeText(cachedMetadata.description),
-          applicationCategory: cachedMetadata.category
+          applicationCategory: cachedMetadata.category,
+          brandKeywords // v2.1: Pass user-defined brand keywords to engine
         };
         source = 'metadata_cache';
         console.log('[metadata-audit-v2] Loaded from cache');
@@ -242,7 +245,8 @@ serve(async (req: Request): Promise<Response> => {
           title: normalizeText(metadataData.title || metadataData.name || 'Unknown App'),
           subtitle: normalizeText(metadataData.subtitle || ''),
           description: normalizeText(metadataData.description || ''),
-          applicationCategory: undefined // Not available from HTML fetch
+          applicationCategory: undefined, // Not available from HTML fetch
+          brandKeywords // v2.1: Pass user-defined brand keywords to engine
         };
 
         source = metadataData.dataSource === 'itunes-fallback' ? 'itunes_fallback' : 'html_scrape';
@@ -267,7 +271,8 @@ serve(async (req: Request): Promise<Response> => {
       title: metadata.title,
       subtitle: metadata.subtitle,
       subtitleLength: metadata.subtitle?.length || 0,
-      descriptionLength: metadata.description?.length || 0
+      descriptionLength: metadata.description?.length || 0,
+      brandKeywords: metadata.brandKeywords || '(auto-detect)' // v2.1
     });
     const auditResult = await MetadataAuditEngine.evaluate(metadata);
 

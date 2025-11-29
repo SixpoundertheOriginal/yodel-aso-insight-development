@@ -53,6 +53,40 @@ export interface CompetitorMetadataError {
 }
 
 // =====================================================================
+// RATE LIMITING & RETRY CONFIGURATION
+// =====================================================================
+
+interface RetryOptions {
+  maxRetries?: number; // Default: 3
+  retryDelay?: number; // Base delay in ms (default: 1000)
+  retryableErrorCodes?: Array<'API_ERROR' | 'NETWORK_ERROR'>; // Default: ['NETWORK_ERROR']
+}
+
+interface RateLimitOptions {
+  batchSize?: number; // Concurrent requests per batch (default: 2)
+  delayBetweenBatches?: number; // Delay in ms between batches (default: 1000)
+  onProgress?: (completed: number, total: number) => void; // Progress callback
+}
+
+const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
+  maxRetries: 3,
+  retryDelay: 1000,
+  retryableErrorCodes: ['NETWORK_ERROR'],
+};
+
+const DEFAULT_RATE_LIMIT_OPTIONS: Required<Omit<RateLimitOptions, 'onProgress'>> = {
+  batchSize: 2,
+  delayBetweenBatches: 1000,
+};
+
+/**
+ * Sleep utility for delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// =====================================================================
 // APP STORE API CLIENT
 // =====================================================================
 
@@ -137,6 +171,71 @@ async function fetchFromAppStore(
 }
 
 // =====================================================================
+// RETRY LOGIC
+// =====================================================================
+
+/**
+ * Fetch competitor metadata with retry logic
+ *
+ * Retries on transient failures (network errors, 429 rate limits)
+ * Uses exponential backoff: 1s, 2s, 4s
+ */
+async function fetchWithRetry(
+  input: CompetitorMetadataInput,
+  options: RetryOptions = {}
+): Promise<CompetitorMetadataResult | CompetitorMetadataError> {
+  const { maxRetries, retryDelay, retryableErrorCodes } = {
+    ...DEFAULT_RETRY_OPTIONS,
+    ...options,
+  };
+
+  const { appStoreId, country = 'US' } = input;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await fetchFromAppStore(appStoreId, country);
+
+    // Success - return immediately
+    if (!('error' in result)) {
+      if (attempt > 1) {
+        console.log(
+          `[CompetitorMetadata] ✅ Succeeded on attempt ${attempt}/${maxRetries} for ${appStoreId}`
+        );
+      }
+      return result;
+    }
+
+    // Non-retryable error - return immediately
+    if (!retryableErrorCodes.includes(result.code as any)) {
+      console.log(
+        `[CompetitorMetadata] ❌ Non-retryable error (${result.code}): ${result.error}`
+      );
+      return result;
+    }
+
+    // Retryable error - retry with exponential backoff
+    if (attempt < maxRetries) {
+      const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
+      console.log(
+        `[CompetitorMetadata] ⚠️  Attempt ${attempt}/${maxRetries} failed (${result.code}). Retrying in ${delay}ms...`
+      );
+      await sleep(delay);
+    } else {
+      // Max retries exhausted
+      console.error(
+        `[CompetitorMetadata] ❌ Max retries (${maxRetries}) exhausted for ${appStoreId}: ${result.error}`
+      );
+      return result;
+    }
+  }
+
+  // Should never reach here, but TypeScript needs a return
+  return {
+    error: 'Max retries exhausted',
+    code: 'NETWORK_ERROR',
+  };
+}
+
+// =====================================================================
 // PUBLIC API
 // =====================================================================
 
@@ -159,39 +258,115 @@ async function fetchFromAppStore(
  * }
  */
 export async function fetchCompetitorMetadata(
-  input: CompetitorMetadataInput
+  input: CompetitorMetadataInput,
+  retryOptions?: RetryOptions
 ): Promise<CompetitorMetadataResult | CompetitorMetadataError> {
-  const { appStoreId, country = 'US' } = input;
-
-  // Fetch from App Store
-  const result = await fetchFromAppStore(appStoreId, country);
-
-  return result;
+  // Use retry logic by default
+  return fetchWithRetry(input, retryOptions);
 }
 
 /**
- * Fetch multiple competitors in parallel
+ * Fetch multiple competitors in parallel (DEPRECATED - use fetchMultipleCompetitorMetadataWithRateLimit)
  *
+ * @deprecated Use fetchMultipleCompetitorMetadataWithRateLimit for safe rate-limited fetching
  * @param inputs - Array of App Store IDs and countries
  * @returns Array of results (success or error per competitor)
- *
- * @example
- * const results = await fetchMultipleCompetitorMetadata([
- *   { appStoreId: '1234567890', country: 'US' },
- *   { appStoreId: '9876543210', country: 'US' },
- * ]);
  */
 export async function fetchMultipleCompetitorMetadata(
   inputs: CompetitorMetadataInput[]
 ): Promise<(CompetitorMetadataResult | CompetitorMetadataError)[]> {
+  console.warn(
+    '[CompetitorMetadata] ⚠️  DEPRECATED: Use fetchMultipleCompetitorMetadataWithRateLimit for safe rate-limited fetching'
+  );
   console.log(`[CompetitorMetadata] Fetching ${inputs.length} competitors in parallel`);
 
-  // Fetch all in parallel
+  // Fetch all in parallel (unsafe - may trigger rate limits)
   const results = await Promise.all(inputs.map((input) => fetchCompetitorMetadata(input)));
 
   const successCount = results.filter((r) => !('error' in r)).length;
   console.log(
     `[CompetitorMetadata] ✅ ${successCount}/${inputs.length} competitors fetched successfully`
+  );
+
+  return results;
+}
+
+/**
+ * Fetch multiple competitors with rate limiting and retry logic
+ *
+ * Fetches competitors in batches with delays to prevent API rate limiting.
+ * Default: 2 concurrent requests per batch, 1s delay between batches.
+ *
+ * @param inputs - Array of App Store IDs and countries
+ * @param options - Rate limiting configuration
+ * @returns Array of results (success or error per competitor)
+ *
+ * @example
+ * // Fetch 10 competitors with rate limiting
+ * const results = await fetchMultipleCompetitorMetadataWithRateLimit(
+ *   competitorInputs,
+ *   {
+ *     batchSize: 2,
+ *     delayBetweenBatches: 1000,
+ *     onProgress: (completed, total) => {
+ *       console.log(`Progress: ${completed}/${total}`);
+ *     }
+ *   }
+ * );
+ */
+export async function fetchMultipleCompetitorMetadataWithRateLimit(
+  inputs: CompetitorMetadataInput[],
+  options?: RateLimitOptions & { retryOptions?: RetryOptions }
+): Promise<(CompetitorMetadataResult | CompetitorMetadataError)[]> {
+  const { batchSize, delayBetweenBatches, onProgress } = {
+    ...DEFAULT_RATE_LIMIT_OPTIONS,
+    ...options,
+  };
+
+  const retryOptions = options?.retryOptions || {};
+
+  console.log(
+    `[CompetitorMetadata] Fetching ${inputs.length} competitors with rate limiting (batchSize: ${batchSize}, delay: ${delayBetweenBatches}ms)`
+  );
+
+  const results: (CompetitorMetadataResult | CompetitorMetadataError)[] = [];
+  let completed = 0;
+
+  // Process in batches
+  for (let i = 0; i < inputs.length; i += batchSize) {
+    const batch = inputs.slice(i, i + batchSize);
+    const batchNumber = Math.floor(i / batchSize) + 1;
+    const totalBatches = Math.ceil(inputs.length / batchSize);
+
+    console.log(
+      `[CompetitorMetadata] Processing batch ${batchNumber}/${totalBatches} (${batch.length} competitors)`
+    );
+
+    // Fetch batch in parallel
+    const batchResults = await Promise.all(
+      batch.map((input) => fetchCompetitorMetadata(input, retryOptions))
+    );
+
+    results.push(...batchResults);
+    completed += batch.length;
+
+    // Report progress
+    if (onProgress) {
+      onProgress(completed, inputs.length);
+    }
+
+    // Delay before next batch (unless this is the last batch)
+    if (i + batchSize < inputs.length) {
+      console.log(
+        `[CompetitorMetadata] Waiting ${delayBetweenBatches}ms before next batch...`
+      );
+      await sleep(delayBetweenBatches);
+    }
+  }
+
+  const successCount = results.filter((r) => !('error' in r)).length;
+  console.log(
+    `[CompetitorMetadata] ✅ Completed: ${successCount}/${inputs.length} competitors fetched successfully`
   );
 
   return results;

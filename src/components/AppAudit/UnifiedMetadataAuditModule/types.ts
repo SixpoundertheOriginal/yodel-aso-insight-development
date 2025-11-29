@@ -225,11 +225,27 @@ export interface UnifiedMetadataAuditResult {
   // v2.0: Executive Recommendations (Phase 4)
   executiveRecommendations?: ExecutiveRecommendations;
 
+  // v2.1: Keyword Frequency Analysis (Competitive Intelligence)
+  keywordFrequency?: KeywordFrequencyResult[];
+
   // KPI Engine results (UI compatibility)
   kpis?: {
     overall_score?: number;
     [key: string]: any;
   };
+}
+
+/**
+ * Keyword Frequency Analysis Result
+ * Shows which keywords appear in the most combinations (strategic keywords)
+ */
+export interface KeywordFrequencyResult {
+  keyword: string;
+  totalCombos: number;
+  twoWordCombos: number;
+  threeWordCombos: number;
+  fourPlusCombos: number;
+  sampleCombos: string[]; // Max 5 samples
 }
 
 export interface MetadataAuditV2Response {

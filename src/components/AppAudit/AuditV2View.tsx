@@ -104,6 +104,7 @@ export const AuditV2View: React.FC<AuditV2ViewProps> = ({
           metadata={metadata}
           targetAppId={monitored_app_id ? String(monitored_app_id) : undefined}
           organizationId={organizationId}
+          monitoredAppId={monitored_app_id ? String(monitored_app_id) : undefined}
         />
       </div>
     </div>

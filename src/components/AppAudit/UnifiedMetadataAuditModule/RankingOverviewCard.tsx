@@ -78,18 +78,9 @@ export function RankingOverviewCard({ title, subtitle, auditResult }: RankingOve
 
   const { tokenSet, efficiency, duplicates, distribution } = rankingAnalysis;
 
-  // Calculate total combinations using V2.1 approach (matches subtitle section logic)
-  const totalCombinations = useMemo(() => {
-    // Extract keywords from both title and subtitle
-    const titleKeywords = Array.from(extractMeaningfulKeywords(title));
-    const subtitleKeywords = Array.from(extractMeaningfulKeywords(subtitle));
-    const allKeywords = [...titleKeywords, ...subtitleKeywords];
-
-    // Generate all possible combos (title-only + cross-element + subtitle-only)
-    const allCombos = generateSimpleCombos(allKeywords);
-
-    return allCombos.size;
-  }, [title, subtitle]);
+  // Use backend combo calculation with brand filtering (V2.1)
+  // Backend returns generic combos only (excludes app's own brand)
+  const totalCombinations = auditResult?.comboCoverage?.totalCombos || 0;
 
   // Efficiency color coding
   const getEfficiencyColor = (score: number) => {

@@ -74,6 +74,10 @@ interface ElementDetailCardProps {
   baselineAudit?: UnifiedMetadataAuditResult | null;
   /** Comparison mode: is this a competitor? */
   isCompetitor?: boolean;
+  /** v2.1: Organization ID for brand keyword database storage */
+  organizationId?: string;
+  /** v2.1: Monitored app ID for brand keyword database storage */
+  monitoredAppId?: string;
 }
 
 export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
@@ -83,6 +87,8 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   auditResult,
   baselineAudit = null,
   isCompetitor = false,
+  organizationId,
+  monitoredAppId,
 }) => {
   // Title and Subtitle always start expanded, Description starts collapsed
   const initiallyExpanded = elementResult.element === 'title' || elementResult.element === 'subtitle';
@@ -96,7 +102,12 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
   const { addCombo, combos } = useKeywordComboStore();
 
   // Brand override management (shared across title and subtitle)
-  const [brandOverride, setBrandOverride, clearBrandOverride] = useBrandOverride(rawMetadata.appId);
+  // v2.1: Pass organizationId and monitoredAppId for database storage
+  const [brandOverride, setBrandOverride, clearBrandOverride] = useBrandOverride(
+    rawMetadata.appId,
+    organizationId,
+    monitoredAppId
+  );
   const [isEditingBrand, setIsEditingBrand] = useState(false);
   const [brandEditValue, setBrandEditValue] = useState('');
 

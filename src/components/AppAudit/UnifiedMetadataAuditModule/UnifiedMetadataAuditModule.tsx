@@ -74,6 +74,7 @@ interface UnifiedMetadataAuditModuleProps {
   useMockData?: boolean; // For development/testing
   targetAppId?: string; // For competitor analysis
   organizationId?: string; // For competitor analysis
+  monitoredAppId?: string; // v2.1: For brand keyword database storage
 
   // Comparison mode
   isCompetitor?: boolean; // Is this a competitor view?
@@ -86,6 +87,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   useMockData = false,
   targetAppId,
   organizationId,
+  monitoredAppId,
   isCompetitor = false,
   baselineAudit = null,
   competitorName,
@@ -395,6 +397,8 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           auditResult={auditResult}
           baselineAudit={baselineAudit}
           isCompetitor={isCompetitor}
+          organizationId={organizationId}
+          monitoredAppId={monitoredAppId}
         />
 
         <ElementDetailCard
@@ -404,6 +408,8 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           auditResult={auditResult}
           baselineAudit={baselineAudit}
           isCompetitor={isCompetitor}
+          organizationId={organizationId}
+          monitoredAppId={monitoredAppId}
         />
       </div>
 
@@ -881,6 +887,8 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           metadata={metadata}
           baselineAudit={baselineAudit}
           isCompetitor={isCompetitor}
+          organizationId={organizationId}
+          monitoredAppId={monitoredAppId}
         />
 
         {/* Conversion Recommendations */}

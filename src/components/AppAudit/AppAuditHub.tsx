@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isDebugTarget } from '@/lib/debugTargets';
 import { debug, metadataDigest } from '@/lib/logging';
-import { RefreshCw, Download, FileSpreadsheet, Sparkles, Loader2, Bookmark } from 'lucide-react';
+import { RefreshCw, Download, FileSpreadsheet, Sparkles, Loader2, Bookmark, Target } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { MetadataImporter } from '../AsoAiHub/MetadataCopilot/MetadataImporter';
@@ -30,6 +30,7 @@ import { useEffect, useRef } from 'react';
 import { AUDIT_METADATA_V2_ENABLED } from '@/config/metadataFeatureFlags';
 import { AuditV2View } from './AuditV2View';
 import { LLMOptimizationTab } from './LLMOptimization/LLMOptimizationTab';
+import { CompetitiveIntelligenceTab } from './CompetitiveIntelligence/CompetitiveIntelligenceTab';
 import type { MarketCode } from '@/config/markets';
 
 // Feature flag: Hide metadata editor blocks in ASO AI Audit
@@ -693,7 +694,8 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
                 const metadataTabCount = ENABLE_METADATA_BLOCKS_IN_AUDIT ? 1 : 0;
                 const auditV2TabCount = AUDIT_METADATA_V2_ENABLED ? 1 : 0;
                 const llmOptTabCount = isTabVisible('llm-optimization') ? 1 : 0;
-                const totalCols = metadataTabCount + auditV2TabCount + llmOptTabCount;
+                const competitiveIntelTabCount = isTabVisible('competitive-intelligence') ? 1 : 0;
+                const totalCols = metadataTabCount + auditV2TabCount + llmOptTabCount + competitiveIntelTabCount;
                 return `grid-cols-${totalCols}`;
               })()
         } bg-zinc-900 border-zinc-800`}>
@@ -714,6 +716,13 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
             <TabsTrigger value="llm-optimization" className="flex items-center space-x-1">
               <Sparkles className="h-4 w-4 text-cyan-400" />
               <span>LLM Optimization</span>
+            </TabsTrigger>
+          )}
+          {/* Competitive Intelligence tab: Competitor analysis and gap identification */}
+          {isTabVisible('competitive-intelligence') && (
+            <TabsTrigger value="competitive-intelligence" className="flex items-center space-x-1">
+              <Target className="h-4 w-4 text-purple-400" />
+              <span>Competitive Intelligence</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -745,6 +754,17 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
         {isTabVisible('llm-optimization') && (
           <TabsContent value="llm-optimization" className="space-y-6">
             <LLMOptimizationTab
+              metadata={displayMetadata}
+              organizationId={organizationId}
+              monitoredAppId={effectiveMode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}
+            />
+          </TabsContent>
+        )}
+
+        {/* Competitive Intelligence tab: Competitor analysis and gap identification */}
+        {isTabVisible('competitive-intelligence') && (
+          <TabsContent value="competitive-intelligence" className="space-y-6">
+            <CompetitiveIntelligenceTab
               metadata={displayMetadata}
               organizationId={organizationId}
               monitoredAppId={effectiveMode === 'monitored' && monitoredAuditData ? monitoredAuditData.monitoredApp.id : undefined}

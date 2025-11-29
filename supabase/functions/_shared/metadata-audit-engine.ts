@@ -18,6 +18,9 @@ import { extractCapabilities, type AppCapabilityMap } from './description-intell
 import { analyzeCapabilityGaps, type GapAnalysisResult } from './gap-analysis.ts';
 import { generateExecutiveRecommendations, type ExecutiveRecommendations } from './executive-recommendations.ts';
 
+// v2.1 imports - Brand Filtering for Ranking Combos
+import { extractBrandKeywords, filterGenericCombos, getBrandStats } from './brand-utils.ts';
+
 // ==================== TYPES ====================
 
 export type MetadataElement = 'app_name' | 'title' | 'subtitle' | 'description';
@@ -39,6 +42,7 @@ export interface ElementScoringResult {
   recommendations: string[];
   insights: string[];
   metadata: {
+    text: string; // v2.1: Store original text for reuse
     characterUsage: number;
     maxCharacters: number;
     keywords: string[];
@@ -52,6 +56,19 @@ export interface VerticalContext {
   confidence: number;
   matchedSignals: string[];
   ruleSetSource: 'base' | 'vertical';
+}
+
+/**
+ * Keyword Frequency Analysis
+ * Shows which keywords appear in the most combinations (strategic keywords)
+ */
+export interface KeywordFrequencyResult {
+  keyword: string;
+  totalCombos: number;
+  twoWordCombos: number;
+  threeWordCombos: number;
+  fourPlusCombos: number;
+  sampleCombos: string[]; // Max 5 samples
 }
 
 export interface UnifiedMetadataAuditResult {
@@ -83,6 +100,8 @@ export interface UnifiedMetadataAuditResult {
   gapAnalysis?: GapAnalysisResult;
   // v2.0: Executive Recommendations (Phase 4)
   executiveRecommendations?: ExecutiveRecommendations;
+  // v2.1: Keyword Frequency Analysis (Competitive Intelligence)
+  keywordFrequency?: KeywordFrequencyResult[];
 }
 
 interface ScrapedMetadata {
@@ -91,6 +110,8 @@ interface ScrapedMetadata {
   subtitle?: string;
   description?: string;
   applicationCategory?: string;
+  brandKeywords?: string[]; // v2.1: User-defined or auto-detected brand keywords
+  competitorBrandKeywords?: string[]; // v2.1: Competitor brand keywords (for competitive analysis)
 }
 
 interface EvaluationContext {
@@ -698,8 +719,20 @@ export class MetadataAuditEngine {
     // Keyword coverage
     const keywordCoverage = this.analyzeKeywordCoverage(titleTokens, subtitleTokens, descriptionTokens, stopwords);
 
-    // Combo coverage
-    const comboCoverage = this.analyzeComboCoverage(titleTokens, subtitleTokens, stopwords);
+    // v2.1: Get brand keywords (user-defined or auto-detect)
+    const ownBrandKeywords = metadata.brandKeywords || extractBrandKeywords(metadata.name || metadata.title || '');
+    const competitorBrandKeywords = metadata.competitorBrandKeywords || [];
+
+    console.log(`[AUDIT-ENGINE] Brand keywords: own=[${ownBrandKeywords.join(', ')}], competitors=[${competitorBrandKeywords.join(', ')}]`);
+
+    // Combo coverage (v2.1: Use ranking combinations with brand filtering)
+    const comboCoverage = this.analyzeRankingCombinations(
+      titleTokens,
+      subtitleTokens,
+      stopwords,
+      ownBrandKeywords,
+      competitorBrandKeywords
+    );
 
     // Phase 2: Classify intent coverage
     console.log('[AUDIT-ENGINE] Classifying search intent...');
@@ -723,6 +756,11 @@ export class MetadataAuditEngine {
     const executiveRecommendations = generateExecutiveRecommendations(gapAnalysis, capabilityMap, verticalDetection.verticalId);
     console.log(`[AUDIT-ENGINE] Executive recommendations generated: ${executiveRecommendations.totalActionItems} action items, priority: ${executiveRecommendations.overallPriority}`);
 
+    // v2.1: Keyword Frequency Analysis (for competitive intelligence)
+    console.log('[AUDIT-ENGINE] Analyzing keyword frequency (top 20 strategic keywords)...');
+    const keywordFrequency = this.analyzeKeywordFrequency(comboCoverage.allCombinedCombos, 20);
+    console.log(`[AUDIT-ENGINE] Keyword frequency analysis complete: ${keywordFrequency.length} strategic keywords identified`);
+
     // Build vertical context
     const verticalContext: VerticalContext = {
       verticalId: verticalDetection.verticalId,
@@ -745,6 +783,7 @@ export class MetadataAuditEngine {
       capabilityMap,
       gapAnalysis,
       executiveRecommendations,
+      keywordFrequency,
     };
   }
 
@@ -777,6 +816,7 @@ export class MetadataAuditEngine {
       recommendations,
       insights,
       metadata: {
+        text, // v2.1: Store original text for reuse
         characterUsage: normalizeText(text).length,
         maxCharacters: config.maxCharacters,
         keywords,
@@ -981,5 +1021,188 @@ export class MetadataAuditEngine {
       subtitleNewCombos,
       allCombinedCombos
     };
+  }
+
+  /**
+   * Analyze ranking combinations with full permutations (v2.1)
+   *
+   * This replaces n-gram based analyzeComboCoverage for ranking potential analysis.
+   * Generates ALL permutations of 2-word combos (both orders) and 3-word combos (one order).
+   * Filters out branded combos to focus on generic keyword ranking potential.
+   *
+   * Key differences from analyzeComboCoverage:
+   *   - Uses permutations instead of n-grams (e.g., both "care wellness" AND "wellness care")
+   *   - Filters out brand keywords (own brand + competitor brands)
+   *   - Only 2-word and 3-word combos (no 4-word to avoid explosion)
+   *   - Returns generic combos only for fair competitive analysis
+   *
+   * @param titleTokens - Tokens from title
+   * @param subtitleTokens - Tokens from subtitle
+   * @param stopwords - Stopwords to filter
+   * @param ownBrandKeywords - App's own brand keywords (to exclude from generic combos)
+   * @param competitorBrandKeywords - Competitor brand keywords (to exclude from generic combos)
+   * @returns Ranking combo coverage with generic combos only
+   */
+  private static analyzeRankingCombinations(
+    titleTokens: string[],
+    subtitleTokens: string[],
+    stopwords: Set<string>,
+    ownBrandKeywords: string[] = [],
+    competitorBrandKeywords: string[] = []
+  ) {
+    // 1. Combine title + subtitle tokens and filter stopwords to get keywords
+    const allTokens = [...titleTokens, ...subtitleTokens];
+    const keywords = allTokens.filter(t => !stopwords.has(t));
+
+    console.log(`[AUDIT-ENGINE] Ranking combos: ${keywords.length} keywords from title + subtitle`);
+
+    // 2. Generate all 2-word permutations (BOTH orders)
+    const twoWordCombos: string[] = [];
+    for (let i = 0; i < keywords.length - 1; i++) {
+      for (let j = i + 1; j < keywords.length; j++) {
+        twoWordCombos.push(`${keywords[i]} ${keywords[j]}`);
+        twoWordCombos.push(`${keywords[j]} ${keywords[i]}`); // Both orders
+      }
+    }
+
+    // 3. Generate all 3-word combinations (one order - C(n,3))
+    const threeWordCombos: string[] = [];
+    for (let i = 0; i < keywords.length - 2; i++) {
+      for (let j = i + 1; j < keywords.length - 1; j++) {
+        for (let k = j + 1; k < keywords.length; k++) {
+          threeWordCombos.push(`${keywords[i]} ${keywords[j]} ${keywords[k]}`);
+        }
+      }
+    }
+
+    // 4. Combine all combos before filtering
+    const allUnfilteredCombos = [...twoWordCombos, ...threeWordCombos];
+
+    console.log(`[AUDIT-ENGINE] Generated ${allUnfilteredCombos.length} combos (${twoWordCombos.length} 2-word + ${threeWordCombos.length} 3-word)`);
+
+    // 5. Filter out branded combos (own brand + competitor brands)
+    const genericCombos = filterGenericCombos(
+      allUnfilteredCombos,
+      ownBrandKeywords,
+      competitorBrandKeywords
+    );
+
+    const genericTwoWord = filterGenericCombos(twoWordCombos, ownBrandKeywords, competitorBrandKeywords);
+    const genericThreeWord = filterGenericCombos(threeWordCombos, ownBrandKeywords, competitorBrandKeywords);
+
+    // 6. Log brand filtering stats
+    const brandStats = getBrandStats(allUnfilteredCombos, ownBrandKeywords, competitorBrandKeywords);
+    console.log(`[AUDIT-ENGINE] Brand filtering: ${brandStats.brand} brand, ${brandStats.competitorBrand} competitor, ${brandStats.generic} generic (${(brandStats.genericRatio * 100).toFixed(1)}% generic)`);
+
+    // 7. Separate title-only vs subtitle-new combos (for tracking subtitle value)
+    const titleKeywords = titleTokens.filter(t => !stopwords.has(t));
+    const titleOnlyCombos: string[] = [];
+
+    // Generate title-only 2-word combos
+    for (let i = 0; i < titleKeywords.length - 1; i++) {
+      for (let j = i + 1; j < titleKeywords.length; j++) {
+        titleOnlyCombos.push(`${titleKeywords[i]} ${titleKeywords[j]}`);
+        titleOnlyCombos.push(`${titleKeywords[j]} ${titleKeywords[i]}`);
+      }
+    }
+
+    // Generate title-only 3-word combos
+    for (let i = 0; i < titleKeywords.length - 2; i++) {
+      for (let j = i + 1; j < titleKeywords.length - 1; j++) {
+        for (let k = j + 1; k < titleKeywords.length; k++) {
+          titleOnlyCombos.push(`${titleKeywords[i]} ${titleKeywords[j]} ${titleKeywords[k]}`);
+        }
+      }
+    }
+
+    const genericTitleOnly = filterGenericCombos(titleOnlyCombos, ownBrandKeywords, competitorBrandKeywords);
+    const titleComboSet = new Set(genericTitleOnly);
+    const subtitleNewCombos = genericCombos.filter(c => !titleComboSet.has(c));
+
+    console.log(`[AUDIT-ENGINE] Ranking combos result: ${genericCombos.length} total generic (${genericTitleOnly.length} title-only + ${subtitleNewCombos.length} subtitle-new)`);
+
+    return {
+      totalCombos: genericCombos.length,
+      titleCombos: genericTitleOnly,
+      subtitleNewCombos: subtitleNewCombos,
+      allCombinedCombos: genericCombos,
+      twoWordCombos: genericTwoWord.length,
+      threeWordCombos: genericThreeWord.length,
+      // Include brand stats for debugging
+      brandStats
+    };
+  }
+
+  /**
+   * Analyze keyword frequency across all combinations
+   * Returns keywords sorted by total combo count (descending)
+   *
+   * Used for competitive intelligence - identifying strategic keywords
+   * that appear in the most combinations from title + subtitle.
+   */
+  private static analyzeKeywordFrequency(
+    allCombos: string[],
+    topN: number = 20
+  ): KeywordFrequencyResult[] {
+    // Map to track keyword stats
+    const keywordStats = new Map<string, {
+      total: number;
+      twoWord: number;
+      threeWord: number;
+      fourPlus: number;
+      combos: Set<string>;
+    }>();
+
+    // Process each combo
+    for (const combo of allCombos) {
+      // Extract individual keywords from combo text
+      const keywords = combo
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(k => k.length > 0);
+
+      const comboLength = keywords.length;
+
+      // Track each keyword
+      for (const keyword of keywords) {
+        if (!keywordStats.has(keyword)) {
+          keywordStats.set(keyword, {
+            total: 0,
+            twoWord: 0,
+            threeWord: 0,
+            fourPlus: 0,
+            combos: new Set(),
+          });
+        }
+
+        const stats = keywordStats.get(keyword)!;
+        stats.total += 1;
+        stats.combos.add(combo);
+
+        // Increment length-specific counter
+        if (comboLength === 2) {
+          stats.twoWord += 1;
+        } else if (comboLength === 3) {
+          stats.threeWord += 1;
+        } else if (comboLength >= 4) {
+          stats.fourPlus += 1;
+        }
+      }
+    }
+
+    // Convert to array and sort by total count
+    const results: KeywordFrequencyResult[] = Array.from(keywordStats.entries())
+      .map(([keyword, stats]) => ({
+        keyword,
+        totalCombos: stats.total,
+        twoWordCombos: stats.twoWord,
+        threeWordCombos: stats.threeWord,
+        fourPlusCombos: stats.fourPlus,
+        sampleCombos: Array.from(stats.combos).slice(0, 5), // Max 5 samples
+      }))
+      .sort((a, b) => b.totalCombos - a.totalCombos)
+      .slice(0, topN); // Return top N
+
+    return results;
   }
 }

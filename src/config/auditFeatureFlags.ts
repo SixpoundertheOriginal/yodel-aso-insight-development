@@ -50,6 +50,7 @@ export const TAB_KEYWORD_DEPENDENCIES = {
   'metadata': false,                // ✅ VISIBLE - Metadata-only
   'audit-v2': false,                // ✅ VISIBLE - Unified Metadata Audit V2 (metadata-only, backend-driven)
   'llm-optimization': false,        // ✅ VISIBLE - LLM Visibility analysis (metadata-only, rule-based)
+  'competitive-intelligence': false, // ✅ VISIBLE - Competitor analysis (metadata-only: title+subtitle analysis)
   // 'creative': DELETED (2025-11-21) - Use Creative Intelligence module instead
   'competitors': true,              // ❌ HIDDEN - REQUIRES keywords (keyword overlap analysis)
   'risk-assessment': true,          // ❌ HIDDEN - REQUIRES keywords (brand risk needs keyword data)

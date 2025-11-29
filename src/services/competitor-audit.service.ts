@@ -303,9 +303,17 @@ export async function auditCompetitor(
 }
 
 /**
- * Audit multiple competitors in parallel
+ * Audit multiple competitors with optional rate limiting
+ *
+ * NOTE: This function does NOT need rate limiting for the audit itself,
+ * because each audit checks for 24h cache first (line 190).
+ * Rate limiting is handled by fetchCompetitorMetadata (with retry logic).
+ *
+ * However, if you want to limit concurrent audits (e.g., for database load),
+ * you can use the batchSize option.
  *
  * @param inputs - Array of competitor audit inputs
+ * @param options - Optional rate limiting for concurrent audits
  * @returns Array of results (success or error per competitor)
  *
  * @example
@@ -322,14 +330,53 @@ export async function auditCompetitor(
  *     organizationId: 'uuid-org',
  *     ruleConfig: { vertical: 'education' }
  *   }
- * ]);
+ * ], { batchSize: 5, onProgress: (c, t) => console.log(`${c}/${t}`) });
  */
 export async function auditMultipleCompetitors(
-  inputs: AuditCompetitorInput[]
+  inputs: AuditCompetitorInput[],
+  options?: {
+    batchSize?: number; // Concurrent audits per batch (default: 5)
+    delayBetweenBatches?: number; // Delay in ms between batches (default: 0)
+    onProgress?: (completed: number, total: number) => void;
+  }
 ): Promise<(AuditCompetitorResult | AuditCompetitorError)[]> {
-  console.log(`[CompetitorAudit] Auditing ${inputs.length} competitors in parallel`);
+  const { batchSize = 5, delayBetweenBatches = 0, onProgress } = options || {};
 
-  const results = await Promise.all(inputs.map((input) => auditCompetitor(input)));
+  console.log(
+    `[CompetitorAudit] Auditing ${inputs.length} competitors (batchSize: ${batchSize})`
+  );
+
+  const results: (AuditCompetitorResult | AuditCompetitorError)[] = [];
+  let completed = 0;
+
+  // Process in batches (if batchSize < inputs.length)
+  for (let i = 0; i < inputs.length; i += batchSize) {
+    const batch = inputs.slice(i, i + batchSize);
+    const batchNumber = Math.floor(i / batchSize) + 1;
+    const totalBatches = Math.ceil(inputs.length / batchSize);
+
+    if (totalBatches > 1) {
+      console.log(
+        `[CompetitorAudit] Processing batch ${batchNumber}/${totalBatches} (${batch.length} competitors)`
+      );
+    }
+
+    // Audit batch in parallel (each audit has its own retry logic + cache check)
+    const batchResults = await Promise.all(batch.map((input) => auditCompetitor(input)));
+
+    results.push(...batchResults);
+    completed += batch.length;
+
+    // Report progress
+    if (onProgress) {
+      onProgress(completed, inputs.length);
+    }
+
+    // Delay before next batch (if configured)
+    if (delayBetweenBatches > 0 && i + batchSize < inputs.length) {
+      await new Promise((resolve) => setTimeout(resolve, delayBetweenBatches));
+    }
+  }
 
   const successCount = results.filter((r) => !('error' in r)).length;
   console.log(

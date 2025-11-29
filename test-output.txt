@@ -1,0 +1,28 @@
+🔍 Testing competitor subtitle extraction...
+
+📋 Request:
+  Target: 6477780060 (Inspire)
+  Competitors: 493145008 (Headspace)
+
+✅ Analysis completed successfully!
+
+🎯 Target App:
+  Name: Inspire - Self Care & Wellness
+  Subtitle: NOT FOUND
+  Keywords: 8
+
+🏆 Competitor (Headspace):
+  Name: Headspace: Meditation & Sleep
+  Subtitle: Relax, Mindfulness & Therapy
+  Keywords: 6
+
+✅ SUCCESS: Subtitle extracted!
+   Expected: "Relax, Mindfulness & Therapy" or similar
+   Got: "Relax, Mindfulness & Therapy"
+
+📊 Keyword Analysis:
+   Keywords found: 6
+   Combos found: 12
+   Title used in audit: "N/A"
+   Subtitle used in audit: "N/A"
+   ⚠️  Low count - subtitle may not be included in analysis
