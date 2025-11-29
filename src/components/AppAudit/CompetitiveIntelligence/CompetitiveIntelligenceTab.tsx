@@ -135,6 +135,12 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
       toast.success(`Analyzed ${result.data.competitors.length} competitors successfully!${cacheMessage}`);
 
       // Save competitors to database (if we have a monitored app ID)
+      console.log('[CompetitiveIntelligence] Checking if should save competitors:', {
+        effectiveMonitoredAppId,
+        hasCompetitors: competitors.length > 0,
+        competitorCount: competitors.length,
+      });
+
       if (effectiveMonitoredAppId) {
         try {
           console.log('[CompetitiveIntelligence] Saving competitors to database...');
@@ -153,18 +159,24 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
             last_compared_at: new Date().toISOString(),
           }));
 
-          const { error: upsertError } = await supabase
+          console.log('[CompetitiveIntelligence] Competitor records to save:', competitorRecords);
+
+          const { data: upsertData, error: upsertError } = await supabase
             .from('app_competitors')
             .upsert(competitorRecords, {
               onConflict: 'organization_id,target_app_id,competitor_app_store_id,country',
               ignoreDuplicates: false, // Update existing records
-            });
+            })
+            .select();
 
           if (upsertError) {
             console.error('[CompetitiveIntelligence] Failed to save competitors:', upsertError);
+            toast.error(`Failed to save competitors: ${upsertError.message}`);
             // Don't fail the whole flow, just log the error
           } else {
             console.log('[CompetitiveIntelligence] ✅ Saved', competitorRecords.length, 'competitors');
+            console.log('[CompetitiveIntelligence] Upsert result:', upsertData);
+            toast.success(`Saved ${competitorRecords.length} competitors for future sessions`);
 
             // Update savedCompetitors state with the newly saved competitors
             const savedCompetitorsData = competitorRecords.map((record, index) => ({
@@ -180,8 +192,12 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
           }
         } catch (error: any) {
           console.error('[CompetitiveIntelligence] Error saving competitors:', error);
+          toast.error(`Error saving competitors: ${error.message}`);
           // Don't fail the whole flow
         }
+      } else {
+        console.warn('[CompetitiveIntelligence] ⚠️  Not saving competitors - no effectiveMonitoredAppId');
+        console.warn('[CompetitiveIntelligence] This usually means the app is not in monitored_apps table');
       }
     } catch (error: any) {
       console.error('[CompetitiveIntelligence] Analysis error:', error);
