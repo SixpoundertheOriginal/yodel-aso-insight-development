@@ -20,11 +20,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Target, TrendingUp, Search, Loader2, RefreshCw, Clock } from 'lucide-react';
+import { AlertCircle, Target, TrendingUp, Search, Loader2, RefreshCw, Clock, History } from 'lucide-react';
 import { ScrapedMetadata, UnifiedMetadataAuditResult } from '@/types/aso';
 import { CompetitorSearchModal } from './CompetitorSearchModal';
 import { ComparisonTable } from './ComparisonTable';
 import { GapAnalysisPanels } from './GapAnalysisPanels';
+import { CompetitorList } from './CompetitorList';
+import { HistoryDialog } from './HistoryDialog';
 import { analyzeCompetitors } from '@/services/competitive-analysis-v2.service';
 import { useMetadataAuditV2 } from '@/hooks/useMetadataAuditV2';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,10 +60,20 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
   });
   const [selectedCompetitors, setSelectedCompetitors] = useState<SelectedCompetitor[]>([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<{
     isCached: boolean;
     cachedAt?: string;
   }>({ isCached: false });
+  const [savedCompetitors, setSavedCompetitors] = useState<Array<{
+    relationshipId: string;
+    appStoreId: string;
+    name: string;
+    iconUrl: string | null;
+    developer: string | null;
+    priority: number;
+    lastComparedAt: string | null;
+  }>>([]);
 
   // Get audit data for auto-suggest (use prop if provided, otherwise fetch)
   const { auditResult: fetchedAuditResult } = useMetadataAuditV2({
@@ -132,6 +144,33 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
     }
   }, [metadata?.appId, organizationId, monitoredAppId, auditData]);
 
+  // Handler: Competitor removed
+  const handleCompetitorRemoved = useCallback((appStoreId: string) => {
+    // Remove from saved competitors list
+    setSavedCompetitors((prev) => prev.filter((c) => c.appStoreId !== appStoreId));
+
+    // Remove from selected competitors
+    const remainingCompetitors = selectedCompetitors.filter((c) => c.appStoreId !== appStoreId);
+    setSelectedCompetitors(remainingCompetitors);
+
+    // Re-run analysis with remaining competitors if any
+    if (remainingCompetitors.length > 0) {
+      handleStartAnalysis(remainingCompetitors, true); // Force refresh
+    } else {
+      // No competitors left, reset analysis data
+      setAnalysisData(null);
+      setProgress({ status: 'idle', currentStep: '', progress: 0 });
+    }
+  }, [selectedCompetitors, handleStartAnalysis]);
+
+  // Handler: Competitor priority changed
+  const handleCompetitorPriorityChanged = useCallback((appStoreId: string, newPriority: number) => {
+    // Update priority in saved competitors list
+    setSavedCompetitors((prev) =>
+      prev.map((c) => (c.appStoreId === appStoreId ? { ...c, priority: newPriority } : c))
+    );
+  }, []);
+
   // Auto-load saved competitors when monitored app is available
   useEffect(() => {
     const loadSavedCompetitors = async () => {
@@ -173,7 +212,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
 
         console.log('[CompetitiveIntelligence] Found', savedCompetitors.length, 'saved competitors');
 
-        // Transform to SelectedCompetitor format
+        // Transform to SelectedCompetitor format for analysis
         const competitors: SelectedCompetitor[] = savedCompetitors
           .filter((sc) => sc.monitored_apps) // Ensure join succeeded
           .map((sc) => ({
@@ -182,6 +221,21 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
             iconUrl: (sc.monitored_apps as any).app_icon_url || null,
             developer: (sc.monitored_apps as any).developer_name || null,
           }));
+
+        // Also store full competitor info for CompetitorList component
+        const competitorsWithMetadata = savedCompetitors
+          .filter((sc) => sc.monitored_apps)
+          .map((sc) => ({
+            relationshipId: sc.id,
+            appStoreId: (sc.monitored_apps as any).app_store_id,
+            name: (sc.monitored_apps as any).app_name,
+            iconUrl: (sc.monitored_apps as any).app_icon_url || null,
+            developer: (sc.monitored_apps as any).developer_name || null,
+            priority: sc.priority,
+            lastComparedAt: sc.last_compared_at,
+          }));
+
+        setSavedCompetitors(competitorsWithMetadata);
 
         if (competitors.length > 0) {
           console.log('[CompetitiveIntelligence] Auto-loading analysis with', competitors.length, 'competitors...');
@@ -462,6 +516,16 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
             </div>
             <div className="flex items-center gap-2">
               <Button
+                onClick={() => setShowHistoryDialog(true)}
+                variant="ghost"
+                size="sm"
+                className="text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                title="View analysis history"
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
+              </Button>
+              <Button
                 onClick={() => handleStartAnalysis(selectedCompetitors, true)}
                 variant="ghost"
                 size="sm"
@@ -515,6 +579,17 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         )}
       </Card>
 
+      {/* Competitor List Management */}
+      {monitoredAppId && savedCompetitors.length > 0 && (
+        <CompetitorList
+          competitors={savedCompetitors}
+          monitoredAppId={monitoredAppId}
+          organizationId={organizationId}
+          onCompetitorRemoved={handleCompetitorRemoved}
+          onCompetitorPriorityChanged={handleCompetitorPriorityChanged}
+        />
+      )}
+
       {/* Tabs: Comparison vs Gaps */}
       <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as TabType)}>
         <TabsList className="grid grid-cols-2 bg-zinc-900 border-zinc-800">
@@ -542,8 +617,15 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         maxSuggestions={5}
       />
 
-      {/* TODO: Add ComparisonTable component */}
-      {/* TODO: Add GapAnalysisPanels component */}
+      {/* History Dialog */}
+      {monitoredAppId && (
+        <HistoryDialog
+          open={showHistoryDialog}
+          onClose={() => setShowHistoryDialog(false)}
+          monitoredAppId={monitoredAppId}
+          organizationId={organizationId}
+        />
+      )}
     </div>
   );
 };
