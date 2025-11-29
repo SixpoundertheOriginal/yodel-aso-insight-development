@@ -35,6 +35,17 @@ export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysi
   const [showAllMissingCombos, setShowAllMissingCombos] = useState(false);
   const [showAllFrequencyGaps, setShowAllFrequencyGaps] = useState(false);
 
+  // Helper function to get missing combos containing a specific keyword
+  const getCombosForKeyword = (keyword: string): typeof gapAnalysis.missingCombos => {
+    return gapAnalysis.missingCombos.filter((combo) =>
+      combo.combo.toLowerCase().includes(keyword.toLowerCase())
+    );
+  };
+
+  const toggleKeywordExpansion = (keyword: string) => {
+    setExpandedKeyword(expandedKeyword === keyword ? null : keyword);
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`Copied "${text}" to clipboard`);
@@ -164,46 +175,138 @@ export const GapAnalysisPanels: React.FC<GapAnalysisPanelsProps> = ({ gapAnalysi
                       <TableHead>Keyword</TableHead>
                       <TableHead className="text-center">Competitors</TableHead>
                       <TableHead className="text-center">Avg Frequency</TableHead>
+                      <TableHead className="text-center">Missing Combos</TableHead>
                       <TableHead className="text-center">Opportunity</TableHead>
                       <TableHead className="text-left">Top Competitor</TableHead>
                       <TableHead className="w-8"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(showAllMissingKeywords ? gapAnalysis.missingKeywords : gapAnalysis.missingKeywords.slice(0, 15)).map((keyword, index) => (
-                      <TableRow key={index} className="border-zinc-800 hover:bg-zinc-800/30">
-                        <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
-                        <TableCell className="font-medium text-zinc-200">{keyword.keyword}</TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-sm font-mono text-zinc-300">
-                            {keyword.usedByCompetitors}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-sm font-mono text-zinc-300">
-                            {keyword.avgFrequency.toFixed(1)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className={getOpportunityColor(keyword.opportunityScore)}>
-                            {keyword.opportunityScore}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
-                          {keyword.topCompetitor}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(keyword.keyword, 'keyword')}
-                            className="h-8 w-8 p-0"
+                    {(showAllMissingKeywords ? gapAnalysis.missingKeywords : gapAnalysis.missingKeywords.slice(0, 15)).map((keyword, index) => {
+                      const combosForKeyword = getCombosForKeyword(keyword.keyword);
+                      const isExpanded = expandedKeyword === keyword.keyword;
+
+                      return (
+                        <React.Fragment key={index}>
+                          {/* Main keyword row */}
+                          <TableRow
+                            className="border-zinc-800 hover:bg-zinc-800/30 cursor-pointer"
+                            onClick={() => toggleKeywordExpansion(keyword.keyword)}
                           >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            <TableCell className="text-xs text-zinc-500 font-mono">{index + 1}</TableCell>
+                            <TableCell className="font-medium text-zinc-200">
+                              <div className="flex items-center gap-2">
+                                {combosForKeyword.length > 0 && (
+                                  isExpanded ? (
+                                    <ChevronUp className="h-4 w-4 text-zinc-500" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                                  )
+                                )}
+                                <span>{keyword.keyword}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="text-sm font-mono text-zinc-300">
+                                {keyword.usedByCompetitors}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="text-sm font-mono text-zinc-300">
+                                {keyword.avgFrequency.toFixed(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {combosForKeyword.length > 0 ? (
+                                <Badge variant="outline" className="border-blue-400/30 text-blue-400 bg-blue-900/10">
+                                  {combosForKeyword.length}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-zinc-600">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className={getOpportunityColor(keyword.opportunityScore)}>
+                                {keyword.opportunityScore}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-zinc-400 truncate max-w-[150px]">
+                              {keyword.topCompetitor}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(keyword.keyword, 'keyword');
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Expanded combo rows */}
+                          {isExpanded && combosForKeyword.length > 0 && (
+                            <TableRow className="border-zinc-800 bg-zinc-900/50">
+                              <TableCell colSpan={8} className="p-0">
+                                <div className="px-4 py-3 bg-zinc-900/30 border-l-2 border-blue-500/30">
+                                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">
+                                    Missing Combos with "{keyword.keyword}"
+                                  </p>
+                                  <div className="space-y-1">
+                                    {combosForKeyword.slice(0, 10).map((combo, comboIndex) => (
+                                      <div
+                                        key={comboIndex}
+                                        className="flex items-center justify-between p-2 bg-zinc-800/30 rounded border border-zinc-800 hover:border-zinc-700 transition-colors"
+                                      >
+                                        <div className="flex items-center gap-3 flex-1">
+                                          <span className="text-xs text-zinc-600 font-mono w-6">
+                                            {comboIndex + 1}
+                                          </span>
+                                          <span className="text-sm text-zinc-300 font-medium">
+                                            "{combo.combo}"
+                                          </span>
+                                          <span className="text-xs text-zinc-600">
+                                            •
+                                          </span>
+                                          <span className="text-xs text-zinc-500">
+                                            {combo.usedByCompetitors} competitor{combo.usedByCompetitors > 1 ? 's' : ''}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className={`${getOpportunityColor(combo.opportunityScore)} text-xs`}>
+                                            {combo.opportunityScore}
+                                          </Badge>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              copyToClipboard(combo.combo, 'combo');
+                                            }}
+                                            className="h-7 w-7 p-0 hover:bg-zinc-700"
+                                          >
+                                            <Copy className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {combosForKeyword.length > 10 && (
+                                      <p className="text-xs text-zinc-600 italic mt-2">
+                                        + {combosForKeyword.length - 10} more combo{combosForKeyword.length - 10 > 1 ? 's' : ''}...
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
