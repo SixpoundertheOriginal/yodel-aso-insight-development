@@ -175,11 +175,26 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
   // Auto-load saved competitors when app metadata is available
   useEffect(() => {
     const loadSavedCompetitors = async () => {
-      if (!metadata?.appId || !organizationId) return;
+      console.log('[CompetitiveIntelligence] Auto-load effect triggered', {
+        hasMetadata: !!metadata,
+        appId: metadata?.appId,
+        organizationId,
+        monitoredAppIdProp: monitoredAppId,
+        effectiveMonitoredAppId,
+        progressStatus: progress.status,
+        hasAnalysisData: !!analysisData,
+      });
+
+      if (!metadata?.appId || !organizationId) {
+        console.log('[CompetitiveIntelligence] Skipping auto-load: missing metadata or orgId');
+        return;
+      }
 
       try {
         // Step 1: Find the monitored_app record for this App Store ID
         // (It might exist even if monitoredAppId prop wasn't passed)
+        console.log('[CompetitiveIntelligence] Querying monitored_apps for', metadata.appId);
+
         const { data: targetApp, error: targetAppError } = await supabase
           .from('monitored_apps')
           .select('id')
@@ -187,6 +202,12 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
           .eq('app_store_id', metadata.appId)
           .eq('primary_country', 'us')
           .maybeSingle();
+
+        console.log('[CompetitiveIntelligence] Monitored app query result:', {
+          found: !!targetApp,
+          id: targetApp?.id,
+          error: targetAppError,
+        });
 
         if (targetAppError) {
           console.error('[CompetitiveIntelligence] Error finding target app:', targetAppError);
@@ -268,7 +289,10 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
           setSelectedCompetitors(competitors);
 
           // Automatically trigger analysis (which will use cache if available)
+          // Note: We call handleStartAnalysis directly here, not via dependency
           handleStartAnalysis(competitors);
+        } else {
+          console.log('[CompetitiveIntelligence] No competitors found to auto-load');
         }
       } catch (error) {
         console.error('[CompetitiveIntelligence] Failed to load saved competitors:', error);
@@ -276,7 +300,8 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
     };
 
     loadSavedCompetitors();
-  }, [metadata?.appId, organizationId, handleStartAnalysis, monitoredAppId]); // Run when these change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metadata?.appId, organizationId, monitoredAppId]); // Run when these change (handleStartAnalysis intentionally excluded to avoid circular dependency)
 
   // No metadata = show empty state
   if (!metadata || !metadata.appId) {
