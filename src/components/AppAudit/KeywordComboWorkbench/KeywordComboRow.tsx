@@ -202,11 +202,16 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
   return (
     <>
       <TableRow className={`
-        ${isNoise ? 'opacity-50' : ''}
+        relative border-l-2 transition-all duration-300
+        ${isNoise 
+          ? 'opacity-60 border-l-red-500/40 bg-red-500/5' 
+          : isSelected 
+            ? 'border-l-orange-500 bg-orange-500/10 shadow-[inset_4px_0_12px_rgba(249,115,22,0.15)]'
+            : 'border-l-transparent hover:border-l-orange-500/60 hover:bg-orange-500/5 hover:shadow-[inset_4px_0_8px_rgba(249,115,22,0.08)]'
+        }
         ${getRowHeight()}
-        ${isSelected ? 'bg-violet-500/10 hover:bg-violet-500/15 border-l-2 border-violet-500' : 'hover:bg-zinc-800/50'}
-        transition-all duration-200 ease-in-out
         group
+        cursor-pointer
       `}>
         {/* Row Number */}
         <TableCell className="w-8 text-xs text-zinc-500 font-mono">
