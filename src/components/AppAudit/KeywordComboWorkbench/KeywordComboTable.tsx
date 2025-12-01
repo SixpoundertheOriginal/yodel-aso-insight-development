@@ -765,7 +765,7 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
           <TableHeader className="sticky top-0 bg-black/90 backdrop-blur-2xl z-10 border-b-2 border-dashed border-orange-500/50 shadow-[0_2px_10px_rgba(249,115,22,0.1)]">
             <TableRow className="border-zinc-800/60 hover:bg-transparent">
               <TableHead className="w-8 font-mono text-[10px] tracking-widest text-zinc-500">#</TableHead>
-              <TableHead className="w-10">
+              <TableHead className="w-8">
           <Checkbox
             checked={allSelected ? true : someSelected ? "indeterminate" : false}
             onCheckedChange={(checked) => {
@@ -775,7 +775,7 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
                 deselectAll();
               }
             }}
-            className="data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+            className="rounded-full data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
           />
               </TableHead>
               <SortableHeader column="text" onClick={() => handleSort('text')} sortIcon={getSortIcon('text')}>
