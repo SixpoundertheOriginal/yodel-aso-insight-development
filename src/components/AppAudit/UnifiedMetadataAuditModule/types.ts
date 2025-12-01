@@ -26,7 +26,7 @@ export interface ClassifiedCombo {
   text: string;
   type: ComboType;
   relevanceScore: number;  // 0-3
-  source?: 'title' | 'subtitle' | 'title+subtitle';  // Combo source
+  source?: 'title' | 'subtitle' | 'title+subtitle' | 'custom';  // Combo source (custom for user-added keywords)
 
   // Phase 5: Brand Intelligence (optional fields)
   brandClassification?: BrandClassification;
@@ -37,6 +37,14 @@ export interface ClassifiedCombo {
   userMarkedAsNoise?: boolean;  // User-controlled noise flag
   userEditedText?: string;       // Edited version (original preserved in text)
   intentClass?: 'learning' | 'outcome' | 'brand' | 'noise';  // Intent classification
+  
+  // V2.1 Enhanced metrics (optional for backward compatibility)
+  priorityScore?: number;
+  noiseConfidence?: number;
+  enhancedStrategicValue?: number;
+  searchVolumeEstimate?: number;
+  competitionLevel?: string;
+  isCompetitorBranded?: boolean;
 }
 
 export interface RuleEvaluationResult {

@@ -2696,6 +2696,60 @@ export type Database = {
           },
         ]
       }
+      combo_rankings_cache: {
+        Row: {
+          app_store_id: string
+          checked_at: string
+          combo: string
+          country: string
+          created_at: string
+          id: string
+          is_ranking: boolean
+          organization_id: string
+          platform: string
+          position: number | null
+          position_change: number | null
+          snapshot_date: string
+          total_results: number | null
+          trend: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_store_id: string
+          checked_at?: string
+          combo: string
+          country?: string
+          created_at?: string
+          id?: string
+          is_ranking?: boolean
+          organization_id: string
+          platform?: string
+          position?: number | null
+          position_change?: number | null
+          snapshot_date?: string
+          total_results?: number | null
+          trend?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_store_id?: string
+          checked_at?: string
+          combo?: string
+          country?: string
+          created_at?: string
+          id?: string
+          is_ranking?: boolean
+          organization_id?: string
+          platform?: string
+          position?: number | null
+          position_change?: number | null
+          snapshot_date?: string
+          total_results?: number | null
+          trend?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       competitor_analysis_cache: {
         Row: {
           analysis_duration_ms: number | null
@@ -2978,6 +3032,13 @@ export type Database = {
             foreignKeyName: "competitor_keywords_keyword_id_fkey"
             columns: ["keyword_id"]
             isOneToOne: false
+            referencedRelation: "combo_rankings_latest"
+            referencedColumns: ["keyword_id"]
+          },
+          {
+            foreignKeyName: "competitor_keywords_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
             referencedRelation: "keywords"
             referencedColumns: ["id"]
           },
@@ -3064,6 +3125,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      custom_keywords: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          app_id: string
+          id: string
+          keyword: string
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          app_id: string
+          id?: string
+          keyword: string
+          platform?: string
+          updated_at?: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          app_id?: string
+          id?: string
+          keyword?: string
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       feature_sentiment_analysis: {
         Row: {
@@ -3295,6 +3386,69 @@ export type Database = {
           },
         ]
       }
+      keyword_popularity_scores: {
+        Row: {
+          autocomplete_appears: boolean | null
+          autocomplete_rank: number | null
+          autocomplete_score: number | null
+          combo_participation_count: number | null
+          created_at: string
+          data_quality: string | null
+          fetch_errors: Json | null
+          id: string
+          intent_score: number | null
+          keyword: string
+          last_checked_at: string
+          length_prior: number | null
+          locale: string
+          platform: string
+          popularity_score: number
+          scoring_version: string | null
+          updated_at: string
+          word_count: number | null
+        }
+        Insert: {
+          autocomplete_appears?: boolean | null
+          autocomplete_rank?: number | null
+          autocomplete_score?: number | null
+          combo_participation_count?: number | null
+          created_at?: string
+          data_quality?: string | null
+          fetch_errors?: Json | null
+          id?: string
+          intent_score?: number | null
+          keyword: string
+          last_checked_at?: string
+          length_prior?: number | null
+          locale?: string
+          platform?: string
+          popularity_score: number
+          scoring_version?: string | null
+          updated_at?: string
+          word_count?: number | null
+        }
+        Update: {
+          autocomplete_appears?: boolean | null
+          autocomplete_rank?: number | null
+          autocomplete_score?: number | null
+          combo_participation_count?: number | null
+          created_at?: string
+          data_quality?: string | null
+          fetch_errors?: Json | null
+          id?: string
+          intent_score?: number | null
+          keyword?: string
+          last_checked_at?: string
+          length_prior?: number | null
+          locale?: string
+          platform?: string
+          popularity_score?: number
+          scoring_version?: string | null
+          updated_at?: string
+          word_count?: number | null
+        }
+        Relationships: []
+      }
       keyword_ranking_snapshots: {
         Row: {
           app_id: string
@@ -3394,6 +3548,13 @@ export type Database = {
             foreignKeyName: "keyword_rankings_keyword_id_fkey"
             columns: ["keyword_id"]
             isOneToOne: false
+            referencedRelation: "combo_rankings_latest"
+            referencedColumns: ["keyword_id"]
+          },
+          {
+            foreignKeyName: "keyword_rankings_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
             referencedRelation: "keywords"
             referencedColumns: ["id"]
           },
@@ -3447,6 +3608,13 @@ export type Database = {
             foreignKeyName: "keyword_refresh_queue_keyword_id_fkey"
             columns: ["keyword_id"]
             isOneToOne: false
+            referencedRelation: "combo_rankings_latest"
+            referencedColumns: ["keyword_id"]
+          },
+          {
+            foreignKeyName: "keyword_refresh_queue_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
             referencedRelation: "keywords"
             referencedColumns: ["id"]
           },
@@ -3496,11 +3664,13 @@ export type Database = {
           id: string
           is_tracked: boolean | null
           keyword: string
+          keyword_type: string | null
           last_tracked_at: string | null
           organization_id: string
           platform: string
           region: string
           updated_at: string | null
+          word_count: number
         }
         Insert: {
           app_id: string
@@ -3509,11 +3679,13 @@ export type Database = {
           id?: string
           is_tracked?: boolean | null
           keyword: string
+          keyword_type?: string | null
           last_tracked_at?: string | null
           organization_id: string
           platform: string
           region?: string
           updated_at?: string | null
+          word_count: number
         }
         Update: {
           app_id?: string
@@ -3522,11 +3694,13 @@ export type Database = {
           id?: string
           is_tracked?: boolean | null
           keyword?: string
+          keyword_type?: string | null
           last_tracked_at?: string | null
           organization_id?: string
           platform?: string
           region?: string
           updated_at?: string | null
+          word_count?: number
         }
         Relationships: [
           {
@@ -4127,6 +4301,7 @@ export type Database = {
           app_id: string
           app_name: string
           audit_enabled: boolean | null
+          brand_keywords: string[] | null
           bundle_id: string | null
           category: string | null
           created_at: string
@@ -4159,6 +4334,7 @@ export type Database = {
           app_id: string
           app_name: string
           audit_enabled?: boolean | null
+          brand_keywords?: string[] | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
@@ -4191,6 +4367,7 @@ export type Database = {
           app_id?: string
           app_name?: string
           audit_enabled?: boolean | null
+          brand_keywords?: string[] | null
           bundle_id?: string | null
           category?: string | null
           created_at?: string
@@ -5462,6 +5639,48 @@ export type Database = {
           },
         ]
       }
+      combo_rankings_latest: {
+        Row: {
+          app_id: string | null
+          combo: string | null
+          is_ranking: boolean | null
+          is_stale: boolean | null
+          keyword_id: string | null
+          last_tracked_at: string | null
+          organization_id: string | null
+          platform: string | null
+          position: number | null
+          position_change: number | null
+          region: string | null
+          snapshot_date: string | null
+          trend: string | null
+          visibility_score: number | null
+          word_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keywords_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keywords_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "keywords_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       llm_visibility_latest_analysis: {
         Row: {
           created_at: string | null
@@ -5844,6 +6063,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      calculate_refresh_priority: {
+        Args: {
+          p_is_ranking: boolean
+          p_keyword_type: string
+          p_last_tracked_at: string
+        }
+        Returns: number
+      }
       calculate_theme_impact_score: {
         Args: {
           p_avg_sentiment: number
@@ -5854,6 +6081,19 @@ export type Database = {
         }
         Returns: number
       }
+      calculate_token_intent_scores: {
+        Args: { p_locale?: string; p_platform?: string }
+        Returns: {
+          combo_count: number
+          intent_score: number
+          token: string
+        }[]
+      }
+      calculate_visibility_score: {
+        Args: { p_position: number; p_search_volume: number }
+        Returns: number
+      }
+      calculate_word_count: { Args: { text_input: string }; Returns: number }
       can_access_organization: {
         Args: { target_org_id: string; user_id?: string }
         Returns: boolean
@@ -5864,6 +6104,15 @@ export type Database = {
       }
       check_mfa_required: { Args: { p_user_id: string }; Returns: Json }
       check_org_access: { Args: { target_org_id: string }; Returns: boolean }
+      check_rls_policies: {
+        Args: { table_name: string }
+        Returns: {
+          command_type: string
+          policy_name: string
+          using_expression: string
+          with_check_expression: string
+        }[]
+      }
       cleanup_expired_comparison_cache: { Args: never; Returns: number }
       cleanup_expired_competitor_cache: { Args: never; Returns: number }
       cleanup_expired_semantic_insights: { Args: never; Returns: number }
@@ -5914,9 +6163,40 @@ export type Database = {
           title: string
         }[]
       }
+      get_app_combo_rankings: {
+        Args: { p_app_id: string; p_platform?: string; p_region?: string }
+        Returns: {
+          combo: string
+          is_ranking: boolean
+          is_stale: boolean
+          keyword_id: string
+          position: number
+          snapshot_date: string
+          trend: string
+          visibility_score: number
+          word_count: number
+        }[]
+      }
       get_cache_age_seconds: {
         Args: { p_monitored_app_id: string }
         Returns: number
+      }
+      get_combo_ranking_history: {
+        Args: {
+          p_app_id: string
+          p_combo: string
+          p_days?: number
+          p_platform?: string
+          p_region?: string
+        }
+        Returns: {
+          is_ranking: boolean
+          position: number
+          position_change: number
+          snapshot_date: string
+          trend: string
+          visibility_score: number
+        }[]
       }
       get_comparison_cache: {
         Args: {
@@ -6051,6 +6331,23 @@ export type Database = {
           total_keywords: number
         }[]
       }
+      get_latest_combo_ranking: {
+        Args: {
+          p_app_id: string
+          p_combo: string
+          p_platform?: string
+          p_region?: string
+        }
+        Returns: {
+          is_ranking: boolean
+          position: number
+          position_change: number
+          serp_snapshot: Json
+          snapshot_date: string
+          trend: string
+          visibility_score: number
+        }[]
+      }
       get_latest_competitor_audit: {
         Args: { p_competitor_id: string }
         Returns: {
@@ -6151,6 +6448,14 @@ export type Database = {
       get_pending_app_discoveries: {
         Args: { p_organization_id?: string }
         Returns: Json
+      }
+      get_stale_keywords: {
+        Args: { batch_size?: number; max_age_hours?: number }
+        Returns: {
+          keyword: string
+          locale: string
+          platform: string
+        }[]
       }
       get_target_app_competitors: {
         Args: { p_include_inactive?: boolean; p_target_app_id: string }
@@ -6266,6 +6571,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      test_bigquery_connection: { Args: never; Returns: Json }
       update_app_approval_status: {
         Args: { p_app_id: string; p_status: string }
         Returns: {
