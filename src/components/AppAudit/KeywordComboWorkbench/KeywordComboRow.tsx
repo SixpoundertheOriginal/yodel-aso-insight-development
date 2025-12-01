@@ -202,16 +202,17 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
   return (
     <>
       <TableRow className={`
-        relative border-l-2 transition-all duration-300
+        relative border-l-[3px] transition-all duration-300 border-b border-zinc-900/30
         ${isNoise 
-          ? 'opacity-60 border-l-red-500/40 bg-red-500/5' 
+          ? 'opacity-50 border-l-red-500/60 bg-red-900/20 hover:bg-red-900/30' 
           : isSelected 
-            ? 'border-l-orange-500 bg-orange-500/10 shadow-[inset_4px_0_12px_rgba(249,115,22,0.15)]'
-            : 'border-l-transparent hover:border-l-orange-500/60 hover:bg-orange-500/5 hover:shadow-[inset_4px_0_8px_rgba(249,115,22,0.08)]'
+            ? 'border-l-orange-500 bg-gradient-to-r from-orange-500/20 to-transparent shadow-[inset_6px_0_20px_rgba(249,115,22,0.25),0_0_15px_rgba(249,115,22,0.1)]'
+            : 'border-l-zinc-800/40 hover:border-l-orange-500/80 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-transparent hover:shadow-[inset_4px_0_12px_rgba(249,115,22,0.15),0_2px_8px_rgba(249,115,22,0.08)]'
         }
         ${getRowHeight()}
         group
         cursor-pointer
+        before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-gradient-to-b before:from-transparent before:via-orange-500/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
       `}>
         {/* Row Number */}
         <TableCell className="w-8 text-xs text-zinc-500 font-mono">

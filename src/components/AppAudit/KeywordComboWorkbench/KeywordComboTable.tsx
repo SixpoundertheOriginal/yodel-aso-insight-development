@@ -52,22 +52,22 @@ interface ColumnVisibility {
   competition: boolean;
 }
 
-// Sortable header component with tactical styling
+// Sortable header component with Batman Arkham Knight tactical styling
 const SortableHeader: React.FC<{
   column: SortColumn;
   children: React.ReactNode;
   onClick: () => void;
   sortIcon: React.ReactNode;
 }> = ({ column, children, onClick, sortIcon }) => (
-  <TableHead>
+  <TableHead className="border-b-2 border-dashed border-orange-500/30">
     <Button
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className="h-8 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-orange-400 hover:bg-orange-500/5 transition-all"
+      className="h-7 px-2 font-mono text-[9px] font-light uppercase tracking-[0.25em] text-zinc-500 hover:text-orange-400 hover:bg-orange-500/10 hover:shadow-[0_0_10px_rgba(249,115,22,0.15)] transition-all"
     >
       {children}
-      <span className="ml-1">{sortIcon}</span>
+      <span className="ml-1.5">{sortIcon}</span>
     </Button>
   </TableHead>
 );
@@ -750,17 +750,19 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
       </div>
 
       {/* Batman Arkham Knight Tactical Table Container */}
-      <div className="relative bg-black/40 backdrop-blur-md border border-zinc-800/60 rounded-lg overflow-hidden">
-        {/* L-shaped corner brackets (top) */}
-        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-orange-500/60" />
-        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-orange-500/60" />
+      <div className="relative bg-black/60 backdrop-blur-xl border-2 border-dashed border-orange-500/50 rounded-lg overflow-hidden shadow-[0_0_30px_rgba(249,115,22,0.15),inset_0_0_30px_rgba(0,0,0,0.4)]">
+        {/* L-shaped tactical corner brackets (smaller) */}
+        <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-orange-500/70 z-20" />
+        <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-orange-500/70 z-20" />
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-orange-500/70 z-20" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-orange-500/70 z-20" />
         
-        {/* Grid overlay pattern */}
-        <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(circle_at_1px_1px,rgba(249,115,22,0.08)_1px,transparent_0)] bg-[length:24px_24px]" />
+        {/* Tactical grid overlay pattern (24px × 24px) */}
+        <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(circle_at_1px_1px,rgba(249,115,22,0.08)_1px,transparent_0)] bg-[length:24px_24px] z-0" />
         
         <div className="relative max-h-[600px] overflow-y-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-black/80 backdrop-blur-xl z-10 border-b-2 border-dashed border-orange-500/40">
+          <TableHeader className="sticky top-0 bg-black/90 backdrop-blur-2xl z-10 border-b-2 border-dashed border-orange-500/50 shadow-[0_2px_10px_rgba(249,115,22,0.1)]">
             <TableRow className="border-zinc-800/60 hover:bg-transparent">
               <TableHead className="w-8 font-mono text-[10px] tracking-widest text-zinc-500">#</TableHead>
               <TableHead className="w-10">
