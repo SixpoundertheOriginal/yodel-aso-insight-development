@@ -220,7 +220,7 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         </TableCell>
 
         {/* Selection Checkbox */}
-        <TableCell className="w-10">
+        <TableCell className="w-8">
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => toggleSelection(index)}
