@@ -86,27 +86,27 @@ export const KeywordComboWorkbench: React.FC<KeywordComboWorkbenchProps> = ({ co
   };
 
   return (
-    <Card className="relative bg-black/40 backdrop-blur-lg border border-zinc-800/50 rounded-xl hover:border-orange-500/30 transition-all duration-300 shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]">
-      {/* L-bracket corners */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-violet-400/60" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-violet-400/60" />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-violet-400/60" />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-violet-400/60" />
+    <Card className="relative bg-black/60 backdrop-blur-xl border border-orange-500/60 rounded-lg hover:border-orange-500/80 transition-all duration-300 shadow-[0_0_30px_rgba(249,115,22,0.15)] bg-[radial-gradient(circle_at_1px_1px,rgba(249,115,22,0.08)_1px,transparent_0)] bg-[length:24px_24px]">
+      {/* L-bracket tactical corners (smaller) */}
+      <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-orange-500/60" />
+      <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-orange-500/60" />
+      <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-orange-500/60" />
+      <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-orange-500/60" />
 
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
-              <Link2 className="h-4 w-4 text-violet-400" />
+            <CardTitle className="flex items-center gap-2 text-[11px] font-mono font-light tracking-[0.3em] uppercase text-orange-400">
+              <Link2 className="h-3.5 w-3.5 text-orange-500" />
               KEYWORD COMBO WORKBENCH
             </CardTitle>
-            <p className="text-[11px] text-zinc-500 mt-1.5">
-              Interactive analysis • Editable • Sortable • Exportable
+            <p className="text-[9px] font-mono text-zinc-600 mt-1.5 tracking-[0.15em] uppercase">
+              TACTICAL INTEL • EDITABLE • SORTABLE • EXPORTABLE
             </p>
           </div>
           <Badge
             variant="outline"
-            className="text-xl font-mono font-normal px-4 py-1 border-violet-400/30 text-violet-400"
+            className="text-xl font-mono font-semibold px-4 py-1.5 border-orange-500/60 text-orange-400 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
             style={{
               clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
             }}
