@@ -52,7 +52,7 @@ interface ColumnVisibility {
   competition: boolean;
 }
 
-// Sortable header component
+// Sortable header component with tactical styling
 const SortableHeader: React.FC<{
   column: SortColumn;
   children: React.ReactNode;
@@ -64,7 +64,7 @@ const SortableHeader: React.FC<{
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className="h-8 px-2 font-mono text-xs uppercase tracking-wider text-zinc-400 hover:text-zinc-300"
+      className="h-8 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-orange-400 hover:bg-orange-500/5 transition-all"
     >
       {children}
       <span className="ml-1">{sortIcon}</span>
@@ -749,12 +749,20 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
       </div>
       </div>
 
-      <div className="border border-zinc-800 rounded-lg overflow-hidden">
-        <div className="max-h-[600px] overflow-y-auto">
+      {/* Batman Arkham Knight Tactical Table Container */}
+      <div className="relative bg-black/40 backdrop-blur-md border border-zinc-800/60 rounded-lg overflow-hidden">
+        {/* L-shaped corner brackets (top) */}
+        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-orange-500/60" />
+        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-orange-500/60" />
+        
+        {/* Grid overlay pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(circle_at_1px_1px,rgba(249,115,22,0.08)_1px,transparent_0)] bg-[length:24px_24px]" />
+        
+        <div className="relative max-h-[600px] overflow-y-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-zinc-900/95 backdrop-blur-sm z-10">
-            <TableRow className="border-zinc-800 hover:bg-transparent">
-              <TableHead className="w-8">#</TableHead>
+          <TableHeader className="sticky top-0 bg-black/80 backdrop-blur-xl z-10 border-b-2 border-dashed border-orange-500/40">
+            <TableRow className="border-zinc-800/60 hover:bg-transparent">
+              <TableHead className="w-8 font-mono text-[10px] tracking-widest text-zinc-500">#</TableHead>
               <TableHead className="w-10">
           <Checkbox
             checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -769,52 +777,52 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
           />
               </TableHead>
               <SortableHeader column="text" onClick={() => handleSort('text')} sortIcon={getSortIcon('text')}>
-                Combo
+                ▸ COMBO
               </SortableHeader>
               {visibleColumns.status && (
-                <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Status</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ STATUS</TableHead>
               )}
               {visibleColumns.type && (
                 <SortableHeader column="type" onClick={() => handleSort('type')} sortIcon={getSortIcon('type')}>
-                  Type
+                  ▸ TYPE
                 </SortableHeader>
               )}
               {visibleColumns.priority && (
                 <SortableHeader column="relevance" onClick={() => handleSort('relevance')} sortIcon={getSortIcon('relevance')}>
-                  Priority
+                  ▸ PRIORITY
                 </SortableHeader>
               )}
               {visibleColumns.semantic && (
-                <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Semantic</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ SEMANTIC</TableHead>
               )}
               {visibleColumns.novelty && (
-                <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Novelty</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ NOVELTY</TableHead>
               )}
               {visibleColumns.noise && (
-                <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Noise</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ NOISE</TableHead>
               )}
               {visibleColumns.source && (
                 <SortableHeader column="source" onClick={() => handleSort('source')} sortIcon={getSortIcon('source')}>
-                  Source
+                  ▸ SOURCE
                 </SortableHeader>
               )}
               {visibleColumns.length && (
                 <SortableHeader column="length" onClick={() => handleSort('length')} sortIcon={getSortIcon('length')}>
-                  Length
+                  ▸ LENGTH
                 </SortableHeader>
               )}
               {visibleColumns.competition && (
                 <SortableHeader column="competition" onClick={() => handleSort('competition')} sortIcon={getSortIcon('competition')}>
-                  Competition
+                  ▸ COMPETITION
                 </SortableHeader>
               )}
               <SortableHeader column="popularity" onClick={() => handleSort('popularity')} sortIcon={getSortIcon('popularity')}>
-                Popularity
+                ▸ POPULARITY
               </SortableHeader>
               <SortableHeader column="appRanking" onClick={() => handleSort('appRanking')} sortIcon={getSortIcon('appRanking')}>
-                App Ranking
+                ▸ APP RANKING
               </SortableHeader>
-              <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Actions</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -901,6 +909,10 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
           </TableBody>
         </Table>
         </div>
+        
+        {/* L-shaped corner brackets (bottom) */}
+        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-orange-500/60" />
+        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-orange-500/60" />
       </div>
     </div>
   );
