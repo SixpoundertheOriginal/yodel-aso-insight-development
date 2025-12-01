@@ -27,6 +27,7 @@ import { detectBrand } from '@/utils/brandDetector';
 import { useBrandOverride } from '@/hooks/useBrandOverride';
 import { NestedCategorySection } from './NestedCategorySection';
 import { StrategicKeywordFrequencyPanel } from './StrategicKeywordFrequencyPanel';
+import { KeywordSuggestionsBar } from './KeywordSuggestionsBar';
 
 interface EnhancedKeywordComboWorkbenchProps {
   comboCoverage: UnifiedMetadataAuditResult['comboCoverage'];
@@ -34,7 +35,9 @@ interface EnhancedKeywordComboWorkbenchProps {
   metadata: {
     title: string;
     subtitle: string;
+    keywords?: string | null; // App Store Connect keywords field (100 char max)
     appId?: string; // For brand override storage
+    country?: string; // For ranking checks (e.g., 'us', 'gb')
   };
 }
 
@@ -51,11 +54,31 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     source: 'all',
   });
 
+  // Keywords field state (100-char App Store Connect keywords field)
+  const [keywordsFieldInput, setKeywordsFieldInput] = useState<string>(metadata.keywords || '');
+
+  // Parse keywords field into array
+  const keywordsFieldKeywords = useMemo(() => {
+    if (!keywordsFieldInput.trim()) return [];
+    return keywordsFieldInput
+      .split(',')
+      .map(kw => kw.trim().toLowerCase())
+      .filter(kw => kw.length > 0);
+  }, [keywordsFieldInput]);
+
   // Phase 2: Progressive Enhancement state
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhancementError, setEnhancementError] = useState<string | null>(null);
 
-  const { setCombos, addCombo, combos } = useKeywordComboStore();
+  const {
+    setCombos,
+    addCombo,
+    combos,
+    setSearchQuery,
+    setSourceFilter,
+    lengthFilter,
+    setLengthFilter,
+  } = useKeywordComboStore();
 
   // Workbench selection integration
   const {
@@ -75,12 +98,21 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
   // Generate comprehensive combo analysis with brand filtering
   // Phase 1: Client-side instant results (0-100ms)
+  // Phase 2: Now includes keywords field (4-element combo generation)
   const [comboAnalysis, setComboAnalysis] = useState(() => {
+    // Parse initial keywords for combo analysis
+    const initialKeywordsArray = (metadata.keywords || '')
+      .split(',')
+      .map(kw => kw.trim().toLowerCase())
+      .filter(kw => kw.length > 0);
+
     return analyzeAllCombos(
       keywordCoverage.titleKeywords,
       keywordCoverage.subtitleNewKeywords,
       metadata.title,
       metadata.subtitle,
+      initialKeywordsArray,   // NEW: Keywords field keywords array
+      metadata.keywords || '', // NEW: Keywords field raw text
       comboCoverage.titleCombosClassified,
       appBrand  // Phase 1: Pass brand to filter branded combos
     );
@@ -189,6 +221,46 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
     enhanceFromServer();
   }, [metadata.appId, metadata.title, metadata.subtitle]);
+
+  // Recompute combo analysis when keywords field changes
+  useEffect(() => {
+    const newAnalysis = analyzeAllCombos(
+      keywordCoverage.titleKeywords,
+      keywordCoverage.subtitleNewKeywords,
+      metadata.title,
+      metadata.subtitle,
+      keywordsFieldKeywords,
+      keywordsFieldInput,
+      comboCoverage.titleCombosClassified,
+      appBrand
+    );
+    setComboAnalysis(newAnalysis);
+  }, [keywordsFieldInput, keywordsFieldKeywords, keywordCoverage, metadata.title, metadata.subtitle, comboCoverage.titleCombosClassified, appBrand]);
+
+  // Sync EnhancedComboFilters with Zustand store filters
+  useEffect(() => {
+    // Sync keyword search
+    setSearchQuery(filters.keywordSearch);
+
+    // Sync source filter
+    if (filters.source === 'all') {
+      setSourceFilter('all');
+    } else if (filters.source === 'title') {
+      setSourceFilter('title');
+    } else if (filters.source === 'subtitle') {
+      setSourceFilter('subtitle');
+    } else if (filters.source === 'both') {
+      setSourceFilter('cross-element');
+    }
+
+    // Sync length filter (only 2 and 3 word combos supported)
+    if (filters.length === 'all' || filters.length === '2' || filters.length === '3') {
+      setLengthFilter(filters.length);
+    } else {
+      // If EnhancedComboFilters selects 4 or 5+, default to 'all' since we don't support 4+ anymore
+      setLengthFilter('all');
+    }
+  }, [filters.keywordSearch, filters.source, filters.length, setSearchQuery, setSourceFilter, setLengthFilter]);
 
   // Apply filters
   const filteredCombos = useMemo(() => {
@@ -319,6 +391,18 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     toast.success(`Copied ${filteredCombos.length} combos to clipboard`);
   };
 
+  // Handler for KeywordSuggestionsBar badge clicks
+  const handleLengthFilterClick = (length: '2' | '3' | 'all') => {
+    // Update Zustand store directly (which updates the table)
+    setLengthFilter(length);
+
+    // Also update local filters for backward compatibility with EnhancedComboFilters
+    setFilters(prev => ({
+      ...prev,
+      length: length
+    }));
+  };
+
   const v2_1Enabled = isV2_1FeatureEnabled('COMBO_ENHANCE');
 
   // Calculate keyword suggestions by category
@@ -407,27 +491,205 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-zinc-500">Total Possible</p>
-            <p className="text-2xl font-bold text-violet-400">{comboAnalysis.stats.totalPossible}</p>
+        {/* Keywords Field Input - Phase 2 */}
+        <div className="mt-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+          <label htmlFor="keywords-field" className="block text-xs font-medium text-zinc-400 mb-2">
+            App Store Connect Keywords Field (100 chars max)
+          </label>
+          <div className="relative">
+            <textarea
+              id="keywords-field"
+              value={keywordsFieldInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.length <= 100) {
+                  setKeywordsFieldInput(value);
+                }
+              }}
+              placeholder="meditation,sleep,mindfulness,relaxation,anxiety,stress"
+              className="w-full h-20 px-3 py-2 text-sm bg-black/50 border border-zinc-700 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none font-mono"
+              maxLength={100}
+            />
+            <div className="absolute bottom-2 right-2 text-[10px] text-zinc-500">
+              {keywordsFieldInput.length}/100
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs text-zinc-500">Existing</p>
-            <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.existing}</p>
+          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
+            💡 Comma-separated keywords. Equal ranking weight to subtitle. Used for 4-element combo generation.
+          </p>
+        </div>
+
+        {/* Top 500 Warning - Phase 2 */}
+        {comboAnalysis.stats.limitReached && (
+          <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-xs font-medium text-amber-400 mb-1">Top 500 Limit Reached</p>
+                <p className="text-[11px] text-zinc-400">
+                  Generated {comboAnalysis.stats.totalGenerated} combinations, showing top 500 by priority score.
+                  Combinations are ranked by: Strength (30%), Popularity (25%), Opportunity (20%), Trend (15%), Intent (10%).
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs text-zinc-500">Missing</p>
-            <p className="text-2xl font-bold text-amber-400">{comboAnalysis.stats.missing}</p>
+        )}
+
+        {/* Summary Stats - Phase 1: Strength-Based Breakdown */}
+        <div className="mt-4 space-y-4">
+          {/* Overall Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">Total Possible</p>
+              <p className="text-2xl font-bold text-violet-400">{comboAnalysis.stats.totalPossible}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">Existing</p>
+              <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.existing}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">Missing</p>
+              <p className="text-2xl font-bold text-amber-400">{comboAnalysis.stats.missing}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">Coverage</p>
+              <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500">Filtered View</p>
+              <p className="text-2xl font-bold text-zinc-300">{filteredCombos.length}</p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs text-zinc-500">Coverage</p>
-            <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-zinc-500">Filtered View</p>
-            <p className="text-2xl font-bold text-zinc-300">{filteredCombos.length}</p>
+
+          {/* Strength Breakdown - Phase 2: All 10 Tiers */}
+          <div className="border-t border-zinc-800 pt-4">
+            <p className="text-xs font-medium text-zinc-400 mb-3">Ranking Power Distribution (10-Tier System)</p>
+
+            {/* Tier 1: Strongest */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 1: Strongest (100 pts)</p>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-red-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">🔥🔥🔥</span>
+                    <p className="text-xs text-zinc-400">Title Consecutive</p>
+                  </div>
+                  <p className="text-xl font-bold text-red-400">{comboAnalysis.stats.titleConsecutive}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 2: Very Strong */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 2: Very Strong (70-85 pts)</p>
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-orange-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">🔥🔥</span>
+                    <p className="text-xs text-zinc-400">Title Non-Consecutive</p>
+                  </div>
+                  <p className="text-xl font-bold text-orange-400">{comboAnalysis.stats.titleNonConsecutive}</p>
+                </div>
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-amber-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">🔥⚡</span>
+                    <p className="text-xs text-zinc-400">Title + Keywords Cross</p>
+                  </div>
+                  <p className="text-xl font-bold text-amber-400">{comboAnalysis.stats.titleKeywordsCross || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 3: Medium */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 3: Medium (70 pts)</p>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-yellow-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">⚡</span>
+                    <p className="text-xs text-zinc-400">Cross-Element (Title + Subtitle)</p>
+                  </div>
+                  <p className="text-xl font-bold text-yellow-400">{comboAnalysis.stats.crossElement}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 4: Weak */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 4: Weak (50 pts)</p>
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-cyan-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤</span>
+                    <p className="text-xs text-zinc-400">Keywords Consecutive</p>
+                  </div>
+                  <p className="text-xl font-bold text-cyan-400">{comboAnalysis.stats.keywordsConsecutive || 0}</p>
+                </div>
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-blue-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤</span>
+                    <p className="text-xs text-zinc-400">Subtitle Consecutive</p>
+                  </div>
+                  <p className="text-xl font-bold text-blue-400">{comboAnalysis.stats.subtitleConsecutive}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 5: Very Weak */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 5: Very Weak (30-35 pts)</p>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-violet-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤⚡</span>
+                    <p className="text-xs text-zinc-400">Keywords + Subtitle</p>
+                  </div>
+                  <p className="text-xl font-bold text-violet-400">{comboAnalysis.stats.keywordsSubtitleCross || 0}</p>
+                </div>
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-indigo-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤💤</span>
+                    <p className="text-xs text-zinc-400">Keywords Non-Consec</p>
+                  </div>
+                  <p className="text-xl font-bold text-indigo-400">{comboAnalysis.stats.keywordsNonConsecutive || 0}</p>
+                </div>
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-purple-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤💤</span>
+                    <p className="text-xs text-zinc-400">Subtitle Non-Consec</p>
+                  </div>
+                  <p className="text-xl font-bold text-purple-400">{comboAnalysis.stats.subtitleNonConsecutive}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 6: Weakest */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 6: Weakest (20 pts)</p>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-pink-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">💤💤💤</span>
+                    <p className="text-xs text-zinc-400">Three-Way Cross</p>
+                  </div>
+                  <p className="text-xl font-bold text-pink-400">{comboAnalysis.stats.threeWayCross || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Opportunities */}
+            <div className="border-t border-zinc-800 pt-3 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-emerald-500/20">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">⬆️</span>
+                    <p className="text-xs text-zinc-400">Can Strengthen</p>
+                  </div>
+                  <p className="text-xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
+                  <p className="text-[10px] text-zinc-500">Strengthening Opportunities</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -491,47 +753,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
         <StrategicKeywordFrequencyPanel
           combos={combos}
         />
-
-        {/* Potential Combinations - Nested by Length > Value */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-medium text-zinc-400 uppercase">Potential Combinations:</span>
-            <span className="text-[10px] text-zinc-500">Click to add to workbench</span>
-          </div>
-
-          {/* 2-Word Combos */}
-          <NestedCategorySection
-            title="2-Word Combos"
-            icon="⚡"
-            combos={keywordSuggestions.twoWord}
-            total={keywordSuggestions.twoWord.total}
-            lengthType={2}
-            isComboAdded={isComboAdded}
-            onAddCombo={handleAddCombo}
-          />
-
-          {/* 3-Word Combos */}
-          <NestedCategorySection
-            title="3-Word Combos"
-            icon="📏"
-            combos={keywordSuggestions.threeWord}
-            total={keywordSuggestions.threeWord.total}
-            lengthType={3}
-            isComboAdded={isComboAdded}
-            onAddCombo={handleAddCombo}
-          />
-
-          {/* 4+ Word Combos */}
-          <NestedCategorySection
-            title="4+ Word Combos"
-            icon="📐"
-            combos={keywordSuggestions.fourPlus}
-            total={keywordSuggestions.fourPlus.total}
-            lengthType={4}
-            isComboAdded={isComboAdded}
-            onAddCombo={handleAddCombo}
-          />
-        </div>
 
         {/* Element Selection Filter (appears when items selected from element cards) */}
         {hasSelection && (
@@ -611,6 +832,16 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           }}
         />
 
+        {/* Keyword Suggestions Bar - Compact horizontal display */}
+        <KeywordSuggestionsBar
+          suggestions={{
+            twoWord: { total: keywordSuggestions.twoWord.total },
+            threeWord: { total: keywordSuggestions.threeWord.total },
+          }}
+          onLengthFilter={handleLengthFilterClick}
+          activeLengthFilter={lengthFilter}
+        />
+
         {/* Single Unified Table View */}
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -619,7 +850,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
               All Combos Table
             </h3>
           </div>
-          <KeywordComboTable />
+          <KeywordComboTable metadata={metadata} />
         </div>
 
         {/* Contextual Pro Tips */}

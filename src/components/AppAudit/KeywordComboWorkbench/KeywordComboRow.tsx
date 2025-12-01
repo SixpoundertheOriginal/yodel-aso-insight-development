@@ -16,10 +16,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Copy, Eye, EyeOff, Edit2, Star, CheckCircle, AlertCircle, Sparkles, Trash2 } from 'lucide-react';
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { KeywordComboEditor } from './KeywordComboEditor';
+import { RankingCell } from './RankingCell';
+import { CompetitionCell } from './CompetitionCell';
+import type { ComboRankingData } from '@/hooks/useBatchComboRankings';
+import type { KeywordPopularityData } from '@/hooks/useKeywordPopularity';
+import { getPopularityEmoji, getPopularityColor } from '@/hooks/useKeywordPopularity';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
 import { copyComboToClipboard } from '@/utils/comboExporter';
 import { classifyIntent, getIntentColor } from '@/utils/comboIntentClassifier';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import { AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED } from '@/config/metadataFeatureFlags';
+import { supabase } from '@/integrations/supabase/client';
+import { ComboStrength } from '@/engine/combos/comboGenerationEngine';
 
 interface ColumnVisibility {
   status: boolean;
@@ -30,6 +39,7 @@ interface ColumnVisibility {
   noise: boolean;
   source: boolean;
   length: boolean;
+  competition: boolean;
 }
 
 interface KeywordComboRowProps {
@@ -38,15 +48,24 @@ interface KeywordComboRowProps {
   isSelected: boolean;
   visibleColumns: ColumnVisibility;
   density?: 'compact' | 'comfortable' | 'spacious';
+  metadata?: {
+    appId?: string;
+    country?: string;
+  };
+  rankingData?: ComboRankingData;
+  rankingsLoading?: boolean;
+  popularityData?: KeywordPopularityData;
+  popularityLoading?: boolean;
 }
 
-export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, isSelected, visibleColumns, density = 'comfortable' }) => {
+export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, isSelected, visibleColumns, density = 'comfortable', metadata, rankingData, rankingsLoading, popularityData, popularityLoading }) => {
   const editingComboIndex = useKeywordComboStore((state) => state.editingComboIndex);
   const setEditingCombo = useKeywordComboStore((state) => state.setEditingCombo);
   const updateCombo = useKeywordComboStore((state) => state.updateCombo);
   const markAsNoise = useKeywordComboStore((state) => state.markAsNoise);
   const unmarkAsNoise = useKeywordComboStore((state) => state.unmarkAsNoise);
   const toggleSelection = useKeywordComboStore((state) => state.toggleSelection);
+  const removeCustomKeyword = useKeywordComboStore((state) => state.removeCustomKeyword);
 
   const isEditing = editingComboIndex === index;
   const isNoise = (combo as any).userMarkedAsNoise || false;
@@ -81,8 +100,62 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         return 'border-cyan-400/30 text-cyan-400 bg-cyan-900/10';
       case 'title+subtitle':
         return 'border-violet-400/30 text-violet-400 bg-violet-900/10';
+      case 'custom':
+        return 'border-orange-400/30 text-orange-400 bg-orange-900/10';
       default:
         return 'border-zinc-700 text-zinc-500';
+    }
+  };
+
+  // Phase 1: Strength badge helpers
+  const getStrengthBadge = (strength?: ComboStrength): { emoji: string; text: string; color: string; tooltip: string } | null => {
+    if (!strength) return null;
+
+    switch (strength) {
+      case ComboStrength.TITLE_CONSECUTIVE:
+        return {
+          emoji: '🔥🔥🔥',
+          text: 'Strongest',
+          color: 'border-red-500/40 text-red-400 bg-red-900/20',
+          tooltip: 'Title Consecutive - Highest ranking power'
+        };
+      case ComboStrength.TITLE_NON_CONSECUTIVE:
+        return {
+          emoji: '🔥🔥',
+          text: 'Very Strong',
+          color: 'border-orange-500/40 text-orange-400 bg-orange-900/20',
+          tooltip: 'Title Non-Consecutive - Very strong ranking power'
+        };
+      case ComboStrength.CROSS_ELEMENT:
+        return {
+          emoji: '⚡',
+          text: 'Medium',
+          color: 'border-yellow-500/40 text-yellow-400 bg-yellow-900/20',
+          tooltip: 'Cross-Element - Medium ranking power (title + subtitle)'
+        };
+      case ComboStrength.SUBTITLE_CONSECUTIVE:
+        return {
+          emoji: '💤',
+          text: 'Weak',
+          color: 'border-blue-500/40 text-blue-400 bg-blue-900/20',
+          tooltip: 'Subtitle Consecutive - Weak ranking power'
+        };
+      case ComboStrength.SUBTITLE_NON_CONSECUTIVE:
+        return {
+          emoji: '💤💤',
+          text: 'Very Weak',
+          color: 'border-indigo-500/40 text-indigo-400 bg-indigo-900/20',
+          tooltip: 'Subtitle Non-Consecutive - Very weak ranking power'
+        };
+      case ComboStrength.MISSING:
+        return {
+          emoji: '❌',
+          text: 'Missing',
+          color: 'border-zinc-700 text-zinc-500 bg-zinc-900/20',
+          tooltip: 'Not in metadata - cannot rank'
+        };
+      default:
+        return null;
     }
   };
 
@@ -96,6 +169,33 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
       unmarkAsNoise(index);
     } else {
       markAsNoise(index);
+    }
+  };
+
+  const handleDeleteCustomKeyword = async () => {
+    if (!metadata?.appId) return;
+
+    if (!confirm(`Delete "${combo.text}"?`)) return;
+
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('custom_keywords')
+        .delete()
+        .eq('app_id', metadata.appId)
+        .eq('platform', 'ios')
+        .eq('keyword', combo.text);
+
+      if (error) {
+        console.error('[KeywordComboRow] Failed to delete from database:', error);
+        return;
+      }
+
+      // Remove from store
+      removeCustomKeyword(combo.text);
+      console.log(`[KeywordComboRow] ✅ Deleted custom keyword: ${combo.text}`);
+    } catch (error) {
+      console.error('[KeywordComboRow] Error deleting custom keyword:', error);
     }
   };
 
@@ -133,6 +233,33 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
           ) : (
             <div className="flex items-center gap-2">
               <span className={isNoise ? 'line-through' : ''}>{combo.text}</span>
+
+              {/* Phase 1: Strength Badge */}
+              {(() => {
+                const strengthBadge = getStrengthBadge((combo as any).strength);
+                if (strengthBadge && (combo as any).strength !== ComboStrength.MISSING) {
+                  return (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${strengthBadge.color}`}>
+                            <span className="mr-0.5">{strengthBadge.emoji}</span>
+                            {strengthBadge.text}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="bg-zinc-900 border-zinc-700 text-xs">
+                          <p>{strengthBadge.tooltip}</p>
+                          {(combo as any).canStrengthen && (combo as any).strengtheningSuggestion && (
+                            <p className="text-emerald-400 mt-1">💡 {(combo as any).strengtheningSuggestion}</p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                }
+                return null;
+              })()}
+
               {AUTOCOMPLETE_BRAND_INTELLIGENCE_ENABLED &&
                 'brandClassification' in combo &&
                 combo.brandClassification === 'brand' && (
@@ -284,6 +411,76 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
           </TableCell>
         )}
 
+        {/* Competition */}
+        {visibleColumns.competition && (
+          <TableCell>
+            <CompetitionCell
+              totalResults={rankingData?.totalResults ?? null}
+              snapshotDate={rankingData?.snapshotDate}
+            />
+          </TableCell>
+        )}
+
+        {/* Popularity */}
+        <TableCell className="text-center">
+          {popularityLoading ? (
+            <span className="text-xs text-zinc-500">...</span>
+          ) : popularityData ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`flex items-center justify-center gap-1.5 cursor-help ${getPopularityColor(popularityData.popularity_score)}`}>
+                    <span className="font-mono font-semibold">{popularityData.popularity_score}</span>
+                    <span className="text-base">{getPopularityEmoji(popularityData.popularity_score)}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="bg-zinc-900 border-zinc-700 p-3">
+                  <div className="text-xs space-y-1.5">
+                    <div className="font-semibold text-white mb-2">Popularity Breakdown</div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-zinc-400">Autocomplete:</span>
+                      <span className="text-white font-mono">{Math.round(popularityData.autocomplete_score * 100)}/100</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-zinc-400">Intent:</span>
+                      <span className="text-white font-mono">{Math.round(popularityData.intent_score * 100)}/100</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-zinc-400">Length:</span>
+                      <span className="text-white font-mono">{Math.round(popularityData.length_prior * 100)}/100</span>
+                    </div>
+                    <div className="border-t border-zinc-700 mt-2 pt-2 text-zinc-500">
+                      Updated: {formatDistanceToNow(new Date(popularityData.last_updated), { addSuffix: true })}
+                    </div>
+                    {popularityData.data_quality !== 'complete' && (
+                      <div className="text-yellow-400 text-xs">
+                        ⚠️ {popularityData.data_quality}
+                      </div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className="text-xs text-zinc-600">-</span>
+          )}
+        </TableCell>
+
+        {/* App Ranking */}
+        <TableCell>
+          {metadata?.appId && metadata?.country ? (
+            <RankingCell
+              combo={combo.text}
+              appId={metadata.appId}
+              country={metadata.country}
+              cachedRanking={rankingData}
+              isLoading={rankingsLoading}
+            />
+          ) : (
+            <span className="text-xs text-zinc-600">N/A</span>
+          )}
+        </TableCell>
+
         {/* Actions */}
         <TableCell>
           <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity duration-200">
@@ -305,20 +502,17 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
             >
               {isNoise ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                if (confirm(`Delete "${combo.text}"?`)) {
-                  // TODO: Implement delete logic via store
-                  console.log('Delete combo:', combo.text);
-                }
-              }}
-              className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-              title="Delete combo"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            {combo.source === 'custom' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDeleteCustomKeyword}
+                className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                title="Delete custom keyword"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         </TableCell>
       </TableRow>

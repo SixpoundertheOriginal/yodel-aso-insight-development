@@ -4,7 +4,7 @@
  * Main table component displaying all combos with sortable columns.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowUp, ArrowDown, ChevronsUpDown, Columns, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Copy, Download, PlusCircle, Loader2, SearchX } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronsUpDown, Columns, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Copy, Download, PlusCircle, Loader2, SearchX, RefreshCw } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -30,8 +30,15 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { KeywordComboRow } from './KeywordComboRow';
+import { CustomKeywordInput } from './CustomKeywordInput';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import type { SortColumn } from '@/stores/useKeywordComboStore';
+import type { ComboRankingData } from '@/hooks/useBatchComboRankings';
+import { useKeywordPopularity, getPopularityEmoji, getPopularityColor } from '@/hooks/useKeywordPopularity';
+import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
+import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 
 interface ColumnVisibility {
   status: boolean;
@@ -42,6 +49,7 @@ interface ColumnVisibility {
   noise: boolean;
   source: boolean;
   length: boolean;
+  competition: boolean;
 }
 
 // Sortable header component
@@ -64,17 +72,36 @@ const SortableHeader: React.FC<{
   </TableHead>
 );
 
-export const KeywordComboTable: React.FC = () => {
+interface KeywordComboTableProps {
+  metadata?: {
+    appId?: string;
+    country?: string;
+  };
+}
+
+export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }) => {
+  // DEBUG: Log metadata on mount
+  useEffect(() => {
+    console.log('[KeywordComboTable] 🔍 Metadata received:', {
+      metadata,
+      hasAppId: !!metadata?.appId,
+      hasCountry: !!metadata?.country,
+      appId: metadata?.appId,
+      country: metadata?.country,
+    });
+  }, [metadata]);
+
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>({
-    status: true,
+    status: false,      // Hidden by default (V2.1 feature - no data yet)
     type: true,
-    priority: true,
-    semantic: true,
-    novelty: true,
-    noise: true,
+    priority: true,     // Phase 2: Now visible by default (priority scoring complete)
+    semantic: false,    // Hidden by default (V2.1 feature - no data yet)
+    novelty: false,     // Hidden by default (V2.1 feature - no data yet)
+    noise: false,       // Hidden by default (V2.1 feature - no data yet)
     source: true,
     length: true,
+    competition: true,
   });
 
   const toggleColumn = (column: keyof ColumnVisibility) => {
@@ -95,18 +122,269 @@ export const KeywordComboTable: React.FC = () => {
     selectedIndices,
     selectAll,
     deselectAll,
+    setCustomKeywords,
+    customKeywords,
   } = useKeywordComboStore();
 
   const sortedCombos = getSortedCombos();
-  const allSelected = sortedCombos.length > 0 && selectedIndices.size === sortedCombos.length;
+
+  // Load custom keywords from database on mount
+  useEffect(() => {
+    const loadCustomKeywords = async () => {
+      if (!metadata?.appId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('custom_keywords')
+          .select('keyword, added_at')
+          .eq('app_id', metadata.appId)
+          .eq('platform', 'ios')
+          .order('added_at', { ascending: false });
+
+        if (error) {
+          console.error('[KeywordComboTable] Failed to load custom keywords:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const customCombos: ClassifiedCombo[] = data.map((row) => ({
+            text: row.keyword,
+            source: 'custom',
+            type: 'generic',
+            relevanceScore: 0,
+            brandClassification: 'generic',
+          }));
+
+          setCustomKeywords(customCombos);
+          console.log(`[KeywordComboTable] ✅ Loaded ${customCombos.length} custom keywords`);
+        }
+      } catch (error) {
+        console.error('[KeywordComboTable] Error loading custom keywords:', error);
+      }
+    };
+
+    loadCustomKeywords();
+  }, [metadata?.appId, setCustomKeywords]);
+
+  // Phase 2: Table-level caching with 24h expiry
+  const [cachedRankings, setCachedRankings] = useState<Map<string, ComboRankingData>>(new Map());
+  const [lastFetchTimestamp, setLastFetchTimestamp] = useState<number | null>(null);
+  const [isFetchingRankings, setIsFetchingRankings] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Check if cache is still valid (< 24 hours old)
+  const isCacheValid = useMemo(() => {
+    if (!lastFetchTimestamp) return false;
+
+    const now = Date.now();
+    const cacheAge = now - lastFetchTimestamp;
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+    return cacheAge < CACHE_TTL;
+  }, [lastFetchTimestamp]);
+
+  // Get all unique combos (for fetching, independent of sort/filter)
+  // MUST include both auto-generated combos AND custom keywords
+  const allUniqueComboTexts = useMemo(() => {
+    const allCombos = useKeywordComboStore.getState().combos;
+    const allCustom = useKeywordComboStore.getState().customKeywords;
+    const merged = [...allCombos, ...allCustom];
+    return merged.map(c => c.text);
+  }, [customKeywords]); // Re-compute when custom keywords change
+
+  // Fetch rankings with cache validity check
+  const fetchRankingsIfNeeded = useCallback(async (force = false) => {
+    // Skip if cache is valid and not forcing refresh
+    if (isCacheValid && !force && cachedRankings.size > 0) {
+      console.log('[KeywordComboTable] ✅ Using cached rankings (valid for 24h)');
+      return;
+    }
+
+    if (!metadata?.appId || allUniqueComboTexts.length === 0) {
+      console.warn('[KeywordComboTable] ⚠️ Cannot fetch: missing appId or combos');
+      return;
+    }
+
+    try {
+      setIsFetchingRankings(true);
+      setFetchError(null);
+
+      console.log(`[KeywordComboTable] 📡 Fetching rankings for ${allUniqueComboTexts.length} combos...`);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+
+      // Get organization_id
+      const { data: appData } = await supabase
+        .from('monitored_apps')
+        .select('organization_id')
+        .eq('app_id', metadata.appId)
+        .eq('platform', 'ios')
+        .single();
+
+      if (!appData) {
+        // Fallback to user's org for ephemeral mode
+        const { data: userData } = await supabase
+          .from('user_roles')
+          .select('organization_id')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (!userData) {
+          throw new Error('No organization found');
+        }
+      }
+
+      const organizationId = appData?.organization_id;
+
+      // Fetch from edge function (returns from combo_rankings_cache)
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-combo-rankings`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            appId: metadata.appId,
+            combos: allUniqueComboTexts,
+            country: metadata.country || 'us',
+            platform: 'ios',
+            organizationId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.results) {
+        const newRankings = new Map<string, ComboRankingData>();
+
+        for (const rankingResult of result.results) {
+          console.log(`[KeywordComboTable] 📥 API returned combo: "${rankingResult.combo}", totalResults: ${rankingResult.totalResults}`);
+          newRankings.set(rankingResult.combo, {
+            position: rankingResult.position,
+            isRanking: rankingResult.isRanking,
+            snapshotDate: rankingResult.checkedAt,
+            trend: rankingResult.trend,
+            positionChange: rankingResult.positionChange,
+            visibilityScore: null,
+            totalResults: rankingResult.totalResults ?? null,
+          });
+        }
+
+        setCachedRankings(newRankings);
+        setLastFetchTimestamp(Date.now());
+
+        console.log(`[KeywordComboTable] ✅ Cached ${newRankings.size} rankings (valid for 24h)`);
+        console.log(`[KeywordComboTable] 🔑 Cache keys:`, Array.from(newRankings.keys()).slice(0, 10));
+      } else {
+        throw new Error(result.error?.message || 'Failed to fetch rankings');
+      }
+    } catch (error: any) {
+      console.error('[KeywordComboTable] ❌ Failed to fetch rankings:', error);
+      setFetchError(error.message);
+    } finally {
+      setIsFetchingRankings(false);
+    }
+  }, [metadata?.appId, metadata?.country, allUniqueComboTexts, isCacheValid, cachedRankings.size]);
+
+  // Auto-fetch on mount or when app/country changes
+  useEffect(() => {
+    fetchRankingsIfNeeded();
+  }, [fetchRankingsIfNeeded]);
+
+  // Debug: Log rankings when they change
+  useEffect(() => {
+    console.log(`[KeywordComboTable] Cached rankings: ${cachedRankings.size} entries`);
+    if (cachedRankings.size > 0) {
+      const firstEntry = Array.from(cachedRankings.entries())[0];
+      console.log(`[KeywordComboTable] First ranking:`, firstEntry);
+    }
+  }, [cachedRankings]);
+
+  // Fetch popularity scores for all visible combos
+  const { scores: popularityScores, isLoading: popularityLoading } = useKeywordPopularity(
+    allUniqueComboTexts,
+    metadata?.country || 'us'
+  );
+
+  // DEBUG: Log popularity data
+  useEffect(() => {
+    console.log('[KeywordComboTable] 🎯 Popularity data:', {
+      scoresSize: popularityScores.size,
+      isLoading: popularityLoading,
+      country: metadata?.country || 'us',
+      comboCount: allUniqueComboTexts.length,
+      firstScore: popularityScores.size > 0 ? Array.from(popularityScores.entries())[0] : null,
+    });
+  }, [popularityScores, popularityLoading, metadata?.country, allUniqueComboTexts.length]);
+
+  // Apply competition or appRanking sorting if needed (secondary sort since ranking data is external)
+  const finalSortedCombos = useMemo(() => {
+    if (sortColumn === 'competition') {
+      // Sort by competition (totalResults)
+      return [...sortedCombos].sort((a, b) => {
+        const aResults = cachedRankings.get(a.text)?.totalResults ?? Infinity;
+        const bResults = cachedRankings.get(b.text)?.totalResults ?? Infinity;
+
+        // Ascending: low competition first (easier to rank)
+        // Descending: high competition first
+        if (sortDirection === 'asc') {
+          return aResults - bResults;
+        } else {
+          return bResults - aResults;
+        }
+      });
+    } else if (sortColumn === 'appRanking') {
+      // Sort by app ranking position
+      return [...sortedCombos].sort((a, b) => {
+        const aPosition = cachedRankings.get(a.text)?.position ?? Infinity;
+        const bPosition = cachedRankings.get(b.text)?.position ?? Infinity;
+
+        // Ascending: best ranking first (1, 2, 3..., null)
+        // Descending: worst ranking first (null, ...150, 3, 2, 1)
+        if (sortDirection === 'asc') {
+          return aPosition - bPosition;
+        } else {
+          return bPosition - aPosition;
+        }
+      });
+    } else if (sortColumn === 'popularity') {
+      // Sort by popularity score
+      return [...sortedCombos].sort((a, b) => {
+        const aScore = popularityScores.get(a.text.toLowerCase())?.popularity_score ?? 0;
+        const bScore = popularityScores.get(b.text.toLowerCase())?.popularity_score ?? 0;
+
+        // Ascending: low popularity first
+        // Descending: high popularity first (most common use case)
+        if (sortDirection === 'asc') {
+          return aScore - bScore;
+        } else {
+          return bScore - aScore;
+        }
+      });
+    } else {
+      return sortedCombos;
+    }
+  }, [sortedCombos, sortColumn, sortDirection, cachedRankings, popularityScores]);
+
+  const allSelected = finalSortedCombos.length > 0 && selectedIndices.size === finalSortedCombos.length;
   const someSelected = selectedIndices.size > 0 && !allSelected;
 
   // Pagination logic
-  const totalCombos = sortedCombos.length;
+  const totalCombos = finalSortedCombos.length;
   const totalPages = Math.ceil(totalCombos / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCombos);
-  const paginatedCombos = sortedCombos.slice(startIndex, endIndex);
+  const paginatedCombos = finalSortedCombos.slice(startIndex, endIndex);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -153,7 +431,7 @@ export const KeywordComboTable: React.FC = () => {
   const selectedCombos = sortedCombos.filter((_, idx) => selectedIndices.has(idx));
 
   const handleCopySelected = () => {
-    const text = selectedCombos.map(c => c.text).join('\n');
+    const text = selectedCombos.map(c => c.text).join(', ');
     navigator.clipboard.writeText(text);
   };
 
@@ -189,6 +467,13 @@ export const KeywordComboTable: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Custom Keyword Input */}
+      {metadata?.appId && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+          <CustomKeywordInput appId={metadata.appId} platform="ios" />
+        </div>
+      )}
+
       {/* Bulk Actions Banner */}
       {selectedIndices.size > 0 && (
         <div className="flex items-center justify-between bg-violet-500/10 border border-violet-500/30 rounded-lg px-4 py-3">
@@ -216,6 +501,28 @@ export const KeywordComboTable: React.FC = () => {
               <Copy className="h-3 w-3 mr-2" />
               Copy Selected
             </Button>
+            {metadata?.appId && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fetchRankingsIfNeeded(true)}
+                disabled={isFetchingRankings}
+                className="h-8 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                title={isCacheValid ? 'Force refresh rankings' : 'Cache expired - refresh needed'}
+              >
+                {isFetchingRankings ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-2" />
+                    Refresh Rankings {!isCacheValid && cachedRankings.size > 0 && '⚠️'}
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -425,6 +732,16 @@ export const KeywordComboTable: React.FC = () => {
                     Length
                   </label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="col-competition"
+                    checked={visibleColumns.competition}
+                    onCheckedChange={() => toggleColumn('competition')}
+                  />
+                  <label htmlFor="col-competition" className="text-sm text-zinc-400 cursor-pointer">
+                    Competition
+                  </label>
+                </div>
               </div>
             </div>
           </PopoverContent>
@@ -486,6 +803,17 @@ export const KeywordComboTable: React.FC = () => {
                   Length
                 </SortableHeader>
               )}
+              {visibleColumns.competition && (
+                <SortableHeader column="competition" onClick={() => handleSort('competition')} sortIcon={getSortIcon('competition')}>
+                  Competition
+                </SortableHeader>
+              )}
+              <SortableHeader column="popularity" onClick={() => handleSort('popularity')} sortIcon={getSortIcon('popularity')}>
+                Popularity
+              </SortableHeader>
+              <SortableHeader column="appRanking" onClick={() => handleSort('appRanking')} sortIcon={getSortIcon('appRanking')}>
+                App Ranking
+              </SortableHeader>
               <TableHead className="font-mono text-xs uppercase tracking-wider text-zinc-400">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -526,6 +854,33 @@ export const KeywordComboTable: React.FC = () => {
             ) : (
               paginatedCombos.map((combo, paginatedIdx) => {
                 const actualIdx = startIndex + paginatedIdx;
+                const rankingData = cachedRankings.get(combo.text);
+
+                // Debug: Log custom keywords specifically
+                if (combo.source === 'custom') {
+                  console.log('[KeywordComboTable] 🔍 Custom keyword lookup:', {
+                    comboText: combo.text,
+                    comboSource: combo.source,
+                    rankingData: rankingData,
+                    hasData: rankingData !== undefined,
+                    totalResults: rankingData?.totalResults,
+                    position: rankingData?.position,
+                    cacheHasKey: cachedRankings.has(combo.text),
+                    cacheKeys: Array.from(cachedRankings.keys()).filter(k => k.toLowerCase().includes(combo.text.toLowerCase()))
+                  });
+                }
+
+                // Debug: Log first combo's lookup
+                if (paginatedIdx === 0 && cachedRankings.size > 0) {
+                  console.log('[KeywordComboTable] First combo lookup:', {
+                    comboText: combo.text,
+                    rankingData: rankingData,
+                    hasData: rankingData !== undefined,
+                    totalResults: rankingData?.totalResults,
+                    mapKeys: Array.from(cachedRankings.keys()).slice(0, 3)
+                  });
+                }
+
                 return (
                   <KeywordComboRow
                     key={`${combo.text}-${actualIdx}`}
@@ -534,6 +889,11 @@ export const KeywordComboTable: React.FC = () => {
                     isSelected={selectedIndices.has(actualIdx)}
                     visibleColumns={visibleColumns}
                     density={density}
+                    metadata={metadata}
+                    rankingData={rankingData}
+                    rankingsLoading={isFetchingRankings && !cachedRankings.has(combo.text)}
+                    popularityData={popularityScores.get(combo.text.toLowerCase())}
+                    popularityLoading={popularityLoading}
                   />
                 );
               })

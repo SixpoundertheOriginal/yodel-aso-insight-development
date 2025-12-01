@@ -159,7 +159,7 @@ export interface AnalysisProgress {
 /**
  * Competitive Intelligence Tab State
  */
-export type CompetitiveIntelligenceTab = 'comparison' | 'gaps';
+export type CompetitiveIntelligenceTab = 'comparison' | 'gaps' | 'keyword-rankings';
 
 /**
  * Comparison Metric Type

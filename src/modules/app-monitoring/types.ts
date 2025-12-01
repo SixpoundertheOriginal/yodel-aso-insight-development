@@ -43,9 +43,12 @@ export interface MonitoredAppWithAudit {
   latest_audit_score: number | null; // 0-100
   latest_audit_at: string | null;
   metadata_last_refreshed_at: string | null;
-  
+
   // Validation state for consistency checking
   validated_state?: 'pending' | 'validated' | 'failed' | 'valid' | 'invalid' | 'stale' | null;
+
+  // App Store Connect keywords field (100 chars, comma-separated)
+  keywords?: string | null;
 
   // Google Play specific
   play_store_package_id: string | null;
@@ -71,6 +74,7 @@ export interface AppMetadataCache {
   // Core metadata fields
   title: string | null;
   subtitle: string | null;
+  keywords: string | null; // 100-char App Store Connect keywords field (comma-separated)
   description: string | null;
   developer_name: string | null;
   app_icon_url: string | null;
@@ -101,6 +105,7 @@ export interface CreateMetadataCacheInput {
   locale: string;
   title: string | null;
   subtitle: string | null;
+  keywords?: string | null; // 100-char App Store Connect keywords field (comma-separated)
   description: string | null;
   developer_name: string | null;
   app_icon_url: string | null;
@@ -138,6 +143,7 @@ export interface AuditSnapshot {
   // Metadata at time of audit
   title: string | null;
   subtitle: string | null;
+  keywords?: string | null; // 100-char App Store Connect keywords field
 
   // Phase 2 Analysis (JSONB fields)
   combinations: any[]; // ClassifiedCombo[] serialized
@@ -178,6 +184,7 @@ export interface CreateAuditSnapshotInput {
   locale: string;
   title: string | null;
   subtitle: string | null;
+  keywords?: string | null; // 100-char App Store Connect keywords field
   combinations: any[]; // ClassifiedCombo[] from analyzeEnhancedCombinations
   metrics: {
     longTailStrength: number;
@@ -279,6 +286,7 @@ export interface BibleAuditSnapshot {
   // Metadata at time of audit
   title: string | null;
   subtitle: string | null;
+  keywords?: string | null; // 100-char App Store Connect keywords field
   description: string | null;
 
   // Full Bible-driven audit result (UnifiedMetadataAuditResult)
@@ -321,6 +329,7 @@ export interface CreateBibleAuditSnapshotInput {
   locale: string;
   title: string | null;
   subtitle: string | null;
+  keywords?: string | null; // 100-char App Store Connect keywords field
   description: string | null;
   audit_result: Record<string, any>; // Full UnifiedMetadataAuditResult
   overall_score: number;

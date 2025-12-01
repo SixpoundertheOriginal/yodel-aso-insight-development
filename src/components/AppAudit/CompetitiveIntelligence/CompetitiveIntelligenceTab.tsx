@@ -27,6 +27,7 @@ import { ComparisonTable } from './ComparisonTable';
 import { GapAnalysisPanels } from './GapAnalysisPanels';
 import { CompetitorList } from './CompetitorList';
 import { HistoryDialog } from './HistoryDialog';
+import { KeywordRankingTab } from './KeywordRankingTab';
 import { analyzeCompetitors } from '@/services/competitive-analysis-v2.service';
 import { useMetadataAuditV2 } from '@/hooks/useMetadataAuditV2';
 import { supabase } from '@/integrations/supabase/client';
@@ -699,11 +700,12 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
         />
       )}
 
-      {/* Tabs: Comparison vs Gaps */}
+      {/* Tabs: Comparison vs Gaps vs Keyword Rankings */}
       <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as TabType)}>
-        <TabsList className="grid grid-cols-2 bg-zinc-900 border-zinc-800">
+        <TabsList className="grid grid-cols-3 bg-zinc-900 border-zinc-800">
           <TabsTrigger value="comparison">Comparison</TabsTrigger>
           <TabsTrigger value="gaps">Gaps & Opportunities</TabsTrigger>
+          <TabsTrigger value="keyword-rankings">Keyword Rankings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="comparison" className="space-y-4 mt-6">
@@ -712,6 +714,10 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
 
         <TabsContent value="gaps" className="space-y-4 mt-6">
           {analysisData && <GapAnalysisPanels gapAnalysis={analysisData.gapAnalysis} />}
+        </TabsContent>
+
+        <TabsContent value="keyword-rankings" className="space-y-4 mt-6">
+          <KeywordRankingTab organizationId={organizationId} />
         </TabsContent>
       </Tabs>
 

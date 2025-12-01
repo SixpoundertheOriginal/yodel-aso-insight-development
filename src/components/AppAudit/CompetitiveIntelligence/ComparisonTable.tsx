@@ -24,6 +24,114 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
   const [sortColumn, setSortColumn] = useState<SortColumn>('overallScore');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Helper: Calculate character usage from metadata
+  const getCharacterUsage = (audit: any) => {
+    const titleChars = audit.elements?.title?.metadata?.characterUsage || 0;
+    const subtitleChars = audit.elements?.subtitle?.metadata?.characterUsage || 0;
+    return {
+      title: titleChars,
+      subtitle: subtitleChars,
+      maxTitle: 30,
+      maxSubtitle: 30,
+    };
+  };
+
+  // Helper: Detect duplicate keywords between title and subtitle
+  const getDuplicateKeywords = (audit: any) => {
+    const titleKeywords = audit.elements?.title?.metadata?.keywords || [];
+    const subtitleKeywords = audit.elements?.subtitle?.metadata?.keywords || [];
+
+    const titleSet = new Set(titleKeywords.map((k: string) => k.toLowerCase()));
+    const duplicates = subtitleKeywords.filter((k: string) => titleSet.has(k.toLowerCase()));
+
+    return {
+      count: duplicates.length,
+      keywords: duplicates,
+    };
+  };
+
+  // Helper: Calculate keyword density (chars per keyword)
+  const getKeywordDensity = (audit: any) => {
+    const titleChars = audit.elements?.title?.metadata?.characterUsage || 0;
+    const subtitleChars = audit.elements?.subtitle?.metadata?.characterUsage || 0;
+    const totalKeywords = audit.keywordCoverage?.totalUniqueKeywords || 0;
+
+    if (totalKeywords === 0) return 0;
+    return (titleChars + subtitleChars) / totalKeywords;
+  };
+
+  // Helper: Analyze combo diversity (2-word and 3-word breakdown)
+  const getComboDiversity = (audit: any) => {
+    const allCombos = audit.comboCoverage?.allCombinedCombos || [];
+
+    if (allCombos.length === 0) {
+      return {
+        twoWord: 0,
+        threeWord: 0,
+        twoWordPct: 0,
+        threeWordPct: 0,
+        total: 0,
+      };
+    }
+
+    let twoWord = 0;
+    let threeWord = 0;
+
+    allCombos.forEach((combo: string) => {
+      const wordCount = combo.trim().split(/\s+/).length;
+      if (wordCount === 2) twoWord++;
+      else if (wordCount === 3) threeWord++;
+    });
+
+    const total = allCombos.length;
+
+    return {
+      twoWord,
+      threeWord,
+      twoWordPct: Math.round((twoWord / total) * 100),
+      threeWordPct: Math.round((threeWord / total) * 100),
+      total,
+    };
+  };
+
+  // Helper: Analyze keyword placement (title vs subtitle distribution)
+  const getKeywordPlacement = (audit: any) => {
+    const titleKeywords = audit.elements?.title?.metadata?.keywords || [];
+    const subtitleKeywords = audit.elements?.subtitle?.metadata?.keywords || [];
+
+    const titleCount = titleKeywords.length;
+    const subtitleCount = subtitleKeywords.length;
+    const total = titleCount + subtitleCount;
+
+    if (total === 0) {
+      return {
+        titleCount: 0,
+        subtitleCount: 0,
+        titlePct: 0,
+        subtitlePct: 0,
+        total: 0,
+      };
+    }
+
+    return {
+      titleCount,
+      subtitleCount,
+      titlePct: Math.round((titleCount / total) * 100),
+      subtitlePct: Math.round((subtitleCount / total) * 100),
+      total,
+    };
+  };
+
+  // Helper: Calculate combo casting score (algorithmic visibility potential)
+  const getComboCastingScore = (keywordCount: number, comboCount: number) => {
+    if (keywordCount === 0 || comboCount === 0) return 0;
+
+    // Formula: sqrt(keywords) × log(combos)
+    // Balances breadth (keywords) and depth (combos)
+    const score = Math.sqrt(keywordCount) * Math.log10(comboCount);
+    return Math.round(score * 10) / 10; // Round to 1 decimal
+  };
+
   // Prepare table data
   const tableData = useMemo(() => {
     const rows = [
@@ -37,6 +145,15 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
         comboCount: data.targetApp.audit.comboCoverage?.totalCombos || 0,
         overallScore: data.targetApp.audit.overallScore || 0,
         keywordFrequency: data.targetApp.audit.keywordFrequency || [],
+        charUsage: getCharacterUsage(data.targetApp.audit),
+        duplicates: getDuplicateKeywords(data.targetApp.audit),
+        density: 0, // Will calculate after
+        diversity: getComboDiversity(data.targetApp.audit),
+        placement: getKeywordPlacement(data.targetApp.audit),
+        castingScore: getComboCastingScore(
+          data.targetApp.audit.keywordCoverage?.totalUniqueKeywords || 0,
+          data.targetApp.audit.comboCoverage?.totalCombos || 0
+        ),
       },
       // Competitor rows
       ...data.competitors.map((competitor) => ({
@@ -48,8 +165,26 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
         comboCount: competitor.audit.comboCoverage?.totalCombos || 0,
         overallScore: competitor.audit.overallScore || 0,
         keywordFrequency: competitor.audit.keywordFrequency || [],
+        charUsage: getCharacterUsage(competitor.audit),
+        duplicates: getDuplicateKeywords(competitor.audit),
+        density: 0, // Will calculate after
+        diversity: getComboDiversity(competitor.audit),
+        placement: getKeywordPlacement(competitor.audit),
+        castingScore: getComboCastingScore(
+          competitor.audit.keywordCoverage?.totalUniqueKeywords || 0,
+          competitor.audit.comboCoverage?.totalCombos || 0
+        ),
       })),
     ];
+
+    // Calculate density for each row (pass full audit for correct calculation)
+    const targetAudit = data.targetApp.audit;
+    const competitorAudits = data.competitors.map((c) => c.audit);
+
+    rows[0].density = getKeywordDensity(targetAudit); // Target app
+    rows.slice(1).forEach((row, index) => {
+      row.density = getKeywordDensity(competitorAudits[index]);
+    });
 
     // Sort rows
     const sorted = [...rows].sort((a, b) => {
@@ -178,8 +313,32 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
           <Table>
             <TableHeader>
               <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="w-[250px]">
+                <TableHead className="w-[200px]">
                   <SortButton column="name" label="App Name" />
+                </TableHead>
+                <TableHead className="text-center w-[100px]">
+                  <span className="text-xs text-zinc-400">Title Chars</span>
+                </TableHead>
+                <TableHead className="text-center w-[100px]">
+                  <span className="text-xs text-zinc-400">Subtitle Chars</span>
+                </TableHead>
+                <TableHead className="text-center w-[80px]">
+                  <span className="text-xs text-zinc-400">Dupes</span>
+                </TableHead>
+                <TableHead className="text-center w-[80px]">
+                  <span className="text-xs text-zinc-400">Density</span>
+                </TableHead>
+                <TableHead className="text-center w-[140px]">
+                  <span className="text-xs text-zinc-400">Combo Diversity</span>
+                </TableHead>
+                <TableHead className="text-center w-[140px]">
+                  <span className="text-xs text-zinc-400">Keyword Placement</span>
+                </TableHead>
+                <TableHead className="text-center w-[120px]">
+                  <span className="text-xs text-zinc-400">Top Keyword</span>
+                </TableHead>
+                <TableHead className="text-center w-[80px]">
+                  <span className="text-xs text-zinc-400">Casting</span>
                 </TableHead>
                 <TableHead className="text-center">
                   <SortButton column="keywordCount" label="Keywords" />
@@ -221,6 +380,170 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
                           {row.subtitle}
                         </span>
                       )}
+                    </div>
+                  </TableCell>
+
+                  {/* Title Character Usage */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-mono text-zinc-300">
+                        {row.charUsage.title}/{row.charUsage.maxTitle}
+                      </span>
+                      <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${
+                            row.charUsage.title >= 27 ? 'bg-emerald-500' :
+                            row.charUsage.title >= 21 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${(row.charUsage.title / row.charUsage.maxTitle) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* Subtitle Character Usage */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-mono text-zinc-300">
+                        {row.charUsage.subtitle}/{row.charUsage.maxSubtitle}
+                      </span>
+                      <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${
+                            row.charUsage.subtitle >= 27 ? 'bg-emerald-500' :
+                            row.charUsage.subtitle >= 21 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${(row.charUsage.subtitle / row.charUsage.maxSubtitle) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* Duplicates */}
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <span className={`text-sm font-mono ${
+                        row.duplicates.count === 0 ? 'text-emerald-400' : 'text-orange-400'
+                      }`}>
+                        {row.duplicates.count}
+                      </span>
+                      {row.duplicates.count > 0 && (
+                        <Badge variant="outline" className="border-orange-500/30 text-orange-400 bg-orange-900/10 text-xs px-1">
+                          ⚠️
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Keyword Density */}
+                  <TableCell className="text-center">
+                    <span className={`text-xs font-mono ${
+                      row.density <= 5 ? 'text-emerald-400' :
+                      row.density <= 6.5 ? 'text-zinc-300' :
+                      'text-orange-400'
+                    }`}>
+                      {row.density.toFixed(1)}
+                    </span>
+                  </TableCell>
+
+                  {/* Combo Diversity */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col gap-1.5">
+                      {/* 2-word combos */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-zinc-500 w-6">2w:</span>
+                        <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{ width: `${row.diversity.twoWordPct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-zinc-400 w-8 text-right">
+                          {row.diversity.twoWordPct}%
+                        </span>
+                      </div>
+                      {/* 3-word combos */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-zinc-500 w-6">3w:</span>
+                        <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-purple-500"
+                            style={{ width: `${row.diversity.threeWordPct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-zinc-400 w-8 text-right">
+                          {row.diversity.threeWordPct}%
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* Keyword Placement */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col gap-1.5">
+                      {/* Title keywords */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-zinc-500 w-6">T:</span>
+                        <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-emerald-500"
+                            style={{ width: `${row.placement.titlePct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-zinc-400 w-8 text-right">
+                          {row.placement.titlePct}%
+                        </span>
+                      </div>
+                      {/* Subtitle keywords */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-zinc-500 w-6">S:</span>
+                        <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-cyan-500"
+                            style={{ width: `${row.placement.subtitlePct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-zinc-400 w-8 text-right">
+                          {row.placement.subtitlePct}%
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  {/* Top Strategic Keyword */}
+                  <TableCell className="text-center">
+                    {row.keywordFrequency.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium text-zinc-200">
+                          {row.keywordFrequency[0].keyword}
+                        </span>
+                        <span className="text-xs text-zinc-500">
+                          {row.keywordFrequency[0].totalCombos}× combos
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-zinc-600">-</span>
+                    )}
+                  </TableCell>
+
+                  {/* Combo Casting Score */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`text-lg font-bold font-mono ${
+                        row.castingScore >= 8 ? 'text-emerald-400' :
+                        row.castingScore >= 6 ? 'text-blue-400' :
+                        row.castingScore >= 4 ? 'text-zinc-300' :
+                        'text-orange-400'
+                      }`}>
+                        {row.castingScore.toFixed(1)}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {row.castingScore >= 8 ? '⭐⭐⭐' :
+                         row.castingScore >= 6 ? '⭐⭐' :
+                         row.castingScore >= 4 ? '⭐' : ''}
+                      </span>
                     </div>
                   </TableCell>
 
@@ -287,17 +610,53 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ data }) => {
                 <TableCell className="font-medium text-zinc-400">
                   Competitor Average
                 </TableCell>
+                {/* Title Chars - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Subtitle Chars - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Duplicates - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Density - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Combo Diversity - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Keyword Placement - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Top Keyword - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Casting Score - Empty for averages */}
+                <TableCell className="text-center">
+                  <span className="text-xs text-zinc-600">-</span>
+                </TableCell>
+                {/* Keyword Count Average */}
                 <TableCell className="text-center">
                   <span className="text-sm font-mono text-zinc-400">{competitorAvg.keywordCount}</span>
                 </TableCell>
+                {/* Combo Count Average */}
                 <TableCell className="text-center">
                   <span className="text-sm font-mono text-zinc-400">{competitorAvg.comboCount}</span>
                 </TableCell>
+                {/* Overall Score Average */}
                 <TableCell className="text-center">
                   <Badge variant="outline" className="font-mono text-xs border-zinc-700 text-zinc-400">
                     {competitorAvg.overallScore}
                   </Badge>
                 </TableCell>
+                {/* Top Keywords - Context */}
                 <TableCell>
                   <span className="text-xs text-zinc-600">Based on {data.competitors.length} competitors</span>
                 </TableCell>

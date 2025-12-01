@@ -9,17 +9,25 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 
-export type SortColumn = 'text' | 'source' | 'type' | 'relevance' | 'length';
+export type SortColumn = 'text' | 'source' | 'type' | 'relevance' | 'length' | 'competition' | 'appRanking' | 'popularity';
 export type SortDirection = 'asc' | 'desc';
 export type IntentClass = 'learning' | 'outcome' | 'brand' | 'noise';
 export type SourceFilter = 'all' | 'title' | 'subtitle' | 'cross-element';
 export type TypeFilter = 'all' | 'brand' | 'generic' | 'low-value';
+export type LengthFilter = 'all' | '2' | '3';
 
 interface KeywordComboState {
   // Combo data (derived from comboCoverage, with client-side edits)
   combos: ClassifiedCombo[];
   setCombos: (combos: ClassifiedCombo[]) => void;
   addCombo: (combo: ClassifiedCombo) => void;
+
+  // Custom keywords (user-added)
+  customKeywords: ClassifiedCombo[];
+  setCustomKeywords: (keywords: ClassifiedCombo[]) => void;
+  addCustomKeyword: (keyword: string) => boolean;
+  addCustomKeywords: (keywords: string[]) => { added: number; duplicates: string[] };
+  removeCustomKeyword: (text: string) => void;
 
   // Editing state
   editingComboIndex: number | null;
@@ -44,6 +52,8 @@ interface KeywordComboState {
   setTypeFilter: (type: TypeFilter) => void;
   intentFilter: 'all' | IntentClass;
   setIntentFilter: (intent: 'all' | IntentClass) => void;
+  lengthFilter: LengthFilter;
+  setLengthFilter: (length: LengthFilter) => void;
   hideNoise: boolean;
   setHideNoise: (hide: boolean) => void;
 
@@ -63,6 +73,7 @@ interface KeywordComboState {
 
 const INITIAL_STATE = {
   combos: [],
+  customKeywords: [],
   editingComboIndex: null,
   sortColumn: 'relevance' as SortColumn,
   sortDirection: 'desc' as SortDirection,
@@ -70,6 +81,7 @@ const INITIAL_STATE = {
   sourceFilter: 'all' as SourceFilter,
   typeFilter: 'all' as TypeFilter,
   intentFilter: 'all' as 'all' | IntentClass,
+  lengthFilter: 'all' as LengthFilter,
   hideNoise: true,
   selectedIndices: new Set<number>(),
 };
@@ -124,6 +136,8 @@ export const useKeywordComboStore = create<KeywordComboState>()(
 
       setIntentFilter: (intent) => set({ intentFilter: intent }),
 
+      setLengthFilter: (length) => set({ lengthFilter: length }),
+
       setHideNoise: (hide) => set({ hideNoise: hide }),
 
       toggleSelection: (index) =>
@@ -138,16 +152,104 @@ export const useKeywordComboStore = create<KeywordComboState>()(
         }),
 
       selectAll: () =>
-        set((state) => ({
-          selectedIndices: new Set(state.combos.map((_, i) => i)),
-        })),
+        set((state) => {
+          // Select all indices from merged combos + customKeywords
+          const allCombos = [...state.combos, ...state.customKeywords];
+          return {
+            selectedIndices: new Set(allCombos.map((_, i) => i)),
+          };
+        }),
 
       deselectAll: () => set({ selectedIndices: new Set() }),
+
+      // Custom keywords actions
+      setCustomKeywords: (keywords) => set({ customKeywords: keywords }),
+
+      addCustomKeyword: (keyword) => {
+        const state = get();
+        const normalized = keyword.trim().toLowerCase();
+
+        if (!normalized) return false;
+        if (normalized.length > 100) return false;
+
+        // Check for duplicates in both combos and customKeywords
+        const existsInCombos = state.combos.some(
+          (c) => c.text.toLowerCase() === normalized
+        );
+        const existsInCustom = state.customKeywords.some(
+          (c) => c.text.toLowerCase() === normalized
+        );
+
+        if (existsInCombos || existsInCustom) return false;
+
+        // Create new custom keyword combo
+        const newCombo: ClassifiedCombo = {
+          text: keyword.trim(),
+          source: 'custom',
+          type: 'generic', // Default, will be classified
+          relevanceScore: 0,
+          brandClassification: 'generic',
+        };
+
+        set((state) => ({
+          customKeywords: [...state.customKeywords, newCombo],
+        }));
+
+        return true;
+      },
+
+      addCustomKeywords: (keywords) => {
+        const state = get();
+        let added = 0;
+        const duplicates: string[] = [];
+
+        for (const keyword of keywords) {
+          const normalized = keyword.trim().toLowerCase();
+
+          if (!normalized || normalized.length > 100) continue;
+
+          // Check for duplicates
+          const existsInCombos = state.combos.some(
+            (c) => c.text.toLowerCase() === normalized
+          );
+          const existsInCustom = state.customKeywords.some(
+            (c) => c.text.toLowerCase() === normalized
+          );
+
+          if (existsInCombos || existsInCustom) {
+            duplicates.push(keyword.trim());
+            continue;
+          }
+
+          // Create new custom keyword combo
+          const newCombo: ClassifiedCombo = {
+            text: keyword.trim(),
+            source: 'custom',
+            type: 'generic',
+            relevanceScore: 0,
+            brandClassification: 'generic',
+          };
+
+          set((state) => ({
+            customKeywords: [...state.customKeywords, newCombo],
+          }));
+
+          added++;
+        }
+
+        return { added, duplicates };
+      },
+
+      removeCustomKeyword: (text) =>
+        set((state) => ({
+          customKeywords: state.customKeywords.filter((k) => k.text !== text),
+        })),
 
       // Computed selectors
       getFilteredCombos: () => {
         const state = get();
-        let filtered = [...state.combos];
+        // Merge auto-generated combos with custom keywords
+        let filtered = [...state.combos, ...state.customKeywords];
 
         // Filter by search query
         if (state.searchQuery) {
@@ -191,6 +293,13 @@ export const useKeywordComboStore = create<KeywordComboState>()(
             const intentClass = (c as any).intentClass;
             return intentClass === state.intentFilter;
           });
+        }
+
+        // Filter by length
+        if (state.lengthFilter !== 'all') {
+          const targetLength = parseInt(state.lengthFilter);
+          // Exact match (2 or 3 words)
+          filtered = filtered.filter((c) => c.text.split(' ').length === targetLength);
         }
 
         // Hide noise

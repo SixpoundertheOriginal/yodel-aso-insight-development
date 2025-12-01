@@ -500,6 +500,7 @@ export const AppAuditHub: React.FC<AppAuditHubProps> = ({
   const displayMetadata: ScrapedMetadata = effectiveMode === 'monitored' && monitoredAuditData
     ? (() => {
         const { monitoredApp, metadataCache } = monitoredAuditData;
+        console.log('[AppAuditHub] Monitored App Data:', { app_id: monitoredApp.app_id, app_name: monitoredApp.app_name });
         return {
           name: monitoredApp.app_name,
           appId: monitoredApp.app_id,

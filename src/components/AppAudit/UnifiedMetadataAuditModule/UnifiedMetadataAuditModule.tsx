@@ -422,6 +422,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
             title: metadata.title || '',
             subtitle: metadata.subtitle || '',
             appId: metadata.appId, // For brand override storage
+            country: metadata.locale?.split('-')[1]?.toLowerCase() || 'us', // Extract country from locale (en-US → us)
           }}
         />
       </div>
