@@ -466,31 +466,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-violet-400/60" />
 
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
-                <Link2 className="h-4 w-4 text-violet-400" />
-                ENHANCED KEYWORD COMBO WORKBENCH
-              </CardTitle>
-              {/* Phase 2: Enhancement indicator */}
-              {isEnhancing && (
-                <Badge variant="outline" className="animate-pulse border-blue-400/40 text-blue-400 text-xs">
-                  🔄 Enhancing...
-                </Badge>
-              )}
-              {enhancementError && (
-                <Badge variant="outline" className="border-yellow-400/40 text-yellow-400 text-xs">
-                  ⚠️ Basic mode
-                </Badge>
-              )}
-            </div>
-            <p className="text-[11px] text-zinc-500 mt-1.5">
-              Powered by ASO Bible • All Possible Combinations • Strategic Recommendations
-            </p>
-          </div>
-        </div>
-
         {/* Keywords Field Input - Phase 2 */}
         <div className="mt-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
           <label htmlFor="keywords-field" className="block text-xs font-medium text-zinc-400 mb-2">
@@ -519,233 +494,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           </p>
         </div>
 
-        {/* Top 500 Warning - Phase 2 */}
-        {comboAnalysis.stats.limitReached && (
-          <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400 mt-0.5">⚠️</span>
-              <div>
-                <p className="text-xs font-medium text-amber-400 mb-1">Top 500 Limit Reached</p>
-                <p className="text-[11px] text-zinc-400">
-                  Generated {comboAnalysis.stats.totalGenerated} combinations, showing top 500 by priority score.
-                  Combinations are ranked by: Strength (30%), Popularity (25%), Opportunity (20%), Trend (15%), Intent (10%).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Summary Stats - Phase 1: Strength-Based Breakdown */}
-        <div className="mt-4 space-y-4">
-          {/* Overall Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Total Possible</p>
-              <p className="text-2xl font-bold text-violet-400">{comboAnalysis.stats.totalPossible}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Existing</p>
-              <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.existing}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Missing</p>
-              <p className="text-2xl font-bold text-amber-400">{comboAnalysis.stats.missing}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Coverage</p>
-              <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Filtered View</p>
-              <p className="text-2xl font-bold text-zinc-300">{filteredCombos.length}</p>
-            </div>
-          </div>
-
-          {/* Strength Breakdown - Phase 2: All 10 Tiers */}
-          <div className="border-t border-zinc-800 pt-4">
-            <p className="text-xs font-medium text-zinc-400 mb-3">Ranking Power Distribution (10-Tier System)</p>
-
-            {/* Tier 1: Strongest */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 1: Strongest (100 pts)</p>
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-red-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">🔥🔥🔥</span>
-                    <p className="text-xs text-zinc-400">Title Consecutive</p>
-                  </div>
-                  <p className="text-xl font-bold text-red-400">{comboAnalysis.stats.titleConsecutive}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tier 2: Very Strong */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 2: Very Strong (70-85 pts)</p>
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-orange-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">🔥🔥</span>
-                    <p className="text-xs text-zinc-400">Title Non-Consecutive</p>
-                  </div>
-                  <p className="text-xl font-bold text-orange-400">{comboAnalysis.stats.titleNonConsecutive}</p>
-                </div>
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-amber-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">🔥⚡</span>
-                    <p className="text-xs text-zinc-400">Title + Keywords Cross</p>
-                  </div>
-                  <p className="text-xl font-bold text-amber-400">{comboAnalysis.stats.titleKeywordsCross || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tier 3: Medium */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 3: Medium (70 pts)</p>
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-yellow-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">⚡</span>
-                    <p className="text-xs text-zinc-400">Cross-Element (Title + Subtitle)</p>
-                  </div>
-                  <p className="text-xl font-bold text-yellow-400">{comboAnalysis.stats.crossElement}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tier 4: Weak */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 4: Weak (50 pts)</p>
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-cyan-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤</span>
-                    <p className="text-xs text-zinc-400">Keywords Consecutive</p>
-                  </div>
-                  <p className="text-xl font-bold text-cyan-400">{comboAnalysis.stats.keywordsConsecutive || 0}</p>
-                </div>
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-blue-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤</span>
-                    <p className="text-xs text-zinc-400">Subtitle Consecutive</p>
-                  </div>
-                  <p className="text-xl font-bold text-blue-400">{comboAnalysis.stats.subtitleConsecutive}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tier 5: Very Weak */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 5: Very Weak (30-35 pts)</p>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-violet-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤⚡</span>
-                    <p className="text-xs text-zinc-400">Keywords + Subtitle</p>
-                  </div>
-                  <p className="text-xl font-bold text-violet-400">{comboAnalysis.stats.keywordsSubtitleCross || 0}</p>
-                </div>
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-indigo-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤💤</span>
-                    <p className="text-xs text-zinc-400">Keywords Non-Consec</p>
-                  </div>
-                  <p className="text-xl font-bold text-indigo-400">{comboAnalysis.stats.keywordsNonConsecutive || 0}</p>
-                </div>
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-purple-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤💤</span>
-                    <p className="text-xs text-zinc-400">Subtitle Non-Consec</p>
-                  </div>
-                  <p className="text-xl font-bold text-purple-400">{comboAnalysis.stats.subtitleNonConsecutive}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tier 6: Weakest */}
-            <div className="mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 6: Weakest (20 pts)</p>
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-pink-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">💤💤💤</span>
-                    <p className="text-xs text-zinc-400">Three-Way Cross</p>
-                  </div>
-                  <p className="text-xl font-bold text-pink-400">{comboAnalysis.stats.threeWayCross || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Opportunities */}
-            <div className="border-t border-zinc-800 pt-3 mt-3">
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-emerald-500/20">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">⬆️</span>
-                    <p className="text-xs text-zinc-400">Can Strengthen</p>
-                  </div>
-                  <p className="text-xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
-                  <p className="text-[10px] text-zinc-500">Strengthening Opportunities</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCopyAll}
-            className="text-xs border-zinc-700 text-zinc-300 hover:border-orange-500/40"
-          >
-            <Copy className="h-3 w-3 mr-1" />
-            Copy Filtered ({filteredCombos.length})
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExportCSV}
-            className="text-xs border-emerald-500/40 text-emerald-400 hover:border-emerald-500"
-          >
-            <Download className="h-3 w-3 mr-1" />
-            Export CSV
-          </Button>
-
-          {/* V2.1 Export Buttons */}
-          {v2_1Enabled && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExportXLSX}
-                className="text-xs border-blue-500/40 text-blue-400 hover:border-blue-500"
-              >
-                <FileSpreadsheet className="h-3 w-3 mr-1" />
-                Export XLSX
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExportJSON}
-                className="text-xs border-purple-500/40 text-purple-400 hover:border-purple-500"
-              >
-                <FileJson className="h-3 w-3 mr-1" />
-                Export JSON
-              </Button>
-            </>
-          )}
-
-          {comboAnalysis.recommendedToAdd.length > 0 && (
-            <Badge variant="outline" className="border-violet-400/30 text-violet-400 text-xs">
-              {comboAnalysis.recommendedToAdd.length} Recommendations
-            </Badge>
-          )}
-        </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -842,6 +590,22 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           activeLengthFilter={lengthFilter}
         />
 
+        {/* Top 500 Warning - Phase 2 */}
+        {comboAnalysis.stats.limitReached && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-xs font-medium text-amber-400 mb-1">Top 500 Limit Reached</p>
+                <p className="text-[11px] text-zinc-400">
+                  Generated {comboAnalysis.stats.totalGenerated} combinations, showing top 500 by priority score.
+                  Combinations are ranked by: Strength (30%), Popularity (25%), Opportunity (20%), Trend (15%), Intent (10%).
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Single Unified Table View */}
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -851,6 +615,246 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
             </h3>
           </div>
           <KeywordComboTable metadata={metadata} />
+        </div>
+
+        {/* ENHANCED KEYWORD COMBO WORKBENCH - Title & Stats Section */}
+        <div className="border-t border-zinc-800 pt-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
+                  <Link2 className="h-4 w-4 text-violet-400" />
+                  ENHANCED KEYWORD COMBO WORKBENCH
+                </CardTitle>
+                {/* Phase 2: Enhancement indicator */}
+                {isEnhancing && (
+                  <Badge variant="outline" className="animate-pulse border-blue-400/40 text-blue-400 text-xs">
+                    🔄 Enhancing...
+                  </Badge>
+                )}
+                {enhancementError && (
+                  <Badge variant="outline" className="border-yellow-400/40 text-yellow-400 text-xs">
+                    ⚠️ Basic mode
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500 mt-1.5">
+                Powered by ASO Bible • All Possible Combinations • Strategic Recommendations
+              </p>
+            </div>
+          </div>
+
+          {/* Summary Stats - Phase 1: Strength-Based Breakdown */}
+          <div className="space-y-4">
+            {/* Overall Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Total Possible</p>
+                <p className="text-2xl font-bold text-violet-400">{comboAnalysis.stats.totalPossible}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Existing</p>
+                <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.existing}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Missing</p>
+                <p className="text-2xl font-bold text-amber-400">{comboAnalysis.stats.missing}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Coverage</p>
+                <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Filtered View</p>
+                <p className="text-2xl font-bold text-zinc-300">{filteredCombos.length}</p>
+              </div>
+            </div>
+
+            {/* Strength Breakdown - Phase 2: All 10 Tiers */}
+            <div className="border-t border-zinc-800 pt-4">
+              <p className="text-xs font-medium text-zinc-400 mb-3">Ranking Power Distribution (10-Tier System)</p>
+
+              {/* Tier 1: Strongest */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 1: Strongest (100 pts)</p>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-red-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">🔥🔥🔥</span>
+                      <p className="text-xs text-zinc-400">Title Consecutive</p>
+                    </div>
+                    <p className="text-xl font-bold text-red-400">{comboAnalysis.stats.titleConsecutive}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tier 2: Very Strong */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 2: Very Strong (70-85 pts)</p>
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-orange-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">🔥🔥</span>
+                      <p className="text-xs text-zinc-400">Title Non-Consecutive</p>
+                    </div>
+                    <p className="text-xl font-bold text-orange-400">{comboAnalysis.stats.titleNonConsecutive}</p>
+                  </div>
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-amber-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">🔥⚡</span>
+                      <p className="text-xs text-zinc-400">Title + Keywords Cross</p>
+                    </div>
+                    <p className="text-xl font-bold text-amber-400">{comboAnalysis.stats.titleKeywordsCross || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tier 3: Medium */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 3: Medium (70 pts)</p>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-yellow-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">⚡</span>
+                      <p className="text-xs text-zinc-400">Cross-Element (Title + Subtitle)</p>
+                    </div>
+                    <p className="text-xl font-bold text-yellow-400">{comboAnalysis.stats.crossElement}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tier 4: Weak */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 4: Weak (50 pts)</p>
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-cyan-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤</span>
+                      <p className="text-xs text-zinc-400">Keywords Consecutive</p>
+                    </div>
+                    <p className="text-xl font-bold text-cyan-400">{comboAnalysis.stats.keywordsConsecutive || 0}</p>
+                  </div>
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-blue-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤</span>
+                      <p className="text-xs text-zinc-400">Subtitle Consecutive</p>
+                    </div>
+                    <p className="text-xl font-bold text-blue-400">{comboAnalysis.stats.subtitleConsecutive}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tier 5: Very Weak */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 5: Very Weak (30-35 pts)</p>
+                <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-violet-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤⚡</span>
+                      <p className="text-xs text-zinc-400">Keywords + Subtitle</p>
+                    </div>
+                    <p className="text-xl font-bold text-violet-400">{comboAnalysis.stats.keywordsSubtitleCross || 0}</p>
+                  </div>
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-indigo-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤💤</span>
+                      <p className="text-xs text-zinc-400">Keywords Non-Consec</p>
+                    </div>
+                    <p className="text-xl font-bold text-indigo-400">{comboAnalysis.stats.keywordsNonConsecutive || 0}</p>
+                  </div>
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-purple-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤💤</span>
+                      <p className="text-xs text-zinc-400">Subtitle Non-Consec</p>
+                    </div>
+                    <p className="text-xl font-bold text-purple-400">{comboAnalysis.stats.subtitleNonConsecutive}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tier 6: Weakest */}
+              <div className="mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 6: Weakest (20 pts)</p>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-pink-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">💤💤💤</span>
+                      <p className="text-xs text-zinc-400">Three-Way Cross</p>
+                    </div>
+                    <p className="text-xl font-bold text-pink-400">{comboAnalysis.stats.threeWayCross || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opportunities */}
+              <div className="border-t border-zinc-800 pt-3 mt-3">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-emerald-500/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">⬆️</span>
+                      <p className="text-xs text-zinc-400">Can Strengthen</p>
+                    </div>
+                    <p className="text-xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
+                    <p className="text-[10px] text-zinc-500">Strengthening Opportunities</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCopyAll}
+              className="text-xs border-zinc-700 text-zinc-300 hover:border-orange-500/40"
+            >
+              <Copy className="h-3 w-3 mr-1" />
+              Copy Filtered ({filteredCombos.length})
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportCSV}
+              className="text-xs border-emerald-500/40 text-emerald-400 hover:border-emerald-500"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Export CSV
+            </Button>
+
+            {/* V2.1 Export Buttons */}
+            {v2_1Enabled && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportXLSX}
+                  className="text-xs border-blue-500/40 text-blue-400 hover:border-blue-500"
+                >
+                  <FileSpreadsheet className="h-3 w-3 mr-1" />
+                  Export XLSX
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportJSON}
+                  className="text-xs border-purple-500/40 text-purple-400 hover:border-purple-500"
+                >
+                  <FileJson className="h-3 w-3 mr-1" />
+                  Export JSON
+                </Button>
+              </>
+            )}
+
+            {comboAnalysis.recommendedToAdd.length > 0 && (
+              <Badge variant="outline" className="border-violet-400/30 text-violet-400 text-xs">
+                {comboAnalysis.recommendedToAdd.length} Recommendations
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Contextual Pro Tips */}

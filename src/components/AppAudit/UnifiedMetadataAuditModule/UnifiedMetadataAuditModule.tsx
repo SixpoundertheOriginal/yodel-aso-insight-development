@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertCircle, Loader2 } from 'lucide-react';
 // import { MetadataAuditEngine } from '@/engine/metadata/metadataAuditEngine'; // MIGRATED TO EDGE FUNCTION
 import { useMetadataAuditV2 } from '@/hooks/useMetadataAuditV2';
@@ -427,13 +428,36 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         />
       </div>
 
-      {/* Intent Engine Diagnostics (DEV ONLY) - with CHAPTER 3 nested inside */}
-      <IntentEngineDiagnosticsPanel
-        auditResult={auditResult}
-        patternsLoaded={auditResult.intentEngineDiagnostics?.patternsLoaded}
-        fallbackMode={auditResult.intentEngineDiagnostics?.fallbackMode}
-        cacheTtlRemaining={auditResult.intentEngineDiagnostics?.cacheTtlRemaining}
-      >
+      {/* Intent Engine Diagnostics (DEV ONLY) - Collapsible Section */}
+      <Collapsible defaultOpen={false} className="mt-6">
+        <Card className="bg-yellow-500/5 border-yellow-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                <div>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
+                    Intent Engine Diagnostics
+                    <span className="text-xs text-zinc-500">(Development - Open at your own risk)</span>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              <CollapsibleTrigger>
+                <Badge variant="outline" className="border-yellow-500/40 text-yellow-500 text-xs cursor-pointer hover:bg-yellow-500/10">
+                  Toggle
+                </Badge>
+              </CollapsibleTrigger>
+            </div>
+          </CardContent>
+        </Card>
+
+        <CollapsibleContent className="mt-4">
+          <IntentEngineDiagnosticsPanel
+            auditResult={auditResult}
+            patternsLoaded={auditResult.intentEngineDiagnostics?.patternsLoaded}
+            fallbackMode={auditResult.intentEngineDiagnostics?.fallbackMode}
+            cacheTtlRemaining={auditResult.intentEngineDiagnostics?.cacheTtlRemaining}
+          >
         {/* CHAPTER 3 — COVERAGE MECHANICS (Nested inside diagnostics panel) */}
         <div className="space-y-4">
           <div className="relative">
@@ -925,6 +949,11 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           </div>
         </div>
       </div>
+
+      {/* Close Collapsible Content - All audit content wrapped */}
+        </CollapsibleContent>
+      </Collapsible>
+
       </div>
     </WorkbenchSelectionProvider>
   );
