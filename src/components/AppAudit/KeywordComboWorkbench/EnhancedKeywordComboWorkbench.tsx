@@ -466,41 +466,9 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-violet-400/60" />
 
       <CardHeader className="pb-4">
-        {/* Keywords Field Input - Phase 2 */}
-        <div className="mt-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-          <label htmlFor="keywords-field" className="block text-xs font-medium text-zinc-400 mb-2">
-            App Store Connect Keywords Field (100 chars max)
-          </label>
-          <div className="relative">
-            <textarea
-              id="keywords-field"
-              value={keywordsFieldInput}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value.length <= 100) {
-                  setKeywordsFieldInput(value);
-                }
-              }}
-              placeholder="meditation,sleep,mindfulness,relaxation,anxiety,stress"
-              className="w-full h-20 px-3 py-2 text-sm bg-black/50 border border-zinc-700 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none font-mono"
-              maxLength={100}
-            />
-            <div className="absolute bottom-2 right-2 text-[10px] text-zinc-500">
-              {keywordsFieldInput.length}/100
-            </div>
-          </div>
-          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
-            💡 Comma-separated keywords. Equal ranking weight to subtitle. Used for 4-element combo generation.
-          </p>
-        </div>
-
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Strategic Keyword Frequency Analysis */}
-        <StrategicKeywordFrequencyPanel
-          combos={combos}
-        />
 
         {/* Element Selection Filter (appears when items selected from element cards) */}
         {hasSelection && (
@@ -856,6 +824,39 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
             )}
           </div>
         </div>
+
+        {/* Keywords Field Input - Phase 2 */}
+        <div className="mt-6 p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+          <label htmlFor="keywords-field" className="block text-xs font-medium text-zinc-400 mb-2">
+            App Store Connect Keywords Field (100 chars max)
+          </label>
+          <div className="relative">
+            <textarea
+              id="keywords-field"
+              value={keywordsFieldInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.length <= 100) {
+                  setKeywordsFieldInput(value);
+                }
+              }}
+              placeholder="meditation,sleep,mindfulness,relaxation,anxiety,stress"
+              className="w-full h-20 px-3 py-2 text-sm bg-black/50 border border-zinc-700 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none font-mono"
+              maxLength={100}
+            />
+            <div className="absolute bottom-2 right-2 text-[10px] text-zinc-500">
+              {keywordsFieldInput.length}/100
+            </div>
+          </div>
+          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
+            💡 Comma-separated keywords. Equal ranking weight to subtitle. Used for 4-element combo generation.
+          </p>
+        </div>
+
+        {/* Strategic Keyword Frequency Analysis */}
+        <StrategicKeywordFrequencyPanel
+          combos={combos}
+        />
 
         {/* Contextual Pro Tips */}
         <div className="pt-4 space-y-2 border-t border-zinc-800">
