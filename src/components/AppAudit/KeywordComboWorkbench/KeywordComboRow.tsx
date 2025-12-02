@@ -212,7 +212,6 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         ${getRowHeight()}
         group
         cursor-pointer
-        before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-gradient-to-b before:from-transparent before:via-orange-500/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
       `}>
         {/* Row Number */}
         <TableCell className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-0 z-10 bg-black">
