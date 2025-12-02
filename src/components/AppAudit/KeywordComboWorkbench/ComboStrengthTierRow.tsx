@@ -148,21 +148,27 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
             const isAdded = isComboAdded(combo.text);
             const isExisting = combo.exists;
             const canAdd = !isExisting && !isAdded && onAddCombo;
+            const canRemove = !isExisting && isAdded && onRemoveCombo;
 
             return (
               <div
                 key={`${combo.text}-${index}`}
                 onClick={() => {
                   if (canAdd) {
+                    // Add to table
                     onAddCombo(combo);
                     setRecentlyAdded(combo.text);
                     // Auto-hide undo after 3 seconds
                     setTimeout(() => setRecentlyAdded(null), 3000);
+                  } else if (canRemove) {
+                    // Remove from table
+                    onRemoveCombo(combo.text);
+                    setRecentlyAdded(null); // Clear undo notification
                   }
                 }}
                 className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${
                   canAdd ? 'cursor-pointer hover:bg-zinc-900/40 hover:border-orange-500/30 border border-transparent' :
-                  isAdded ? 'bg-emerald-500/5 border border-emerald-500/20' :
+                  canRemove ? 'cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 bg-emerald-500/5 border border-emerald-500/20' :
                   'opacity-60 cursor-default'
                 }`}
               >
@@ -196,6 +202,11 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
                 {canAdd && (
                   <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
                     Click to add
+                  </span>
+                )}
+                {canRemove && (
+                  <span className="text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Click to remove
                   </span>
                 )}
               </div>
