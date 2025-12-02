@@ -78,11 +78,7 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
             >
               <div className="flex items-center gap-2 flex-1">
                 <span className="font-mono text-xs text-zinc-300">{combo.text}</span>
-                {combo.exists ? (
-                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-400/30">
-                    Existing
-                  </Badge>
-                ) : (
+                {!combo.exists && (
                   <Badge variant="outline" className="text-[10px] bg-zinc-800 text-zinc-500 border-zinc-700">
                     Missing
                   </Badge>
