@@ -478,12 +478,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     };
   }, [comboAnalysis]);
 
-  // Handle adding a suggested combo to the table
-  const handleAddCombo = (combo: GeneratedCombo) => {
-    addCombo(combo as any);
-    toast.success(`Added "${combo.text}" to workbench`);
-  };
-
   // Check if combo is already in the table
   const isComboAdded = (comboText: string) => {
     return combos.some(c => c.text === comboText);
