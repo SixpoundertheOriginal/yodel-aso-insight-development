@@ -21,6 +21,7 @@ interface KeywordComboState {
   combos: ClassifiedCombo[];
   setCombos: (combos: ClassifiedCombo[]) => void;
   addCombo: (combo: ClassifiedCombo) => void;
+  removeCombo: (comboText: string) => void;
 
   // Custom keywords (user-added)
   customKeywords: ClassifiedCombo[];
@@ -101,6 +102,11 @@ export const useKeywordComboStore = create<KeywordComboState>()(
           if (exists) return state;
           return { combos: [...state.combos, combo] };
         }),
+
+      removeCombo: (comboText) =>
+        set((state) => ({
+          combos: state.combos.filter((c) => c.text !== comboText),
+        })),
 
       setEditingCombo: (index) => set({ editingComboIndex: index }),
 

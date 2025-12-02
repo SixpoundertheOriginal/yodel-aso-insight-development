@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Check, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
@@ -20,6 +20,8 @@ interface ComboStrengthTierRowProps {
   count: number;
   combos: GeneratedCombo[];
   onAddCombo?: (combo: GeneratedCombo) => void;
+  onRemoveCombo?: (comboText: string) => void; // For undo functionality
+  isComboAdded?: (comboText: string) => boolean; // Check if combo is in table
   totalCombos?: number; // Total combos for progress bar calculation
   tierLevel?: 'excellent' | 'good' | 'needs-improvement' | 'critical'; // For gradient intensity
 }
@@ -30,10 +32,13 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
   count,
   combos,
   onAddCombo,
+  onRemoveCombo,
+  isComboAdded = () => false,
   totalCombos = 100,
   tierLevel = 'needs-improvement',
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [recentlyAdded, setRecentlyAdded] = useState<string | null>(null); // Track last added combo for undo
 
   // Calculate percentage for progress bar
   const percentage = totalCombos > 0 ? (count / totalCombos) * 100 : 0;
@@ -117,34 +122,89 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
       {/* Expanded Combo List */}
       {isExpanded && (
         <div className="border-t border-zinc-800/50 p-2 space-y-1 max-h-60 overflow-y-auto">
-          {combos.map((combo, index) => (
-            <div
-              key={`${combo.text}-${index}`}
-              className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-zinc-900/40 transition-colors group"
-            >
-              <div className="flex items-center gap-2 flex-1">
-                <span className="font-mono text-xs text-zinc-300">{combo.text}</span>
-                {!combo.exists && (
-                  <Badge variant="outline" className="text-[10px] bg-zinc-800 text-zinc-500 border-zinc-700">
-                    Missing
-                  </Badge>
+          {/* Undo Toast - appears after adding a combo */}
+          {recentlyAdded && onRemoveCombo && (
+            <div className="mb-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-md flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-2">
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs text-emerald-400">Added "{recentlyAdded}"</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  onRemoveCombo(recentlyAdded);
+                  setRecentlyAdded(null);
+                }}
+                className="h-6 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+              >
+                <Undo2 className="h-3 w-3 mr-1" />
+                Undo
+              </Button>
+            </div>
+          )}
+
+          {combos.map((combo, index) => {
+            const isAdded = isComboAdded(combo.text);
+            const isExisting = combo.exists;
+            const canAdd = !isExisting && !isAdded && onAddCombo;
+
+            return (
+              <div
+                key={`${combo.text}-${index}`}
+                onClick={() => {
+                  if (canAdd) {
+                    onAddCombo(combo);
+                    setRecentlyAdded(combo.text);
+                    // Auto-hide undo after 3 seconds
+                    setTimeout(() => setRecentlyAdded(null), 3000);
+                  }
+                }}
+                className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${
+                  canAdd ? 'cursor-pointer hover:bg-zinc-900/40 hover:border-orange-500/30 border border-transparent' :
+                  isAdded ? 'bg-emerald-500/5 border border-emerald-500/20' :
+                  'opacity-60 cursor-default'
+                }`}
+              >
+                <div className="flex items-center gap-2 flex-1">
+                  {/* Status Icon */}
+                  {isExisting ? (
+                    <Check className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
+                  ) : isAdded ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 text-zinc-500 group-hover:text-orange-400 flex-shrink-0 transition-colors" />
+                  )}
+
+                  <span className={`font-mono text-xs ${
+                    isAdded ? 'text-emerald-300' :
+                    isExisting ? 'text-blue-300' :
+                    'text-zinc-300'
+                  }`}>
+                    {combo.text}
+                  </span>
+
+                  {isExisting && (
+                    <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30">
+                      In Metadata
+                    </Badge>
+                  )}
+                  {isAdded && !isExisting && (
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                      Added to Table
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Hint text for clickable combos */}
+                {canAdd && (
+                  <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Click to add
+                  </span>
                 )}
               </div>
-
-              {/* Add to Table Button */}
-              {!combo.exists && onAddCombo && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onAddCombo(combo)}
-                  className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add
-                </Button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

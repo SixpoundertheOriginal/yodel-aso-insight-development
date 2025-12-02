@@ -74,6 +74,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
   const {
     setCombos,
     addCombo,
+    removeCombo: removeComboFromStore,
     combos,
     setSearchQuery,
     setSourceFilter,
@@ -404,7 +405,13 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       canStrengthen: combo.canStrengthen,
       strengtheningSuggestion: combo.strengtheningSuggestion,
     } as any);
-    toast.success(`Added "${combo.text}" to All Combos Table`);
+    // No toast - we show inline undo notification
+  };
+
+  // Handler to remove combo from the All Combos Table (for undo)
+  const handleRemoveCombo = (comboText: string) => {
+    removeComboFromStore(comboText);
+    toast.info(`Removed "${comboText}" from table`);
   };
 
   // Filter combos by strength for tier rows
@@ -750,6 +757,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   count={comboAnalysis.stats.titleConsecutive}
                   combos={combosByStrength.titleConsecutive}
                   onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
                   totalCombos={comboAnalysis.stats.totalPossible}
                   tierLevel="excellent"
                 />
@@ -765,6 +774,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.titleNonConsecutive}
                     combos={combosByStrength.titleNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="excellent"
                   />
@@ -774,6 +785,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.titleKeywordsCross || 0}
                     combos={combosByStrength.titleKeywordsCross}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="excellent"
                   />
@@ -789,6 +802,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   count={comboAnalysis.stats.crossElement}
                   combos={combosByStrength.crossElement}
                   onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
                   totalCombos={comboAnalysis.stats.totalPossible}
                   tierLevel="good"
                 />
@@ -804,6 +819,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.keywordsConsecutive || 0}
                     combos={combosByStrength.keywordsConsecutive}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="needs-improvement"
                   />
@@ -813,6 +830,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.subtitleConsecutive}
                     combos={combosByStrength.subtitleConsecutive}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="needs-improvement"
                   />
@@ -829,6 +848,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.keywordsSubtitleCross || 0}
                     combos={combosByStrength.keywordsSubtitleCross}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="needs-improvement"
                   />
@@ -838,6 +859,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.keywordsNonConsecutive || 0}
                     combos={combosByStrength.keywordsNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="needs-improvement"
                   />
@@ -847,6 +870,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.subtitleNonConsecutive}
                     combos={combosByStrength.subtitleNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    onRemoveCombo={handleRemoveCombo}
+                    isComboAdded={isComboAdded}
                     totalCombos={comboAnalysis.stats.totalPossible}
                     tierLevel="needs-improvement"
                   />
@@ -862,6 +887,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   count={comboAnalysis.stats.threeWayCross || 0}
                   combos={combosByStrength.threeWayCross}
                   onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
                   totalCombos={comboAnalysis.stats.totalPossible}
                   tierLevel="critical"
                 />
