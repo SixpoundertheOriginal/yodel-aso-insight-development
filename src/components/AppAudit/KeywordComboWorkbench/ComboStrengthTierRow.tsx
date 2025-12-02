@@ -184,11 +184,7 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
                     {combo.text}
                   </span>
 
-                  {isExisting && (
-                    <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30">
-                      In Metadata
-                    </Badge>
-                  )}
+                  {/* Only show badge for user-added combos, not existing ones */}
                   {isAdded && !isExisting && (
                     <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
                       Added to Table
