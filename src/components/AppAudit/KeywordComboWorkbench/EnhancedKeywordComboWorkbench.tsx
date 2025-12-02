@@ -638,34 +638,99 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
             </div>
           </div>
 
-          {/* Summary Stats - Phase 1: Strength-Based Breakdown */}
+          {/* Summary Stats - Strength-Based KPIs (Combined Option A + C) */}
           <div className="space-y-4">
-            {/* Overall Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">Total Possible</p>
-                <p className="text-2xl font-bold text-violet-400">{comboAnalysis.stats.totalPossible}</p>
+            {/* Row 1: Ranking Power Summary (Option A) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1 bg-gradient-to-br from-orange-500/10 to-red-500/10 p-3 rounded-lg border border-orange-500/20">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">🔥🔥🔥</span>
+                  <p className="text-xs text-zinc-400">Strongest (Tier 1)</p>
+                </div>
+                <p className="text-2xl font-bold text-orange-400">{comboAnalysis.stats.titleConsecutive}</p>
+                <p className="text-[10px] text-zinc-500">Title Consecutive • 100 pts</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">Existing</p>
-                <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.existing}</p>
+
+              <div className="space-y-1 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-3 rounded-lg border border-amber-500/20">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">🔥🔥</span>
+                  <p className="text-xs text-zinc-400">Very Strong (Tier 2)</p>
+                </div>
+                <p className="text-2xl font-bold text-amber-400">
+                  {comboAnalysis.stats.titleNonConsecutive + (comboAnalysis.stats.titleKeywordsCross || 0)}
+                </p>
+                <p className="text-[10px] text-zinc-500">Title-based • 70-85 pts</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">Missing</p>
-                <p className="text-2xl font-bold text-amber-400">{comboAnalysis.stats.missing}</p>
+
+              <div className="space-y-1 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-3 rounded-lg border border-emerald-500/20">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">⬆️</span>
+                  <p className="text-xs text-zinc-400">Can Strengthen</p>
+                </div>
+                <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
+                <p className="text-[10px] text-zinc-500">Opportunities</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">Coverage</p>
+
+              <div className="space-y-1 bg-gradient-to-br from-blue-500/10 to-violet-500/10 p-3 rounded-lg border border-blue-500/20">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">📊</span>
+                  <p className="text-xs text-zinc-400">Coverage</p>
+                </div>
                 <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
+                <p className="text-[10px] text-zinc-500">{comboAnalysis.stats.existing}/{comboAnalysis.stats.totalPossible} combos</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">Filtered View</p>
-                <p className="text-2xl font-bold text-zinc-300">{filteredCombos.length}</p>
+            </div>
+
+            {/* Row 2: Actionable Insights (Option C) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">💪</span>
+                  <p className="text-xs text-zinc-400">Title Power</p>
+                </div>
+                <p className="text-xl font-bold text-zinc-300">
+                  {comboAnalysis.stats.titleConsecutive + comboAnalysis.stats.titleNonConsecutive + (comboAnalysis.stats.titleKeywordsCross || 0)}
+                </p>
+                <p className="text-[10px] text-zinc-500">All Title-based combos</p>
+              </div>
+
+              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">⚡</span>
+                  <p className="text-xs text-zinc-400">Cross-Element</p>
+                </div>
+                <p className="text-xl font-bold text-zinc-300">{comboAnalysis.stats.crossElement}</p>
+                <p className="text-[10px] text-zinc-500">Title + Subtitle • 70 pts</p>
+              </div>
+
+              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">💤</span>
+                  <p className="text-xs text-zinc-400">Weak Combos</p>
+                </div>
+                <p className="text-xl font-bold text-zinc-300">
+                  {(comboAnalysis.stats.keywordsConsecutive || 0) +
+                   comboAnalysis.stats.subtitleConsecutive +
+                   (comboAnalysis.stats.keywordsSubtitleCross || 0) +
+                   (comboAnalysis.stats.keywordsNonConsecutive || 0) +
+                   comboAnalysis.stats.subtitleNonConsecutive +
+                   (comboAnalysis.stats.threeWayCross || 0)}
+                </p>
+                <p className="text-[10px] text-zinc-500">Tiers 4-6 • Need boost</p>
+              </div>
+
+              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">🎯</span>
+                  <p className="text-xs text-zinc-400">Filtered View</p>
+                </div>
+                <p className="text-xl font-bold text-zinc-300">{filteredCombos.length}</p>
+                <p className="text-[10px] text-zinc-500">Active results</p>
               </div>
             </div>
 
             {/* Strength Breakdown - Phase 2: All 10 Tiers */}
-            <div className="border-t border-zinc-800 pt-4">
+            <div className="border-t border-zinc-800 pt-4 mt-6">
               <p className="text-xs font-medium text-zinc-400 mb-3">Ranking Power Distribution (10-Tier System)</p>
 
               {/* Tier 1: Strongest */}
@@ -772,20 +837,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   combos={combosByStrength.threeWayCross}
                   onAddCombo={handleAddCombo}
                 />
-              </div>
-
-              {/* Opportunities */}
-              <div className="border-t border-zinc-800 pt-3 mt-3">
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-emerald-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">⬆️</span>
-                      <p className="text-xs text-zinc-400">Can Strengthen</p>
-                    </div>
-                    <p className="text-xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
-                    <p className="text-[10px] text-zinc-500">Strengthening Opportunities</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
