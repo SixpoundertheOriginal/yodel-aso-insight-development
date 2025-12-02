@@ -764,19 +764,23 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
         <Table>
           <TableHeader className="sticky top-0 bg-black/90 backdrop-blur-2xl z-10 border-b-2 border-dashed border-orange-500/50 shadow-[0_2px_10px_rgba(249,115,22,0.1)]">
             <TableRow className="border-zinc-800/60 hover:bg-transparent">
-              <TableHead className="w-8 font-mono text-[10px] tracking-widest text-zinc-500">#</TableHead>
-              <TableHead className="w-8">
-          <Checkbox
-            checked={allSelected ? true : someSelected ? "indeterminate" : false}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                selectAll();
-              } else {
-                deselectAll();
-              }
-            }}
-            className="rounded-full data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-          />
+              <TableHead className="w-12 px-0 text-center">
+                <div className="flex items-center justify-center h-full font-mono text-[10px] tracking-widest text-zinc-500">#</div>
+              </TableHead>
+              <TableHead className="w-12 px-0 text-center">
+                <div className="flex items-center justify-center h-full">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        selectAll();
+                      } else {
+                        deselectAll();
+                      }
+                    }}
+                    className="rounded-full data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                  />
+                </div>
               </TableHead>
               <SortableHeader column="text" onClick={() => handleSort('text')} sortIcon={getSortIcon('text')}>
                 ▸ COMBO
@@ -808,14 +812,14 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
                   ▸ SOURCE
                 </SortableHeader>
               )}
-              {visibleColumns.length && (
-                <SortableHeader column="length" onClick={() => handleSort('length')} sortIcon={getSortIcon('length')}>
-                  ▸ LENGTH
-                </SortableHeader>
-              )}
               {visibleColumns.competition && (
                 <SortableHeader column="competition" onClick={() => handleSort('competition')} sortIcon={getSortIcon('competition')}>
                   ▸ COMPETITION
+                </SortableHeader>
+              )}
+              {visibleColumns.length && (
+                <SortableHeader column="length" onClick={() => handleSort('length')} sortIcon={getSortIcon('length')}>
+                  ▸ LENGTH
                 </SortableHeader>
               )}
               <SortableHeader column="popularity" onClick={() => handleSort('popularity')} sortIcon={getSortIcon('popularity')}>

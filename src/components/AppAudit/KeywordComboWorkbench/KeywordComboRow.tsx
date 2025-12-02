@@ -215,17 +215,21 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-gradient-to-b before:from-transparent before:via-orange-500/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
       `}>
         {/* Row Number */}
-        <TableCell className="w-8 text-xs text-zinc-500 font-mono">
-          {index + 1}
+        <TableCell className="w-12 px-0 text-center">
+          <div className="flex items-center justify-center h-full text-xs text-zinc-500 font-mono">
+            {index + 1}
+          </div>
         </TableCell>
 
         {/* Selection Checkbox */}
-        <TableCell className="w-8">
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => toggleSelection(index)}
-            className="rounded data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-          />
+        <TableCell className="w-12 px-0 text-center">
+          <div className="flex items-center justify-center h-full">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleSelection(index)}
+              className="rounded data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+            />
+          </div>
         </TableCell>
 
         {/* Combo Text (Editable) */}
@@ -410,13 +414,6 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
           </TableCell>
         )}
 
-        {/* Length */}
-        {visibleColumns.length && (
-          <TableCell className="text-center text-sm text-zinc-400">
-            {combo.text.length}
-          </TableCell>
-        )}
-
         {/* Competition */}
         {visibleColumns.competition && (
           <TableCell>
@@ -424,6 +421,13 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
               totalResults={rankingData?.totalResults ?? null}
               snapshotDate={rankingData?.snapshotDate}
             />
+          </TableCell>
+        )}
+
+        {/* Length */}
+        {visibleColumns.length && (
+          <TableCell className="text-center text-sm text-zinc-400">
+            {combo.text.length}
           </TableCell>
         )}
 
