@@ -222,7 +222,7 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         </TableCell>
 
         {/* Selection Checkbox */}
-        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-10 bg-black border-r border-orange-500/20">
+        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-10 bg-black">
           <div className="flex items-center justify-center h-full">
             <Checkbox
               checked={isSelected}
