@@ -16,9 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { Link2, Table, Download, Copy, FileJson, FileSpreadsheet, X } from 'lucide-react';
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
-import { analyzeAllCombos, filterCombosByKeyword, type GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
+import { analyzeAllCombos, filterCombosByKeyword, ComboStrength, type GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
 import { EnhancedComboFilters, type ComboFilterState } from './EnhancedComboFilters';
 import { KeywordComboTable } from './KeywordComboTable';
+import { ComboStrengthTierRow } from './ComboStrengthTierRow';
 import { useKeywordComboStore } from '@/stores/useKeywordComboStore';
 import { exportCombosToCSV, copyAllCombosToClipboard, exportCombosToXLSX, exportCombosToJSON } from '@/utils/comboExporter';
 import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
@@ -391,6 +392,37 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     toast.success(`Copied ${filteredCombos.length} combos to clipboard`);
   };
 
+  // Handler to add combo to the All Combos Table
+  const handleAddCombo = (combo: GeneratedCombo) => {
+    addCombo({
+      text: combo.text,
+      type: 'generic', // Default to generic for user-added combos
+      source: 'custom',
+      userMarkedAsNoise: false,
+      strength: combo.strength,
+      exists: combo.exists,
+      canStrengthen: combo.canStrengthen,
+      strengtheningSuggestion: combo.strengtheningSuggestion,
+    } as any);
+    toast.success(`Added "${combo.text}" to All Combos Table`);
+  };
+
+  // Filter combos by strength for tier rows
+  const combosByStrength = useMemo(() => {
+    return {
+      titleConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE),
+      titleNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE),
+      titleKeywordsCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS),
+      crossElement: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT),
+      keywordsConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE),
+      subtitleConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE),
+      keywordsSubtitleCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS),
+      keywordsNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE),
+      subtitleNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE),
+      threeWayCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS),
+    };
+  }, [comboAnalysis.allPossibleCombos]);
+
   // Handler for KeywordSuggestionsBar badge clicks
   const handleLengthFilterClick = (length: '2' | '3' | 'all') => {
     // Update Zustand store directly (which updates the table)
@@ -645,113 +677,107 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
               {/* Tier 1: Strongest */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 1: Strongest (100 pts)</p>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-red-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">🔥🔥🔥</span>
-                      <p className="text-xs text-zinc-400">Title Consecutive</p>
-                    </div>
-                    <p className="text-xl font-bold text-red-400">{comboAnalysis.stats.titleConsecutive}</p>
-                  </div>
-                </div>
+                <ComboStrengthTierRow
+                  emoji="🔥🔥🔥"
+                  label="Title Consecutive"
+                  count={comboAnalysis.stats.titleConsecutive}
+                  combos={combosByStrength.titleConsecutive}
+                  onAddCombo={handleAddCombo}
+                />
               </div>
 
               {/* Tier 2: Very Strong */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 2: Very Strong (70-85 pts)</p>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-orange-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">🔥🔥</span>
-                      <p className="text-xs text-zinc-400">Title Non-Consecutive</p>
-                    </div>
-                    <p className="text-xl font-bold text-orange-400">{comboAnalysis.stats.titleNonConsecutive}</p>
-                  </div>
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-amber-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">🔥⚡</span>
-                      <p className="text-xs text-zinc-400">Title + Keywords Cross</p>
-                    </div>
-                    <p className="text-xl font-bold text-amber-400">{comboAnalysis.stats.titleKeywordsCross || 0}</p>
-                  </div>
+                <div className="space-y-2">
+                  <ComboStrengthTierRow
+                    emoji="🔥🔥"
+                    label="Title Non-Consecutive"
+                    count={comboAnalysis.stats.titleNonConsecutive}
+                    combos={combosByStrength.titleNonConsecutive}
+                    onAddCombo={handleAddCombo}
+                  />
+                  <ComboStrengthTierRow
+                    emoji="🔥⚡"
+                    label="Title + Keywords Cross"
+                    count={comboAnalysis.stats.titleKeywordsCross || 0}
+                    combos={combosByStrength.titleKeywordsCross}
+                    onAddCombo={handleAddCombo}
+                  />
                 </div>
               </div>
 
               {/* Tier 3: Medium */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 3: Medium (70 pts)</p>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-yellow-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">⚡</span>
-                      <p className="text-xs text-zinc-400">Cross-Element (Title + Subtitle)</p>
-                    </div>
-                    <p className="text-xl font-bold text-yellow-400">{comboAnalysis.stats.crossElement}</p>
-                  </div>
-                </div>
+                <ComboStrengthTierRow
+                  emoji="⚡"
+                  label="Cross-Element (Title + Subtitle)"
+                  count={comboAnalysis.stats.crossElement}
+                  combos={combosByStrength.crossElement}
+                  onAddCombo={handleAddCombo}
+                />
               </div>
 
               {/* Tier 4: Weak */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 4: Weak (50 pts)</p>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-cyan-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤</span>
-                      <p className="text-xs text-zinc-400">Keywords Consecutive</p>
-                    </div>
-                    <p className="text-xl font-bold text-cyan-400">{comboAnalysis.stats.keywordsConsecutive || 0}</p>
-                  </div>
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-blue-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤</span>
-                      <p className="text-xs text-zinc-400">Subtitle Consecutive</p>
-                    </div>
-                    <p className="text-xl font-bold text-blue-400">{comboAnalysis.stats.subtitleConsecutive}</p>
-                  </div>
+                <div className="space-y-2">
+                  <ComboStrengthTierRow
+                    emoji="💤"
+                    label="Keywords Consecutive"
+                    count={comboAnalysis.stats.keywordsConsecutive || 0}
+                    combos={combosByStrength.keywordsConsecutive}
+                    onAddCombo={handleAddCombo}
+                  />
+                  <ComboStrengthTierRow
+                    emoji="💤"
+                    label="Subtitle Consecutive"
+                    count={comboAnalysis.stats.subtitleConsecutive}
+                    combos={combosByStrength.subtitleConsecutive}
+                    onAddCombo={handleAddCombo}
+                  />
                 </div>
               </div>
 
               {/* Tier 5: Very Weak */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 5: Very Weak (30-35 pts)</p>
-                <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-violet-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤⚡</span>
-                      <p className="text-xs text-zinc-400">Keywords + Subtitle</p>
-                    </div>
-                    <p className="text-xl font-bold text-violet-400">{comboAnalysis.stats.keywordsSubtitleCross || 0}</p>
-                  </div>
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-indigo-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤💤</span>
-                      <p className="text-xs text-zinc-400">Keywords Non-Consec</p>
-                    </div>
-                    <p className="text-xl font-bold text-indigo-400">{comboAnalysis.stats.keywordsNonConsecutive || 0}</p>
-                  </div>
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-purple-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤💤</span>
-                      <p className="text-xs text-zinc-400">Subtitle Non-Consec</p>
-                    </div>
-                    <p className="text-xl font-bold text-purple-400">{comboAnalysis.stats.subtitleNonConsecutive}</p>
-                  </div>
+                <div className="space-y-2">
+                  <ComboStrengthTierRow
+                    emoji="💤⚡"
+                    label="Keywords + Subtitle"
+                    count={comboAnalysis.stats.keywordsSubtitleCross || 0}
+                    combos={combosByStrength.keywordsSubtitleCross}
+                    onAddCombo={handleAddCombo}
+                  />
+                  <ComboStrengthTierRow
+                    emoji="💤💤"
+                    label="Keywords Non-Consec"
+                    count={comboAnalysis.stats.keywordsNonConsecutive || 0}
+                    combos={combosByStrength.keywordsNonConsecutive}
+                    onAddCombo={handleAddCombo}
+                  />
+                  <ComboStrengthTierRow
+                    emoji="💤💤"
+                    label="Subtitle Non-Consec"
+                    count={comboAnalysis.stats.subtitleNonConsecutive}
+                    combos={combosByStrength.subtitleNonConsecutive}
+                    onAddCombo={handleAddCombo}
+                  />
                 </div>
               </div>
 
               {/* Tier 6: Weakest */}
               <div className="mb-3">
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 6: Weakest (20 pts)</p>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                  <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-pink-500/20">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">💤💤💤</span>
-                      <p className="text-xs text-zinc-400">Three-Way Cross</p>
-                    </div>
-                    <p className="text-xl font-bold text-pink-400">{comboAnalysis.stats.threeWayCross || 0}</p>
-                  </div>
-                </div>
+                <ComboStrengthTierRow
+                  emoji="💤💤💤"
+                  label="Three-Way Cross"
+                  count={comboAnalysis.stats.threeWayCross || 0}
+                  combos={combosByStrength.threeWayCross}
+                  onAddCombo={handleAddCombo}
+                />
               </div>
 
               {/* Opportunities */}

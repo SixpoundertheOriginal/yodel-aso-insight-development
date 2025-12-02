@@ -470,11 +470,25 @@ function classifyComboStrength(
   const keywordsAnalysis = keywordsText ? analyzeComboInText(comboText, keywordsText) : { exists: false, isConsecutive: false, positions: [] };
   const comboWords = comboText.split(' ');
 
-  // Determine which fields contain combo keywords
+  // Determine which fields contain the complete combo phrase
   const inTitle = titleAnalysis.exists;
   const inSubtitle = subtitleAnalysis.exists;
   const inKeywords = keywordsAnalysis.exists;
   const fieldCount = [inTitle, inSubtitle, inKeywords].filter(Boolean).length;
+
+  // NEW: Determine which fields contribute individual keywords (for cross-element detection)
+  const hasWordsFromTitle = comboWords.some(word =>
+    titleKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+  );
+  const hasWordsFromSubtitle = comboWords.some(word =>
+    subtitleKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+  );
+  const hasWordsFromKeywords = keywordsFieldKeywords && comboWords.some(word =>
+    keywordsFieldKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+  );
+
+  // Count how many fields contribute keywords to this combo
+  const fieldContributions = [hasWordsFromTitle, hasWordsFromSubtitle, hasWordsFromKeywords].filter(Boolean).length;
 
   // Determine strength based on App Store algorithm hierarchy
   let strength: ComboStrength;
@@ -495,15 +509,15 @@ function classifyComboStrength(
     canStrengthen = true;
     strengtheningSuggestion = `Make words consecutive in title for maximum ranking power`;
 
-  // TIER 2: Title + Keywords Cross 🔥⚡
-  } else if (inTitle && inKeywords && !inSubtitle) {
+  // TIER 2: Title + Keywords Cross 🔥⚡ (keywords from both fields, not complete phrase)
+  } else if (hasWordsFromTitle && hasWordsFromKeywords && !hasWordsFromSubtitle && fieldContributions === 2) {
     strength = ComboStrength.TITLE_KEYWORDS_CROSS;
     isConsecutive = false;
     canStrengthen = true;
     strengtheningSuggestion = `Move keywords from keywords field to title for stronger ranking`;
 
-  // TIER 3: Title + Subtitle Cross ⚡
-  } else if (inTitle && inSubtitle && !inKeywords) {
+  // TIER 3: Title + Subtitle Cross ⚡ (keywords from both fields, not complete phrase)
+  } else if (hasWordsFromTitle && hasWordsFromSubtitle && !hasWordsFromKeywords && fieldContributions === 2) {
     strength = ComboStrength.CROSS_ELEMENT;
     isConsecutive = false;
     canStrengthen = true;
@@ -523,8 +537,8 @@ function classifyComboStrength(
     canStrengthen = true;
     strengtheningSuggestion = `Move to title to strengthen from WEAK to STRONG`;
 
-  // TIER 5: Keywords + Subtitle Cross 💤⚡
-  } else if (inKeywords && inSubtitle && !inTitle) {
+  // TIER 5: Keywords + Subtitle Cross 💤⚡ (keywords from both fields, not complete phrase)
+  } else if (hasWordsFromKeywords && hasWordsFromSubtitle && !hasWordsFromTitle && fieldContributions === 2) {
     strength = ComboStrength.KEYWORDS_SUBTITLE_CROSS;
     isConsecutive = false;
     canStrengthen = true;
@@ -544,8 +558,8 @@ function classifyComboStrength(
     canStrengthen = true;
     strengtheningSuggestion = `Move to title and make consecutive for maximum ranking`;
 
-  // TIER 7: Three-way Cross 💤💤💤
-  } else if (fieldCount === 3) {
+  // TIER 7: Three-way Cross 💤💤💤 (keywords from all three fields)
+  } else if (fieldContributions === 3) {
     strength = ComboStrength.THREE_WAY_CROSS;
     isConsecutive = false;
     canStrengthen = true;
