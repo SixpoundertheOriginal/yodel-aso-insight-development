@@ -664,11 +664,19 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
               <div className="space-y-1 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-3 rounded-lg border border-emerald-500/20">
                 <div className="flex items-center gap-1">
-                  <span className="text-base">⬆️</span>
-                  <p className="text-xs text-zinc-400">Can Strengthen</p>
+                  <span className="text-base">🎯</span>
+                  <p className="text-xs text-zinc-400">High-Priority Targets</p>
                 </div>
-                <p className="text-2xl font-bold text-emerald-400">{comboAnalysis.stats.canStrengthen}</p>
-                <p className="text-[10px] text-zinc-500">Opportunities</p>
+                <p className="text-2xl font-bold text-emerald-400">
+                  {comboAnalysis.stats.missing +
+                   (comboAnalysis.stats.keywordsConsecutive || 0) +
+                   comboAnalysis.stats.subtitleConsecutive +
+                   (comboAnalysis.stats.keywordsSubtitleCross || 0) +
+                   (comboAnalysis.stats.keywordsNonConsecutive || 0) +
+                   comboAnalysis.stats.subtitleNonConsecutive +
+                   (comboAnalysis.stats.threeWayCross || 0)}
+                </p>
+                <p className="text-[10px] text-zinc-500">Missing + Weak (Tiers 4-7)</p>
               </div>
 
               <div className="space-y-1 bg-gradient-to-br from-blue-500/10 to-violet-500/10 p-3 rounded-lg border border-blue-500/20">
@@ -721,7 +729,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
               <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
                 <div className="flex items-center gap-1">
-                  <span className="text-base">🎯</span>
+                  <span className="text-base">🔍</span>
                   <p className="text-xs text-zinc-400">Filtered View</p>
                 </div>
                 <p className="text-xl font-bold text-zinc-300">{filteredCombos.length}</p>
