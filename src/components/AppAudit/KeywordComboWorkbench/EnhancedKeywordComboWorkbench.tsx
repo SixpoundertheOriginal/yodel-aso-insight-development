@@ -746,7 +746,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                 <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 1 (100 pts)</p>
                 <ComboStrengthTierRow
                   emoji="🔥🔥🔥"
-                  label="Title Consecutive"
+                  label="Title (Exact Match)"
                   count={comboAnalysis.stats.titleConsecutive}
                   combos={combosByStrength.titleConsecutive}
                   onAddCombo={handleAddCombo}
@@ -761,7 +761,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="🔥🔥"
-                    label="Title Non-Consecutive"
+                    label="Title (Non Exact Match)"
                     count={comboAnalysis.stats.titleNonConsecutive}
                     combos={combosByStrength.titleNonConsecutive}
                     onAddCombo={handleAddCombo}
@@ -800,7 +800,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="💤"
-                    label="Keywords Consecutive"
+                    label="Keywords (Exact Match)"
                     count={comboAnalysis.stats.keywordsConsecutive || 0}
                     combos={combosByStrength.keywordsConsecutive}
                     onAddCombo={handleAddCombo}
@@ -809,7 +809,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   />
                   <ComboStrengthTierRow
                     emoji="💤"
-                    label="Subtitle Consecutive"
+                    label="Subtitle (Exact Match)"
                     count={comboAnalysis.stats.subtitleConsecutive}
                     combos={combosByStrength.subtitleConsecutive}
                     onAddCombo={handleAddCombo}
@@ -825,7 +825,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="💤⚡"
-                    label="Keywords + Subtitle"
+                    label="Keywords + Subtitle Cross"
                     count={comboAnalysis.stats.keywordsSubtitleCross || 0}
                     combos={combosByStrength.keywordsSubtitleCross}
                     onAddCombo={handleAddCombo}
@@ -834,7 +834,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   />
                   <ComboStrengthTierRow
                     emoji="💤💤"
-                    label="Keywords Non-Consecutive"
+                    label="Keywords (Non Exact Match)"
                     count={comboAnalysis.stats.keywordsNonConsecutive || 0}
                     combos={combosByStrength.keywordsNonConsecutive}
                     onAddCombo={handleAddCombo}
@@ -843,7 +843,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                   />
                   <ComboStrengthTierRow
                     emoji="💤💤"
-                    label="Subtitle Non-Consecutive"
+                    label="Subtitle (Non Exact Match)"
                     count={comboAnalysis.stats.subtitleNonConsecutive}
                     combos={combosByStrength.subtitleNonConsecutive}
                     onAddCombo={handleAddCombo}
