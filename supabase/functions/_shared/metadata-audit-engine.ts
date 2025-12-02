@@ -25,6 +25,64 @@ import { extractBrandKeywords, filterGenericCombos, getBrandStats } from './bran
 
 export type MetadataElement = 'app_name' | 'title' | 'subtitle' | 'description';
 
+/**
+ * Combo Strength Classification
+ * Based on confirmed App Store ranking behavior
+ */
+export enum ComboStrength {
+  // Tier 1: Title-only (Strongest)
+  TITLE_CONSECUTIVE = 'title_consecutive',                 // 🔥🔥🔥 Consecutive words in title
+
+  // Tier 2: Title-based (Very Strong)
+  TITLE_NON_CONSECUTIVE = 'title_non_consecutive',         // 🔥🔥 Words in title but not consecutive
+  TITLE_KEYWORDS_CROSS = 'title_keywords_cross',           // 🔥⚡ Title + Keywords field (2nd tier)
+
+  // Tier 3: Cross-element title-subtitle (Medium)
+  CROSS_ELEMENT = 'cross_element',                         // ⚡ Title + Subtitle
+
+  // Tier 4: Keywords/Subtitle same-field (Weak)
+  KEYWORDS_CONSECUTIVE = 'keywords_consecutive',           // 💤 Consecutive in keywords field
+  SUBTITLE_CONSECUTIVE = 'subtitle_consecutive',           // 💤 Consecutive in subtitle
+
+  // Tier 5: Keywords/Subtitle cross (Very Weak)
+  KEYWORDS_SUBTITLE_CROSS = 'keywords_subtitle_cross',     // 💤⚡ Keywords + Subtitle cross
+
+  // Tier 6: Non-consecutive in weak fields (Very Very Weak)
+  KEYWORDS_NON_CONSECUTIVE = 'keywords_non_consecutive',   // 💤💤 Non-consecutive in keywords
+  SUBTITLE_NON_CONSECUTIVE = 'subtitle_non_consecutive',   // 💤💤 Non-consecutive in subtitle
+
+  // Tier 7: Three-way cross (Weakest existing)
+  THREE_WAY_CROSS = 'three_way_cross',                     // 💤💤💤 Title + Subtitle + Keywords (3 elements)
+
+  // Missing
+  MISSING = 'missing',                                     // ❌ Not in metadata
+}
+
+/**
+ * Generated Combo with full metadata
+ */
+export interface GeneratedCombo {
+  id: string;  // UUID for stable identity
+  text: string;
+  keywords: string[];
+  length: number;
+  exists: boolean;
+  source: 'title' | 'subtitle' | 'keywords' | 'both' | 'cross' | 'missing';
+
+  // Strength classification
+  strength: ComboStrength;
+  strengthScore: number;  // 0-100 based on tier
+  isConsecutive: boolean;
+
+  // Strategic analysis
+  canStrengthen: boolean;
+  strengtheningSuggestion?: string;
+
+  // Brand filtering
+  isBranded: boolean;
+  isGeneric: boolean;
+}
+
 export interface RuleEvaluationResult {
   ruleId: string;
   passed: boolean;
@@ -87,6 +145,30 @@ export interface UnifiedMetadataAuditResult {
     descriptionNewKeywords: string[];
   };
   comboCoverage: {
+    // v2.2: Rich combo objects (backend as single source of truth)
+    combos: GeneratedCombo[];
+
+    // v2.2: Enhanced stats with strength breakdown
+    stats: {
+      totalPossible: number;
+      existing: number;
+      missing: number;
+      coveragePct: number;
+
+      // Strength-based breakdown (10 tiers)
+      titleConsecutive: number;
+      titleNonConsecutive: number;
+      titleKeywordsCross: number;
+      crossElement: number;
+      keywordsConsecutive: number;
+      subtitleConsecutive: number;
+      keywordsSubtitleCross: number;
+      keywordsNonConsecutive: number;
+      subtitleNonConsecutive: number;
+      threeWayCross: number;
+    };
+
+    // Legacy fields (deprecated - kept for backward compat during migration)
     totalCombos: number;
     titleCombos: string[];
     subtitleNewCombos: string[];
@@ -109,6 +191,7 @@ interface ScrapedMetadata {
   title?: string;
   subtitle?: string;
   description?: string;
+  keywords?: string; // v2.2: App Store Connect keywords field (100 chars, comma-separated)
   applicationCategory?: string;
   brandKeywords?: string[]; // v2.1: User-defined or auto-detected brand keywords
   competitorBrandKeywords?: string[]; // v2.1: Competitor brand keywords (for competitive analysis)
@@ -694,6 +777,11 @@ export class MetadataAuditEngine {
     const titleTokens = tokenize(metadata.title || '');
     const subtitleTokens = tokenize(metadata.subtitle || '');
     const descriptionTokens = tokenize(metadata.description || '');
+    // v2.2: Tokenize keywords field (comma-separated)
+    const keywordsTokens = (metadata.keywords || '')
+      .split(',')
+      .map(kw => kw.trim().toLowerCase())
+      .filter(kw => kw.length > 0);
 
     const context: EvaluationContext = {
       metadata,
@@ -725,13 +813,17 @@ export class MetadataAuditEngine {
 
     console.log(`[AUDIT-ENGINE] Brand keywords: own=[${ownBrandKeywords.join(', ')}], competitors=[${competitorBrandKeywords.join(', ')}]`);
 
-    // Combo coverage (v2.1: Use ranking combinations with brand filtering)
+    // Combo coverage (v2.2: Enhanced with keywords field + 4-word combos)
     const comboCoverage = this.analyzeRankingCombinations(
       titleTokens,
       subtitleTokens,
+      keywordsTokens,
       stopwords,
       ownBrandKeywords,
-      competitorBrandKeywords
+      competitorBrandKeywords,
+      metadata.title || '',
+      metadata.subtitle || '',
+      metadata.keywords || ''
     );
 
     // Phase 2: Classify intent coverage
@@ -1002,6 +1094,233 @@ export class MetadataAuditEngine {
     };
   }
 
+  /**
+   * Analyze combo presence in text with consecutive detection
+   */
+  private static analyzeComboInText(
+    combo: string,
+    text: string
+  ): { exists: boolean; isConsecutive: boolean; positions: number[] } {
+    const normalizedText = text.toLowerCase();
+    const normalizedCombo = combo.toLowerCase();
+    const comboWords = normalizedCombo.split(' ');
+
+    // Check for exact phrase match (consecutive)
+    if (normalizedText.includes(normalizedCombo)) {
+      return {
+        exists: true,
+        isConsecutive: true,
+        positions: [normalizedText.indexOf(normalizedCombo)],
+      };
+    }
+
+    // Check for words in order (non-consecutive)
+    const positions: number[] = [];
+    let lastIndex = -1;
+    for (const word of comboWords) {
+      const index = normalizedText.indexOf(word, lastIndex + 1);
+      if (index === -1) {
+        return { exists: false, isConsecutive: false, positions: [] };
+      }
+      positions.push(index);
+      lastIndex = index;
+    }
+
+    // Words found in order but not consecutive
+    return {
+      exists: true,
+      isConsecutive: false,
+      positions,
+    };
+  }
+
+  /**
+   * Classify combo strength based on App Store ranking algorithm
+   */
+  private static classifyComboStrength(
+    comboText: string,
+    titleText: string,
+    subtitleText: string,
+    titleKeywords: string[],
+    subtitleKeywords: string[],
+    keywordsText?: string,
+    keywordsFieldKeywords?: string[]
+  ): {
+    strength: ComboStrength;
+    strengthScore: number;
+    isConsecutive: boolean;
+    canStrengthen: boolean;
+    strengtheningSuggestion?: string;
+  } {
+    const titleAnalysis = this.analyzeComboInText(comboText, titleText);
+    const subtitleAnalysis = this.analyzeComboInText(comboText, subtitleText);
+    const keywordsAnalysis = keywordsText
+      ? this.analyzeComboInText(comboText, keywordsText)
+      : { exists: false, isConsecutive: false, positions: [] };
+    const comboWords = comboText.split(' ');
+
+    // Determine which fields contain the complete combo phrase
+    const inTitle = titleAnalysis.exists;
+    const inSubtitle = subtitleAnalysis.exists;
+    const inKeywords = keywordsAnalysis.exists;
+
+    // Determine which fields contribute individual keywords (for cross-element detection)
+    const hasWordsFromTitle = comboWords.some((word) =>
+      titleKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+    );
+    const hasWordsFromSubtitle = comboWords.some((word) =>
+      subtitleKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+    );
+    const hasWordsFromKeywords =
+      keywordsFieldKeywords &&
+      comboWords.some((word) =>
+        keywordsFieldKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+      );
+
+    // Count how many fields contribute keywords to this combo
+    const fieldContributions = [
+      hasWordsFromTitle,
+      hasWordsFromSubtitle,
+      hasWordsFromKeywords,
+    ].filter(Boolean).length;
+
+    // Determine strength based on App Store algorithm hierarchy
+    let strength: ComboStrength;
+    let strengthScore: number;
+    let isConsecutive = false;
+    let canStrengthen = false;
+    let strengtheningSuggestion: string | undefined;
+
+    // TIER 1: Title Consecutive (score: 100)
+    if (inTitle && titleAnalysis.isConsecutive) {
+      strength = ComboStrength.TITLE_CONSECUTIVE;
+      strengthScore = 100;
+      isConsecutive = true;
+      canStrengthen = false;
+
+      // TIER 2: Title Non-Consecutive (score: 85)
+    } else if (inTitle && !inSubtitle && !inKeywords && !titleAnalysis.isConsecutive) {
+      strength = ComboStrength.TITLE_NON_CONSECUTIVE;
+      strengthScore = 85;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Make words consecutive in title for maximum ranking power`;
+
+      // TIER 2: Title + Keywords Cross (score: 85)
+    } else if (
+      hasWordsFromTitle &&
+      hasWordsFromKeywords &&
+      !hasWordsFromSubtitle &&
+      fieldContributions === 2
+    ) {
+      strength = ComboStrength.TITLE_KEYWORDS_CROSS;
+      strengthScore = 85;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move keywords from keywords field to title for stronger ranking`;
+
+      // TIER 3: Title + Subtitle Cross (score: 70)
+    } else if (
+      hasWordsFromTitle &&
+      hasWordsFromSubtitle &&
+      !hasWordsFromKeywords &&
+      fieldContributions === 2
+    ) {
+      strength = ComboStrength.CROSS_ELEMENT;
+      strengthScore = 70;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move all keywords to title to strengthen from MEDIUM to STRONG`;
+
+      // TIER 4: Keywords Consecutive (score: 50)
+    } else if (inKeywords && !inTitle && !inSubtitle && keywordsAnalysis.isConsecutive) {
+      strength = ComboStrength.KEYWORDS_CONSECUTIVE;
+      strengthScore = 50;
+      isConsecutive = true;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move to title to strengthen from WEAK to STRONG`;
+
+      // TIER 4: Subtitle Consecutive (score: 50)
+    } else if (inSubtitle && !inTitle && !inKeywords && subtitleAnalysis.isConsecutive) {
+      strength = ComboStrength.SUBTITLE_CONSECUTIVE;
+      strengthScore = 50;
+      isConsecutive = true;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move to title to strengthen from WEAK to STRONG`;
+
+      // TIER 5: Keywords + Subtitle Cross (score: 35)
+    } else if (
+      hasWordsFromKeywords &&
+      hasWordsFromSubtitle &&
+      !hasWordsFromTitle &&
+      fieldContributions === 2
+    ) {
+      strength = ComboStrength.KEYWORDS_SUBTITLE_CROSS;
+      strengthScore = 35;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move all keywords to title to strengthen to STRONG`;
+
+      // TIER 6: Keywords Non-Consecutive (score: 25)
+    } else if (inKeywords && !inTitle && !inSubtitle && !keywordsAnalysis.isConsecutive) {
+      strength = ComboStrength.KEYWORDS_NON_CONSECUTIVE;
+      strengthScore = 25;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move to title and make consecutive for maximum ranking`;
+
+      // TIER 6: Subtitle Non-Consecutive (score: 25)
+    } else if (inSubtitle && !inTitle && !inKeywords && !subtitleAnalysis.isConsecutive) {
+      strength = ComboStrength.SUBTITLE_NON_CONSECUTIVE;
+      strengthScore = 25;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Move to title and make consecutive for maximum ranking`;
+
+      // TIER 7: Three-way Cross (score: 15)
+    } else if (fieldContributions === 3) {
+      strength = ComboStrength.THREE_WAY_CROSS;
+      strengthScore = 15;
+      isConsecutive = false;
+      canStrengthen = true;
+      strengtheningSuggestion = `Consolidate all keywords into title for much stronger ranking`;
+
+      // MISSING: Not in any field (score: 0)
+    } else {
+      strength = ComboStrength.MISSING;
+      strengthScore = 0;
+      isConsecutive = false;
+
+      // Check if we can strengthen by moving existing keywords
+      const allWordsInSubtitle = comboWords.every((word) =>
+        subtitleKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+      );
+      const allWordsInKeywords =
+        keywordsFieldKeywords &&
+        comboWords.every((word) =>
+          keywordsFieldKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+        );
+      const someWordsInTitle = comboWords.some((word) =>
+        titleKeywords.some((kw) => kw.toLowerCase() === word.toLowerCase())
+      );
+
+      if (allWordsInSubtitle || allWordsInKeywords || someWordsInTitle) {
+        canStrengthen = true;
+        strengtheningSuggestion = `Add to title to enable ranking for this combination`;
+      } else {
+        canStrengthen = false; // Would need to add brand new keywords
+      }
+    }
+
+    return {
+      strength,
+      strengthScore,
+      isConsecutive,
+      canStrengthen,
+      strengtheningSuggestion,
+    };
+  }
+
   private static analyzeComboCoverage(
     titleTokens: string[],
     subtitleTokens: string[],
@@ -1020,6 +1339,34 @@ export class MetadataAuditEngine {
       titleCombos,
       subtitleNewCombos,
       allCombinedCombos
+    };
+  }
+
+  /**
+   * Helper: Calculate stats from a filtered combo array
+   * Used to generate stats for different brand type filters (all, generic, branded)
+   */
+  private static calculateComboStats(combos: GeneratedCombo[]) {
+    const existingCombos = combos.filter(c => c.exists);
+    const missingCombos = combos.filter(c => !c.exists);
+
+    return {
+      totalPossible: combos.length,
+      existing: existingCombos.length,
+      missing: missingCombos.length,
+      coveragePct: combos.length > 0
+        ? Math.round((existingCombos.length / combos.length) * 100)
+        : 0,
+      titleConsecutive: combos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE).length,
+      titleNonConsecutive: combos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE).length,
+      titleKeywordsCross: combos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS).length,
+      crossElement: combos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT).length,
+      keywordsConsecutive: combos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE).length,
+      subtitleConsecutive: combos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE).length,
+      keywordsSubtitleCross: combos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS).length,
+      keywordsNonConsecutive: combos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE).length,
+      subtitleNonConsecutive: combos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE).length,
+      threeWayCross: combos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS).length,
     };
   }
 
@@ -1046,15 +1393,19 @@ export class MetadataAuditEngine {
   private static analyzeRankingCombinations(
     titleTokens: string[],
     subtitleTokens: string[],
+    keywordsTokens: string[] = [],
     stopwords: Set<string>,
     ownBrandKeywords: string[] = [],
-    competitorBrandKeywords: string[] = []
+    competitorBrandKeywords: string[] = [],
+    titleText: string = '',
+    subtitleText: string = '',
+    keywordsText: string = ''
   ) {
-    // 1. Combine title + subtitle tokens and filter stopwords to get keywords
-    const allTokens = [...titleTokens, ...subtitleTokens];
+    // 1. Combine title + subtitle + keywords tokens and filter stopwords to get keywords
+    const allTokens = [...titleTokens, ...subtitleTokens, ...keywordsTokens];
     const keywords = allTokens.filter(t => !stopwords.has(t));
 
-    console.log(`[AUDIT-ENGINE] Ranking combos: ${keywords.length} keywords from title + subtitle`);
+    console.log(`[AUDIT-ENGINE] Ranking combos: ${keywords.length} keywords from title + subtitle + keywords field (title: ${titleTokens.length}, subtitle: ${subtitleTokens.length}, keywords: ${keywordsTokens.length})`);
 
     // 2. Generate all 2-word permutations (BOTH orders)
     const twoWordCombos: string[] = [];
@@ -1075,12 +1426,24 @@ export class MetadataAuditEngine {
       }
     }
 
-    // 4. Combine all combos before filtering
-    const allUnfilteredCombos = [...twoWordCombos, ...threeWordCombos];
+    // 4. Generate all 4-word combinations (one order - C(n,4))
+    const fourWordCombos: string[] = [];
+    for (let i = 0; i < keywords.length - 3; i++) {
+      for (let j = i + 1; j < keywords.length - 2; j++) {
+        for (let k = j + 1; k < keywords.length - 1; k++) {
+          for (let l = k + 1; l < keywords.length; l++) {
+            fourWordCombos.push(`${keywords[i]} ${keywords[j]} ${keywords[k]} ${keywords[l]}`);
+          }
+        }
+      }
+    }
 
-    console.log(`[AUDIT-ENGINE] Generated ${allUnfilteredCombos.length} combos (${twoWordCombos.length} 2-word + ${threeWordCombos.length} 3-word)`);
+    // 5. Combine all combos before filtering
+    const allUnfilteredCombos = [...twoWordCombos, ...threeWordCombos, ...fourWordCombos];
 
-    // 5. Filter out branded combos (own brand + competitor brands)
+    console.log(`[AUDIT-ENGINE] Generated ${allUnfilteredCombos.length} combos (${twoWordCombos.length} 2-word + ${threeWordCombos.length} 3-word + ${fourWordCombos.length} 4-word)`);
+
+    // 6. Filter out branded combos (own brand + competitor brands)
     const genericCombos = filterGenericCombos(
       allUnfilteredCombos,
       ownBrandKeywords,
@@ -1089,8 +1452,9 @@ export class MetadataAuditEngine {
 
     const genericTwoWord = filterGenericCombos(twoWordCombos, ownBrandKeywords, competitorBrandKeywords);
     const genericThreeWord = filterGenericCombos(threeWordCombos, ownBrandKeywords, competitorBrandKeywords);
+    const genericFourWord = filterGenericCombos(fourWordCombos, ownBrandKeywords, competitorBrandKeywords);
 
-    // 6. Log brand filtering stats
+    // 7. Log brand filtering stats
     const brandStats = getBrandStats(allUnfilteredCombos, ownBrandKeywords, competitorBrandKeywords);
     console.log(`[AUDIT-ENGINE] Brand filtering: ${brandStats.brand} brand, ${brandStats.competitorBrand} competitor, ${brandStats.generic} generic (${(brandStats.genericRatio * 100).toFixed(1)}% generic)`);
 
@@ -1121,13 +1485,142 @@ export class MetadataAuditEngine {
 
     console.log(`[AUDIT-ENGINE] Ranking combos result: ${genericCombos.length} total generic (${genericTitleOnly.length} title-only + ${subtitleNewCombos.length} subtitle-new)`);
 
+    // Generate rich GeneratedCombo objects with strength classification
+    const titleKeywordTokens = titleTokens.filter(t => !stopwords.has(t));
+    const subtitleKeywordTokens = subtitleTokens.filter(t => !stopwords.has(t));
+    const keywordsKeywordTokens = keywordsTokens.filter(t => !stopwords.has(t));
+
+    const generatedCombos: GeneratedCombo[] = allUnfilteredCombos.map((comboText) => {
+      const comboKeywords = comboText.split(' ');
+      const comboLength = comboKeywords.length;
+
+      // Classify strength
+      const strengthAnalysis = this.classifyComboStrength(
+        comboText,
+        titleText,
+        subtitleText,
+        titleKeywordTokens,
+        subtitleKeywordTokens,
+        keywordsText,
+        keywordsKeywordTokens
+      );
+
+      // Determine if combo contains brand keywords
+      const lowerCombo = comboText.toLowerCase();
+      const containsOwnBrand = ownBrandKeywords.some(brand =>
+        lowerCombo.includes(brand.toLowerCase())
+      );
+      const containsCompetitorBrand = competitorBrandKeywords.some(brand =>
+        lowerCombo.includes(brand.toLowerCase())
+      );
+      const isBranded = containsOwnBrand || containsCompetitorBrand;
+      const isGeneric = !isBranded;
+
+      // Determine source
+      let source: 'title' | 'subtitle' | 'keywords' | 'both' | 'cross' | 'missing';
+      const inTitleOnly = titleComboSet.has(comboText);
+      const inAllCombos = genericCombos.includes(comboText);
+
+      if (strengthAnalysis.strength === ComboStrength.MISSING) {
+        source = 'missing';
+      } else if (
+        strengthAnalysis.strength === ComboStrength.CROSS_ELEMENT ||
+        strengthAnalysis.strength === ComboStrength.TITLE_KEYWORDS_CROSS ||
+        strengthAnalysis.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS ||
+        strengthAnalysis.strength === ComboStrength.THREE_WAY_CROSS
+      ) {
+        source = 'cross';
+      } else if (inTitleOnly) {
+        source = 'title';
+      } else if (
+        strengthAnalysis.strength === ComboStrength.SUBTITLE_CONSECUTIVE ||
+        strengthAnalysis.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE
+      ) {
+        source = 'subtitle';
+      } else if (
+        strengthAnalysis.strength === ComboStrength.KEYWORDS_CONSECUTIVE ||
+        strengthAnalysis.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE
+      ) {
+        source = 'keywords';
+      } else {
+        source = 'both';
+      }
+
+      const generatedCombo: GeneratedCombo = {
+        id: `combo-${comboText.replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: comboText,
+        keywords: comboKeywords,
+        length: comboLength,
+        exists: strengthAnalysis.strength !== ComboStrength.MISSING,
+        source,
+        strength: strengthAnalysis.strength,
+        strengthScore: strengthAnalysis.strengthScore,
+        isConsecutive: strengthAnalysis.isConsecutive,
+        canStrengthen: strengthAnalysis.canStrengthen,
+        strengtheningSuggestion: strengthAnalysis.strengtheningSuggestion,
+        isBranded,
+        isGeneric,
+      };
+
+      return generatedCombo;
+    });
+
+    console.log(`[AUDIT-ENGINE] Generated ${generatedCombos.length} GeneratedCombo objects with strength classification`);
+
+    // Calculate strength tier stats
+    const strengthStats = {
+      titleConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE).length,
+      titleNonConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE).length,
+      titleKeywordsCross: generatedCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS).length,
+      crossElement: generatedCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT).length,
+      keywordsConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE).length,
+      subtitleConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE).length,
+      keywordsSubtitleCross: generatedCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS).length,
+      keywordsNonConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE).length,
+      subtitleNonConsecutive: generatedCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE).length,
+      threeWayCross: generatedCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS).length,
+      missing: generatedCombos.filter(c => c.strength === ComboStrength.MISSING).length,
+    };
+
+    const existingCombosCount = generatedCombos.filter(c => c.exists).length;
+    const coveragePct = allUnfilteredCombos.length > 0
+      ? Math.round((existingCombosCount / allUnfilteredCombos.length) * 100)
+      : 0;
+
+    // Calculate stats by brand type (v2.3: Frontend brand filtering support)
+    const genericOnlyCombos = generatedCombos.filter(c => c.isGeneric);
+    const brandedOnlyCombos = generatedCombos.filter(c => c.isBranded);
+
+    const statsAll = {
+      totalPossible: allUnfilteredCombos.length,
+      existing: existingCombosCount,
+      missing: generatedCombos.filter(c => !c.exists).length,
+      coveragePct,
+      ...strengthStats,
+    };
+    const statsGeneric = this.calculateComboStats(genericOnlyCombos);
+    const statsBranded = this.calculateComboStats(brandedOnlyCombos);
+
+    console.log(`[AUDIT-ENGINE] Stats breakdown: all=${statsAll.totalPossible}, generic=${statsGeneric.totalPossible}, branded=${statsBranded.totalPossible}`);
+
     return {
+      // NEW: Rich combo objects with strength classification
+      combos: generatedCombos,
+      stats: statsAll,  // Keep for backwards compatibility
+      // NEW: Pre-calculated stats for each brand type
+      statsByBrandType: {
+        all: statsAll,
+        generic: statsGeneric,
+        branded: statsBranded,
+      },
+      // Legacy fields for backward compatibility
       totalCombos: genericCombos.length,
       titleCombos: genericTitleOnly,
       subtitleNewCombos: subtitleNewCombos,
       allCombinedCombos: genericCombos,
       twoWordCombos: genericTwoWord.length,
       threeWordCombos: genericThreeWord.length,
+      fourWordCombos: genericFourWord.length,
       // Include brand stats for debugging
       brandStats
     };

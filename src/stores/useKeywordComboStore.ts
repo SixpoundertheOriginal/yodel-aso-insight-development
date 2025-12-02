@@ -9,7 +9,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 
-export type SortColumn = 'text' | 'source' | 'type' | 'relevance' | 'length' | 'competition' | 'appRanking' | 'popularity';
+export type SortColumn = 'text' | 'source' | 'type' | 'length' | 'competition' | 'appRanking' | 'popularity';
 export type SortDirection = 'asc' | 'desc';
 export type IntentClass = 'learning' | 'outcome' | 'brand' | 'noise';
 export type SourceFilter = 'all' | 'title' | 'subtitle' | 'cross-element';
@@ -330,8 +330,6 @@ export const useKeywordComboStore = create<KeywordComboState>()(
             }
             case 'type':
               return a.type.localeCompare(b.type);
-            case 'relevance':
-              return a.relevanceScore - b.relevanceScore;
             case 'length':
               return a.text.length - b.text.length;
             default:

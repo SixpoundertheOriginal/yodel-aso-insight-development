@@ -37,7 +37,7 @@ export interface ClassifiedCombo {
   userMarkedAsNoise?: boolean;  // User-controlled noise flag
   userEditedText?: string;       // Edited version (original preserved in text)
   intentClass?: 'learning' | 'outcome' | 'brand' | 'noise';  // Intent classification
-  
+
   // V2.1 Enhanced metrics (optional for backward compatibility)
   priorityScore?: number;
   noiseConfidence?: number;
@@ -45,6 +45,44 @@ export interface ClassifiedCombo {
   searchVolumeEstimate?: number;
   competitionLevel?: string;
   isCompetitorBranded?: boolean;
+}
+
+/**
+ * ComboStrength enum - 10-tier strength classification
+ * v2.3: Backend-only combo generation
+ */
+export enum ComboStrength {
+  TITLE_CONSECUTIVE = 'title_consecutive',           // Tier 1: 🔥🔥🔥 (score: 100)
+  TITLE_NON_CONSECUTIVE = 'title_non_consecutive',   // Tier 2: 🔥🔥 (score: 85)
+  TITLE_KEYWORDS_CROSS = 'title_keywords_cross',     // Tier 2: 🔥⚡ (score: 85)
+  CROSS_ELEMENT = 'cross_element',                   // Tier 3: ⚡ (score: 70)
+  KEYWORDS_CONSECUTIVE = 'keywords_consecutive',     // Tier 4: 💤 (score: 50)
+  SUBTITLE_CONSECUTIVE = 'subtitle_consecutive',     // Tier 4: 💤 (score: 50)
+  KEYWORDS_SUBTITLE_CROSS = 'keywords_subtitle_cross', // Tier 5: 💤⚡ (score: 35)
+  KEYWORDS_NON_CONSECUTIVE = 'keywords_non_consecutive', // Tier 6: 💤💤 (score: 25)
+  SUBTITLE_NON_CONSECUTIVE = 'subtitle_non_consecutive', // Tier 6: 💤💤 (score: 25)
+  THREE_WAY_CROSS = 'three_way_cross',               // Tier 7: 💤💤💤 (score: 15)
+  MISSING = 'missing',                               // Missing: ❌ (score: 0)
+}
+
+/**
+ * GeneratedCombo - Rich combo object from backend with strength classification
+ * v2.3: Replaces frontend combo generation
+ */
+export interface GeneratedCombo {
+  id: string;                              // UUID for stable identity
+  text: string;                            // Combo text (e.g., "meditation mindfulness")
+  keywords: string[];                      // Individual keywords in combo
+  length: number;                          // Number of words (2, 3, or 4)
+  exists: boolean;                         // Exists in metadata?
+  source: 'title' | 'subtitle' | 'keywords' | 'both' | 'cross' | 'missing';
+  strength: ComboStrength;                 // 10-tier strength classification
+  strengthScore: number;                   // Numeric score (0-100)
+  isConsecutive: boolean;                  // Words appear consecutively?
+  canStrengthen: boolean;                  // Can be strengthened?
+  strengtheningSuggestion?: string;        // How to strengthen
+  isBranded: boolean;                      // Contains brand keywords?
+  isGeneric: boolean;                      // Generic (non-branded)?
 }
 
 export interface RuleEvaluationResult {
@@ -168,28 +206,89 @@ export interface UnifiedMetadataAuditResult {
     descriptionIgnoredCount?: number;
   };
   comboCoverage: {
+    // NEW v2.3: Backend-generated rich combo objects with strength classification
+    combos?: GeneratedCombo[];
+    stats?: {
+      totalPossible: number;
+      existing: number;
+      missing: number;
+      coveragePct: number;
+      // Strength tier breakdown (10 tiers)
+      titleConsecutive?: number;
+      titleNonConsecutive?: number;
+      titleKeywordsCross?: number;
+      crossElement?: number;
+      keywordsConsecutive?: number;
+      subtitleConsecutive?: number;
+      keywordsSubtitleCross?: number;
+      keywordsNonConsecutive?: number;
+      subtitleNonConsecutive?: number;
+      threeWayCross?: number;
+      missing?: number;
+    };
+    // NEW v2.3: Pre-calculated stats by brand type (for frontend filtering)
+    statsByBrandType?: {
+      all: {
+        totalPossible: number;
+        existing: number;
+        missing: number;
+        coveragePct: number;
+        titleConsecutive: number;
+        titleNonConsecutive: number;
+        titleKeywordsCross: number;
+        crossElement: number;
+        keywordsConsecutive: number;
+        subtitleConsecutive: number;
+        keywordsSubtitleCross: number;
+        keywordsNonConsecutive: number;
+        subtitleNonConsecutive: number;
+        threeWayCross: number;
+      };
+      generic: {
+        totalPossible: number;
+        existing: number;
+        missing: number;
+        coveragePct: number;
+        titleConsecutive: number;
+        titleNonConsecutive: number;
+        titleKeywordsCross: number;
+        crossElement: number;
+        keywordsConsecutive: number;
+        subtitleConsecutive: number;
+        keywordsSubtitleCross: number;
+        keywordsNonConsecutive: number;
+        subtitleNonConsecutive: number;
+        threeWayCross: number;
+      };
+      branded: {
+        totalPossible: number;
+        existing: number;
+        missing: number;
+        coveragePct: number;
+        titleConsecutive: number;
+        titleNonConsecutive: number;
+        titleKeywordsCross: number;
+        crossElement: number;
+        keywordsConsecutive: number;
+        subtitleConsecutive: number;
+        keywordsSubtitleCross: number;
+        keywordsNonConsecutive: number;
+        subtitleNonConsecutive: number;
+        threeWayCross: number;
+      };
+    };
+    // Legacy fields (backward compatibility)
     totalCombos: number;
     titleCombos: string[];
     subtitleNewCombos: string[];
     allCombinedCombos: string[];
+    twoWordCombos?: number; // v2.1: Count of 2-word combos
+    threeWordCombos?: number; // v2.1: Count of 3-word combos
+    fourWordCombos?: number; // v2.2: Count of 4-word combos
     // Classified combos (V2.1+)
     titleCombosClassified?: ClassifiedCombo[];
     subtitleNewCombosClassified?: ClassifiedCombo[];
     lowValueCombos?: ClassifiedCombo[];
-    stats?: {
-      total: number;
-      totalPossible?: number;
-      existing: number;
-      missing: number;
-      coveragePct: number;
-      coverage?: number;
-      thresholds?: {
-        excellent: number;
-        good: number;
-        moderate: number;
-      };
-      missingExamples?: string[];
-    };
   };
   conversionInsights: {
     description: {

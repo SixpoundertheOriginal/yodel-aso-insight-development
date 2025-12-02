@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowUp, ArrowDown, ChevronsUpDown, Columns, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Copy, Download, PlusCircle, Loader2, SearchX, RefreshCw } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronsUpDown, Columns, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Copy, Download, PlusCircle, Loader2, SearchX, RefreshCw, Trash2 } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -43,7 +43,6 @@ import type { ClassifiedCombo } from '@/components/AppAudit/UnifiedMetadataAudit
 interface ColumnVisibility {
   status: boolean;
   type: boolean;
-  priority: boolean;
   semantic: boolean;
   novelty: boolean;
   noise: boolean;
@@ -52,7 +51,7 @@ interface ColumnVisibility {
   competition: boolean;
 }
 
-// Sortable header component with Batman Arkham Knight tactical styling
+// Sortable header component with 2026 design system integration
 const SortableHeader: React.FC<{
   column: SortColumn;
   children: React.ReactNode;
@@ -64,7 +63,18 @@ const SortableHeader: React.FC<{
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className="h-7 px-2 font-mono text-[9px] font-light uppercase tracking-[0.25em] text-zinc-500 hover:text-orange-400 hover:bg-orange-500/10 hover:shadow-[0_0_10px_rgba(249,115,22,0.15)] transition-all"
+      className="h-8 px-3 font-mono uppercase tracking-[0.1em] hover:bg-orange-500/10 hover:shadow-[0_0_10px_rgba(249,115,22,0.15)] transition-all"
+      style={{
+        fontSize: 'var(--table-header-size)',
+        fontWeight: 'var(--table-header-weight)',
+        color: 'var(--table-header-color)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = 'var(--table-header-hover-color)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = 'var(--table-header-color)';
+      }}
     >
       {children}
       <span className="ml-1.5">{sortIcon}</span>
@@ -95,7 +105,6 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>({
     status: false,      // Hidden by default (V2.1 feature - no data yet)
     type: true,
-    priority: true,     // Phase 2: Now visible by default (priority scoring complete)
     semantic: false,    // Hidden by default (V2.1 feature - no data yet)
     novelty: false,     // Hidden by default (V2.1 feature - no data yet)
     noise: false,       // Hidden by default (V2.1 feature - no data yet)
@@ -124,6 +133,8 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
     deselectAll,
     setCustomKeywords,
     customKeywords,
+    removeCustomKeyword,
+    combos,
   } = useKeywordComboStore();
 
   const sortedCombos = getSortedCombos();
@@ -186,11 +197,9 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
   // Get all unique combos (for fetching, independent of sort/filter)
   // MUST include both auto-generated combos AND custom keywords
   const allUniqueComboTexts = useMemo(() => {
-    const allCombos = useKeywordComboStore.getState().combos;
-    const allCustom = useKeywordComboStore.getState().customKeywords;
-    const merged = [...allCombos, ...allCustom];
+    const merged = [...combos, ...customKeywords];
     return merged.map(c => c.text);
-  }, [customKeywords]); // Re-compute when custom keywords change
+  }, [combos, customKeywords]); // Re-compute when combos OR custom keywords change
 
   // Fetch rankings with cache validity check
   const fetchRankingsIfNeeded = useCallback(async (force = false) => {
@@ -239,55 +248,98 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
 
       const organizationId = appData?.organization_id;
 
-      // Fetch from edge function (returns from combo_rankings_cache)
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-combo-rankings`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            appId: metadata.appId,
-            combos: allUniqueComboTexts,
-            country: metadata.country || 'us',
-            platform: 'ios',
-            organizationId,
-          }),
-        }
-      );
+      console.log('[KeywordComboTable] 🚀 Sending request:', {
+        appId: metadata.appId,
+        comboCount: allUniqueComboTexts.length,
+        firstFewCombos: allUniqueComboTexts.slice(0, 5),
+        country: metadata.country || 'us',
+        organizationId
+      });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      // Chunking logic: Split into batches of 200 if needed
+      const CHUNK_SIZE = 200;
+      const chunks: string[][] = [];
+      for (let i = 0; i < allUniqueComboTexts.length; i += CHUNK_SIZE) {
+        chunks.push(allUniqueComboTexts.slice(i, i + CHUNK_SIZE));
       }
 
-      const result = await response.json();
+      if (chunks.length > 1) {
+        console.log(`[KeywordComboTable] 📦 Splitting ${allUniqueComboTexts.length} combos into ${chunks.length} chunks`);
+      }
 
-      if (result.success && result.results) {
-        const newRankings = new Map<string, ComboRankingData>();
+      const newRankings = new Map<string, ComboRankingData>();
 
-        for (const rankingResult of result.results) {
-          console.log(`[KeywordComboTable] 📥 API returned combo: "${rankingResult.combo}", totalResults: ${rankingResult.totalResults}`);
-          newRankings.set(rankingResult.combo, {
-            position: rankingResult.position,
-            isRanking: rankingResult.isRanking,
-            snapshotDate: rankingResult.checkedAt,
-            trend: rankingResult.trend,
-            positionChange: rankingResult.positionChange,
-            visibilityScore: null,
-            totalResults: rankingResult.totalResults ?? null,
+      // Process each chunk sequentially
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+
+        if (chunks.length > 1) {
+          console.log(`[KeywordComboTable] 📦 Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} combos)`);
+        }
+
+        // Fetch from edge function (returns from combo_rankings_cache)
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-combo-rankings`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              appId: metadata.appId,
+              combos: chunk,
+              country: metadata.country || 'us',
+              platform: 'ios',
+              organizationId,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[KeywordComboTable] API error response:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+            chunk: chunkIndex + 1,
+            totalChunks: chunks.length
           });
+          throw new Error(`API error ${response.status}: ${response.statusText || errorText}`);
         }
 
-        setCachedRankings(newRankings);
-        setLastFetchTimestamp(Date.now());
+        const result = await response.json();
 
-        console.log(`[KeywordComboTable] ✅ Cached ${newRankings.size} rankings (valid for 24h)`);
-        console.log(`[KeywordComboTable] 🔑 Cache keys:`, Array.from(newRankings.keys()).slice(0, 10));
-      } else {
-        throw new Error(result.error?.message || 'Failed to fetch rankings');
+        if (result.success && result.results) {
+          for (const rankingResult of result.results) {
+            console.log(`[KeywordComboTable] 📥 API returned combo: "${rankingResult.combo}", totalResults: ${rankingResult.totalResults}`);
+            newRankings.set(rankingResult.combo, {
+              position: rankingResult.position,
+              isRanking: rankingResult.isRanking,
+              snapshotDate: rankingResult.checkedAt,
+              trend: rankingResult.trend,
+              positionChange: rankingResult.positionChange,
+              visibilityScore: null,
+              totalResults: rankingResult.totalResults ?? null,
+            });
+          }
+
+          // Update cache progressively after each chunk
+          if (chunks.length > 1) {
+            setCachedRankings(new Map(newRankings));
+            console.log(`[KeywordComboTable] 📦 Progress: ${newRankings.size}/${allUniqueComboTexts.length} combos processed`);
+          }
+        } else {
+          throw new Error(result.error?.message || 'Failed to fetch rankings');
+        }
       }
+
+      // Final cache update
+      setCachedRankings(newRankings);
+      setLastFetchTimestamp(Date.now());
+
+      console.log(`[KeywordComboTable] ✅ Cached ${newRankings.size} rankings (valid for 24h)`);
+      console.log(`[KeywordComboTable] 🔑 Cache keys:`, Array.from(newRankings.keys()).slice(0, 10));
     } catch (error: any) {
       console.error('[KeywordComboTable] ❌ Failed to fetch rankings:', error);
       setFetchError(error.message);
@@ -465,6 +517,55 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
     // TODO: Implement metadata update logic
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIndices.size === 0) return;
+
+    const count = selectedIndices.size;
+    const confirmMsg = `Delete ${count} combo${count !== 1 ? 's' : ''}? This cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsLoading(true);
+    console.log(`[KeywordComboTable] 🗑️ Bulk deleting ${count} combos...`);
+
+    try {
+      // Get the combo texts to delete
+      const combosToDelete = selectedCombos.map(c => c.text);
+
+      // Delete from database (only for custom keywords)
+      if (metadata?.appId) {
+        const { error } = await supabase
+          .from('custom_keywords')
+          .delete()
+          .eq('app_id', metadata.appId)
+          .eq('platform', 'ios')
+          .in('keyword', combosToDelete);
+
+        if (error) {
+          console.error('[KeywordComboTable] Failed to bulk delete from database:', error);
+          alert('Failed to delete some combos from database. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Remove from store (both combos and customKeywords arrays)
+      combosToDelete.forEach(text => {
+        removeCustomKeyword(text);
+        useKeywordComboStore.getState().removeCombo(text);
+      });
+
+      // Clear selection
+      deselectAll();
+
+      console.log(`[KeywordComboTable] ✅ Bulk deleted ${count} combos`);
+    } catch (err) {
+      console.error('[KeywordComboTable] Bulk delete error:', err);
+      alert('An error occurred while deleting combos.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Custom Keyword Input */}
@@ -549,6 +650,25 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
             >
               <PlusCircle className="h-3 w-3 mr-2" />
               Add to Subtitle
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkDelete}
+              disabled={isLoading}
+              className="h-8 border-red-500/30 text-red-300 hover:bg-red-500/20"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete Selected
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -674,16 +794,6 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="col-priority"
-                    checked={visibleColumns.priority}
-                    onCheckedChange={() => toggleColumn('priority')}
-                  />
-                  <label htmlFor="col-priority" className="text-sm text-zinc-400 cursor-pointer">
-                    Priority Score
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
                     id="col-semantic"
                     checked={visibleColumns.semantic}
                     onCheckedChange={() => toggleColumn('semantic')}
@@ -783,29 +893,72 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
                 </div>
               </TableHead>
               <SortableHeader column="text" onClick={() => handleSort('text')} sortIcon={getSortIcon('text')}>
-                ▸ COMBO
+                ▸ SEARCH WORD
               </SortableHeader>
               {visibleColumns.status && (
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ STATUS</TableHead>
+                <TableHead
+                  className="font-mono uppercase border-b-2 border-dashed border-orange-500/30"
+                  style={{
+                    fontSize: 'var(--table-header-size)',
+                    fontWeight: 'var(--table-header-weight)',
+                    color: 'var(--table-header-color)',
+                    letterSpacing: 'var(--table-header-tracking)',
+                    paddingLeft: '0.75rem',
+                    paddingRight: '0.75rem',
+                  }}
+                >
+                  ◇ STATUS
+                </TableHead>
               )}
               {visibleColumns.type && (
                 <SortableHeader column="type" onClick={() => handleSort('type')} sortIcon={getSortIcon('type')}>
                   ▸ TYPE
                 </SortableHeader>
               )}
-              {visibleColumns.priority && (
-                <SortableHeader column="relevance" onClick={() => handleSort('relevance')} sortIcon={getSortIcon('relevance')}>
-                  ▸ PRIORITY
-                </SortableHeader>
-              )}
               {visibleColumns.semantic && (
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ SEMANTIC</TableHead>
+                <TableHead
+                  className="font-mono uppercase border-b-2 border-dashed border-orange-500/30"
+                  style={{
+                    fontSize: 'var(--table-header-size)',
+                    fontWeight: 'var(--table-header-weight)',
+                    color: 'var(--table-header-color)',
+                    letterSpacing: 'var(--table-header-tracking)',
+                    paddingLeft: '0.75rem',
+                    paddingRight: '0.75rem',
+                  }}
+                >
+                  ◇ SEMANTIC
+                </TableHead>
               )}
               {visibleColumns.novelty && (
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ NOVELTY</TableHead>
+                <TableHead
+                  className="font-mono uppercase border-b-2 border-dashed border-orange-500/30"
+                  style={{
+                    fontSize: 'var(--table-header-size)',
+                    fontWeight: 'var(--table-header-weight)',
+                    color: 'var(--table-header-color)',
+                    letterSpacing: 'var(--table-header-tracking)',
+                    paddingLeft: '0.75rem',
+                    paddingRight: '0.75rem',
+                  }}
+                >
+                  ◇ NOVELTY
+                </TableHead>
               )}
               {visibleColumns.noise && (
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ NOISE</TableHead>
+                <TableHead
+                  className="font-mono uppercase border-b-2 border-dashed border-orange-500/30"
+                  style={{
+                    fontSize: 'var(--table-header-size)',
+                    fontWeight: 'var(--table-header-weight)',
+                    color: 'var(--table-header-color)',
+                    letterSpacing: 'var(--table-header-tracking)',
+                    paddingLeft: '0.75rem',
+                    paddingRight: '0.75rem',
+                  }}
+                >
+                  ◇ NOISE
+                </TableHead>
               )}
               {visibleColumns.source && (
                 <SortableHeader column="source" onClick={() => handleSort('source')} sortIcon={getSortIcon('source')}>
@@ -828,7 +981,19 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
               <SortableHeader column="appRanking" onClick={() => handleSort('appRanking')} sortIcon={getSortIcon('appRanking')}>
                 ▸ APP RANKING
               </SortableHeader>
-              <TableHead className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">◇ ACTIONS</TableHead>
+              <TableHead
+                className="font-mono uppercase border-b-2 border-dashed border-orange-500/30"
+                style={{
+                  fontSize: 'var(--table-header-size)',
+                  fontWeight: 'var(--table-header-weight)',
+                  color: 'var(--table-header-color)',
+                  letterSpacing: 'var(--table-header-tracking)',
+                  paddingLeft: '0.75rem',
+                  paddingRight: '0.75rem',
+                }}
+              >
+                ◇ ACTIONS
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -33,7 +33,6 @@ import { ComboStrength } from '@/engine/combos/comboGenerationEngine';
 interface ColumnVisibility {
   status: boolean;
   type: boolean;
-  priority: boolean;
   semantic: boolean;
   novelty: boolean;
   noise: boolean;
@@ -191,8 +190,9 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         return;
       }
 
-      // Remove from store
+      // Remove from store (both customKeywords and combos arrays)
       removeCustomKeyword(combo.text);
+      useKeywordComboStore.getState().removeCombo(combo.text);
       console.log(`[KeywordComboRow] ✅ Deleted custom keyword: ${combo.text}`);
     } catch (error) {
       console.error('[KeywordComboRow] Error deleting custom keyword:', error);
@@ -316,42 +316,6 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
           </TableCell>
         )}
 
-        {/* Priority Score - V2.1 */}
-        {visibleColumns.priority && (
-          <TableCell className="text-center">
-            {(combo as any).priorityScore !== undefined ? (
-              <div className="relative flex items-center justify-center gap-1">
-                {/* Progress bar background */}
-                <div className="absolute inset-0 flex items-center px-2">
-                  <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        (combo as any).priorityScore >= 70 ? 'bg-emerald-500/30' :
-                        (combo as any).priorityScore >= 50 ? 'bg-blue-500/30' :
-                        'bg-zinc-600/30'
-                      }`}
-                      style={{ width: `${(combo as any).priorityScore}%` }}
-                    />
-                  </div>
-                </div>
-                {/* Score value */}
-                <div className="relative flex items-center gap-1">
-                  <span className={`font-mono text-sm font-semibold ${
-                    (combo as any).priorityScore >= 70 ? 'text-emerald-400' :
-                    (combo as any).priorityScore >= 50 ? 'text-blue-400' :
-                    'text-zinc-500'
-                  }`}>
-                    {(combo as any).priorityScore}
-                  </span>
-                  {(combo as any).priorityScore >= 70 && <Sparkles className="h-3 w-3 text-emerald-400" />}
-                </div>
-              </div>
-            ) : (
-              <span className="text-xs text-zinc-500">-</span>
-            )}
-          </TableCell>
-        )}
-
         {/* Semantic Relevance - V2.1 */}
         {visibleColumns.semantic && (
           <TableCell className="text-center">
@@ -419,6 +383,7 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
             <CompetitionCell
               totalResults={rankingData?.totalResults ?? null}
               snapshotDate={rankingData?.snapshotDate}
+              isLoading={rankingsLoading}
             />
           </TableCell>
         )}

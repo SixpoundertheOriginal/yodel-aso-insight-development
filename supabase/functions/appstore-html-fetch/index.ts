@@ -18,12 +18,22 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { selectUserAgent, getRandomUserAgent } from './_shared/ua.ts';
 import { sanitizeAndTruncate } from './_shared/sanitize.ts';
-import { buildSnapshot, extractSubtitle, validateSubtitle, extractDescription, validateDescription, extractTitle, extractDeveloper } from './_shared/dom.ts';
+import { buildSnapshot, extractSubtitle, extractSubtitleWithMetadata, validateSubtitle, extractDescription, validateDescription, extractTitle, extractDeveloper } from './_shared/dom.ts';
 
 // Types
 interface FetchRequest {
   appId: string;
   country: string;
+}
+
+// Subtitle metadata with explicit status tracking (best practice)
+interface SubtitleMetadata {
+  value: string | null;
+  status: 'found' | 'confirmed_none' | 'fetch_failed' | 'parse_error';
+  confidence: 'high' | 'medium' | 'low';
+  source: 'html-scrape' | 'itunes-fallback' | 'manual';
+  extractionMethod?: string; // Which pattern matched (e.g., "we-truncate", "generic-h2")
+  error?: string; // Detailed error message if status is fetch_failed/parse_error
 }
 
 interface HtmlFetchResponse {
@@ -35,7 +45,8 @@ interface HtmlFetchResponse {
   html: string;            // sanitized HTML (300KB max)
   htmlLength: number;      // original HTML length before trimming
   snapshot: string;        // minimal DOM snapshot (<header> only)
-  subtitle: string | null; // extracted subtitle, if available
+  subtitle: string | null; // extracted subtitle, if available (DEPRECATED: use subtitleMetadata)
+  subtitleMetadata?: SubtitleMetadata; // NEW: Detailed subtitle status tracking
   description: string | null; // extracted description from JSON-LD, if available
   latencyMs: number;
   uaUsed: string;
@@ -163,8 +174,29 @@ serve(async (req) => {
       // Now sanitize and truncate HTML
       const { sanitized, originalLength } = sanitizeAndTruncate(result.html);
       const snapshot = buildSnapshot(sanitized);
-      const subtitle = extractSubtitle(sanitized);
-      const validatedSubtitle = validateSubtitle(subtitle) ? subtitle : null;
+
+      // Extract subtitle with metadata (new approach)
+      const subtitleExtraction = extractSubtitleWithMetadata(sanitized);
+      const validatedSubtitle = validateSubtitle(subtitleExtraction.value) ? subtitleExtraction.value : null;
+
+      // Build subtitle metadata for status tracking
+      const subtitleMetadata: SubtitleMetadata = validatedSubtitle
+        ? {
+            // Subtitle found
+            value: validatedSubtitle,
+            status: 'found',
+            confidence: 'high',
+            source: 'html-scrape',
+            extractionMethod: subtitleExtraction.extractionMethod || 'unknown',
+          }
+        : {
+            // HTML fetch succeeded but no subtitle found
+            value: null,
+            status: 'confirmed_none',
+            confidence: 'high',
+            source: 'html-scrape',
+            extractionMethod: null,
+          };
 
       const response: HtmlFetchResponse = {
         ok: true,
@@ -175,7 +207,8 @@ serve(async (req) => {
         html: sanitized,
         htmlLength: originalLength,
         snapshot,
-        subtitle: validatedSubtitle,
+        subtitle: validatedSubtitle, // Keep for backward compatibility
+        subtitleMetadata, // NEW: Detailed status tracking
         description: validatedDescription,
         latencyMs,
         uaUsed: result.uaUsed,
@@ -205,7 +238,16 @@ serve(async (req) => {
           html: '',
           htmlLength: 0,
           snapshot: '',
-          subtitle: '', // iTunes API does NOT have subtitle
+          subtitle: '', // iTunes API does NOT have subtitle (deprecated field)
+          // NEW: Subtitle metadata with fetch_failed status
+          subtitleMetadata: {
+            value: null,
+            status: 'fetch_failed',
+            confidence: 'low',
+            source: 'itunes-fallback',
+            extractionMethod: null,
+            error: 'HTML scraping failed, iTunes API does not provide subtitle field',
+          },
           description: itunesData.description || null,
           latencyMs: Date.now() - startTime,
           uaUsed: result.uaUsed,
@@ -232,7 +274,16 @@ serve(async (req) => {
           html: '',
           htmlLength: 0,
           snapshot: '',
-          subtitle: null,
+          subtitle: null, // Deprecated field
+          // NEW: Subtitle metadata with fetch_failed status
+          subtitleMetadata: {
+            value: null,
+            status: 'fetch_failed',
+            confidence: 'low',
+            source: 'html-scrape',
+            extractionMethod: null,
+            error: `Both HTML scraping and iTunes fallback failed: ${result.error}`,
+          },
           description: null,
           latencyMs: Date.now() - startTime,
           uaUsed: result.uaUsed,

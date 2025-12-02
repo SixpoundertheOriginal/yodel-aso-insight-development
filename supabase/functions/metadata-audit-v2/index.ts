@@ -58,6 +58,9 @@ interface MetadataAuditRequest {
   // Option 2: Monitored app lookup
   monitored_app_id?: string;
   organization_id?: string;
+
+  // v2.2: Keywords field (App Store Connect 100-char field, comma-separated)
+  keywords?: string;
 }
 
 interface MetadataAuditResponse {
@@ -89,7 +92,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     // Parse request
-    const { app_id, platform, locale, monitored_app_id, organization_id }: MetadataAuditRequest =
+    const { app_id, platform, locale, monitored_app_id, organization_id, keywords }: MetadataAuditRequest =
       await req.json();
 
     // Validate input
@@ -170,6 +173,7 @@ serve(async (req: Request): Promise<Response> => {
           title: normalizeText(cachedMetadata.title),
           subtitle: normalizeText(cachedMetadata.subtitle),
           description: normalizeText(cachedMetadata.description),
+          keywords: keywords || '', // v2.2: Pass keywords field from request
           applicationCategory: cachedMetadata.category,
           brandKeywords // v2.1: Pass user-defined brand keywords to engine
         };
@@ -245,6 +249,7 @@ serve(async (req: Request): Promise<Response> => {
           title: normalizeText(metadataData.title || metadataData.name || 'Unknown App'),
           subtitle: normalizeText(metadataData.subtitle || ''),
           description: normalizeText(metadataData.description || ''),
+          keywords: keywords || '', // v2.2: Pass keywords field from request
           applicationCategory: undefined, // Not available from HTML fetch
           brandKeywords // v2.1: Pass user-defined brand keywords to engine
         };

@@ -231,15 +231,17 @@ export function calculateRankingSlotEfficiency(
 // ==================== DUPLICATE ANALYSIS ====================
 
 /**
- * Analyze duplicate keywords between title and subtitle
+ * Analyze duplicate keywords between title, subtitle, and keywords field
  */
 export function analyzeDuplicates(
   title: string,
-  subtitle: string
+  subtitle: string,
+  keywords?: string
 ): DuplicateAnalysis {
   const tokenSet = extractRankingTokens(title, subtitle);
 
-  const duplicateKeywords = Array.from(
+  // Get duplicates between title and subtitle (existing logic)
+  const subtitleDuplicates = Array.from(
     new Set(
       tokenSet.ignoredTokens
         .filter((t) => t.isDuplicate)
@@ -247,27 +249,78 @@ export function analyzeDuplicates(
     )
   );
 
+  // Extract keywords tokens (if provided)
+  const keywordsDuplicates: string[] = [];
+  if (keywords && keywords.trim()) {
+    const keywordsTokens = keywords
+      .split(',')
+      .map(kw => normalizeText(kw.trim()))
+      .filter(kw => kw.length >= MIN_KEYWORD_LENGTH && !STOPWORDS.has(kw));
+
+    // Get meaningful words from title and subtitle
+    const titleWords = new Set(
+      tokenSet.titleTokens.filter(t => !t.isStopword).map(t => t.text)
+    );
+    const subtitleWords = new Set(
+      tokenSet.subtitleTokens.filter(t => !t.isStopword).map(t => t.text)
+    );
+
+    // Check each keyword against title and subtitle
+    keywordsTokens.forEach(keyword => {
+      if (titleWords.has(keyword) || subtitleWords.has(keyword)) {
+        keywordsDuplicates.push(keyword);
+      }
+    });
+  }
+
+  // Combine all duplicates
+  const duplicateKeywords = Array.from(
+    new Set([...subtitleDuplicates, ...keywordsDuplicates])
+  );
+
   const duplicateCount = duplicateKeywords.length;
 
   // Calculate wasted characters
   const wastedCharacters = duplicateKeywords.reduce(
-    (sum, keyword) => sum + keyword.length + 1, // +1 for space
+    (sum, keyword) => sum + keyword.length + 1, // +1 for space/comma
     0
   );
 
   // Generate recommendation
   let recommendation: string | undefined;
   if (duplicateCount > 0) {
+    const sources: string[] = [];
+    if (subtitleDuplicates.length > 0) sources.push('subtitle');
+    if (keywordsDuplicates.length > 0) sources.push('keywords field');
+
     recommendation = `Remove ${duplicateCount} duplicate keyword${
       duplicateCount > 1 ? 's' : ''
-    } from subtitle to free up ${wastedCharacters} characters for new keywords.`;
+    } from ${sources.join(' and ')} to free up ${wastedCharacters} characters for new keywords.`;
   }
+
+  // Get meaningful words from title and subtitle for breakdown
+  const titleWords = new Set(
+    tokenSet.titleTokens.filter(t => !t.isStopword).map(t => t.text)
+  );
+  const subtitleWords = new Set(
+    tokenSet.subtitleTokens.filter(t => !t.isStopword).map(t => t.text)
+  );
+
+  // Build breakdown: which duplicates appear in which fields
+  const inTitle = duplicateKeywords.filter(word => titleWords.has(word));
+  const inSubtitle = duplicateKeywords.filter(word => subtitleWords.has(word));
+  const inKeywords = keywordsDuplicates;
 
   return {
     duplicateKeywords,
     duplicateCount,
     wastedCharacters,
     recommendation,
+    breakdown: {
+      inTitle,
+      inSubtitle,
+      inKeywords,
+    },
   };
 }
 

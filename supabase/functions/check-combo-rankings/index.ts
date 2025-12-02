@@ -70,7 +70,7 @@ const REQUEST_DELAY_MS = 50; // Delay between batches to respect rate limits
 const TOP_N_RESULTS = 200; // Check top 200 (iTunes API maximum)
 
 // Security & Validation Constants
-const MAX_COMBOS_PER_REQUEST = 100;
+const MAX_COMBOS_PER_REQUEST = 200;
 const MAX_COMBO_LENGTH = 100;
 const SUPPORTED_COUNTRIES = ['us', 'gb', 'ca', 'au', 'de', 'fr', 'es', 'it', 'jp', 'kr'];
 

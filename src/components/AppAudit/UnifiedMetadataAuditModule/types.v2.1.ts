@@ -58,6 +58,12 @@ export interface DuplicateAnalysis {
   duplicateCount: number;
   wastedCharacters: number; // Characters wasted on duplicates
   recommendation?: string; // Suggestion to remove duplicates
+  // Detailed breakdown by source (optional for backward compatibility)
+  breakdown?: {
+    inTitle: string[];     // Duplicates found in title
+    inSubtitle: string[];  // Duplicates found in subtitle
+    inKeywords: string[];  // Duplicates found in keywords field
+  };
 }
 
 /**

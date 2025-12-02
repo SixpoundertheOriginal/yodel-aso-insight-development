@@ -27,7 +27,7 @@ export interface ComboFilterState {
   length: 'all' | '2' | '3' | '4' | '5+';
   keywordSearch: string;
   minStrategicValue: number;
-  source: 'all' | 'title' | 'subtitle' | 'both';
+  brandType: 'all' | 'generic' | 'branded';
 }
 
 interface EnhancedComboFiltersProps {
@@ -50,7 +50,7 @@ export const EnhancedComboFilters: React.FC<EnhancedComboFiltersProps> = ({
       length: 'all',
       keywordSearch: '',
       minStrategicValue: 0,
-      source: 'all',
+      brandType: 'all',
     });
   };
 
@@ -59,7 +59,7 @@ export const EnhancedComboFilters: React.FC<EnhancedComboFiltersProps> = ({
     filters.length !== 'all' ||
     filters.keywordSearch !== '' ||
     filters.minStrategicValue > 0 ||
-    filters.source !== 'all';
+    filters.brandType !== 'all';
 
   return (
     <div className="space-y-4 mb-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
@@ -144,21 +144,20 @@ export const EnhancedComboFilters: React.FC<EnhancedComboFiltersProps> = ({
           </Select>
         </div>
 
-        {/* Source Filter */}
+        {/* Brand Type Filter */}
         <div className="space-y-2">
-          <Label className="text-xs text-zinc-400">Source</Label>
+          <Label className="text-xs text-zinc-400">Brand Type</Label>
           <Select
-            value={filters.source}
-            onValueChange={(value: any) => onChange({ ...filters, source: value })}
+            value={filters.brandType}
+            onValueChange={(value: any) => onChange({ ...filters, brandType: value })}
           >
             <SelectTrigger className="bg-zinc-900 border-zinc-700 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-700">
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="title">Title Only</SelectItem>
-              <SelectItem value="subtitle">Subtitle Only</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="generic">Generic Only</SelectItem>
+              <SelectItem value="branded">Branded Only</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -202,9 +201,9 @@ export const EnhancedComboFilters: React.FC<EnhancedComboFiltersProps> = ({
               Keyword: {filters.keywordSearch}
             </Badge>
           )}
-          {filters.source !== 'all' && (
-            <Badge variant="outline" className="text-xs border-orange-400/30 text-orange-400">
-              Source: {filters.source}
+          {filters.brandType !== 'all' && (
+            <Badge variant="outline" className="text-xs border-emerald-400/30 text-emerald-400">
+              Type: {filters.brandType}
             </Badge>
           )}
           {filters.minStrategicValue > 0 && (

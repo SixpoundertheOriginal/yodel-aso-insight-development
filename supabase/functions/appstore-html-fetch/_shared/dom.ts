@@ -7,31 +7,128 @@
 
 /**
  * Extract subtitle from HTML using regex patterns
+ *
+ * Tries multiple patterns in order of specificity:
+ * 1. <h2 class="we-truncate ...">subtitle</h2> (Primary Apple pattern)
+ * 2. <h2 class="subtitle ...">subtitle</h2> (Legacy pattern)
+ * 3. <h2 class="product-header__subtitle ...">subtitle</h2> (Product header pattern)
+ * 4. <h2 class="app-header__subtitle ...">subtitle</h2> (App header pattern)
+ * 5. Any <h2> tag after <h1> (Generic fallback)
+ *
+ * Returns both the subtitle value and which pattern matched (for debugging/confidence)
  */
 export function extractSubtitle(html: string): string | null {
-  // Primary pattern: <h2 class="we-truncate we-truncate--single-line ...">subtitle</h2>
-  const primaryPattern = /<h2[^>]*class="[^"]*we-truncate[^"]*"[^>]*>(.*?)<\/h2>/is;
-  const primaryMatch = html.match(primaryPattern);
+  const patterns = [
+    // Primary pattern: <h2 class="we-truncate we-truncate--single-line ...">subtitle</h2>
+    /<h2[^>]*class="[^"]*we-truncate[^"]*"[^>]*>(.*?)<\/h2>/is,
 
-  if (primaryMatch && primaryMatch[1]) {
-    const subtitle = primaryMatch[1].trim();
-    if (subtitle.length > 0 && subtitle.length < 200) {
-      return normalizeWhitespace(stripHtmlTags(subtitle));
-    }
-  }
+    // Legacy pattern: <h2 class="subtitle">subtitle</h2>
+    /<h2[^>]*class="[^"]*subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
 
-  // Fallback pattern: <h2 class="subtitle">subtitle</h2>
-  const fallbackPattern = /<h2[^>]*class="[^"]*subtitle[^"]*"[^>]*>(.*?)<\/h2>/is;
-  const fallbackMatch = html.match(fallbackPattern);
+    // Product header pattern
+    /<h2[^>]*class="[^"]*product-header__subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
 
-  if (fallbackMatch && fallbackMatch[1]) {
-    const subtitle = fallbackMatch[1].trim();
-    if (subtitle.length > 0 && subtitle.length < 200) {
-      return normalizeWhitespace(stripHtmlTags(subtitle));
+    // App header pattern
+    /<h2[^>]*class="[^"]*app-header__subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
+
+    // Generic <h2> after <h1> (extract first <h2> only)
+    // This pattern looks for <h1>...</h1> followed eventually by <h2>...</h2>
+    /<h1[^>]*>.*?<\/h1>[\s\S]*?<h2[^>]*>(.*?)<\/h2>/is,
+
+    // Ultra-generic: just find the first <h2> tag
+    /<h2[^>]*>(.*?)<\/h2>/is,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const subtitle = normalizeWhitespace(stripHtmlTags(match[1].trim()));
+
+      // Validate:
+      // - Must have content
+      // - Must be reasonable length (< 200 chars)
+      // - Must not be a generic category name (like "Utilities", "Productivity", etc.)
+      if (subtitle.length > 0 && subtitle.length < 200) {
+        // Filter out common category names that aren't subtitles
+        const categoryNames = [
+          'utilities', 'productivity', 'games', 'entertainment',
+          'lifestyle', 'health', 'fitness', 'education', 'business',
+          'travel', 'food', 'drink', 'social', 'networking',
+          'photo', 'video', 'music', 'news', 'reference',
+          'weather', 'shopping', 'finance', 'sports', 'navigation'
+        ];
+
+        const lowerSubtitle = subtitle.toLowerCase();
+        const isCategory = categoryNames.includes(lowerSubtitle);
+
+        if (!isCategory) {
+          return subtitle;
+        }
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Extract subtitle with metadata (pattern matched, confidence)
+ *
+ * Returns detailed metadata for status tracking and debugging
+ */
+export function extractSubtitleWithMetadata(html: string): {
+  value: string | null;
+  extractionMethod: string | null;
+} {
+  const patternNames = [
+    'we-truncate',
+    'subtitle-class',
+    'product-header__subtitle',
+    'app-header__subtitle',
+    'h2-after-h1',
+    'generic-h2',
+  ];
+
+  const patterns = [
+    /<h2[^>]*class="[^"]*we-truncate[^"]*"[^>]*>(.*?)<\/h2>/is,
+    /<h2[^>]*class="[^"]*subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
+    /<h2[^>]*class="[^"]*product-header__subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
+    /<h2[^>]*class="[^"]*app-header__subtitle[^"]*"[^>]*>(.*?)<\/h2>/is,
+    /<h1[^>]*>.*?<\/h1>[\s\S]*?<h2[^>]*>(.*?)<\/h2>/is,
+    /<h2[^>]*>(.*?)<\/h2>/is,
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    const match = html.match(patterns[i]);
+    if (match && match[1]) {
+      const subtitle = normalizeWhitespace(stripHtmlTags(match[1].trim()));
+
+      if (subtitle.length > 0 && subtitle.length < 200) {
+        const categoryNames = [
+          'utilities', 'productivity', 'games', 'entertainment',
+          'lifestyle', 'health', 'fitness', 'education', 'business',
+          'travel', 'food', 'drink', 'social', 'networking',
+          'photo', 'video', 'music', 'news', 'reference',
+          'weather', 'shopping', 'finance', 'sports', 'navigation'
+        ];
+
+        const lowerSubtitle = subtitle.toLowerCase();
+        const isCategory = categoryNames.includes(lowerSubtitle);
+
+        if (!isCategory) {
+          return {
+            value: subtitle,
+            extractionMethod: patternNames[i],
+          };
+        }
+      }
+    }
+  }
+
+  return {
+    value: null,
+    extractionMethod: null,
+  };
 }
 
 /**

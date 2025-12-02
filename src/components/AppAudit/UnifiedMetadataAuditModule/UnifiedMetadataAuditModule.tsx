@@ -58,11 +58,13 @@ import { computeBrandRatioStats } from '@/engine/metadata/utils/brandNoiseHelper
 import { AppCapabilitiesSection } from './AppCapabilitiesSection';
 import { GapAnalysisSection } from './GapAnalysisSection';
 import { ExecutiveRecommendationsSection } from './ExecutiveRecommendationsSection';
-import { RankingOverviewCard } from './RankingOverviewCard';
 import { LongTailDistributionChart } from './LongTailDistributionChart';
 import { SlotUtilizationHeatmap } from './SlotUtilizationHeatmap';
 import { isV2_1FeatureEnabled } from '@/config/metadataFeatureFlags';
 import { WorkbenchSelectionProvider } from '@/contexts/WorkbenchSelectionContext';
+import { ComboKpiSummary } from '../KeywordComboWorkbench/ComboKpiSummary';
+import { KeywordsInputCard } from './KeywordsInputCard';
+import { analyzeDuplicates } from '@/engine/metadata/utils/rankingTokenExtractor';
 
 const DEFAULT_DISCOVERY_THRESHOLDS = {
   excellent: 5,
@@ -96,6 +98,31 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   const [auditResult, setAuditResult] = useState<UnifiedMetadataAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Keywords field state (App Store Connect 100-char keywords field)
+  const [keywordsFieldInput, setKeywordsFieldInput] = useState<string>('');
+  const [confirmedKeywords, setConfirmedKeywords] = useState<string>(''); // Keywords confirmed for audit
+
+  // Handler: Run audit with current keywords
+  const handleRunAudit = () => {
+    setConfirmedKeywords(keywordsFieldInput);
+  };
+
+  // Check if keywords have changed but not confirmed
+  const hasUnconfirmedChanges = keywordsFieldInput !== confirmedKeywords;
+
+  // Calculate duplicate keywords for real-time highlighting
+  const duplicateKeywordsForInput = useMemo(() => {
+    if (!metadata?.title || !metadata?.subtitle) return [];
+
+    const duplicates = analyzeDuplicates(
+      metadata.title,
+      metadata.subtitle,
+      keywordsFieldInput
+    );
+
+    return duplicates.breakdown?.inKeywords || [];
+  }, [metadata?.title, metadata?.subtitle, keywordsFieldInput]);
 
   // Helper: Calculate delta for comparison
   const getDelta = (competitorValue: number | undefined, baselineValue: number | undefined): { value: number; label: string; isPositive: boolean } | null => {
@@ -135,10 +162,12 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     data: edgeAuditResponse,
     isLoading: isEdgeLoading,
     error: edgeError,
+    isFetching: isEdgeFetching,
   } = useMetadataAuditV2({
     app_id: metadata?.appId,
     platform: metadata?.platform || 'ios',
-    locale: metadata?.locale?.split('-')[1]?.toLowerCase() || 'us', // Extract country code from en-US → us
+    locale: metadata?.locale || 'us', // Use market code directly (e.g., 'gb', 'us')
+    keywords: confirmedKeywords, // v2.2: Use confirmed keywords (manual trigger)
     enabled: !useMockData && !!metadata?.appId,
   });
 
@@ -202,7 +231,7 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     titleKeywords,
     subtitleKeywords,
     platform: 'ios',
-    region: metadata?.locale?.split('-')[1]?.toLowerCase() || 'us',
+    region: metadata?.locale || 'us', // Use market code directly (e.g., 'gb', 'us')
     enabled: AUTOCOMPLETE_INTELLIGENCE_ENABLED && !error && !!auditResult && allKeywords.length > 0,
   });
 
@@ -371,7 +400,20 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       {/* Overall Score Card */}
       <MetadataScoreCard auditResult={auditResult} baselineAudit={baselineAudit} isCompetitor={isCompetitor} />
 
+      {/* Combo KPI Summary - 12 Stat Cards */}
+      <div className="my-6">
+        <ComboKpiSummary
+          comboCoverage={auditResult.comboCoverage}
+          title={metadata.title || ''}
+          subtitle={metadata.subtitle || ''}
+          keywords={keywordsFieldInput}
+          filteredComboCount={auditResult.comboCoverage.combos?.length || auditResult.comboCoverage.stats?.totalPossible || 0}
+          isLoading={isEdgeFetching}
+        />
+      </div>
+
       {/* Element Detail Cards */}
+
       <div className="space-y-4">
         <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
           <div className="h-[2px] w-8 bg-orange-500/40" />
@@ -381,15 +423,6 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
         <p className="text-[10px] text-zinc-500 uppercase tracking-widest -mt-2 mb-3">
           These elements directly influence App Store search ranking
         </p>
-
-        {/* V2.1 Ranking Overview - Combined analysis of title + subtitle */}
-        {isV2_1FeatureEnabled('RANKING_BLOCK') && (
-          <RankingOverviewCard
-            title={metadata.title || ''}
-            subtitle={metadata.subtitle || ''}
-            auditResult={auditResult}
-          />
-        )}
 
         <ElementDetailCard
           elementResult={auditResult.elements.title}
@@ -412,6 +445,17 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           organizationId={organizationId}
           monitoredAppId={monitoredAppId}
         />
+
+        {/* Keywords Field Input Card */}
+        <KeywordsInputCard
+          value={keywordsFieldInput}
+          onChange={setKeywordsFieldInput}
+          initiallyExpanded={true}
+          isRecomputing={isEdgeFetching}
+          onRunAudit={handleRunAudit}
+          hasUnconfirmedChanges={hasUnconfirmedChanges}
+          duplicateKeywords={duplicateKeywordsForInput}
+        />
       </div>
 
       {/* Enhanced Keyword Combo Workbench (Full Width) */}
@@ -422,8 +466,9 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           metadata={{
             title: metadata.title || '',
             subtitle: metadata.subtitle || '',
+            keywords: keywordsFieldInput || null, // Pass keywords from parent state
             appId: metadata.appId, // For brand override storage
-            country: metadata.locale?.split('-')[1]?.toLowerCase() || 'us', // Extract country from locale (en-US → us)
+            country: metadata.locale || 'us', // Use market code directly (e.g., 'gb', 'us')
           }}
         />
       </div>

@@ -500,21 +500,115 @@ export const ElementDetailCard: React.FC<ElementDetailCardProps> = ({
                   </>
                 ) : element === 'subtitle' ? (
                   <>
-                    <EnhancedTextDisplay
-                      text={displaySubtitle || ''}
-                      type="subtitle"
-                      brandOverride={brandOverride}
-                      disableAutoDetect={true}
-                    />
+                    {/* Subtitle Status-Aware Display */}
+                    {(() => {
+                      const subtitleMeta = rawMetadata.subtitleMetadata;
+                      const hasSubtitle = displaySubtitle && displaySubtitle.trim().length > 0;
 
-                    {/* Editable Subtitle Input */}
+                      // Case 1: Subtitle found
+                      if (hasSubtitle) {
+                        return (
+                          <>
+                            <EnhancedTextDisplay
+                              text={displaySubtitle}
+                              type="subtitle"
+                              brandOverride={brandOverride}
+                              disableAutoDetect={true}
+                            />
+                            {subtitleMeta?.extractionMethod && (
+                              <div className="mt-2 text-[10px] text-zinc-500">
+                                ✓ Extracted via: {subtitleMeta.extractionMethod}
+                              </div>
+                            )}
+                          </>
+                        );
+                      }
+
+                      // Case 2: Confirmed no subtitle (HTML fetch succeeded)
+                      if (subtitleMeta?.status === 'confirmed_none') {
+                        return (
+                          <div className="p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm text-zinc-400">ℹ️ This app has no subtitle</span>
+                              <Badge variant="outline" className="text-[10px] border-emerald-400/30 text-emerald-400">
+                                Verified
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-zinc-500">
+                              HTML fetch succeeded, but no subtitle was found in the App Store page.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      // Case 3: Fetch failed (uncertain)
+                      if (subtitleMeta?.status === 'fetch_failed') {
+                        return (
+                          <div className="p-4 bg-orange-500/10 border border-orange-400/30 rounded-lg space-y-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-orange-400" />
+                              <span className="text-sm text-orange-400 font-medium">Subtitle Unavailable</span>
+                              <Badge variant="outline" className="text-[10px] border-orange-400/40 text-orange-400">
+                                Low Confidence
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-zinc-400">
+                              {subtitleMeta.error || 'HTML scraping failed. Unable to verify if subtitle exists.'}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  toast.info('Retry fetch feature coming soon!');
+                                  // TODO: Implement retry subtitle fetch
+                                }}
+                                className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40"
+                              >
+                                Retry Fetch
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditedSubtitle('');
+                                  toast.info('Enter subtitle manually below');
+                                }}
+                                className="border-zinc-700 text-zinc-400"
+                              >
+                                Enter Manually
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Case 4: Fallback (no metadata available)
+                      return (
+                        <div className="p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                          <span className="text-sm text-zinc-500">No subtitle available</span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Manual Subtitle Input */}
                     <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+                          Manual Subtitle Override
+                        </span>
+                        {rawMetadata.subtitleMetadata?.source === 'manual' && (
+                          <Badge variant="outline" className="text-[10px] border-blue-400/30 text-blue-400">
+                            Manual Entry
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={editedSubtitle !== null ? editedSubtitle : elementText || ''}
                           onChange={(e) => setEditedSubtitle(e.target.value)}
-                          placeholder="Edit subtitle text..."
+                          placeholder="Enter subtitle manually (30 chars max)..."
+                          maxLength={30}
                           className="flex-1 px-3 py-2 bg-zinc-900/50 border border-zinc-700/50 rounded text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 font-light"
                         />
                         {editedSubtitle !== null && editedSubtitle !== elementText && (

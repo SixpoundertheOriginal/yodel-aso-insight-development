@@ -13,6 +13,7 @@ interface UseMetadataAuditV2Params {
   platform?: string;
   locale?: string;
   monitored_app_id?: number;
+  keywords?: string; // v2.2: App Store Connect keywords field (100 chars, comma-separated)
   enabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ async function fetchMetadataAuditV2(
       platform: params.platform || 'ios',
       locale: params.locale || 'us',
       monitored_app_id: params.monitored_app_id,
+      keywords: params.keywords || '', // v2.2: Pass keywords field to backend
     },
   });
 

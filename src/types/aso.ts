@@ -7,6 +7,7 @@ export interface ScrapedMetadata {
   title: string;
   subtitle: string;
   description?: string;
+  keywords?: string; // v2.2: App Store Connect keywords field (100 chars, comma-separated)
   applicationCategory?: string;
   locale: string;
   icon?: string;
@@ -27,6 +28,16 @@ export interface ScrapedMetadata {
 
   // Subtitle extraction telemetry (Phase C: DOM extraction)
   subtitleSource?: 'dom' | 'fallback' | 'none' | 'cache' | null;  // Method used to extract subtitle
+
+  // Subtitle metadata with status tracking (v2.3: Best practice architecture)
+  subtitleMetadata?: {
+    value: string | null;
+    status: 'found' | 'confirmed_none' | 'fetch_failed' | 'parse_error';
+    confidence: 'high' | 'medium' | 'low';
+    source: 'html-scrape' | 'itunes-fallback' | 'manual';
+    extractionMethod?: string; // Which HTML pattern matched
+    error?: string; // Error details if fetch failed
+  };
 
   // Creative assets
   screenshots?: string[]; // Primary field - array of screenshot URLs

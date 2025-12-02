@@ -16,6 +16,7 @@ import { formatCacheAge } from '@/hooks/useBatchComboRankings';
 interface CompetitionCellProps {
   totalResults: number | null;
   snapshotDate?: string;
+  isLoading?: boolean;
 }
 
 type CompetitionLevel = 'low' | 'medium' | 'high' | 'very-high';
@@ -59,7 +60,17 @@ function getCompetitionLabel(level: CompetitionLevel): string {
 export const CompetitionCell: React.FC<CompetitionCellProps> = ({
   totalResults,
   snapshotDate,
+  isLoading = false,
 }) => {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-16 h-2 bg-zinc-800/50 rounded-sm animate-pulse" />
+        <span className="text-zinc-500 text-xs font-mono">...</span>
+      </div>
+    );
+  }
+
   if (totalResults === null) {
     return (
       <div className="flex items-center gap-2">

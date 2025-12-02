@@ -15,8 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link2, Table, Download, Copy, FileJson, FileSpreadsheet, X } from 'lucide-react';
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
-import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
-import { analyzeAllCombos, filterCombosByKeyword, ComboStrength, type GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
+import type { UnifiedMetadataAuditResult, GeneratedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
+import { ComboStrength } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
+import { filterCombosByKeyword } from '@/engine/combos/comboGenerationEngine';
 import { EnhancedComboFilters, type ComboFilterState } from './EnhancedComboFilters';
 import { KeywordComboTable } from './KeywordComboTable';
 import { ComboStrengthTierRow } from './ComboStrengthTierRow';
@@ -29,6 +30,12 @@ import { useBrandOverride } from '@/hooks/useBrandOverride';
 import { NestedCategorySection } from './NestedCategorySection';
 import { StrategicKeywordFrequencyPanel } from './StrategicKeywordFrequencyPanel';
 import { KeywordSuggestionsBar } from './KeywordSuggestionsBar';
+import {
+  extractRankingTokens,
+  calculateRankingSlotEfficiency,
+  analyzeDuplicates,
+  createRankingDistributionMap,
+} from '@/engine/metadata/utils/rankingTokenExtractor';
 
 interface EnhancedKeywordComboWorkbenchProps {
   comboCoverage: UnifiedMetadataAuditResult['comboCoverage'];
@@ -52,24 +59,18 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     length: 'all',
     keywordSearch: '',
     minStrategicValue: 0,
-    source: 'all',
+    brandType: 'generic', // Default to generic only
   });
 
-  // Keywords field state (100-char App Store Connect keywords field)
-  const [keywordsFieldInput, setKeywordsFieldInput] = useState<string>(metadata.keywords || '');
-
-  // Parse keywords field into array
+  // Parse keywords field into array (now comes from props)
   const keywordsFieldKeywords = useMemo(() => {
-    if (!keywordsFieldInput.trim()) return [];
-    return keywordsFieldInput
+    const keywordsValue = metadata.keywords || '';
+    if (!keywordsValue.trim()) return [];
+    return keywordsValue
       .split(',')
       .map(kw => kw.trim().toLowerCase())
       .filter(kw => kw.length > 0);
-  }, [keywordsFieldInput]);
-
-  // Phase 2: Progressive Enhancement state
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [enhancementError, setEnhancementError] = useState<string | null>(null);
+  }, [metadata.keywords]);
 
   const {
     setCombos,
@@ -77,7 +78,6 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     removeCombo: removeComboFromStore,
     combos,
     setSearchQuery,
-    setSourceFilter,
     lengthFilter,
     setLengthFilter,
   } = useKeywordComboStore();
@@ -98,162 +98,177 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     return brandOverride || detectBrand(metadata.title);
   }, [metadata.title, brandOverride]);
 
-  // Generate comprehensive combo analysis with brand filtering
-  // Phase 1: Client-side instant results (0-100ms)
-  // Phase 2: Now includes keywords field (4-element combo generation)
-  const [comboAnalysis, setComboAnalysis] = useState(() => {
-    // Parse initial keywords for combo analysis
-    const initialKeywordsArray = (metadata.keywords || '')
-      .split(',')
-      .map(kw => kw.trim().toLowerCase())
-      .filter(kw => kw.length > 0);
+  // Ranking analysis (Title + Subtitle + Keywords - what actually ranks in App Store)
+  const rankingAnalysis = useMemo(() => {
+    const tokenSet = extractRankingTokens(metadata.title, metadata.subtitle);
+    const efficiency = calculateRankingSlotEfficiency(metadata.title, metadata.subtitle);
+    const duplicates = analyzeDuplicates(metadata.title, metadata.subtitle, metadata.keywords || '');
+    const distribution = createRankingDistributionMap(metadata.title, metadata.subtitle);
 
-    return analyzeAllCombos(
-      keywordCoverage.titleKeywords,
-      keywordCoverage.subtitleNewKeywords,
-      metadata.title,
-      metadata.subtitle,
-      initialKeywordsArray,   // NEW: Keywords field keywords array
-      metadata.keywords || '', // NEW: Keywords field raw text
-      comboCoverage.titleCombosClassified,
-      appBrand  // Phase 1: Pass brand to filter branded combos
-    );
+    return { tokenSet, efficiency, duplicates, distribution };
+  }, [metadata.title, metadata.subtitle, metadata.keywords]);
+
+  // v2.3: Use backend-generated combos (single source of truth)
+  // Backend now generates ALL combos with strength classification
+  const [comboAnalysis, setComboAnalysis] = useState(() => {
+    const backendCombos = comboCoverage.combos || [];
+
+    // Convert backend GeneratedCombo[] to frontend format
+    const allPossibleCombos = backendCombos.map(c => ({
+      text: c.text,
+      keywords: c.keywords,
+      length: c.length,
+      exists: c.exists,
+      source: c.source === 'title+subtitle' ? 'both' as const : c.source,
+      strength: c.strength,
+      canStrengthen: c.canStrengthen,
+      strengtheningSuggestion: c.strengtheningSuggestion,
+      isBranded: c.isBranded,
+      isGeneric: c.isGeneric,
+      strengthScore: c.strengthScore,
+      isConsecutive: c.isConsecutive,
+    }));
+
+    const existingCombos = allPossibleCombos.filter(c => c.exists);
+    const missingCombos = allPossibleCombos.filter(c => !c.exists);
+
+    // Use backend stats directly, with fallback calculation for backwards compatibility
+    let stats;
+    if (comboCoverage.stats) {
+      // Backend provides complete stats - use directly
+      stats = {
+        totalPossible: comboCoverage.stats.totalPossible,
+        existing: comboCoverage.stats.existing,
+        missing: comboCoverage.stats.missing,
+        coveragePct: comboCoverage.stats.coveragePct,
+        // Strength tier breakdowns (all from backend)
+        titleConsecutive: comboCoverage.stats.titleConsecutive || 0,
+        titleNonConsecutive: comboCoverage.stats.titleNonConsecutive || 0,
+        titleKeywordsCross: comboCoverage.stats.titleKeywordsCross || 0,
+        crossElement: comboCoverage.stats.crossElement || 0,
+        keywordsConsecutive: comboCoverage.stats.keywordsConsecutive || 0,
+        subtitleConsecutive: comboCoverage.stats.subtitleConsecutive || 0,
+        keywordsSubtitleCross: comboCoverage.stats.keywordsSubtitleCross || 0,
+        keywordsNonConsecutive: comboCoverage.stats.keywordsNonConsecutive || 0,
+        subtitleNonConsecutive: comboCoverage.stats.subtitleNonConsecutive || 0,
+        threeWayCross: comboCoverage.stats.threeWayCross || 0,
+      };
+    } else {
+      // Fallback: Calculate from combos array (backwards compatibility)
+      console.warn('[EnhancedKeywordComboWorkbench] Backend stats missing, calculating from combos');
+      stats = {
+        totalPossible: allPossibleCombos.length,
+        existing: existingCombos.length,
+        missing: missingCombos.length,
+        coveragePct: allPossibleCombos.length > 0
+          ? Math.round((existingCombos.length / allPossibleCombos.length) * 100)
+          : 0,
+        titleConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE).length,
+        titleNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE).length,
+        titleKeywordsCross: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS).length,
+        crossElement: allPossibleCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT).length,
+        keywordsConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE).length,
+        subtitleConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE).length,
+        keywordsSubtitleCross: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS).length,
+        keywordsNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE).length,
+        subtitleNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE).length,
+        threeWayCross: allPossibleCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS).length,
+      };
+    }
+
+    return {
+      allPossibleCombos,
+      existingCombos,
+      missingCombos,
+      recommendedToAdd: missingCombos
+        .sort((a, b) => b.strengthScore - a.strengthScore)
+        .slice(0, 10),
+      stats,
+    };
   });
 
-  // Phase 2: Progressive Enhancement - Enhance from server (200-500ms)
+  // v2.3: Recompute combo analysis when backend data changes
   useEffect(() => {
-    const enhanceFromServer = async () => {
-      if (!metadata.appId) {
-        console.warn('No appId provided, skipping server enhancement');
-        return;
-      }
+    const backendCombos = comboCoverage.combos || [];
 
-      setIsEnhancing(true);
-      setEnhancementError(null);
+    // Convert backend GeneratedCombo[] to frontend format
+    const allPossibleCombos = backendCombos.map(c => ({
+      text: c.text,
+      keywords: c.keywords,
+      length: c.length,
+      exists: c.exists,
+      source: c.source === 'title+subtitle' ? 'both' as const : c.source,
+      strength: c.strength,
+      canStrengthen: c.canStrengthen,
+      strengtheningSuggestion: c.strengtheningSuggestion,
+      isBranded: c.isBranded,
+      isGeneric: c.isGeneric,
+      strengthScore: c.strengthScore,
+      isConsecutive: c.isConsecutive,
+    }));
 
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/keyword-suggestions-enhance`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              appId: metadata.appId,
-              title: metadata.title,
-              subtitle: metadata.subtitle,
-              basicSuggestions: comboAnalysis.allPossibleCombos,
-            }),
-          }
-        );
+    const existingCombos = allPossibleCombos.filter(c => c.exists);
+    const missingCombos = allPossibleCombos.filter(c => !c.exists);
 
-        if (!response.ok) {
-          throw new Error(`Enhancement failed: ${response.statusText}`);
-        }
+    // Use backend stats directly, with fallback calculation for backwards compatibility
+    let stats;
+    if (comboCoverage.stats) {
+      // Backend provides complete stats - use directly
+      stats = {
+        totalPossible: comboCoverage.stats.totalPossible,
+        existing: comboCoverage.stats.existing,
+        missing: comboCoverage.stats.missing,
+        coveragePct: comboCoverage.stats.coveragePct,
+        // Strength tier breakdowns (all from backend)
+        titleConsecutive: comboCoverage.stats.titleConsecutive || 0,
+        titleNonConsecutive: comboCoverage.stats.titleNonConsecutive || 0,
+        titleKeywordsCross: comboCoverage.stats.titleKeywordsCross || 0,
+        crossElement: comboCoverage.stats.crossElement || 0,
+        keywordsConsecutive: comboCoverage.stats.keywordsConsecutive || 0,
+        subtitleConsecutive: comboCoverage.stats.subtitleConsecutive || 0,
+        keywordsSubtitleCross: comboCoverage.stats.keywordsSubtitleCross || 0,
+        keywordsNonConsecutive: comboCoverage.stats.keywordsNonConsecutive || 0,
+        subtitleNonConsecutive: comboCoverage.stats.subtitleNonConsecutive || 0,
+        threeWayCross: comboCoverage.stats.threeWayCross || 0,
+      };
+    } else {
+      // Fallback: Calculate from combos array (backwards compatibility)
+      console.warn('[EnhancedKeywordComboWorkbench] Backend stats missing in useEffect, calculating from combos');
+      stats = {
+        totalPossible: allPossibleCombos.length,
+        existing: existingCombos.length,
+        missing: missingCombos.length,
+        coveragePct: allPossibleCombos.length > 0
+          ? Math.round((existingCombos.length / allPossibleCombos.length) * 100)
+          : 0,
+        titleConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE).length,
+        titleNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE).length,
+        titleKeywordsCross: allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS).length,
+        crossElement: allPossibleCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT).length,
+        keywordsConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE).length,
+        subtitleConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE).length,
+        keywordsSubtitleCross: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS).length,
+        keywordsNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE).length,
+        subtitleNonConsecutive: allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE).length,
+        threeWayCross: allPossibleCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS).length,
+      };
+    }
 
-        const enhancedData = await response.json();
-
-        // Merge enhanced data into existing combos
-        setComboAnalysis(prev => {
-          const enhancedMap = new Map(
-            enhancedData.suggestions.map((s: any) => [s.text, s])
-          );
-
-          const mergedCombos = prev.allPossibleCombos.map(combo => {
-            const enhanced = enhancedMap.get(combo.text);
-            if (enhanced) {
-              return {
-                ...combo,
-                strategicValue: enhanced.enhancedStrategicValue,
-                searchVolume: enhanced.searchVolumeEstimate,
-                competition: enhanced.competitionLevel,
-              };
-            }
-            return combo;
-          }).filter(combo => {
-            // Filter out competitor-branded combos from server
-            const enhanced = enhancedMap.get(combo.text);
-            return !enhanced || !enhanced.isCompetitorBranded;
-          });
-
-          const existingCombos = mergedCombos.filter(c => c.exists);
-          const missingCombos = mergedCombos.filter(c => !c.exists);
-
-          return {
-            allPossibleCombos: mergedCombos,
-            existingCombos,
-            missingCombos,
-            recommendedToAdd: missingCombos
-              .sort((a, b) => (b.strategicValue || 0) - (a.strategicValue || 0))
-              .slice(0, 10),
-            stats: {
-              ...prev.stats,
-              totalPossible: mergedCombos.length,
-              existing: existingCombos.length,
-              missing: missingCombos.length,
-            },
-          };
-        });
-
-        // Show success message
-        const cacheHit = enhancedData.cached;
-        const competitorFiltered = enhancedData.stats?.competitorBrandedFiltered || 0;
-
-        toast.success(
-          `Suggestions enhanced${cacheHit ? ' (cached)' : ''}! ${
-            competitorFiltered > 0 ? `Filtered ${competitorFiltered} competitor brands.` : ''
-          }`,
-          { duration: 3000 }
-        );
-
-      } catch (error) {
-        console.error('Failed to enhance suggestions:', error);
-        setEnhancementError(error instanceof Error ? error.message : 'Unknown error');
-
-        // Graceful degradation - keep client-side results
-        toast.error('Using basic suggestions (enhancement unavailable)', {
-          duration: 3000,
-        });
-      } finally {
-        setIsEnhancing(false);
-      }
-    };
-
-    enhanceFromServer();
-  }, [metadata.appId, metadata.title, metadata.subtitle]);
-
-  // Recompute combo analysis when keywords field changes
-  useEffect(() => {
-    const newAnalysis = analyzeAllCombos(
-      keywordCoverage.titleKeywords,
-      keywordCoverage.subtitleNewKeywords,
-      metadata.title,
-      metadata.subtitle,
-      keywordsFieldKeywords,
-      keywordsFieldInput,
-      comboCoverage.titleCombosClassified,
-      appBrand
-    );
-    setComboAnalysis(newAnalysis);
-  }, [keywordsFieldInput, keywordsFieldKeywords, keywordCoverage, metadata.title, metadata.subtitle, comboCoverage.titleCombosClassified, appBrand]);
+    setComboAnalysis({
+      allPossibleCombos,
+      existingCombos,
+      missingCombos,
+      recommendedToAdd: missingCombos
+        .sort((a, b) => b.strengthScore - a.strengthScore)
+        .slice(0, 10),
+      stats,
+    });
+  }, [comboCoverage.combos, comboCoverage.stats]);
 
   // Sync EnhancedComboFilters with Zustand store filters
   useEffect(() => {
     // Sync keyword search
     setSearchQuery(filters.keywordSearch);
-
-    // Sync source filter
-    if (filters.source === 'all') {
-      setSourceFilter('all');
-    } else if (filters.source === 'title') {
-      setSourceFilter('title');
-    } else if (filters.source === 'subtitle') {
-      setSourceFilter('subtitle');
-    } else if (filters.source === 'both') {
-      setSourceFilter('cross-element');
-    }
 
     // Sync length filter (only 2 and 3 word combos supported)
     if (filters.length === 'all' || filters.length === '2' || filters.length === '3') {
@@ -262,7 +277,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       // If EnhancedComboFilters selects 4 or 5+, default to 'all' since we don't support 4+ anymore
       setLengthFilter('all');
     }
-  }, [filters.keywordSearch, filters.source, filters.length, setSearchQuery, setSourceFilter, setLengthFilter]);
+  }, [filters.keywordSearch, filters.length, setSearchQuery, setLengthFilter]);
 
   // Apply filters
   const filteredCombos = useMemo(() => {
@@ -308,51 +323,15 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       combos = combos.filter(c => (c.strategicValue || 0) >= filters.minStrategicValue);
     }
 
-    // Filter by source
-    if (filters.source !== 'all') {
-      combos = combos.filter(c => c.source === filters.source);
+    // Filter by brand type
+    if (filters.brandType === 'generic') {
+      combos = combos.filter(c => c.isGeneric);
+    } else if (filters.brandType === 'branded') {
+      combos = combos.filter(c => c.isBranded);
     }
 
     return combos;
   }, [comboAnalysis, filters, selection]);
-
-  // Initialize legacy table store (for backwards compatibility)
-  React.useEffect(() => {
-    console.log('[EnhancedKeywordComboWorkbench] comboCoverage data:', {
-      titleCombosClassifiedLength: comboCoverage.titleCombosClassified?.length || 0,
-      subtitleNewCombosClassifiedLength: comboCoverage.subtitleNewCombosClassified?.length || 0,
-      titleCombosLength: comboCoverage.titleCombos?.length || 0,
-      subtitleNewCombosLength: comboCoverage.subtitleNewCombos?.length || 0,
-    });
-
-    let titleCombos = comboCoverage.titleCombosClassified || [];
-    let subtitleCombos = comboCoverage.subtitleNewCombosClassified || [];
-
-    // FALLBACK: If classified arrays are empty, create ClassifiedCombo objects from string arrays
-    if (titleCombos.length === 0 && comboCoverage.titleCombos && comboCoverage.titleCombos.length > 0) {
-      console.log('[EnhancedKeywordComboWorkbench] Creating ClassifiedCombo objects from titleCombos strings');
-      titleCombos = comboCoverage.titleCombos.map(text => ({
-        text,
-        type: 'generic' as const,
-        relevanceScore: 2,
-        source: 'title' as const,
-      }));
-    }
-
-    if (subtitleCombos.length === 0 && comboCoverage.subtitleNewCombos && comboCoverage.subtitleNewCombos.length > 0) {
-      console.log('[EnhancedKeywordComboWorkbench] Creating ClassifiedCombo objects from subtitleNewCombos strings');
-      subtitleCombos = comboCoverage.subtitleNewCombos.map(text => ({
-        text,
-        type: 'generic' as const,
-        relevanceScore: 2,
-        source: 'subtitle' as const,
-      }));
-    }
-
-    const allCombos = [...titleCombos, ...subtitleCombos];
-    console.log('[EnhancedKeywordComboWorkbench] Setting combos to store:', allCombos.length);
-    setCombos(allCombos);
-  }, [comboCoverage, setCombos]);
 
   const handleExportCSV = () => {
     // Convert GeneratedCombo to ClassifiedCombo format for export
@@ -414,21 +393,41 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     toast.info(`Removed "${comboText}" from table`);
   };
 
-  // Filter combos by strength for tier rows
+  // Get stats based on current brand filter (uses pre-calculated backend stats)
+  const filteredStats = useMemo(() => {
+    // Use pre-calculated stats from backend if available
+    if (comboCoverage.statsByBrandType) {
+      return comboCoverage.statsByBrandType[filters.brandType] || comboCoverage.statsByBrandType.all;
+    }
+
+    // Fallback: Use legacy stats (backwards compatibility)
+    return comboAnalysis.stats;
+  }, [comboCoverage.statsByBrandType, filters.brandType, comboAnalysis.stats]);
+
+  // Filter combos by strength for tier rows (respects brand filter)
   const combosByStrength = useMemo(() => {
+    // Apply brand filter first
+    let baseCombos = comboAnalysis.allPossibleCombos;
+    if (filters.brandType === 'generic') {
+      baseCombos = baseCombos.filter(c => c.isGeneric);
+    } else if (filters.brandType === 'branded') {
+      baseCombos = baseCombos.filter(c => c.isBranded);
+    }
+
+    // Then group by strength tier
     return {
-      titleConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE),
-      titleNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE),
-      titleKeywordsCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS),
-      crossElement: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT),
-      keywordsConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE),
-      subtitleConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE),
-      keywordsSubtitleCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS),
-      keywordsNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE),
-      subtitleNonConsecutive: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE),
-      threeWayCross: comboAnalysis.allPossibleCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS),
+      titleConsecutive: baseCombos.filter(c => c.strength === ComboStrength.TITLE_CONSECUTIVE),
+      titleNonConsecutive: baseCombos.filter(c => c.strength === ComboStrength.TITLE_NON_CONSECUTIVE),
+      titleKeywordsCross: baseCombos.filter(c => c.strength === ComboStrength.TITLE_KEYWORDS_CROSS),
+      crossElement: baseCombos.filter(c => c.strength === ComboStrength.CROSS_ELEMENT),
+      keywordsConsecutive: baseCombos.filter(c => c.strength === ComboStrength.KEYWORDS_CONSECUTIVE),
+      subtitleConsecutive: baseCombos.filter(c => c.strength === ComboStrength.SUBTITLE_CONSECUTIVE),
+      keywordsSubtitleCross: baseCombos.filter(c => c.strength === ComboStrength.KEYWORDS_SUBTITLE_CROSS),
+      keywordsNonConsecutive: baseCombos.filter(c => c.strength === ComboStrength.KEYWORDS_NON_CONSECUTIVE),
+      subtitleNonConsecutive: baseCombos.filter(c => c.strength === ComboStrength.SUBTITLE_NON_CONSECUTIVE),
+      threeWayCross: baseCombos.filter(c => c.strength === ComboStrength.THREE_WAY_CROSS),
     };
-  }, [comboAnalysis.allPossibleCombos]);
+  }, [comboAnalysis.allPossibleCombos, filters.brandType]);
 
   // Handler for KeywordSuggestionsBar badge clicks
   const handleLengthFilterClick = (length: '2' | '3' | 'all') => {
@@ -576,7 +575,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           filters={filters}
           onChange={setFilters}
           stats={{
-            total: comboAnalysis.stats.totalPossible,
+            total: filteredStats.totalPossible,
             filtered: filteredCombos.length,
           }}
         />
@@ -618,366 +617,226 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
           <KeywordComboTable metadata={metadata} />
         </div>
 
-        {/* ENHANCED KEYWORD COMBO WORKBENCH - Title & Stats Section */}
+        {/* Header, KPI Cards, Banners, and Distribution moved to ComboKpiSummary component (rendered at top of page) */}
+
+        {/* Strength Breakdown - Phase 2: All 10 Tiers */}
         <div className="border-t border-zinc-800 pt-6 mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium tracking-wide uppercase text-zinc-300">
-                  <Link2 className="h-4 w-4 text-violet-400" />
-                  ENHANCED KEYWORD COMBO WORKBENCH
-                </CardTitle>
-                {/* Phase 2: Enhancement indicator */}
-                {isEnhancing && (
-                  <Badge variant="outline" className="animate-pulse border-blue-400/40 text-blue-400 text-xs">
-                    🔄 Enhancing...
-                  </Badge>
-                )}
-                {enhancementError && (
-                  <Badge variant="outline" className="border-yellow-400/40 text-yellow-400 text-xs">
-                    ⚠️ Basic mode
-                  </Badge>
-                )}
-              </div>
-              <p className="text-[11px] text-zinc-500 mt-1.5">
-                Powered by ASO Bible • All Possible Combinations • Strategic Recommendations
-              </p>
-            </div>
-          </div>
-
-          {/* Summary Stats - Strength-Based KPIs (Combined Option A + C) */}
-          <div className="space-y-4">
-            {/* Row 1: Ranking Power Summary (Option A) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1 bg-gradient-to-br from-orange-500/10 to-red-500/10 p-3 rounded-lg border border-orange-500/20">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">🔥🔥🔥</span>
-                  <p className="text-xs text-zinc-400">Strongest (Tier 1)</p>
-                </div>
-                <p className="text-2xl font-bold text-orange-400">{comboAnalysis.stats.titleConsecutive}</p>
-                <p className="text-[10px] text-zinc-500">Title Consecutive • 100 pts</p>
-              </div>
-
-              <div className="space-y-1 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-3 rounded-lg border border-amber-500/20">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">🔥🔥</span>
-                  <p className="text-xs text-zinc-400">Very Strong (Tier 2)</p>
-                </div>
-                <p className="text-2xl font-bold text-amber-400">
-                  {comboAnalysis.stats.titleNonConsecutive + (comboAnalysis.stats.titleKeywordsCross || 0)}
-                </p>
-                <p className="text-[10px] text-zinc-500">Title-based • 70-85 pts</p>
-              </div>
-
-              <div className="space-y-1 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-3 rounded-lg border border-emerald-500/20">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">🎯</span>
-                  <p className="text-xs text-zinc-400">High-Priority Targets</p>
-                </div>
-                <p className="text-2xl font-bold text-emerald-400">
-                  {comboAnalysis.stats.missing +
-                   (comboAnalysis.stats.keywordsConsecutive || 0) +
-                   comboAnalysis.stats.subtitleConsecutive +
-                   (comboAnalysis.stats.keywordsSubtitleCross || 0) +
-                   (comboAnalysis.stats.keywordsNonConsecutive || 0) +
-                   comboAnalysis.stats.subtitleNonConsecutive +
-                   (comboAnalysis.stats.threeWayCross || 0)}
-                </p>
-                <p className="text-[10px] text-zinc-500">Missing + Weak (Tiers 4-7)</p>
-              </div>
-
-              <div className="space-y-1 bg-gradient-to-br from-blue-500/10 to-violet-500/10 p-3 rounded-lg border border-blue-500/20">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">📊</span>
-                  <p className="text-xs text-zinc-400">Coverage</p>
-                </div>
-                <p className="text-2xl font-bold text-blue-400">{comboAnalysis.stats.coverage}%</p>
-                <p className="text-[10px] text-zinc-500">{comboAnalysis.stats.existing}/{comboAnalysis.stats.totalPossible} combos</p>
-              </div>
-            </div>
-
-            {/* Row 2: Actionable Insights (Option C) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">💪</span>
-                  <p className="text-xs text-zinc-400">Title Power</p>
-                </div>
-                <p className="text-xl font-bold text-zinc-300">
-                  {comboAnalysis.stats.titleConsecutive + comboAnalysis.stats.titleNonConsecutive + (comboAnalysis.stats.titleKeywordsCross || 0)}
-                </p>
-                <p className="text-[10px] text-zinc-500">All Title-based combos</p>
-              </div>
-
-              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">⚡</span>
-                  <p className="text-xs text-zinc-400">Cross-Element</p>
-                </div>
-                <p className="text-xl font-bold text-zinc-300">{comboAnalysis.stats.crossElement}</p>
-                <p className="text-[10px] text-zinc-500">Title + Subtitle • 70 pts</p>
-              </div>
-
-              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">💤</span>
-                  <p className="text-xs text-zinc-400">Weak Combos</p>
-                </div>
-                <p className="text-xl font-bold text-zinc-300">
-                  {(comboAnalysis.stats.keywordsConsecutive || 0) +
-                   comboAnalysis.stats.subtitleConsecutive +
-                   (comboAnalysis.stats.keywordsSubtitleCross || 0) +
-                   (comboAnalysis.stats.keywordsNonConsecutive || 0) +
-                   comboAnalysis.stats.subtitleNonConsecutive +
-                   (comboAnalysis.stats.threeWayCross || 0)}
-                </p>
-                <p className="text-[10px] text-zinc-500">Tiers 4-6 • Need boost</p>
-              </div>
-
-              <div className="space-y-1 bg-zinc-900/50 p-3 rounded-lg border border-zinc-700/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-base">🔍</span>
-                  <p className="text-xs text-zinc-400">Filtered View</p>
-                </div>
-                <p className="text-xl font-bold text-zinc-300">{filteredCombos.length}</p>
-                <p className="text-[10px] text-zinc-500">Active results</p>
-              </div>
-            </div>
-
-            {/* Strength Breakdown - Phase 2: All 10 Tiers */}
-            <div className="border-t border-zinc-800 pt-4 mt-6">
-              <p className="text-xs font-medium text-zinc-400 mb-3">Ranking Power Distribution (10-Tier System)</p>
-
-              {/* Tier 1: Strongest */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 1 (100 pts)</p>
-                <ComboStrengthTierRow
-                  emoji="🔥🔥🔥"
-                  label="Title (Exact Match)"
-                  count={comboAnalysis.stats.titleConsecutive}
-                  combos={combosByStrength.titleConsecutive}
-                  onAddCombo={handleAddCombo}
-                  onRemoveCombo={handleRemoveCombo}
-                  isComboAdded={isComboAdded}
-                  totalCombos={comboAnalysis.stats.totalPossible}
-                  tierLevel="excellent"
-                />
-              </div>
-
-              {/* Tier 2: Very Strong */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 2 (70-85 pts)</p>
-                <div className="space-y-2">
-                  <ComboStrengthTierRow
-                    emoji="🔥🔥"
-                    label="Title (Non Exact Match)"
-                    count={comboAnalysis.stats.titleNonConsecutive}
-                    combos={combosByStrength.titleNonConsecutive}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="excellent"
-                  />
-                  <ComboStrengthTierRow
-                    emoji="🔥⚡"
-                    label="Title + Keywords Cross"
-                    count={comboAnalysis.stats.titleKeywordsCross || 0}
-                    combos={combosByStrength.titleKeywordsCross}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="excellent"
-                  />
-                </div>
-              </div>
-
-              {/* Tier 3: Medium */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟡 GOOD - Tier 3 (70 pts)</p>
-                <ComboStrengthTierRow
-                  emoji="⚡"
-                  label="Title + Subtitle"
-                  count={comboAnalysis.stats.crossElement}
-                  combos={combosByStrength.crossElement}
-                  onAddCombo={handleAddCombo}
-                  onRemoveCombo={handleRemoveCombo}
-                  isComboAdded={isComboAdded}
-                  totalCombos={comboAnalysis.stats.totalPossible}
-                  tierLevel="good"
-                />
-              </div>
-
-              {/* Tier 4: Weak */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 4 (50 pts)</p>
-                <div className="space-y-2">
-                  <ComboStrengthTierRow
-                    emoji="💤"
-                    label="Keywords (Exact Match)"
-                    count={comboAnalysis.stats.keywordsConsecutive || 0}
-                    combos={combosByStrength.keywordsConsecutive}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="needs-improvement"
-                  />
-                  <ComboStrengthTierRow
-                    emoji="💤"
-                    label="Subtitle (Exact Match)"
-                    count={comboAnalysis.stats.subtitleConsecutive}
-                    combos={combosByStrength.subtitleConsecutive}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="needs-improvement"
-                  />
-                </div>
-              </div>
-
-              {/* Tier 5: Very Weak */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 5 (30-35 pts)</p>
-                <div className="space-y-2">
-                  <ComboStrengthTierRow
-                    emoji="💤⚡"
-                    label="Keywords + Subtitle Cross"
-                    count={comboAnalysis.stats.keywordsSubtitleCross || 0}
-                    combos={combosByStrength.keywordsSubtitleCross}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="needs-improvement"
-                  />
-                  <ComboStrengthTierRow
-                    emoji="💤💤"
-                    label="Keywords (Non Exact Match)"
-                    count={comboAnalysis.stats.keywordsNonConsecutive || 0}
-                    combos={combosByStrength.keywordsNonConsecutive}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="needs-improvement"
-                  />
-                  <ComboStrengthTierRow
-                    emoji="💤💤"
-                    label="Subtitle (Non Exact Match)"
-                    count={comboAnalysis.stats.subtitleNonConsecutive}
-                    combos={combosByStrength.subtitleNonConsecutive}
-                    onAddCombo={handleAddCombo}
-                    onRemoveCombo={handleRemoveCombo}
-                    isComboAdded={isComboAdded}
-                    totalCombos={comboAnalysis.stats.totalPossible}
-                    tierLevel="needs-improvement"
-                  />
-                </div>
-              </div>
-
-              {/* Tier 6: Weakest */}
-              <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">🔴 CRITICAL - Tier 6 (20 pts)</p>
-                <ComboStrengthTierRow
-                  emoji="💤💤💤"
-                  label="All Fields Combined"
-                  count={comboAnalysis.stats.threeWayCross || 0}
-                  combos={combosByStrength.threeWayCross}
-                  onAddCombo={handleAddCombo}
-                  onRemoveCombo={handleRemoveCombo}
-                  isComboAdded={isComboAdded}
-                  totalCombos={comboAnalysis.stats.totalPossible}
-                  tierLevel="critical"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyAll}
-              className="text-xs border-zinc-700 text-zinc-300 hover:border-orange-500/40"
-            >
-              <Copy className="h-3 w-3 mr-1" />
-              Copy Filtered ({filteredCombos.length})
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleExportCSV}
-              className="text-xs border-emerald-500/40 text-emerald-400 hover:border-emerald-500"
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Export CSV
-            </Button>
-
-            {/* V2.1 Export Buttons */}
-            {v2_1Enabled && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleExportXLSX}
-                  className="text-xs border-blue-500/40 text-blue-400 hover:border-blue-500"
-                >
-                  <FileSpreadsheet className="h-3 w-3 mr-1" />
-                  Export XLSX
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleExportJSON}
-                  className="text-xs border-purple-500/40 text-purple-400 hover:border-purple-500"
-                >
-                  <FileJson className="h-3 w-3 mr-1" />
-                  Export JSON
-                </Button>
-              </>
-            )}
-
-            {comboAnalysis.recommendedToAdd.length > 0 && (
-              <Badge variant="outline" className="border-violet-400/30 text-violet-400 text-xs">
-                {comboAnalysis.recommendedToAdd.length} Recommendations
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-xs font-medium text-zinc-400">
+              Ranking Power Distribution (10-Tier System)
+            </p>
+            {filters.brandType !== 'all' && (
+              <Badge
+                variant="outline"
+                className="text-[10px] border-emerald-400/30 text-emerald-400 bg-emerald-500/5"
+              >
+                {filters.brandType === 'generic' ? 'Generic Only' : 'Branded Only'}
               </Badge>
             )}
           </div>
+
+            {/* Tier 1: Strongest */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 1 (100 pts)</p>
+              <ComboStrengthTierRow
+                emoji="🔥🔥🔥"
+                label="Title (Exact Match)"
+                count={filteredStats.titleConsecutive}
+                combos={combosByStrength.titleConsecutive}
+                onAddCombo={handleAddCombo}
+                onRemoveCombo={handleRemoveCombo}
+                isComboAdded={isComboAdded}
+                totalCombos={filteredStats.totalPossible}
+                tierLevel="excellent"
+              />
+            </div>
+
+            {/* Tier 2: Very Strong */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 2 (70-85 pts)</p>
+              <div className="space-y-2">
+                <ComboStrengthTierRow
+                  emoji="🔥🔥"
+                  label="Title (Non Exact Match)"
+                  count={filteredStats.titleNonConsecutive}
+                  combos={combosByStrength.titleNonConsecutive}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="excellent"
+                />
+                <ComboStrengthTierRow
+                  emoji="🔥⚡"
+                  label="Title + Keywords Cross"
+                  count={filteredStats.titleKeywordsCross || 0}
+                  combos={combosByStrength.titleKeywordsCross}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="excellent"
+                />
+              </div>
+            </div>
+
+            {/* Tier 3: Medium */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🟡 GOOD - Tier 3 (70 pts)</p>
+              <ComboStrengthTierRow
+                emoji="⚡"
+                label="Title + Subtitle"
+                count={filteredStats.crossElement}
+                combos={combosByStrength.crossElement}
+                onAddCombo={handleAddCombo}
+                onRemoveCombo={handleRemoveCombo}
+                isComboAdded={isComboAdded}
+                totalCombos={filteredStats.totalPossible}
+                tierLevel="good"
+              />
+            </div>
+
+            {/* Tier 4: Weak */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 4 (50 pts)</p>
+              <div className="space-y-2">
+                <ComboStrengthTierRow
+                  emoji="💤"
+                  label="Keywords (Exact Match)"
+                  count={filteredStats.keywordsConsecutive || 0}
+                  combos={combosByStrength.keywordsConsecutive}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="needs-improvement"
+                />
+                <ComboStrengthTierRow
+                  emoji="💤"
+                  label="Subtitle (Exact Match)"
+                  count={filteredStats.subtitleConsecutive}
+                  combos={combosByStrength.subtitleConsecutive}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="needs-improvement"
+                />
+              </div>
+            </div>
+
+            {/* Tier 5: Very Weak */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 5 (30-35 pts)</p>
+              <div className="space-y-2">
+                <ComboStrengthTierRow
+                  emoji="💤⚡"
+                  label="Keywords + Subtitle Cross"
+                  count={filteredStats.keywordsSubtitleCross || 0}
+                  combos={combosByStrength.keywordsSubtitleCross}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="needs-improvement"
+                />
+                <ComboStrengthTierRow
+                  emoji="💤💤"
+                  label="Keywords (Non Exact Match)"
+                  count={filteredStats.keywordsNonConsecutive || 0}
+                  combos={combosByStrength.keywordsNonConsecutive}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="needs-improvement"
+                />
+                <ComboStrengthTierRow
+                  emoji="💤💤"
+                  label="Subtitle (Non Exact Match)"
+                  count={filteredStats.subtitleNonConsecutive}
+                  combos={combosByStrength.subtitleNonConsecutive}
+                  onAddCombo={handleAddCombo}
+                  onRemoveCombo={handleRemoveCombo}
+                  isComboAdded={isComboAdded}
+                  totalCombos={filteredStats.totalPossible}
+                  tierLevel="needs-improvement"
+                />
+              </div>
+            </div>
+
+            {/* Tier 6: Weakest */}
+            <div className="mb-3">
+              <p className="text-[10px] text-zinc-500 uppercase mb-2">🔴 CRITICAL - Tier 6 (20 pts)</p>
+              <ComboStrengthTierRow
+                emoji="💤💤💤"
+                label="All Fields Combined"
+                count={filteredStats.threeWayCross || 0}
+                combos={combosByStrength.threeWayCross}
+                onAddCombo={handleAddCombo}
+                onRemoveCombo={handleRemoveCombo}
+                isComboAdded={isComboAdded}
+                totalCombos={filteredStats.totalPossible}
+                tierLevel="critical"
+              />
+            </div>
+
+          {/* Action Buttons */}
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyAll}
+            className="text-xs border-zinc-700 text-zinc-300 hover:border-orange-500/40"
+          >
+            <Copy className="h-3 w-3 mr-1" />
+            Copy Filtered ({filteredCombos.length})
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportCSV}
+            className="text-xs border-emerald-500/40 text-emerald-400 hover:border-emerald-500"
+          >
+            <Download className="h-3 w-3 mr-1" />
+            Export CSV
+          </Button>
+
+          {/* V2.1 Export Buttons */}
+          {v2_1Enabled && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportXLSX}
+                className="text-xs border-blue-500/40 text-blue-400 hover:border-blue-500"
+              >
+                <FileSpreadsheet className="h-3 w-3 mr-1" />
+                Export XLSX
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportJSON}
+                className="text-xs border-purple-500/40 text-purple-400 hover:border-purple-500"
+              >
+                <FileJson className="h-3 w-3 mr-1" />
+                Export JSON
+              </Button>
+            </>
+          )}
+
+          {comboAnalysis.recommendedToAdd.length > 0 && (
+            <Badge variant="outline" className="border-violet-400/30 text-violet-400 text-xs">
+              {comboAnalysis.recommendedToAdd.length} Recommendations
+            </Badge>
+          )}
+          </div>
         </div>
 
-        {/* Keywords Field Input - Phase 2 */}
-        <div className="mt-6 p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-          <label htmlFor="keywords-field" className="block text-xs font-medium text-zinc-400 mb-2">
-            App Store Connect Keywords Field (100 chars max)
-          </label>
-          <div className="relative">
-            <textarea
-              id="keywords-field"
-              value={keywordsFieldInput}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value.length <= 100) {
-                  setKeywordsFieldInput(value);
-                }
-              }}
-              placeholder="meditation,sleep,mindfulness,relaxation,anxiety,stress"
-              className="w-full h-20 px-3 py-2 text-sm bg-black/50 border border-zinc-700 rounded-md text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none font-mono"
-              maxLength={100}
-            />
-            <div className="absolute bottom-2 right-2 text-[10px] text-zinc-500">
-              {keywordsFieldInput.length}/100
-            </div>
-          </div>
-          <p className="text-[10px] text-zinc-500 mt-1.5 italic">
-            💡 Comma-separated keywords. Equal ranking weight to subtitle. Used for 4-element combo generation.
-          </p>
-        </div>
+        {/* Keywords Field Input moved to KeywordsInputCard (rendered in element cards section) */}
 
         {/* Strategic Keyword Frequency Analysis */}
         <StrategicKeywordFrequencyPanel

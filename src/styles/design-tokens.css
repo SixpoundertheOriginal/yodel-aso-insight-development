@@ -65,6 +65,104 @@
   --font-size-5xl: clamp(3rem, 2.5rem + 2.5vw, 4rem);               /* 48-64px */
   --font-size-6xl: clamp(3.75rem, 3rem + 3.75vw, 5.5rem);           /* 60-88px */
 
+  /* Data Table Typography (2026 Best Practice) */
+  --table-header-size: 0.875rem;                                    /* 14px - enhanced from 9-10px */
+  --table-header-weight: 500;                                       /* Medium - enhanced from 300 */
+  --table-header-tracking: 0.1em;                                   /* 10% letter spacing */
+  --table-header-color: var(--yodel-gray-300);                      /* Higher contrast - enhanced from gray-500 */
+  --table-header-hover-color: var(--yodel-orange-400);              /* Interactive state */
+  --table-cell-size: 0.8125rem;                                     /* 13px */
+  --table-cell-weight: 400;                                         /* Normal */
+
+  /* ===== KPI CARD SYSTEM - 2026 ENTERPRISE EDITION ===== */
+
+  /* Card Border Radius - Rounded corners for modern feel */
+  --card-radius-sm: 12px;
+  --card-radius-md: 16px;
+  --card-radius-lg: 20px;
+  --card-radius-xl: 24px;
+
+  /* Card Elevation System - Depth hierarchy with layered shadows */
+  --card-elevation-0: none;
+  --card-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --card-elevation-2: 0 3px 6px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.12);
+  --card-elevation-3: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.15);
+  --card-elevation-hover: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  --card-elevation-active: 0 2px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+
+  /* Glass Morphism Effects - Premium frosted glass look */
+  --card-glass-blur: blur(20px);
+  --card-glass-bg-opacity: 0.08;
+  --card-backdrop-filter: saturate(180%) blur(20px);
+  --card-border-glass: 1px solid rgba(255, 255, 255, 0.08);
+
+  /* Card Typography - Data Visualization Hierarchy */
+  --card-number-xs: clamp(1.25rem, 1.5vw + 0.5rem, 1.5rem);     /* 20-24px - Small metrics */
+  --card-number-sm: clamp(1.75rem, 2vw + 0.5rem, 2rem);         /* 28-32px - Standard */
+  --card-number-md: clamp(2.25rem, 2.5vw + 0.75rem, 2.75rem);   /* 36-44px - Important */
+  --card-number-lg: clamp(3rem, 3.5vw + 1rem, 4rem);            /* 48-64px - Key metrics */
+  --card-number-xl: clamp(4rem, 4.5vw + 1.5rem, 5rem);          /* 64-80px - Hero numbers */
+
+  --card-label-xs: 0.625rem;                                      /* 10px */
+  --card-label-sm: 0.6875rem;                                     /* 11px */
+  --card-label-md: 0.75rem;                                       /* 12px */
+  --card-label-lg: 0.8125rem;                                     /* 13px */
+
+  --card-subtitle-xs: 0.625rem;                                   /* 10px */
+  --card-subtitle-sm: 0.6875rem;                                  /* 11px */
+  --card-subtitle-md: 0.75rem;                                    /* 12px */
+
+  /* Smart Color System - Context-Aware Performance Colors */
+  --card-critical: #EF4444;           /* Red - Critical/Bad (0-49%) */
+  --card-warning: #F59E0B;            /* Amber - Warning (50-69%) */
+  --card-neutral: #6B7280;            /* Gray - Neutral/Info */
+  --card-good: #10B981;               /* Green - Good (70-89%) */
+  --card-excellent: #8B5CF6;          /* Purple - Excellent (90-100%) */
+  --card-perfect: #06B6D4;            /* Cyan - Perfect score */
+
+  /* Gradient Sophistication - Multi-stop premium gradients */
+  --card-gradient-strength-1: linear-gradient(135deg, #F97316 0%, #EA580C 50%, #DC2626 100%);
+  --card-gradient-strength-2: linear-gradient(135deg, #FBBF24 0%, #F59E0B 50%, #F97316 100%);
+  --card-gradient-coverage-high: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6366F1 100%);
+  --card-gradient-coverage-low: linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #4338CA 100%);
+  --card-gradient-efficiency: linear-gradient(135deg, #10B981 0%, #059669 50%, #047857 100%);
+  --card-gradient-neutral: linear-gradient(135deg, #52525B 0%, #3F3F46 50%, #27272A 100%);
+  --card-gradient-warning: linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #B45309 100%);
+  --card-gradient-critical: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #B91C1C 100%);
+
+  /* Card Glow Effects - Soft luminous borders */
+  --card-glow-strength-1: 0 0 20px rgba(249, 115, 22, 0.3), 0 0 40px rgba(249, 115, 22, 0.1);
+  --card-glow-strength-2: 0 0 20px rgba(251, 191, 36, 0.3), 0 0 40px rgba(251, 191, 36, 0.1);
+  --card-glow-coverage: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.1);
+  --card-glow-efficiency: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.1);
+  --card-glow-critical: 0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.1);
+  --card-glow-excellent: 0 0 20px rgba(139, 92, 246, 0.4), 0 0 40px rgba(139, 92, 246, 0.15);
+
+  /* Card Padding System - Consistent spacing */
+  --card-padding-xs: 0.75rem;         /* 12px */
+  --card-padding-sm: 1rem;            /* 16px */
+  --card-padding-md: 1.25rem;         /* 20px */
+  --card-padding-lg: 1.5rem;          /* 24px */
+  --card-padding-xl: 2rem;            /* 32px */
+
+  /* Card Spacing - Internal element gaps */
+  --card-gap-xs: 0.25rem;             /* 4px */
+  --card-gap-sm: 0.5rem;              /* 8px */
+  --card-gap-md: 0.75rem;             /* 12px */
+  --card-gap-lg: 1rem;                /* 16px */
+
+  /* Card Transitions - Smooth micro-interactions */
+  --card-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --card-transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --card-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --card-transition-spring: 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Card Hover States */
+  --card-hover-lift: translateY(-2px);
+  --card-hover-scale: scale(1.02);
+  --card-hover-scale-sm: scale(1.01);
+  --card-active-scale: scale(0.98);
+
   /* Enhanced Spacing Scale */
   --space-px: 1px;
   --space-0-5: clamp(0.125rem, 0.1rem + 0.125vw, 0.1875rem);  /* 2-3px */

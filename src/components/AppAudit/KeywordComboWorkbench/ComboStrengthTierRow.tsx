@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, Check, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { GeneratedCombo } from '@/engine/combos/comboGenerationEngine';
+import type { GeneratedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 
 interface ComboStrengthTierRowProps {
   emoji: string;
@@ -168,26 +168,21 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
                   }
                 }}
                 className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${
-                  canAdd && isExisting ? 'cursor-pointer hover:bg-blue-500/10 hover:border-blue-500/30 border border-transparent' :
                   canAdd ? 'cursor-pointer hover:bg-zinc-900/40 hover:border-orange-500/30 border border-transparent' :
                   canRemove ? 'cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 bg-emerald-500/5 border border-emerald-500/20' :
                   'cursor-default'
                 }`}
               >
                 <div className="flex items-center gap-2 flex-1">
-                  {/* Status Icon */}
+                  {/* Status Icon - Only show checkmark if user added it to table */}
                   {isAdded ? (
                     <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-                  ) : isExisting ? (
-                    <Check className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
                   ) : (
-                    <Plus className="h-3.5 w-3.5 text-zinc-500 group-hover:text-orange-400 flex-shrink-0 transition-colors" />
+                    <div className="h-3.5 w-3.5 flex-shrink-0" /> // Empty space to maintain alignment
                   )}
 
                   <span className={`font-mono text-xs ${
-                    isAdded ? 'text-emerald-300' :
-                    isExisting ? 'text-blue-300' :
-                    'text-zinc-300'
+                    isAdded ? 'text-emerald-300' : 'text-zinc-300'
                   }`}>
                     {combo.text}
                   </span>
