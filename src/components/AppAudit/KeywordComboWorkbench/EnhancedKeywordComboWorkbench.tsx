@@ -743,19 +743,21 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
 
               {/* Tier 1: Strongest */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 1: Strongest (100 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 1 (100 pts)</p>
                 <ComboStrengthTierRow
                   emoji="🔥🔥🔥"
                   label="Title Consecutive"
                   count={comboAnalysis.stats.titleConsecutive}
                   combos={combosByStrength.titleConsecutive}
                   onAddCombo={handleAddCombo}
+                  totalCombos={comboAnalysis.stats.totalPossible}
+                  tierLevel="excellent"
                 />
               </div>
 
               {/* Tier 2: Very Strong */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 2: Very Strong (70-85 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟢 EXCELLENT - Tier 2 (70-85 pts)</p>
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="🔥🔥"
@@ -763,6 +765,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.titleNonConsecutive}
                     combos={combosByStrength.titleNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="excellent"
                   />
                   <ComboStrengthTierRow
                     emoji="🔥⚡"
@@ -770,25 +774,29 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.titleKeywordsCross || 0}
                     combos={combosByStrength.titleKeywordsCross}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="excellent"
                   />
                 </div>
               </div>
 
               {/* Tier 3: Medium */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 3: Medium (70 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟡 GOOD - Tier 3 (70 pts)</p>
                 <ComboStrengthTierRow
                   emoji="⚡"
-                  label="Cross-Element (Title + Subtitle)"
+                  label="Title + Subtitle"
                   count={comboAnalysis.stats.crossElement}
                   combos={combosByStrength.crossElement}
                   onAddCombo={handleAddCombo}
+                  totalCombos={comboAnalysis.stats.totalPossible}
+                  tierLevel="good"
                 />
               </div>
 
               {/* Tier 4: Weak */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 4: Weak (50 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 4 (50 pts)</p>
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="💤"
@@ -796,6 +804,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.keywordsConsecutive || 0}
                     combos={combosByStrength.keywordsConsecutive}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="needs-improvement"
                   />
                   <ComboStrengthTierRow
                     emoji="💤"
@@ -803,13 +813,15 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.subtitleConsecutive}
                     combos={combosByStrength.subtitleConsecutive}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="needs-improvement"
                   />
                 </div>
               </div>
 
               {/* Tier 5: Very Weak */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 5: Very Weak (30-35 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🟠 NEEDS IMPROVEMENT - Tier 5 (30-35 pts)</p>
                 <div className="space-y-2">
                   <ComboStrengthTierRow
                     emoji="💤⚡"
@@ -817,33 +829,41 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
                     count={comboAnalysis.stats.keywordsSubtitleCross || 0}
                     combos={combosByStrength.keywordsSubtitleCross}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="needs-improvement"
                   />
                   <ComboStrengthTierRow
                     emoji="💤💤"
-                    label="Keywords Non-Consec"
+                    label="Keywords Non-Consecutive"
                     count={comboAnalysis.stats.keywordsNonConsecutive || 0}
                     combos={combosByStrength.keywordsNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="needs-improvement"
                   />
                   <ComboStrengthTierRow
                     emoji="💤💤"
-                    label="Subtitle Non-Consec"
+                    label="Subtitle Non-Consecutive"
                     count={comboAnalysis.stats.subtitleNonConsecutive}
                     combos={combosByStrength.subtitleNonConsecutive}
                     onAddCombo={handleAddCombo}
+                    totalCombos={comboAnalysis.stats.totalPossible}
+                    tierLevel="needs-improvement"
                   />
                 </div>
               </div>
 
               {/* Tier 6: Weakest */}
               <div className="mb-3">
-                <p className="text-[10px] text-zinc-500 uppercase mb-2">Tier 6: Weakest (20 pts)</p>
+                <p className="text-[10px] text-zinc-500 uppercase mb-2">🔴 CRITICAL - Tier 6 (20 pts)</p>
                 <ComboStrengthTierRow
                   emoji="💤💤💤"
-                  label="Three-Way Cross"
+                  label="All Fields Combined"
                   count={comboAnalysis.stats.threeWayCross || 0}
                   combos={combosByStrength.threeWayCross}
                   onAddCombo={handleAddCombo}
+                  totalCombos={comboAnalysis.stats.totalPossible}
+                  tierLevel="critical"
                 />
               </div>
             </div>
