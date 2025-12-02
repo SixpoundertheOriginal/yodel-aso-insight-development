@@ -767,7 +767,7 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
               <TableHead className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-0 z-30 bg-black">
                 <div className="flex items-center justify-center h-full font-mono text-[10px] tracking-widest text-zinc-500">#</div>
               </TableHead>
-              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-30 bg-black border-r border-orange-500/30">
+              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-30 bg-black">
                 <div className="flex items-center justify-center h-full">
                   <Checkbox
                     checked={allSelected ? true : someSelected ? "indeterminate" : false}
