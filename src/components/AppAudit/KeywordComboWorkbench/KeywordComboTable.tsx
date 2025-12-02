@@ -761,13 +761,13 @@ export const KeywordComboTable: React.FC<KeywordComboTableProps> = ({ metadata }
         <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(circle_at_1px_1px,rgba(249,115,22,0.08)_1px,transparent_0)] bg-[length:24px_24px] z-0" />
         
         <div className="relative max-h-[600px] overflow-auto">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader className="sticky top-0 bg-black/90 backdrop-blur-2xl z-10 border-b-2 border-dashed border-orange-500/50 shadow-[0_2px_10px_rgba(249,115,22,0.1)]">
             <TableRow className="border-zinc-800/60 hover:bg-transparent">
-              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] px-0 text-center sticky left-0 z-30 bg-black/95 backdrop-blur-xl">
+              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-0 z-30 bg-black">
                 <div className="flex items-center justify-center h-full font-mono text-[10px] tracking-widest text-zinc-500">#</div>
               </TableHead>
-              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] px-0 text-center sticky left-[40px] z-30 bg-black/95 backdrop-blur-xl border-r border-orange-500/30">
+              <TableHead className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-30 bg-black border-r border-orange-500/30">
                 <div className="flex items-center justify-center h-full">
                   <Checkbox
                     checked={allSelected ? true : someSelected ? "indeterminate" : false}

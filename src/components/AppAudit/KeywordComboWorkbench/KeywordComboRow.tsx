@@ -215,14 +215,14 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
         before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-gradient-to-b before:from-transparent before:via-orange-500/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300
       `}>
         {/* Row Number */}
-        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] px-0 text-center sticky left-0 z-10 bg-black/90 backdrop-blur-md">
+        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-0 z-10 bg-black">
           <div className="flex items-center justify-center h-full text-xs text-zinc-500 font-mono">
             {index + 1}
           </div>
         </TableCell>
 
         {/* Selection Checkbox */}
-        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] px-0 text-center sticky left-[40px] z-10 bg-black/90 backdrop-blur-md border-r border-orange-500/20">
+        <TableCell className="w-[40px] min-w-[40px] max-w-[40px] p-0 text-center sticky left-[40px] z-10 bg-black border-r border-orange-500/20">
           <div className="flex items-center justify-center h-full">
             <Checkbox
               checked={isSelected}
