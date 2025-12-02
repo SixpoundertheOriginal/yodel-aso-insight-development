@@ -202,12 +202,12 @@ export const KeywordComboRow: React.FC<KeywordComboRowProps> = ({ combo, index, 
   return (
     <>
       <TableRow className={`
-        relative border-l-[3px] transition-all duration-300 border-b border-zinc-900/30
+        relative transition-all duration-300
         ${isNoise 
-          ? 'opacity-50 border-l-red-500/60 bg-red-900/20 hover:bg-red-900/30' 
+          ? 'opacity-50 bg-red-900/20 hover:bg-red-900/30' 
           : isSelected 
-            ? 'border-l-orange-500 bg-gradient-to-r from-orange-500/20 to-transparent shadow-[inset_6px_0_20px_rgba(249,115,22,0.25),0_0_15px_rgba(249,115,22,0.1)]'
-            : 'border-l-zinc-800/40 hover:border-l-orange-500/80 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-transparent hover:shadow-[inset_4px_0_12px_rgba(249,115,22,0.15),0_2px_8px_rgba(249,115,22,0.08)]'
+            ? 'bg-gradient-to-r from-orange-500/20 to-transparent shadow-[inset_6px_0_20px_rgba(249,115,22,0.25),0_0_15px_rgba(249,115,22,0.1)]'
+            : 'hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-transparent hover:shadow-[inset_4px_0_12px_rgba(249,115,22,0.15),0_2px_8px_rgba(249,115,22,0.08)]'
         }
         ${getRowHeight()}
         group
