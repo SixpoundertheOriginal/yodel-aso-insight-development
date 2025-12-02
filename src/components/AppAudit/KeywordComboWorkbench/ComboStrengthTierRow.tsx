@@ -147,8 +147,9 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
           {combos.map((combo, index) => {
             const isAdded = isComboAdded(combo.text);
             const isExisting = combo.exists;
-            const canAdd = !isExisting && !isAdded && onAddCombo;
-            const canRemove = !isExisting && isAdded && onRemoveCombo;
+            // Allow adding even if exists in metadata, only prevent if already added to table
+            const canAdd = !isAdded && onAddCombo;
+            const canRemove = isAdded && onRemoveCombo;
 
             return (
               <div
@@ -167,17 +168,18 @@ export const ComboStrengthTierRow: React.FC<ComboStrengthTierRowProps> = ({
                   }
                 }}
                 className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${
+                  canAdd && isExisting ? 'cursor-pointer hover:bg-blue-500/10 hover:border-blue-500/30 border border-transparent' :
                   canAdd ? 'cursor-pointer hover:bg-zinc-900/40 hover:border-orange-500/30 border border-transparent' :
                   canRemove ? 'cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 bg-emerald-500/5 border border-emerald-500/20' :
-                  'opacity-60 cursor-default'
+                  'cursor-default'
                 }`}
               >
                 <div className="flex items-center gap-2 flex-1">
                   {/* Status Icon */}
-                  {isExisting ? (
-                    <Check className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
-                  ) : isAdded ? (
+                  {isAdded ? (
                     <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                  ) : isExisting ? (
+                    <Check className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
                   ) : (
                     <Plus className="h-3.5 w-3.5 text-zinc-500 group-hover:text-orange-400 flex-shrink-0 transition-colors" />
                   )}
