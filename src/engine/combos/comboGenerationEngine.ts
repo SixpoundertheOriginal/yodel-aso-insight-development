@@ -78,7 +78,7 @@ export interface GeneratedCombo {
   keywords: string[];
   length: number; // Number of keywords (2, 3, 4, etc.)
   exists: boolean; // Does this combo exist in current metadata?
-  source?: 'title' | 'subtitle' | 'keywords' | 'both' | 'missing'; // Extended to include keywords field
+  source?: 'title' | 'subtitle' | 'keywords' | 'both' | 'cross' | 'missing'; // Extended to include cross-element combos
 
   // Phase 1: Strength-based classification
   strength: ComboStrength; // Ranking power based on position
@@ -397,28 +397,55 @@ function comboExistsInText(combo: string, text: string): boolean {
 }
 
 /**
- * Determine the source of a combo (updated for 4-element support)
+ * Determine the source of a combo (updated for cross-element detection)
  */
 function determineComboSource(
   combo: string,
   titleText: string,
   subtitleText: string,
-  keywordsText?: string
-): 'title' | 'subtitle' | 'keywords' | 'both' | 'missing' {
+  keywordsText?: string,
+  titleKeywords?: string[],
+  subtitleKeywords?: string[],
+  keywordsFieldKeywords?: string[]
+): 'title' | 'subtitle' | 'keywords' | 'both' | 'cross' | 'missing' {
+  const comboWords = combo.split(' ');
+
+  // Check if complete combo phrase exists in any field
   const inTitle = comboExistsInText(combo, titleText);
   const inSubtitle = comboExistsInText(combo, subtitleText);
   const inKeywords = keywordsText ? comboExistsInText(combo, keywordsText) : false;
 
-  // Count how many fields contain this combo
+  // Count how many fields contain the complete phrase
   const fieldCount = [inTitle, inSubtitle, inKeywords].filter(Boolean).length;
 
-  // If in multiple fields, return 'both'
+  // If complete phrase in multiple fields, return 'both'
   if (fieldCount > 1) return 'both';
 
-  // If in single field, return that field
+  // If complete phrase in single field, return that field
   if (inTitle) return 'title';
   if (inSubtitle) return 'subtitle';
   if (inKeywords) return 'keywords';
+
+  // NEW: Check if this is a cross-element combo (individual keywords from different fields)
+  if (titleKeywords && subtitleKeywords && keywordsFieldKeywords) {
+    const hasWordsFromTitle = comboWords.some(word =>
+      titleKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+    );
+    const hasWordsFromSubtitle = comboWords.some(word =>
+      subtitleKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+    );
+    const hasWordsFromKeywords = comboWords.some(word =>
+      keywordsFieldKeywords.some(kw => kw.toLowerCase() === word.toLowerCase())
+    );
+
+    // Count fields contributing keywords
+    const contributingFields = [hasWordsFromTitle, hasWordsFromSubtitle, hasWordsFromKeywords].filter(Boolean).length;
+
+    // If keywords come from multiple fields, it's a cross-element combo
+    if (contributingFields >= 2) {
+      return 'cross';
+    }
+  }
 
   return 'missing';
 }
@@ -637,8 +664,16 @@ export function analyzeAllCombos(
   // Analyze each combo
   const allPossibleCombos: GeneratedCombo[] = allPossibleComboStrings.map(comboText => {
     const keywords = comboText.split(' ');
-    const source = determineComboSource(comboText, titleText, subtitleText, keywordsText);
-    const exists = source !== 'missing';
+    const source = determineComboSource(
+      comboText,
+      titleText,
+      subtitleText,
+      keywordsText,
+      titleKeywords,
+      subtitleKeywords,
+      keywordsFieldKeywords
+    );
+    const exists = source !== 'missing'; // Now 'cross' combos will also be marked as existing
     const strategicValue = calculateStrategicValue(comboText, keywords);
 
     // Phase 1 & 2: Classify combo strength based on App Store ranking algorithm
