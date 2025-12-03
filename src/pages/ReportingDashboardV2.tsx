@@ -9,6 +9,7 @@ import { logger, truncateOrgId } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, TrendingUp as TrendingUpIcon, RefreshCw, Activity, BarChart3, MessageSquare } from 'lucide-react';
 import { MainLayout } from '@/layouts';
 import { DateRangePicker } from '@/components/DateRangePicker';
@@ -370,17 +371,84 @@ export default function ReportingDashboardV2() {
     );
   }
 
-  // [STATE] Loading (wait for both apps and analytics data)
+  // ============================================
+  // 🚀 [OPTIMIZATION] Skeleton Loading UI
+  // ============================================
+  // Phase 1: Show skeleton placeholders instead of blank spinner
+  // Better perceived performance - users see layout immediately
+  // ============================================
   if (isLoading || appsLoading) {
     return (
       <MainLayout>
-        <div className="flex flex-col items-center justify-center h-screen space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-yodel-orange" />
-          <div className="text-lg font-medium text-zinc-200">
-            {appsLoading ? 'Loading available apps...' : 'Loading analytics data...'}
+        <div className="container mx-auto p-6 space-y-6">
+          {/* Header Skeleton */}
+          <div>
+            <Skeleton className="h-10 w-96 mb-2" />
+            <Skeleton className="h-5 w-64" />
           </div>
-          <div className="text-sm text-zinc-400">
-            {appsLoading ? 'Checking app access permissions' : 'Fetching from BigQuery warehouse'}
+
+          {/* Executive Summary Skeleton */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+
+          {/* Filter Bar Skeleton */}
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-8 w-px" />
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-8 w-px" />
+              <Skeleton className="h-10 w-48" />
+            </div>
+          </Card>
+
+          {/* KPI Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-32 mb-2" />
+                  <Skeleton className="h-4 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Charts Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-64 w-full" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-64 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Loading indicator */}
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-yodel-orange mr-2" />
+            <span className="text-sm text-zinc-400">
+              {appsLoading ? 'Loading available apps...' : 'Loading analytics data...'}
+            </span>
           </div>
         </div>
       </MainLayout>
