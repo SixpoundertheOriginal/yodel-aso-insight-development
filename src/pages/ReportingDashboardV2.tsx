@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { usePeriodComparison } from '@/hooks/usePeriodComparison';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -61,6 +62,13 @@ export default function ReportingDashboardV2() {
   const { organizationId, availableOrgs, isSuperAdmin } = usePermissions();
   const { selectedOrganizationId: superAdminSelectedOrg, setSelectedOrganizationId: setSuperAdminOrg } = useSuperAdmin();
 
+  // ============================================
+  // 🔗 [PHASE 2] URL State Persistence
+  // ============================================
+  // Sync filters with URL for shareable links and persistence
+  // ============================================
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Compute effective organization ID (super admin selected org or regular user org)
   const effectiveOrganizationId = useMemo(() => {
     if (isSuperAdmin) {
@@ -73,23 +81,60 @@ export default function ReportingDashboardV2() {
   const currentOrg = availableOrgs?.find(org => org.id === effectiveOrganizationId);
   const organizationName = currentOrg?.name || 'Organization';
 
-  // ✅ DYNAMIC DATE RANGE: Defaults to last 30 days, updates via DateRangePicker
-  const [dateRange, setDateRange] = useState({
-    start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    end: format(new Date(), 'yyyy-MM-dd')
+  // ✅ DYNAMIC DATE RANGE: Initialize from URL or default to last 30 days
+  const [dateRange, setDateRange] = useState(() => {
+    const urlStart = searchParams.get('start');
+    const urlEnd = searchParams.get('end');
+
+    return {
+      start: urlStart || format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+      end: urlEnd || format(new Date(), 'yyyy-MM-dd')
+    };
   });
 
   // ✅ AVAILABLE APPS: Fetch from org_app_access (agency-aware via RLS)
   const { data: availableApps = [], isLoading: appsLoading } = useAvailableApps();
 
-  // ✅ APP SELECTION: Track selected app IDs for filtering
-  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  // ✅ APP SELECTION: Initialize from URL or default to empty
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>(() => {
+    const urlApps = searchParams.get('apps');
+    return urlApps ? urlApps.split(',').filter(Boolean) : [];
+  });
 
-  // ✅ TRAFFIC SOURCE SELECTION: Track selected traffic sources for filtering
-  const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>([]);
+  // ✅ TRAFFIC SOURCE SELECTION: Initialize from URL or default to empty
+  const [selectedTrafficSources, setSelectedTrafficSources] = useState<string[]>(() => {
+    const urlSources = searchParams.get('sources');
+    return urlSources ? urlSources.split(',').filter(Boolean) : [];
+  });
 
   // ✅ AI CHAT: Track chat panel open state
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // ============================================
+  // 🔗 [PHASE 2] Sync Filters to URL
+  // ============================================
+  // Update URL params when filters change (shareable links + persistence)
+  // ============================================
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    // Add date range
+    params.set('start', dateRange.start);
+    params.set('end', dateRange.end);
+
+    // Add selected apps (if any)
+    if (selectedAppIds.length > 0) {
+      params.set('apps', selectedAppIds.join(','));
+    }
+
+    // Add selected traffic sources (if any)
+    if (selectedTrafficSources.length > 0) {
+      params.set('sources', selectedTrafficSources.join(','));
+    }
+
+    // Update URL without triggering navigation
+    setSearchParams(params, { replace: true });
+  }, [dateRange.start, dateRange.end, selectedAppIds, selectedTrafficSources, setSearchParams]);
 
   // ✅ NEW ARCHITECTURE: Direct pipeline using simple hook with triple filtering
   const { data, isLoading, error, refetch } = useEnterpriseAnalytics({
