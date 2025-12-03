@@ -13,7 +13,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseCompat } from '@/lib/supabase-compat';
-import UAParser from 'ua-parser-js';
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -80,26 +79,55 @@ export interface SessionStats {
 export class SessionService {
   /**
    * Parse user agent string to extract device/browser/OS info
+   * Simple regex-based detection (lightweight alternative to ua-parser-js)
    */
   private static parseUserAgent(userAgent: string): {
     deviceType: string;
     browser: string;
     os: string;
   } {
-    const parser = new UAParser(userAgent);
-    const device = parser.getDevice();
-    const browser = parser.getBrowser();
-    const os = parser.getOS();
+    const ua = userAgent.toLowerCase();
 
-    // Determine device type
+    // Detect device type
     let deviceType = 'desktop';
-    if (device.type === 'mobile') deviceType = 'mobile';
-    else if (device.type === 'tablet') deviceType = 'tablet';
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(userAgent)) {
+      deviceType = 'tablet';
+    } else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(userAgent)) {
+      deviceType = 'mobile';
+    }
+
+    // Detect browser
+    let browser = 'Unknown';
+    if (ua.includes('firefox')) {
+      browser = 'Firefox';
+    } else if (ua.includes('edg')) {
+      browser = 'Edge';
+    } else if (ua.includes('chrome')) {
+      browser = 'Chrome';
+    } else if (ua.includes('safari')) {
+      browser = 'Safari';
+    } else if (ua.includes('opera') || ua.includes('opr')) {
+      browser = 'Opera';
+    }
+
+    // Detect OS
+    let os = 'Unknown';
+    if (ua.includes('win')) {
+      os = 'Windows';
+    } else if (ua.includes('mac')) {
+      os = 'macOS';
+    } else if (ua.includes('linux')) {
+      os = 'Linux';
+    } else if (ua.includes('android')) {
+      os = 'Android';
+    } else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) {
+      os = 'iOS';
+    }
 
     return {
       deviceType,
-      browser: `${browser.name || 'Unknown'} ${browser.version || ''}`.trim(),
-      os: `${os.name || 'Unknown'} ${os.version || ''}`.trim(),
+      browser,
+      os,
     };
   }
 
