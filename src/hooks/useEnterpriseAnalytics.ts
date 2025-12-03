@@ -129,16 +129,19 @@ export function useEnterpriseAnalytics({
         throw new Error('Date range (start and end) is required for analytics');
       }
 
-      console.log('━'.repeat(60));
-      console.log('📊 [ENTERPRISE-ANALYTICS] Fetching data...');
-      console.log('━'.repeat(60));
-      console.log('  Organization:', organizationId);
-      console.log('  Date Range:', dateRange);
-      console.log('  🔍 SERVER will return: ALL apps + ALL traffic sources');
-      console.log('  🔍 CLIENT will filter to:');
-      console.log('     Apps:', appIds.length > 0 ? appIds.join(', ') : 'All apps (no filter)');
-      console.log('     Traffic Sources:', trafficSources.length > 0 ? trafficSources.join(', ') : 'All sources (no filter)');
-      console.log('━'.repeat(60));
+      const isDev = import.meta.env.DEV;
+      if (isDev) {
+        console.log('━'.repeat(60));
+        console.log('📊 [ENTERPRISE-ANALYTICS] Fetching data...');
+        console.log('━'.repeat(60));
+        console.log('  Organization:', organizationId);
+        console.log('  Date Range:', dateRange);
+        console.log('  🔍 SERVER will return: ALL apps + ALL traffic sources');
+        console.log('  🔍 CLIENT will filter to:');
+        console.log('     Apps:', appIds.length > 0 ? appIds.join(', ') : 'All apps (no filter)');
+        console.log('     Traffic Sources:', trafficSources.length > 0 ? trafficSources.join(', ') : 'All sources (no filter)');
+        console.log('━'.repeat(60));
+      }
 
       // [REQUEST] Call BigQuery edge function - NO app_ids or traffic_source filters
       // Server returns ALL data, client filters as needed
@@ -185,12 +188,16 @@ export function useEnterpriseAnalytics({
 
       // Check if this is a wrapped response (data.data exists and is an array)
       if (!Array.isArray(actualData) && actualData && typeof actualData === 'object') {
-        console.log('🔍 [ENTERPRISE-ANALYTICS] Detected wrapped response format, unwrapping...');
-        console.log('  Wrapped structure:', response);
+        if (isDev) {
+          console.log('🔍 [ENTERPRISE-ANALYTICS] Detected wrapped response format, unwrapping...');
+          console.log('  Wrapped structure:', response);
+        }
 
         // Unwrap: response.data = {data: [], scope: {}, meta: {}}
         if (Array.isArray(actualData.data)) {
-          console.log('✅ [ENTERPRISE-ANALYTICS] Successfully unwrapped response');
+          if (isDev) {
+            console.log('✅ [ENTERPRISE-ANALYTICS] Successfully unwrapped response');
+          }
           const wrappedData = actualData; // Save reference to wrapped object
           actualData = wrappedData.data;   // Extract array
           actualMeta = wrappedData.meta || response.meta;   // Extract meta from wrapped object
@@ -211,13 +218,42 @@ export function useEnterpriseAnalytics({
         throw new Error('Invalid response structure from analytics service - expected data array');
       }
 
-      console.log('✅ [ENTERPRISE-ANALYTICS] Data received successfully');
-      console.log('  Raw Rows:', actualData.length);
-      console.log('  Data Source:', actualMeta?.data_source);
-      console.log('  App Count:', actualMeta?.app_count);
-      console.log('  Query Duration:', actualMeta?.query_duration_ms, 'ms');
-      console.log('  Available Traffic Sources:', actualMeta?.available_traffic_sources?.length || 0);
-      console.log('  Server-Side Filtering:', appIds.length > 0 ? 'Apps only' : 'None (date range only)');
+      // ============================================
+      // 🚀 [OPTIMIZATION] Use Pre-Aggregated Summary
+      // ============================================
+      // Phase 1: If Edge Function returned pre-aggregated summary, use it!
+      // Falls back to client-side aggregation if not available
+      // ============================================
+
+      const preAggregatedSummary = response.summary || actualData.summary;
+      const hasPreAggregatedSummary = !!preAggregatedSummary;
+
+      if (isDev) {
+        console.log('✅ [ENTERPRISE-ANALYTICS] Data received successfully');
+        console.log('  Raw Rows:', actualData.length);
+        console.log('  Data Source:', actualMeta?.data_source);
+        console.log('  App Count:', actualMeta?.app_count);
+        console.log('  Query Duration:', actualMeta?.query_duration_ms, 'ms');
+        console.log('  Available Traffic Sources:', actualMeta?.available_traffic_sources?.length || 0);
+        console.log('  Server-Side Filtering:', appIds.length > 0 ? 'Apps only' : 'None (date range only)');
+        console.log('  🚀 Pre-Aggregated Summary:', hasPreAggregatedSummary ? 'YES (instant render!)' : 'NO (fallback to client-side)');
+      }
+
+      // Convert Edge Function summary format to ProcessedSummary format
+      let summary;
+      if (hasPreAggregatedSummary) {
+        summary = {
+          impressions: { value: preAggregatedSummary.total_impressions || 0, delta: 0 },
+          installs: { value: preAggregatedSummary.total_downloads || 0, delta: 0 },
+          downloads: { value: preAggregatedSummary.total_downloads || 0, delta: 0 },
+          product_page_views: { value: preAggregatedSummary.total_product_page_views || 0, delta: 0 },
+          cvr: { value: preAggregatedSummary.conversion_rate_percent || 0, delta: 0 },
+          conversion_rate: { value: preAggregatedSummary.conversion_rate_percent || 0, delta: 0 }
+        };
+      } else {
+        // Fallback: Calculate client-side (backward compatibility)
+        summary = response.processed?.summary || calculateSummary(actualData);
+      }
 
       // [RETURN] Return processed data with traffic source metadata
       // ✅ CRITICAL FIX: Always generate time-series client-side to ensure complete date range
@@ -226,7 +262,7 @@ export function useEnterpriseAnalytics({
       return {
         rawData: actualData,
         processedData: {
-          summary: response.processed?.summary || calculateSummary(actualData),
+          summary,
           timeseries: filterTimeseries(actualData, dateRange), // <-- Always use client-side generation
           traffic_sources: response.processed?.traffic_sources || [],
           meta: response.processed?.meta || {
@@ -236,7 +272,10 @@ export function useEnterpriseAnalytics({
             granularity: 'daily'
           }
         },
-        meta: actualMeta,
+        meta: {
+          ...actualMeta,
+          has_pre_aggregated_summary: hasPreAggregatedSummary,
+        },
         availableTrafficSources: actualMeta?.available_traffic_sources || []
       };
     },
@@ -260,16 +299,22 @@ export function useEnterpriseAnalytics({
     const hasAppFilter = appIds.length > 0;
     const hasTrafficFilter = trafficSources.length > 0;
 
+    const isDev = import.meta.env.DEV;
+
     if (!hasAppFilter && !hasTrafficFilter) {
-      console.log('🔍 [CLIENT-FILTER] No filters applied, returning all data');
+      if (isDev) {
+        console.log('🔍 [CLIENT-FILTER] No filters applied, returning all data');
+      }
       return data;
     }
 
     // Apply filters client-side
-    console.log('🔍 [CLIENT-FILTER] Applying filters:', {
-      apps: hasAppFilter ? appIds : 'All apps',
-      sources: hasTrafficFilter ? trafficSources : 'All sources'
-    });
+    if (isDev) {
+      console.log('🔍 [CLIENT-FILTER] Applying filters:', {
+        apps: hasAppFilter ? appIds : 'All apps',
+        sources: hasTrafficFilter ? trafficSources : 'All sources'
+      });
+    }
 
     let filteredRawData = data.rawData;
 
@@ -300,14 +345,16 @@ export function useEnterpriseAnalytics({
       }
     };
 
-    console.log('🔍 [CLIENT-FILTER] Filtered result:', {
-      originalRows: data.rawData.length,
-      filteredRows: filtered.rawData.length,
-      appliedFilters: {
-        apps: hasAppFilter ? appIds : 'none',
-        sources: hasTrafficFilter ? trafficSources : 'none'
-      }
-    });
+    if (isDev) {
+      console.log('🔍 [CLIENT-FILTER] Filtered result:', {
+        originalRows: data.rawData.length,
+        filteredRows: filtered.rawData.length,
+        appliedFilters: {
+          apps: hasAppFilter ? appIds : 'none',
+          sources: hasTrafficFilter ? trafficSources : 'none'
+        }
+      });
+    }
 
     return filtered;
   }, [query.data, appIds, trafficSources, dateRange]);

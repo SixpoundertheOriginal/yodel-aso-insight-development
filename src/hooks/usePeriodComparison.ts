@@ -132,9 +132,13 @@ export function usePeriodComparison(
     ],
 
     queryFn: async () => {
-      console.log('📊 [PERIOD-COMPARISON] Fetching comparison data...');
-      console.log('  Current Period:', currentRange);
-      console.log('  Apps:', appIds.length > 0 ? appIds.length : 'All');
+      const isDev = import.meta.env.DEV;
+
+      if (isDev) {
+        console.log('📊 [PERIOD-COMPARISON] Fetching comparison data...');
+        console.log('  Current Period:', currentRange);
+        console.log('  Apps:', appIds.length > 0 ? appIds.length : 'All');
+      }
 
       // Calculate previous period dates
       const currentDays = calculateDaysBetween(currentRange.start, currentRange.end);
@@ -146,8 +150,10 @@ export function usePeriodComparison(
         end: format(previousEndDate, 'yyyy-MM-dd')
       };
 
-      console.log('  Previous Period:', previousRange);
-      console.log('  Period Length:', currentDays, 'days');
+      if (isDev) {
+        console.log('  Previous Period:', previousRange);
+        console.log('  Period Length:', currentDays, 'days');
+      }
 
       // Fetch both periods in parallel
       const [current, previous] = await Promise.all([
@@ -155,9 +161,11 @@ export function usePeriodComparison(
         fetchPeriodData(organizationId, previousRange, appIds)
       ]);
 
-      console.log('✅ [PERIOD-COMPARISON] Data fetched successfully');
-      console.log('  Current:', current);
-      console.log('  Previous:', previous);
+      if (isDev) {
+        console.log('✅ [PERIOD-COMPARISON] Data fetched successfully');
+        console.log('  Current:', current);
+        console.log('  Previous:', previous);
+      }
 
       // Calculate deltas
       const deltas = {
@@ -166,7 +174,9 @@ export function usePeriodComparison(
         cvr: calculateDelta(current.cvr, previous.cvr)
       };
 
-      console.log('  Deltas:', deltas);
+      if (isDev) {
+        console.log('  Deltas:', deltas);
+      }
 
       return { current, previous, deltas };
     },
