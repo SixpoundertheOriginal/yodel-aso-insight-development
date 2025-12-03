@@ -5,15 +5,27 @@
  * Shows side-by-side KPI cards with delta badges and text diffs.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GitCompare, TrendingUp, TrendingDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { GitCompare, TrendingUp, TrendingDown, ChevronDown } from 'lucide-react';
 import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import type { MetadataDeltas, TextDiff, BaselineMetadata, DraftMetadata } from '@/types/metadataOptimization';
 import { DeltaBadge, CompactDeltaBadge } from './DeltaBadge';
 import { TextDiffHighlighter, InlineDiff } from './TextDiffHighlighter';
 import { getDeltaSummary, getSentimentColor } from '@/utils/metadataComparison';
+import { TopGainsCard, TopLossesCard, TierUpgradesCard, OpportunitiesCard } from './InsightCards';
+import { TierDistributionChart } from './TierDistributionChart';
+import { ElementScoreComparison } from './ElementScoreComparison';
+import { KeywordImpactPanel } from './KeywordImpactPanel';
+import { ComboComparisonTable } from './ComboComparisonTable';
+import {
+  diffCombos,
+  calculateTierDistribution,
+  analyzeKeywordImpact,
+  extractStrengthenOpportunities,
+} from '@/utils/metadataComparisonAnalysis';
 
 interface MetadataComparisonViewProps {
   /** Baseline audit (production metadata) */
@@ -67,6 +79,27 @@ export const MetadataComparisonView: React.FC<MetadataComparisonViewProps> = ({
 
   // Get overall sentiment
   const { message: summaryMessage, sentiment } = getDeltaSummary(deltas);
+
+  // Calculate enhanced analysis data
+  const comboDiff = useMemo(
+    () => diffCombos(baselineAudit.comboCoverage.combos || [], draftAudit.comboCoverage.combos || []),
+    [baselineAudit, draftAudit]
+  );
+
+  const tierDistribution = useMemo(
+    () => calculateTierDistribution(baselineAudit, draftAudit),
+    [baselineAudit, draftAudit]
+  );
+
+  const keywordImpact = useMemo(
+    () => analyzeKeywordImpact(baselineAudit, draftAudit),
+    [baselineAudit, draftAudit]
+  );
+
+  const opportunities = useMemo(
+    () => extractStrengthenOpportunities(draftAudit),
+    [draftAudit]
+  );
 
   return (
     <Card className="relative bg-black/40 backdrop-blur-lg border border-blue-500/30">
@@ -290,8 +323,57 @@ export const MetadataComparisonView: React.FC<MetadataComparisonViewProps> = ({
           </div>
         </div>
 
+        {/* ======================================================================
+            ENHANCED IMPACT ANALYSIS (All 5 Options)
+            ====================================================================== */}
+        <div className="mt-6 space-y-6 pt-6 border-t border-zinc-800">
+          <h3 className="text-sm font-medium text-zinc-300 uppercase tracking-wider">
+            📊 Detailed Impact Analysis
+          </h3>
+
+          {/* Option 1: Insight Cards (2x2 grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TopGainsCard gains={comboDiff.added.slice(0, 5)} />
+            <TopLossesCard losses={comboDiff.removed.slice(0, 5)} />
+            <TierUpgradesCard upgrades={comboDiff.tierUpgrades.slice(0, 5)} />
+            <OpportunitiesCard opportunities={opportunities.slice(0, 5)} />
+          </div>
+
+          {/* Option 2: Tier Distribution Chart */}
+          <TierDistributionChart distribution={tierDistribution} />
+
+          {/* Option 4: Element Score Comparison */}
+          <ElementScoreComparison
+            baselineAudit={baselineAudit}
+            draftAudit={draftAudit}
+          />
+
+          {/* Option 5: Keyword Impact Panel */}
+          {keywordImpact.length > 0 && (
+            <KeywordImpactPanel impact={keywordImpact} />
+          )}
+
+          {/* Option 3: Collapsible Combo Comparison Table (Detailed drill-down) */}
+          <Collapsible defaultOpen={false}>
+            <Card className="bg-zinc-900/30 border-zinc-800">
+              <CardContent className="py-4">
+                <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
+                  <ChevronDown className="h-4 w-4" />
+                  <span className="font-medium">View Full Combo Comparison</span>
+                  <Badge variant="outline" className="ml-auto text-[10px] border-zinc-700 text-zinc-500">
+                    {comboDiff.added.length + comboDiff.removed.length + comboDiff.tierUpgrades.length + comboDiff.tierDowngrades.length} changes
+                  </Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ComboComparisonTable diff={comboDiff} />
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
+        </div>
+
         {/* Recommendation */}
-        <div className={`p-3 rounded border ${
+        <div className={`p-3 rounded border mt-6 ${
           sentiment === 'positive'
             ? 'bg-emerald-500/10 border-emerald-500/20'
             : sentiment === 'negative'
