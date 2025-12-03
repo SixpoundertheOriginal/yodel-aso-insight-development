@@ -618,6 +618,18 @@ serve(async (req) => {
       SELECT DISTINCT traffic_source
       FROM raw_data
       WHERE traffic_source IS NOT NULL
+    ),
+    timeseries AS (
+      -- Pre-aggregate daily timeseries (no client-side GROUP BY)
+      SELECT
+        date,
+        SUM(impressions) as daily_impressions,
+        SUM(product_page_views) as daily_product_page_views,
+        SUM(downloads) as daily_downloads,
+        SAFE_DIVIDE(SUM(downloads), NULLIF(SUM(product_page_views), 0)) * 100 as daily_conversion_rate_percent
+      FROM raw_data
+      GROUP BY date
+      ORDER BY date
     )
     -- Return structured result
     SELECT
@@ -632,7 +644,11 @@ serve(async (req) => {
       NULL as total_impressions,
       NULL as total_product_page_views,
       NULL as total_downloads,
-      NULL as conversion_rate_percent
+      NULL as conversion_rate_percent,
+      NULL as daily_impressions,
+      NULL as daily_product_page_views,
+      NULL as daily_downloads,
+      NULL as daily_conversion_rate_percent
     FROM raw_data
 
     UNION ALL
@@ -649,8 +665,33 @@ serve(async (req) => {
       total_impressions,
       total_product_page_views,
       total_downloads,
-      conversion_rate_percent
+      conversion_rate_percent,
+      NULL as daily_impressions,
+      NULL as daily_product_page_views,
+      NULL as daily_downloads,
+      NULL as daily_conversion_rate_percent
     FROM summary
+
+    UNION ALL
+
+    SELECT
+      'timeseries' as result_type,
+      date,
+      NULL as app_id,
+      NULL as traffic_source,
+      NULL as impressions,
+      NULL as product_page_views,
+      NULL as downloads,
+      NULL as conversion_rate,
+      NULL as total_impressions,
+      NULL as total_product_page_views,
+      NULL as total_downloads,
+      NULL as conversion_rate_percent,
+      daily_impressions,
+      daily_product_page_views,
+      daily_downloads,
+      daily_conversion_rate_percent
+    FROM timeseries
 
     ORDER BY result_type DESC, date DESC
   `;
@@ -714,8 +755,9 @@ serve(async (req) => {
 
   const allRows = bqJson.rows || [];
 
-  // Separate raw data from summary row
+  // Separate raw data, summary, and timeseries rows
   const rawDataRows: BigQueryRow[] = [];
+  const timeseriesRows: BigQueryRow[] = [];
   let summaryRow: BigQueryRow | null = null;
 
   allRows.forEach((row: BigQueryRow) => {
@@ -724,6 +766,8 @@ serve(async (req) => {
       summaryRow = row;
     } else if (resultType === 'raw_data') {
       rawDataRows.push(row);
+    } else if (resultType === 'timeseries') {
+      timeseriesRows.push(row);
     }
   });
 
@@ -745,7 +789,7 @@ serve(async (req) => {
   // Extract pre-aggregated summary
   let preAggregatedSummary = null;
   if (summaryRow) {
-    // Columns: result_type, date (null), app_id (null), traffic_source (null), impressions (null), ppv (null), downloads (null), cvr (null), total_impressions, total_ppv, total_downloads, cvr_percent
+    // Columns: result_type, date (null), app_id (null), traffic_source (null), impressions (null), ppv (null), downloads (null), cvr (null), total_impressions, total_ppv, total_downloads, cvr_percent, ...
     const [resultType, date, appId, trafficSource, impressions, productPageViews, downloads, conversionRate, totalImpressions, totalPPV, totalDownloads, cvrPercent] = summaryRow.f;
 
     preAggregatedSummary = {
@@ -755,6 +799,20 @@ serve(async (req) => {
       conversion_rate_percent: cvrPercent?.v ? Number(cvrPercent.v) : 0,
     };
   }
+
+  // Extract pre-aggregated timeseries
+  const preAggregatedTimeseries = timeseriesRows.map((row) => {
+    // Columns: result_type, date, app_id (null), traffic_source (null), impressions (null), ppv (null), downloads (null), cvr (null), total_impressions (null), total_ppv (null), total_downloads (null), cvr_percent (null), daily_impressions, daily_ppv, daily_downloads, daily_cvr_percent
+    const [resultType, date, appId, trafficSource, impressions, productPageViews, downloads, conversionRate, totalImpressions, totalPPV, totalDownloads, cvrPercent, dailyImpressions, dailyPPV, dailyDownloads, dailyCvrPercent] = row.f;
+
+    return {
+      date: date?.v ?? null,
+      impressions: dailyImpressions?.v ? Number(dailyImpressions.v) : 0,
+      product_page_views: dailyPPV?.v ? Number(dailyPPV.v) : 0,
+      downloads: dailyDownloads?.v ? Number(dailyDownloads.v) : 0,
+      conversion_rate_percent: dailyCvrPercent?.v ? Number(dailyCvrPercent.v) : 0,
+    };
+  });
 
   // Extract available traffic sources from raw data (already in query results)
   const availableTrafficSources = Array.from(
@@ -776,7 +834,10 @@ serve(async (req) => {
         total_rows: bqJson.totalRows || '0',
         raw_rows_returned: rows.length,
         summary_found: !!preAggregatedSummary,
+        timeseries_found: preAggregatedTimeseries.length > 0,
+        timeseries_rows: preAggregatedTimeseries.length,
         first_3_rows: rows.slice(0, 3),
+        first_3_timeseries: preAggregatedTimeseries.slice(0, 3),
         pre_aggregated_summary: preAggregatedSummary,
         available_traffic_sources: availableTrafficSources,
         job_complete: bqJson.jobComplete,
@@ -788,6 +849,8 @@ serve(async (req) => {
   log(requestId, "[BIGQUERY] Query completed", {
     rawRowCount: rows.length,
     summaryIncluded: !!preAggregatedSummary,
+    timeseriesIncluded: preAggregatedTimeseries.length > 0,
+    timeseriesRows: preAggregatedTimeseries.length,
     trafficSourcesFound: availableTrafficSources.length,
   });
 
@@ -803,6 +866,13 @@ serve(async (req) => {
     // Falls back to client-side aggregation if null
     // ============================================
     summary: preAggregatedSummary,
+    // ============================================
+    // 🚀 [OPTIMIZATION] Pre-Aggregated Timeseries
+    // ============================================
+    // Client can use this for instant chart render (no client-side GROUP BY)
+    // Falls back to client-side aggregation if empty
+    // ============================================
+    timeseries: preAggregatedTimeseries,
     scope: {
       organization_id: resolvedOrgId,
       org_id: resolvedOrgId,

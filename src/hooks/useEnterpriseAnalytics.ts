@@ -219,14 +219,17 @@ export function useEnterpriseAnalytics({
       }
 
       // ============================================
-      // 🚀 [OPTIMIZATION] Use Pre-Aggregated Summary
+      // 🚀 [OPTIMIZATION] Use Pre-Aggregated Summary & Timeseries
       // ============================================
-      // Phase 1: If Edge Function returned pre-aggregated summary, use it!
+      // Phase 1: Pre-aggregated summary (instant KPI render)
+      // Phase 2: Pre-aggregated timeseries (instant chart render)
       // Falls back to client-side aggregation if not available
       // ============================================
 
       const preAggregatedSummary = response.summary || actualData.summary;
+      const preAggregatedTimeseries = response.timeseries || actualData.timeseries;
       const hasPreAggregatedSummary = !!preAggregatedSummary;
+      const hasPreAggregatedTimeseries = preAggregatedTimeseries && preAggregatedTimeseries.length > 0;
 
       if (isDev) {
         console.log('✅ [ENTERPRISE-ANALYTICS] Data received successfully');
@@ -237,6 +240,7 @@ export function useEnterpriseAnalytics({
         console.log('  Available Traffic Sources:', actualMeta?.available_traffic_sources?.length || 0);
         console.log('  Server-Side Filtering:', appIds.length > 0 ? 'Apps only' : 'None (date range only)');
         console.log('  🚀 Pre-Aggregated Summary:', hasPreAggregatedSummary ? 'YES (instant render!)' : 'NO (fallback to client-side)');
+        console.log('  🚀 Pre-Aggregated Timeseries:', hasPreAggregatedTimeseries ? `YES (${preAggregatedTimeseries.length} days, 0ms aggregation!)` : 'NO (fallback to client-side)');
       }
 
       // Convert Edge Function summary format to ProcessedSummary format
@@ -255,15 +259,31 @@ export function useEnterpriseAnalytics({
         summary = response.processed?.summary || calculateSummary(actualData);
       }
 
+      // Convert Edge Function timeseries format to ProcessedTimeSeriesPoint format
+      let timeseries;
+      if (hasPreAggregatedTimeseries) {
+        // Use pre-aggregated timeseries from BigQuery (Phase 2 optimization)
+        // Fill missing dates to ensure complete date range
+        timeseries = fillMissingDates(preAggregatedTimeseries.map((day: any) => ({
+          date: day.date,
+          impressions: day.impressions || 0,
+          installs: day.downloads || 0,
+          downloads: day.downloads || 0,
+          product_page_views: day.product_page_views || 0,
+          conversion_rate: day.conversion_rate_percent || 0,
+          cvr: day.conversion_rate_percent || 0
+        })), dateRange);
+      } else {
+        // Fallback: Generate client-side (backward compatibility)
+        timeseries = filterTimeseries(actualData, dateRange);
+      }
+
       // [RETURN] Return processed data with traffic source metadata
-      // ✅ CRITICAL FIX: Always generate time-series client-side to ensure complete date range
-      // Server-side processed data may have sparse dates after filtering
-      // Client-side generation guarantees ALL dates in range with zero defaults
       return {
         rawData: actualData,
         processedData: {
           summary,
-          timeseries: filterTimeseries(actualData, dateRange), // <-- Always use client-side generation
+          timeseries, // <-- Now uses pre-aggregated timeseries when available!
           traffic_sources: response.processed?.traffic_sources || [],
           meta: response.processed?.meta || {
             total_apps: 0,
@@ -275,6 +295,7 @@ export function useEnterpriseAnalytics({
         meta: {
           ...actualMeta,
           has_pre_aggregated_summary: hasPreAggregatedSummary,
+          has_pre_aggregated_timeseries: hasPreAggregatedTimeseries,
         },
         availableTrafficSources: actualMeta?.available_traffic_sources || []
       };
@@ -404,6 +425,38 @@ function calculateSummary(data: BigQueryDataPoint[]): ProcessedSummary {
     cvr: { value: cvr, delta: 0 },
     conversion_rate: { value: cvr, delta: 0 }
   };
+}
+
+// ✅ Helper function to fill missing dates in timeseries
+// Ensures complete date range even if BigQuery skips dates with no data
+function fillMissingDates(timeseries: ProcessedTimeSeriesPoint[], dateRange: DateRange): ProcessedTimeSeriesPoint[] {
+  // Generate all dates in range
+  const allDates: string[] = [];
+  const start = new Date(dateRange.start);
+  const end = new Date(dateRange.end);
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    allDates.push(d.toISOString().split('T')[0]);
+  }
+
+  // Create a map of existing dates
+  const existingDates = new Map(timeseries.map(day => [day.date, day]));
+
+  // Fill missing dates with zero values
+  return allDates.map(date => {
+    if (existingDates.has(date)) {
+      return existingDates.get(date)!;
+    }
+    return {
+      date,
+      impressions: 0,
+      installs: 0,
+      downloads: 0,
+      product_page_views: 0,
+      conversion_rate: 0,
+      cvr: 0
+    };
+  });
 }
 
 // ✅ Helper function to recalculate timeseries from filtered data
