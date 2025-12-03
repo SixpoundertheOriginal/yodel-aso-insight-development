@@ -2,9 +2,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat } from '@/lib/supabase-compat';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { debugLog } from '@/lib/utils/debug';
+import { SessionService } from '@/services/sessionService';
 
 interface AuthContextType {
   session: Session | null;
@@ -50,13 +52,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             title: 'Signed in successfully',
             description: 'Welcome back!',
           });
+
+          // Create session tracking
+          if (currentSession?.user) {
+            // Get organization ID from user metadata or profile
+            const organizationId = currentSession.user.user_metadata?.organization_id || null;
+
+            // Create session with metadata
+            SessionService.createSession(
+              currentSession.user.id,
+              organizationId,
+              currentSession.user.email || '',
+              {
+                userAgent: navigator.userAgent,
+                // IP address will be captured server-side if needed
+              }
+            );
+
+            // Log authentication event to audit logs
+            supabaseCompat.rpcAny('log_audit_event', {
+              p_user_id: currentSession.user.id,
+              p_organization_id: organizationId,
+              p_user_email: currentSession.user.email || null,
+              p_action: 'user_login',
+              p_resource_type: 'auth',
+              p_resource_id: null,
+              p_details: {
+                method: 'password',
+                user_agent: navigator.userAgent,
+              },
+              p_status: 'success',
+            }).catch((err) => console.error('Failed to log auth event:', err));
+          }
         } else if (event === 'SIGNED_OUT') {
           toast({
             title: 'Signed out successfully',
             description: 'You have been signed out.',
           });
+
+          // End session tracking
+          SessionService.endSession('logout');
+
+          // Log logout event
+          if (currentSession?.user) {
+            supabaseCompat.rpcAny('log_audit_event', {
+              p_user_id: currentSession.user.id,
+              p_organization_id: currentSession.user.user_metadata?.organization_id || null,
+              p_user_email: currentSession.user.email || null,
+              p_action: 'user_logout',
+              p_resource_type: 'auth',
+              p_resource_id: null,
+              p_details: {},
+              p_status: 'success',
+            }).catch((err) => console.error('Failed to log logout event:', err));
+          }
         } else if (event === 'TOKEN_REFRESHED') {
           debugLog.verbose('Token refreshed successfully');
+          // Update session activity on token refresh
+          SessionService.updateSessionActivity();
         } else if (event === 'USER_UPDATED') {
           debugLog.verbose('User updated');
         }
@@ -128,6 +181,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        // Log failed login attempt
+        supabaseCompat.rpcAny('log_audit_event', {
+          p_user_id: null,
+          p_organization_id: null,
+          p_user_email: email,
+          p_action: 'user_login_failed',
+          p_resource_type: 'auth',
+          p_resource_id: null,
+          p_details: {
+            method: 'password',
+            error: error.message,
+            user_agent: navigator.userAgent,
+          },
+          p_status: 'failure',
+          p_error_message: error.message,
+        }).catch((err) => console.error('Failed to log failed login:', err));
+
         throw error;
       }
       // Restore navigation intent if present, default to Performance Dashboard

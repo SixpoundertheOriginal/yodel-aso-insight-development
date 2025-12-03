@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { supabaseCompat } from '@/lib/supabase-compat';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
-// import { QRCodeSVG } from 'qrcode.react'; // TODO: Install qrcode.react when MFA is fully implemented
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -243,10 +243,7 @@ export function MFASetup() {
             </div>
 
             <div className="flex justify-center p-4 bg-white rounded-lg">
-              {/* <QRCodeSVG value={qrCode} size={200} /> */}
-              <div className="p-8 text-center text-muted-foreground">
-                QR Code display - Install qrcode.react package to enable
-              </div>
+              <QRCodeSVG value={qrCode} size={200} />
             </div>
 
             <div className="text-sm text-muted-foreground">
