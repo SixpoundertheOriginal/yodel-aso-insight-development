@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge, LoadingSkeleton, ZeroState, formatters } from '@/design-registry';
-import { Eye, Download, MousePointer, Zap, Lightbulb } from 'lucide-react';
+import { Eye, Download, MousePointer, Zap, Lightbulb, Search, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateTwoPathMetricsFromData } from '@/utils/twoPathCalculator';
 import { generateTwoPathAnalysis } from '@/services/dashboard-narrative.service';
@@ -49,13 +49,41 @@ export const TwoPathFunnelCard = memo(function TwoPathFunnelCard({
 
   const hasData = metrics.impressions > 0;
 
+  // Traffic source display info
+  const trafficSourceInfo = {
+    search: {
+      icon: Search,
+      label: 'Search Traffic',
+      color: 'text-blue-400 border-blue-400/30 bg-blue-400/10'
+    },
+    browse: {
+      icon: Compass,
+      label: 'Browse Traffic',
+      color: 'text-purple-400 border-purple-400/30 bg-purple-400/10'
+    },
+    total: {
+      icon: Zap,
+      label: 'All Traffic',
+      color: 'text-zinc-400 border-zinc-400/30 bg-zinc-400/10'
+    }
+  };
+
+  const sourceInfo = trafficSourceInfo[trafficSource];
+  const SourceIcon = sourceInfo.icon;
+
   return (
     <Card className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Zap className="h-5 w-5 text-yodel-orange" />
-          <h3 className="text-lg font-semibold">Two-Path Conversion Model</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">Two-Path Conversion Model</h3>
+            <Badge variant="outline" className={cn("text-xs font-medium", sourceInfo.color)}>
+              <SourceIcon className="h-3 w-3 mr-1" />
+              {sourceInfo.label}
+            </Badge>
+          </div>
         </div>
         {hasData && (
           <Badge variant="secondary" className="text-green-600">

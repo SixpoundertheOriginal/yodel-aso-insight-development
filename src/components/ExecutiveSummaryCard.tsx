@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Sparkles } from 'lucide-react';
 import { LoadingSkeleton } from '@/design-registry';
 import { generateDashboardSummary } from '@/services/dashboard-narrative.service';
 
@@ -78,9 +78,12 @@ export function ExecutiveSummaryCard({
           <TrendingUp className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-semibold text-zinc-100 mb-2 flex items-center gap-2">
-            📊 Executive Summary
-          </h2>
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-5 w-5 text-yodel-orange" />
+            <h2 className="text-lg font-semibold text-zinc-100">
+              Executive Summary
+            </h2>
+          </div>
           <p className="text-zinc-300 leading-relaxed">
             {narrative}
           </p>

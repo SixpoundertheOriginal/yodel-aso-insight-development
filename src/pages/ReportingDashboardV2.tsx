@@ -636,11 +636,16 @@ export default function ReportingDashboardV2() {
 
         {/* ✅ ASO EXECUTIVE KPI CARDS: Premium organic visibility metrics */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <TrendingUpIcon className="h-6 w-6 text-yodel-orange" />
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-              ASO Organic Visibility
-            </h2>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <TrendingUpIcon className="h-6 w-6 text-yodel-orange" />
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                ASO Organic Visibility
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Core metrics from App Store Search and Browse traffic
+            </p>
           </div>
 
           {/* Search & Browse Cards */}
@@ -707,14 +712,22 @@ export default function ReportingDashboardV2() {
           <span>{meta?.raw_rows || 0} records</span>
         </div>
 
+        {/* Section Separator: Core Metrics → Conversion Analysis */}
+        <Separator className="my-8" />
+
         {/* ✅ TWO-PATH CONVERSION MODEL SECTION */}
         {twoPathMetrics && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <TrendingUpIcon className="h-6 w-6 text-yodel-orange" />
-              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-                Two-Path Conversion Analysis
-              </h2>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <TrendingUpIcon className="h-6 w-6 text-yodel-orange" />
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                  Two-Path Conversion Analysis
+                </h2>
+              </div>
+              <p className="text-sm text-zinc-400">
+                Understanding direct install vs product page-driven conversion behavior
+              </p>
             </div>
 
             {/* Search & Browse Diagnostic */}
@@ -744,11 +757,16 @@ export default function ReportingDashboardV2() {
         {/* ✅ DERIVED KPIs SECTION */}
         {derivedKpis && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-6 w-6 text-yodel-orange" />
-              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-                Derived ASO KPIs
-              </h2>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-6 w-6 text-yodel-orange" />
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                  Derived ASO KPIs
+                </h2>
+              </div>
+              <p className="text-sm text-zinc-400">
+                Advanced metrics calculated from core performance data
+              </p>
             </div>
 
             <DerivedKpiGrid
@@ -758,14 +776,22 @@ export default function ReportingDashboardV2() {
           </div>
         )}
 
+        {/* Section Separator: Derived KPIs → Intelligence Layer */}
+        {derivedKpis && stabilityScore && <Separator className="my-8" />}
+
         {/* ✅ ASO INTELLIGENCE LAYER */}
         {stabilityScore && derivedKpis && twoPathMetrics && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Activity className="h-6 w-6 text-yodel-orange" />
-              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-                ASO Intelligence Layer
-              </h2>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <Activity className="h-6 w-6 text-yodel-orange" />
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                  ASO Intelligence Layer
+                </h2>
+              </div>
+              <p className="text-sm text-zinc-400">
+                AI-powered insights, predictive analysis, and optimization opportunities
+              </p>
             </div>
 
             {/* Grid layout for intelligence cards */}
@@ -790,12 +816,22 @@ export default function ReportingDashboardV2() {
           </div>
         )}
 
+        {/* Section Separator: Intelligence Layer → Traditional Analytics */}
+        {stabilityScore && <Separator className="my-8" />}
+
         {/* ✅ CHARTS SECTION: Analytics & Insights */}
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Traditional Analytics
-          </h2>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 text-yodel-orange" />
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+                Traditional Analytics
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Time-series trends, traffic breakdowns, and conversion funnels
+            </p>
+          </div>
 
           {/* KPI Trend Chart */}
           <KpiTrendChart
