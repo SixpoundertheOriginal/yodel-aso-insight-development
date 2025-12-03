@@ -70,6 +70,17 @@ import { MetadataComparisonView } from '../MetadataComparison/MetadataComparison
 import { useMetadataDraftAudit } from '@/hooks/useMetadataDraftAudit';
 import type { DraftMetadata, BaselineMetadata, MetadataDeltas, TextDiff } from '@/types/metadataOptimization';
 import { Button } from '@/components/ui/button';
+import {
+  MultiLocaleEditorPanel,
+  LocaleCoverageMap,
+  CombinationMatrix,
+  RankingFusionView,
+  MultiLocaleOptimizationRecs
+} from '../MultiLocaleOptimization';
+import type { MultiLocaleIndexation, LocaleMetadata } from '@/types/multiLocaleMetadata';
+import { Globe } from 'lucide-react';
+import { useMultiLocaleAudit } from '@/hooks/useMultiLocaleAudit';
+import { DraftManager } from '@/components/AppAudit/DraftManager';
 
 const DEFAULT_DISCOVERY_THRESHOLDS = {
   excellent: 5,
@@ -110,6 +121,9 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
 
   // Metadata Optimization Lab state
   const [showOptimizationLab, setShowOptimizationLab] = useState<boolean>(false);
+  const [activeOptimizationTab, setActiveOptimizationTab] = useState<'single-locale' | 'multi-locale'>('single-locale');
+
+  // Single-Locale Optimization state
   const [draftMetadata, setDraftMetadata] = useState<DraftMetadata>({
     title: metadata.title || '',
     subtitle: metadata.subtitle || '',
@@ -120,9 +134,18 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   const [deltas, setDeltas] = useState<MetadataDeltas | null>(null);
   const [textDiff, setTextDiff] = useState<TextDiff | null>(null);
 
+  // Multi-Locale Optimization state (moved inside lab)
+  const { runAudit: runMultiLocaleAudit, isLoading: isMultiLocaleAuditing, result: multiLocaleResult } = useMultiLocaleAudit();
+
   // Handler: Run audit with current keywords
   const handleRunAudit = () => {
     setConfirmedKeywords(keywordsFieldInput);
+  };
+
+  // Handler: Run multi-locale audit
+  const handleMultiLocaleAudit = async (locales: LocaleMetadata[]) => {
+    console.log('[UNIFIED-MODULE] Running multi-locale audit with', locales.length, 'locales');
+    await runMultiLocaleAudit(metadata.appId || targetAppId || '', locales);
   };
 
   // Check if keywords have changed but not confirmed
@@ -497,56 +520,143 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
       </div>
 
       {/* ======================================================================
-          METADATA OPTIMIZATION LAB (Option C: Collapsible Progressive Disclosure)
+          METADATA OPTIMIZATION LAB (includes Single-Locale & Multi-Locale)
           ====================================================================== */}
-      {baselineMetadata && !showOptimizationLab && (
-        <div className="my-6 p-4 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-violet-400/20 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-zinc-200 font-medium mb-1">
-                💡 Want to test metadata changes?
-              </p>
-              <p className="text-xs text-zinc-400">
-                Open the Optimization Lab to edit Title, Subtitle, and Keywords, then compare results before applying.
-              </p>
+          {baselineMetadata && !showOptimizationLab && (
+            <div className="my-6 p-4 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-violet-400/20 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-zinc-200 font-medium mb-1">
+                    💡 Want to test metadata changes or analyze all locales?
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Open the Optimization Lab for single-locale testing or multi-locale indexation analysis (10 US App Store locales).
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowOptimizationLab(true)}
+                  className="bg-violet-600 hover:bg-violet-500 text-white ml-4"
+                >
+                  🎯 Open Optimization Lab
+                </Button>
+              </div>
             </div>
-            <Button
-              onClick={() => setShowOptimizationLab(true)}
-              className="bg-violet-600 hover:bg-violet-500 text-white ml-4"
-            >
-              🎯 Open Optimization Lab
-            </Button>
-          </div>
-        </div>
-      )}
+          )}
 
       {showOptimizationLab && baselineMetadata && (
         <div className="my-6 space-y-6">
-          {/* Metadata Optimization Panel */}
-          <MetadataOptimizationPanel
-            draft={draftMetadata}
-            onDraftChange={setDraftMetadata}
-            baseline={baselineMetadata}
-            onRunDraftAudit={handleRunDraftAudit}
-            onReset={handleResetDraft}
-            isLoading={isDraftAuditLoading}
-            platform={metadata.platform || 'ios'}
-            hasChanges={hasMetadataChanges}
-          />
+          <Tabs
+            defaultValue="single-locale"
+            value={activeOptimizationTab}
+            onValueChange={(value) => setActiveOptimizationTab(value as 'single-locale' | 'multi-locale')}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2 bg-zinc-900 border border-zinc-700">
+              <TabsTrigger
+                value="single-locale"
+                className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"
+              >
+                Single-Locale Optimization
+              </TabsTrigger>
+              {!isCompetitor && (
+                <TabsTrigger
+                  value="multi-locale"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  🌍 Multi-Locale Indexation
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-          {/* Comparison View (shown after draft audit completes) */}
-          {draftAudit && deltas && textDiff && (
-            <MetadataComparisonView
-              baselineAudit={auditResult}
-              draftAudit={draftAudit}
-              deltas={deltas}
-              textDiff={textDiff}
-              baseline={baselineMetadata}
-              draft={draftMetadata}
-            />
-          )}
+            {/* Tab 1: Single-Locale Optimization */}
+            <TabsContent value="single-locale" className="space-y-6 mt-6">
+              {/* Draft Manager */}
+              <DraftManager
+                appId={metadata.appId || targetAppId || ''}
+                organizationId={organizationId || ''}
+                draftType="single-locale"
+                draftData={draftMetadata}
+                onDraftLoaded={(data) => {
+                  setDraftMetadata(data);
+                }}
+                onDraftCleared={() => {
+                  handleResetDraft();
+                }}
+              />
 
-          {/* Close Lab Button */}
+              {/* Metadata Optimization Panel */}
+              <MetadataOptimizationPanel
+                draft={draftMetadata}
+                onDraftChange={setDraftMetadata}
+                baseline={baselineMetadata}
+                onRunDraftAudit={handleRunDraftAudit}
+                onReset={handleResetDraft}
+                isLoading={isDraftAuditLoading}
+                platform={metadata.platform || 'ios'}
+                hasChanges={hasMetadataChanges}
+              />
+
+              {/* Comparison View (shown after draft audit completes) */}
+              {draftAudit && deltas && textDiff && (
+                <MetadataComparisonView
+                  baselineAudit={auditResult}
+                  draftAudit={draftAudit}
+                  deltas={deltas}
+                  textDiff={textDiff}
+                  baseline={baselineMetadata}
+                  draft={draftMetadata}
+                />
+              )}
+            </TabsContent>
+
+            {/* Tab 2: Multi-Locale Optimization */}
+            {!isCompetitor && (
+              <TabsContent value="multi-locale" className="space-y-6 mt-6">
+                {/* Multi-Locale Editor Panel */}
+                <MultiLocaleEditorPanel
+                  appId={metadata.appId || targetAppId || ''}
+                  primaryMetadata={{
+                    title: metadata.title || '',
+                    subtitle: metadata.subtitle || '',
+                    keywords: confirmedKeywords || '',
+                  }}
+                  onRunAudit={handleMultiLocaleAudit}
+                  isAuditing={isMultiLocaleAuditing}
+                />
+
+                {/* Multi-Locale Visualizations (shown after audit completes) */}
+                {multiLocaleResult && (
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="relative">
+                      <h3 className="text-base font-normal tracking-wide uppercase text-zinc-300 flex items-center gap-2">
+                        <div className="h-[2px] w-8 bg-blue-500/40" />
+                        MULTI-LOCALE ANALYSIS RESULTS
+                        <div className="flex-1 h-[2px] bg-gradient-to-r from-blue-500/40 to-transparent" />
+                      </h3>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-2 mb-4">
+                        {multiLocaleResult.totalUniqueKeywords} unique keywords across {multiLocaleResult.locales.length} locales • {multiLocaleResult.totalCombinations} total combinations
+                      </p>
+                    </div>
+
+                    {/* Locale Coverage Map */}
+                    <LocaleCoverageMap coverage={multiLocaleResult.coverage} />
+
+                    {/* Combination Matrix */}
+                    <CombinationMatrix locales={multiLocaleResult.locales} />
+
+                    {/* Ranking Fusion View */}
+                    <RankingFusionView fusedRankings={multiLocaleResult.fusedRankings} />
+
+                    {/* Optimization Recommendations */}
+                    <MultiLocaleOptimizationRecs recommendations={multiLocaleResult.recommendations} />
+                  </div>
+                )}
+              </TabsContent>
+            )}
+          </Tabs>
+
+          {/* Close Lab Button (outside tabs) */}
           <div className="flex justify-center">
             <Button
               onClick={() => {
