@@ -241,7 +241,7 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     // Run audit for BASELINE metadata
-    const baselineAudit = await MetadataAuditEngine.audit({
+    const baselineAudit = MetadataAuditEngine.evaluate({
       title: baseline.title,
       subtitle: baseline.subtitle,
       description: '', // Not needed for combo analysis
@@ -250,10 +250,15 @@ serve(async (req: Request): Promise<Response> => {
       platform: platform as 'ios' | 'android',
       locale,
       appId: app_id,
+      // Required fields for ScrapedMetadata
+      name: baseline.title, // Use title as name for consistency
+      url: '',
+      icon: '',
+      developer: '',
     });
 
     // Run audit for DRAFT metadata
-    const draftAudit = await MetadataAuditEngine.audit({
+    const draftAudit = MetadataAuditEngine.evaluate({
       title: draft.title,
       subtitle: draft.subtitle,
       description: '', // Not needed for combo analysis
@@ -262,6 +267,11 @@ serve(async (req: Request): Promise<Response> => {
       platform: platform as 'ios' | 'android',
       locale,
       appId: app_id,
+      // Required fields for ScrapedMetadata
+      name: draft.title, // Use title as name for consistency
+      url: '',
+      icon: '',
+      developer: '',
     });
 
     // Calculate deltas

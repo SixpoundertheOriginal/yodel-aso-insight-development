@@ -54,11 +54,19 @@ export function useMetadataDraftAudit(options?: UseMetadataDraftAuditOptions) {
       );
 
       if (invokeError) {
+        console.error('[useMetadataDraftAudit] Invoke error:', invokeError);
         throw new Error(`Edge function error: ${invokeError.message}`);
       }
 
-      if (!result || !result.success || !result.data) {
-        throw new Error(result?.error?.message || 'Draft audit failed');
+      if (!result || !result.success) {
+        console.error('[useMetadataDraftAudit] Function returned error:', result?.error);
+        const errorMsg = result?.error?.message || 'Draft audit failed';
+        const errorDetails = result?.error?.details ? `\n\nDetails: ${result.error.details}` : '';
+        throw new Error(errorMsg + errorDetails);
+      }
+
+      if (!result.data) {
+        throw new Error('Draft audit succeeded but returned no data');
       }
 
       console.log('[useMetadataDraftAudit] Success:', {
