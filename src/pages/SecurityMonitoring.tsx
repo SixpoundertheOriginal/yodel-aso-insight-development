@@ -32,6 +32,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { ActivityFeed } from '@/components/Admin/ActivityFeed';
+import { ActiveUsersList } from '@/components/Admin/ActiveUsersList';
+import { SessionManagement } from '@/components/Admin/SessionManagement';
 
 interface AuditLogEntry {
   id: string;
@@ -362,13 +365,31 @@ export default function SecurityMonitoring() {
       )}
 
       {/* Detailed Tabs */}
-      <Tabs defaultValue="audit-logs" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="live-activity" className="space-y-4">
+        <TabsList className="grid grid-cols-7 w-full">
+          <TabsTrigger value="live-activity">Live Activity</TabsTrigger>
+          <TabsTrigger value="active-users">Active Users</TabsTrigger>
+          <TabsTrigger value="session-management">Sessions</TabsTrigger>
           <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
           <TabsTrigger value="failed-logins">Failed Logins</TabsTrigger>
           <TabsTrigger value="mfa-status">MFA Status</TabsTrigger>
-          <TabsTrigger value="sessions">Session Activity</TabsTrigger>
+          <TabsTrigger value="sessions">Stats</TabsTrigger>
         </TabsList>
+
+        {/* Live Activity Tab */}
+        <TabsContent value="live-activity" className="space-y-4">
+          <ActivityFeed />
+        </TabsContent>
+
+        {/* Active Users Tab */}
+        <TabsContent value="active-users" className="space-y-4">
+          <ActiveUsersList />
+        </TabsContent>
+
+        {/* Session Management Tab */}
+        <TabsContent value="session-management" className="space-y-4">
+          <SessionManagement />
+        </TabsContent>
 
         {/* Audit Logs Tab */}
         <TabsContent value="audit-logs" className="space-y-4">
