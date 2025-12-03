@@ -65,6 +65,11 @@ import { WorkbenchSelectionProvider } from '@/contexts/WorkbenchSelectionContext
 import { ComboKpiSummary } from '../KeywordComboWorkbench/ComboKpiSummary';
 import { KeywordsInputCard } from './KeywordsInputCard';
 import { analyzeDuplicates } from '@/engine/metadata/utils/rankingTokenExtractor';
+import { MetadataOptimizationPanel } from '../MetadataOptimization/MetadataOptimizationPanel';
+import { MetadataComparisonView } from '../MetadataComparison/MetadataComparisonView';
+import { useMetadataDraftAudit } from '@/hooks/useMetadataDraftAudit';
+import type { DraftMetadata, BaselineMetadata, MetadataDeltas, TextDiff } from '@/types/metadataOptimization';
+import { Button } from '@/components/ui/button';
 
 const DEFAULT_DISCOVERY_THRESHOLDS = {
   excellent: 5,
@@ -103,6 +108,18 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
   const [keywordsFieldInput, setKeywordsFieldInput] = useState<string>('');
   const [confirmedKeywords, setConfirmedKeywords] = useState<string>(''); // Keywords confirmed for audit
 
+  // Metadata Optimization Lab state
+  const [showOptimizationLab, setShowOptimizationLab] = useState<boolean>(false);
+  const [draftMetadata, setDraftMetadata] = useState<DraftMetadata>({
+    title: metadata.title || '',
+    subtitle: metadata.subtitle || '',
+    keywords: confirmedKeywords,
+  });
+  const [baselineMetadata, setBaselineMetadata] = useState<BaselineMetadata | null>(null);
+  const [draftAudit, setDraftAudit] = useState<UnifiedMetadataAuditResult | null>(null);
+  const [deltas, setDeltas] = useState<MetadataDeltas | null>(null);
+  const [textDiff, setTextDiff] = useState<TextDiff | null>(null);
+
   // Handler: Run audit with current keywords
   const handleRunAudit = () => {
     setConfirmedKeywords(keywordsFieldInput);
@@ -134,6 +151,73 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
     const label = delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1);
     return { value: delta, label, isPositive };
   };
+
+  // Draft Audit Hook
+  const { runDraftAudit, isLoading: isDraftAuditLoading } = useMetadataDraftAudit({
+    onSuccess: (data) => {
+      setDraftAudit(data.draftAudit);
+      setDeltas(data.deltas);
+      setTextDiff(data.textDiff);
+    },
+  });
+
+  // Check if draft has changes from baseline
+  const hasMetadataChanges = useMemo(() => {
+    if (!baselineMetadata) return false;
+    return (
+      draftMetadata.title !== baselineMetadata.title ||
+      draftMetadata.subtitle !== baselineMetadata.subtitle ||
+      draftMetadata.keywords !== baselineMetadata.keywords
+    );
+  }, [draftMetadata, baselineMetadata]);
+
+  // Handler: Run draft audit
+  const handleRunDraftAudit = async () => {
+    if (!baselineMetadata || !metadata.appId) return;
+
+    await runDraftAudit({
+      app_id: metadata.appId,
+      platform: metadata.platform || 'ios',
+      locale: metadata.locale || 'us',
+      draft: draftMetadata,
+      baseline: baselineMetadata,
+    });
+  };
+
+  // Handler: Reset draft to baseline
+  const handleResetDraft = () => {
+    if (baselineMetadata) {
+      setDraftMetadata({
+        title: baselineMetadata.title,
+        subtitle: baselineMetadata.subtitle,
+        keywords: baselineMetadata.keywords || '',
+      });
+      setDraftAudit(null);
+      setDeltas(null);
+      setTextDiff(null);
+    }
+  };
+
+  // Sync baseline metadata when audit completes with confirmed keywords
+  useEffect(() => {
+    if (auditResult && confirmedKeywords) {
+      const baseline: BaselineMetadata = {
+        title: metadata.title || '',
+        subtitle: metadata.subtitle || '',
+        keywords: confirmedKeywords,
+      };
+      setBaselineMetadata(baseline);
+
+      // Initialize draft metadata if not changed
+      if (!hasMetadataChanges) {
+        setDraftMetadata({
+          title: baseline.title,
+          subtitle: baseline.subtitle,
+          keywords: baseline.keywords || '',
+        });
+      }
+    }
+  }, [auditResult, confirmedKeywords, metadata.title, metadata.subtitle]);
 
   // Competitor Analysis Hook
   const competitorAnalysis = useCompetitorAnalysis({
@@ -411,6 +495,74 @@ export const UnifiedMetadataAuditModule: React.FC<UnifiedMetadataAuditModuleProp
           isLoading={isEdgeFetching}
         />
       </div>
+
+      {/* ======================================================================
+          METADATA OPTIMIZATION LAB (Option C: Collapsible Progressive Disclosure)
+          ====================================================================== */}
+      {baselineMetadata && !showOptimizationLab && (
+        <div className="my-6 p-4 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-violet-400/20 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-zinc-200 font-medium mb-1">
+                💡 Want to test metadata changes?
+              </p>
+              <p className="text-xs text-zinc-400">
+                Open the Optimization Lab to edit Title, Subtitle, and Keywords, then compare results before applying.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowOptimizationLab(true)}
+              className="bg-violet-600 hover:bg-violet-500 text-white ml-4"
+            >
+              🎯 Open Optimization Lab
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {showOptimizationLab && baselineMetadata && (
+        <div className="my-6 space-y-6">
+          {/* Metadata Optimization Panel */}
+          <MetadataOptimizationPanel
+            draft={draftMetadata}
+            onDraftChange={setDraftMetadata}
+            baseline={baselineMetadata}
+            onRunDraftAudit={handleRunDraftAudit}
+            onReset={handleResetDraft}
+            isLoading={isDraftAuditLoading}
+            platform={metadata.platform || 'ios'}
+            hasChanges={hasMetadataChanges}
+          />
+
+          {/* Comparison View (shown after draft audit completes) */}
+          {draftAudit && deltas && textDiff && (
+            <MetadataComparisonView
+              baselineAudit={auditResult}
+              draftAudit={draftAudit}
+              deltas={deltas}
+              textDiff={textDiff}
+              baseline={baselineMetadata}
+              draft={draftMetadata}
+            />
+          )}
+
+          {/* Close Lab Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={() => {
+                setShowOptimizationLab(false);
+                setDraftAudit(null);
+                setDeltas(null);
+                setTextDiff(null);
+              }}
+              variant="outline"
+              className="border-zinc-700 text-zinc-400 hover:text-zinc-300 hover:border-zinc-600"
+            >
+              Close Optimization Lab
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Element Detail Cards */}
 

@@ -58,6 +58,11 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         rewrite: (path) => path.replace('/api/admin/users', ''),
       },
+      '/api/metadata-audit-draft': {
+        target: `${supabaseUrl}/functions/v1/metadata-audit-draft`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace('/api/metadata-audit-draft', ''),
+      },
     },
   },
   plugins: [
