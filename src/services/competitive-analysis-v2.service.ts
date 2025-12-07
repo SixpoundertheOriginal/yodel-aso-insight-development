@@ -27,6 +27,8 @@ export interface AnalyzeCompetitorsResult {
   success: boolean;
   data?: AnalyzeCompetitorsData;
   error?: string;
+  cached?: boolean;
+  cachedAt?: string;
 }
 
 /**

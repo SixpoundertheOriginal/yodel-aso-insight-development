@@ -144,6 +144,7 @@ export interface SelectedCompetitor {
   appStoreId: string;
   name: string;
   iconUrl: string | null;
+  developer?: string | null;
 }
 
 /**

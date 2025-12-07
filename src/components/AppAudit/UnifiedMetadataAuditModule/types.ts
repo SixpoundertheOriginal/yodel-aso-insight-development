@@ -224,7 +224,6 @@ export interface UnifiedMetadataAuditResult {
       keywordsNonConsecutive?: number;
       subtitleNonConsecutive?: number;
       threeWayCross?: number;
-      missing?: number;
     };
     // NEW v2.3: Pre-calculated stats by brand type (for frontend filtering)
     statsByBrandType?: {

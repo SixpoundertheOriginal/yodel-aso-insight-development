@@ -3990,6 +3990,57 @@ export type Database = {
           },
         ]
       }
+      metadata_drafts: {
+        Row: {
+          app_id: string
+          created_at: string
+          draft_data: Json
+          draft_label: string | null
+          draft_type: string
+          id: string
+          organization_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_id: string
+          created_at?: string
+          draft_data: Json
+          draft_label?: string | null
+          draft_type: string
+          id?: string
+          organization_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_id?: string
+          created_at?: string
+          draft_data?: Json
+          draft_label?: string | null
+          draft_type?: string
+          id?: string
+          organization_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metadata_drafts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "metadata_drafts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metadata_versions: {
         Row: {
           ai_generated: boolean | null
@@ -5550,6 +5601,84 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country_code: string | null
+          country_name: string | null
+          created_at: string
+          device_type: string | null
+          end_reason: string | null
+          ended_at: string | null
+          expires_at: string | null
+          id: string
+          ip_address: unknown
+          last_active_at: string
+          organization_id: string | null
+          os: string | null
+          session_token_hash: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          created_at?: string
+          device_type?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          last_active_at?: string
+          organization_id?: string | null
+          os?: string | null
+          session_token_hash?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          city?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          created_at?: string
+          device_type?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          last_active_at?: string
+          organization_id?: string | null
+          os?: string | null
+          session_token_hash?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_app_usage"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "user_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       audit_logs_recent: {
@@ -5850,6 +5979,25 @@ export type Database = {
           },
         ]
       }
+      sessions_active: {
+        Row: {
+          browser: string | null
+          city: string | null
+          country_code: string | null
+          created_at: string | null
+          device_type: string | null
+          idle_time: unknown
+          ip_address: unknown
+          last_active_at: string | null
+          organization_name: string | null
+          os: string | null
+          session_duration: unknown
+          session_id: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       user_permissions_unified: {
         Row: {
           effective_role: string | null
@@ -6116,6 +6264,7 @@ export type Database = {
       cleanup_expired_comparison_cache: { Args: never; Returns: number }
       cleanup_expired_competitor_cache: { Args: never; Returns: number }
       cleanup_expired_semantic_insights: { Args: never; Returns: number }
+      cleanup_expired_sessions: { Args: never; Returns: number }
       cleanup_old_refresh_queue_entries: { Args: never; Returns: undefined }
       count_active_markets: { Args: { app_id: string }; Returns: number }
       create_organization_user: {
@@ -6128,10 +6277,30 @@ export type Database = {
         }
         Returns: Json
       }
+      create_user_session: {
+        Args: {
+          p_browser?: string
+          p_device_type?: string
+          p_expires_at?: string
+          p_ip_address?: unknown
+          p_organization_id: string
+          p_os?: string
+          p_session_token_hash: string
+          p_user_agent?: string
+          p_user_email: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       deactivate_user: {
         Args: { p_reason?: string; p_user_id: string }
         Returns: Json
       }
+      end_user_session: {
+        Args: { p_end_reason?: string; p_session_token_hash: string }
+        Returns: undefined
+      }
+      force_logout_session: { Args: { p_session_id: string }; Returns: boolean }
       generate_comparison_cache_key: {
         Args: {
           p_competitor_ids: string[]
@@ -6161,6 +6330,23 @@ export type Database = {
           last_fetched_at: string
           market_code: string
           title: string
+        }[]
+      }
+      get_active_sessions: {
+        Args: { p_minutes_threshold?: number }
+        Returns: {
+          browser: string
+          city: string
+          country_code: string
+          device_type: string
+          ip_address: unknown
+          last_active_at: string
+          organization_id: string
+          os: string
+          session_duration: unknown
+          session_id: string
+          user_email: string
+          user_id: string
         }[]
       }
       get_app_combo_rankings: {
@@ -6449,6 +6635,16 @@ export type Database = {
         Args: { p_organization_id?: string }
         Returns: Json
       }
+      get_session_stats: {
+        Args: never
+        Returns: {
+          active_last_1hour: number
+          active_last_5min: number
+          avg_session_duration: unknown
+          total_active_sessions: number
+          total_sessions_today: number
+        }[]
+      }
       get_stale_keywords: {
         Args: { batch_size?: number; max_age_hours?: number }
         Returns: {
@@ -6478,6 +6674,17 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      get_user_drafts_for_app: {
+        Args: { p_app_id: string }
+        Returns: {
+          created_at: string
+          draft_data: Json
+          draft_label: string
+          draft_type: string
+          id: string
+          updated_at: string
+        }[]
+      }
       get_user_highest_privilege: {
         Args: { input_user_id?: string }
         Returns: {
@@ -6502,6 +6709,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_unsaved_drafts: { Args: { p_app_id: string }; Returns: boolean }
       invalidate_comparison_cache: {
         Args: { p_target_app_id: string }
         Returns: number
@@ -6606,6 +6814,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_session_activity: {
+        Args: { p_session_token_hash: string }
+        Returns: undefined
       }
       update_user_role: {
         Args: {
