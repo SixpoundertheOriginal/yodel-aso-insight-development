@@ -17,7 +17,7 @@ import { Link2, Table, Download, Copy, FileJson, FileSpreadsheet, X } from 'luci
 import { useWorkbenchSelection } from '@/contexts/WorkbenchSelectionContext';
 import type { UnifiedMetadataAuditResult, GeneratedCombo } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { ComboStrength } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
-import { filterCombosByKeyword } from '@/engine/combos/comboGenerationEngine';
+import { filterCombosByKeyword, type GeneratedCombo as EngineGeneratedCombo } from '@/engine/combos/comboGenerationEngine';
 import { EnhancedComboFilters, type ComboFilterState } from './EnhancedComboFilters';
 import { KeywordComboTable } from './KeywordComboTable';
 import { ComboStrengthTierRow } from './ComboStrengthTierRow';
@@ -113,21 +113,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
   const [comboAnalysis, setComboAnalysis] = useState(() => {
     const backendCombos = comboCoverage.combos || [];
 
-    // Convert backend GeneratedCombo[] to frontend format
-    const allPossibleCombos = backendCombos.map(c => ({
-      text: c.text,
-      keywords: c.keywords,
-      length: c.length,
-      exists: c.exists,
-      source: c.source === 'title+subtitle' ? 'both' as const : c.source,
-      strength: c.strength,
-      canStrengthen: c.canStrengthen,
-      strengtheningSuggestion: c.strengtheningSuggestion,
-      isBranded: c.isBranded,
-      isGeneric: c.isGeneric,
-      strengthScore: c.strengthScore,
-      isConsecutive: c.isConsecutive,
-    }));
+    // Use backend GeneratedCombo directly - source is already compatible
+    const allPossibleCombos: GeneratedCombo[] = backendCombos;
 
     const existingCombos = allPossibleCombos.filter(c => c.exists);
     const missingCombos = allPossibleCombos.filter(c => !c.exists);
@@ -191,21 +178,8 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
   useEffect(() => {
     const backendCombos = comboCoverage.combos || [];
 
-    // Convert backend GeneratedCombo[] to frontend format
-    const allPossibleCombos = backendCombos.map(c => ({
-      text: c.text,
-      keywords: c.keywords,
-      length: c.length,
-      exists: c.exists,
-      source: c.source === 'title+subtitle' ? 'both' as const : c.source,
-      strength: c.strength,
-      canStrengthen: c.canStrengthen,
-      strengtheningSuggestion: c.strengtheningSuggestion,
-      isBranded: c.isBranded,
-      isGeneric: c.isGeneric,
-      strengthScore: c.strengthScore,
-      isConsecutive: c.isConsecutive,
-    }));
+    // Use backend GeneratedCombo directly - source is already compatible
+    const allPossibleCombos: GeneratedCombo[] = backendCombos;
 
     const existingCombos = allPossibleCombos.filter(c => c.exists);
     const missingCombos = allPossibleCombos.filter(c => !c.exists);
@@ -313,14 +287,14 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
       }
     }
 
-    // Filter by keyword search
+    // Filter by keyword search (cast to engine type for compatibility)
     if (filters.keywordSearch) {
-      combos = filterCombosByKeyword(combos, filters.keywordSearch);
+      combos = filterCombosByKeyword(combos as unknown as EngineGeneratedCombo[], filters.keywordSearch) as unknown as GeneratedCombo[];
     }
 
-    // Filter by strategic value
+    // Filter by strategic value (using strengthScore)
     if (filters.minStrategicValue > 0) {
-      combos = combos.filter(c => (c.strategicValue || 0) >= filters.minStrategicValue);
+      combos = combos.filter(c => (c.strengthScore || 0) >= filters.minStrategicValue);
     }
 
     // Filter by brand type
@@ -338,7 +312,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     const exportData = filteredCombos.map(c => ({
       text: c.text,
       type: 'generic' as const,
-      relevanceScore: Math.round((c.strategicValue || 0) / 25),
+      relevanceScore: Math.round((c.strengthScore || 0) / 25),
       source: c.source as any,
     }));
     exportCombosToCSV(exportData);
@@ -349,7 +323,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     const exportData = filteredCombos.map(c => ({
       text: c.text,
       type: 'generic' as const,
-      relevanceScore: Math.round((c.strategicValue || 0) / 25),
+      relevanceScore: Math.round((c.strengthScore || 0) / 25),
       source: c.source as any,
     }));
     exportCombosToXLSX(exportData);
@@ -360,7 +334,7 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     const exportData = filteredCombos.map(c => ({
       text: c.text,
       type: 'generic' as const,
-      relevanceScore: Math.round((c.strategicValue || 0) / 25),
+      relevanceScore: Math.round((c.strengthScore || 0) / 25),
       source: c.source as any,
     }));
     exportCombosToJSON(exportData, undefined, false);
@@ -451,12 +425,12 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
     // Helper to categorize by value
     const categorizeByValue = (combos: GeneratedCombo[]) => {
       return {
-        high: combos.filter(c => (c.strategicValue || 0) >= 70),
+        high: combos.filter(c => (c.strengthScore || 0) >= 70),
         medium: combos.filter(c => {
-          const val = c.strategicValue || 0;
+          const val = c.strengthScore || 0;
           return val >= 50 && val < 70;
         }),
-        low: combos.filter(c => (c.strategicValue || 0) < 50),
+        low: combos.filter(c => (c.strengthScore || 0) < 50),
       };
     };
 
@@ -850,9 +824,9 @@ export const EnhancedKeywordComboWorkbench: React.FC<EnhancedKeywordComboWorkben
               💡 <span className="font-medium">Pro Tip:</span> "{filters.keywordSearch}" appears in{' '}
               {filteredCombos.length} combos with{' '}
               {Math.round((filteredCombos.filter(c => c.exists).length / filteredCombos.length) * 100)}% coverage.
-              {filteredCombos.filter(c => !c.exists && (c.strategicValue || 0) >= 70).length > 0 && (
+              {filteredCombos.filter(c => !c.exists && (c.strengthScore || 0) >= 70).length > 0 && (
                 <> Focus on high-value missing combos like "
-                {filteredCombos.filter(c => !c.exists && (c.strategicValue || 0) >= 70).slice(0, 2).map(c => c.text).join('", "')}"
+                {filteredCombos.filter(c => !c.exists && (c.strengthScore || 0) >= 70).slice(0, 2).map(c => c.text).join('", "')}"
                 to maximize impact.</>
               )}
             </p>

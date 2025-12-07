@@ -21,7 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Target, TrendingUp, Search, Loader2, RefreshCw, Clock, History } from 'lucide-react';
-import { ScrapedMetadata, UnifiedMetadataAuditResult } from '@/types/aso';
+import { ScrapedMetadata } from '@/types/aso';
+import type { UnifiedMetadataAuditResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 import { CompetitorSearchModal } from './CompetitorSearchModal';
 import { ComparisonTable } from './ComparisonTable';
 import { GapAnalysisPanels } from './GapAnalysisPanels';
@@ -78,13 +79,12 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
   const [effectiveMonitoredAppId, setEffectiveMonitoredAppId] = useState<string | undefined>(monitoredAppId);
 
   // Get audit data for auto-suggest (use prop if provided, otherwise fetch)
-  const { auditResult: fetchedAuditResult } = useMetadataAuditV2({
-    metadata,
-    organizationId,
+  const auditQuery = useMetadataAuditV2({
+    app_id: metadata?.appId,
     enabled: !auditDataProp && !!metadata?.appId, // Only fetch if not provided
   });
 
-  const auditData = auditDataProp || fetchedAuditResult;
+  const auditData = auditDataProp || auditQuery.data?.data;
 
   // Handler: Start analysis when competitors are selected
   const handleStartAnalysis = useCallback(async (competitors: SelectedCompetitor[], forceRefresh: boolean = false) => {
@@ -560,7 +560,7 @@ export const CompetitiveIntelligenceTab: React.FC<CompetitiveIntelligenceTabProp
   }
 
   // Analysis error
-  if (progress.status === 'error') {
+  if ((progress.status as string) === 'error') {
     return (
       <>
         <Card className="bg-zinc-900/50 border-zinc-800">

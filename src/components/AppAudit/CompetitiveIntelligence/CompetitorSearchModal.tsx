@@ -27,7 +27,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Loader2, X, Plus, AlertCircle, Sparkles } from 'lucide-react';
 import { searchApps } from '@/services/competitor-metadata.service';
 import type { CompetitorSearchResult, SelectedCompetitor } from '@/types/competitiveIntelligence';
-import type { KeywordFrequencyResult } from '@/types/aso';
+import type { KeywordFrequencyResult } from '@/components/AppAudit/UnifiedMetadataAuditModule/types';
 
 interface CompetitorSearchModalProps {
   open: boolean;
